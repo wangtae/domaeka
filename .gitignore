@@ -1,0 +1,73 @@
+# Domaeka 프로젝트 관련 무시할 파일/폴더
+
+# 빌드 및 임시 파일
+/main/data/cache/
+/main/data/log/
+/main/data/tmp/
+/temp/
+
+# 설치 관련 파일 (운영 시 불필요)
+/main/install/
+
+# 특정 플러그인의 과도한 파일 또는 불필요한 파일 (AI 분석 효율 증대)
+/main/plugin/debugbar/
+/main/plugin/jqplot/
+/main/js/font-awesome/
+/main/js/owlcarousel/
+/main/js/remodal/
+/main/js/swiper/
+/main/js/tooltipster/
+/main/lib/PHPExcel/ # 대규모 외부 라이브러리
+/main/lib/Excel/php_writeexcel/ # 대규모 외부 라이브러리
+/main/plugin/PHPMailer/ # 대규모 외부 라이브러리
+/main/plugin/editor/cheditor5/
+/main/plugin/editor/smarteditor2/
+/main/plugin/htmlpurifier/
+/main/plugin/kcaptcha/mp3/
+/main/plugin/PHPMailer/docs/
+/main/plugin/PHPMailer/examples/
+/main/plugin/PHPMailer/language/
+
+# VCS 관련 (git 이외) 및 OS 관련
+.vscode/ # 사용자 IDE 설정
+.DS_Store
+Thumbs.db
+
+# 자동 생성되거나 빌드 관련 파일
+node_modules/
+vendor/
+__pycache__/
+dist/
+build/
+target/
+.next/
+out/
+*.log
+logs/
+debug.log
+error.log
+*.tmp
+*.temp
+*.cache
+*.pid
+*.lock
+*.db
+*.sqlite
+*.sqlite3
+*.zip
+*.tar.gz
+*.rar
+*~
+*.bak
+*.backup
+*.orig
+
+# PHP 관련
+*.phar
+*.ini
+*.user.ini
+.php_cs.cache
+.phpunit.result.cache
+/.idea/
+/vendor/
+/composer.lock # Composer lock file (depends on project preference, sometimes committed)
