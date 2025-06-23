@@ -13,6 +13,42 @@ include_once(G5_ADMIN_PATH.'/admin.head.php');
 //------------------------------------------------------------------------------
 // 주문서 정보
 //------------------------------------------------------------------------------
+// 도매까 권한 확인
+$dmk_auth = dmk_get_admin_auth();
+$access_allowed = true;
+
+if ($dmk_auth && !$dmk_auth['is_super']) {
+    switch ($dmk_auth['mb_type']) {
+        case 2: // 대리점 - 소속 지점의 주문만
+            $branch_ids = dmk_get_agency_branch_ids($dmk_auth['ag_id']);
+            if (!empty($branch_ids)) {
+                $sql = " SELECT COUNT(*) as cnt FROM {$g5['g5_shop_order_data_table']} o 
+                         WHERE o.od_id = '$od_id' 
+                         AND EXISTS (SELECT 1 FROM {$g5['g5_shop_cart_table']} ct 
+                                   WHERE ct.od_id = o.cart_id 
+                                   AND ct.dmk_br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "'))";
+                $check = sql_fetch($sql);
+                $access_allowed = $check['cnt'] > 0;
+            } else {
+                $access_allowed = false;
+            }
+            break;
+        case 3: // 지점 - 자신의 주문만
+            $sql = " SELECT COUNT(*) as cnt FROM {$g5['g5_shop_order_data_table']} o 
+                     WHERE o.od_id = '$od_id' 
+                     AND EXISTS (SELECT 1 FROM {$g5['g5_shop_cart_table']} ct 
+                               WHERE ct.od_id = o.cart_id 
+                               AND ct.dmk_br_id = '" . sql_escape_string($dmk_auth['br_id']) . "')";
+            $check = sql_fetch($sql);
+            $access_allowed = $check['cnt'] > 0;
+            break;
+    }
+}
+
+if (!$access_allowed) {
+    alert("해당 주문에 대한 접근 권한이 없습니다.", G5_ADMIN_URL);
+}
+
 $sql = " select * from {$g5['g5_shop_order_data_table']} where od_id = '$od_id' ";
 $od = sql_fetch($sql);
 if (!$od['od_id']) {

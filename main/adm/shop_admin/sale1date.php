@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '500110';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
@@ -36,19 +37,23 @@ function print_line($save)
     <?php
 }
 
-$sql = " select od_id,
-            SUBSTRING(od_time,1,10) as od_date,
-            od_settle_case,
-            od_receipt_price,
-            od_receipt_point,
-            od_cart_price,
-            od_cancel_price,
-            od_misu,
-            (od_cart_price + od_send_cost + od_send_cost2) as orderprice,
-            (od_cart_coupon + od_coupon + od_send_coupon) as couponprice
-       from {$g5['g5_shop_order_table']}
-      where SUBSTRING(od_time,1,10) between '$fr_date' and '$to_date'
-      order by od_time desc ";
+// 도매까 권한별 주문 조회 조건 추가
+$order_where_condition = dmk_get_order_where_condition($member['dmk_br_id'], $member['dmk_ag_id'], $member['dmk_dt_id']);
+
+$sql = " select o.od_id,
+            SUBSTRING(o.od_time,1,10) as od_date,
+            o.od_settle_case,
+            o.od_receipt_price,
+            o.od_receipt_point,
+            o.od_cart_price,
+            o.od_cancel_price,
+            o.od_misu,
+            (o.od_cart_price + o.od_send_cost + o.od_send_cost2) as orderprice,
+            (o.od_cart_coupon + o.od_coupon + o.od_send_coupon) as couponprice
+       from {$g5['g5_shop_order_table']} o
+      where SUBSTRING(o.od_time,1,10) between '$fr_date' and '$to_date'
+      " . $order_where_condition . "
+      order by o.od_time desc ";
 $result = sql_query($sql);
 ?>
 

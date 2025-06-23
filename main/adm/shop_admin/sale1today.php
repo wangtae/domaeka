@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '500110';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
@@ -23,20 +24,24 @@ $date = preg_replace("/([0-9]{4})([0-9]{2})([0-9]{2})/", "\\1-\\2-\\3", $date);
 $g5['title'] = "$date 일 매출현황";
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
-$sql = " select od_id,
-                mb_id,
-                od_name,
-                od_settle_case,
-                od_cart_price,
-                od_receipt_price,
-                od_receipt_point,
-                od_cancel_price,
-                od_misu,
-                (od_cart_price + od_send_cost + od_send_cost2) as orderprice,
-                (od_cart_coupon + od_coupon + od_send_coupon) as couponprice
-           from {$g5['g5_shop_order_table']}
-          where SUBSTRING(od_time,1,10) = '$date'
-          order by od_id desc ";
+// 도매까 권한별 주문 조회 조건 추가
+$order_where_condition = dmk_get_order_where_condition($member['dmk_br_id'], $member['dmk_ag_id'], $member['dmk_dt_id']);
+
+$sql = " select o.od_id,
+                o.mb_id,
+                o.od_name,
+                o.od_settle_case,
+                o.od_cart_price,
+                o.od_receipt_price,
+                o.od_receipt_point,
+                o.od_cancel_price,
+                o.od_misu,
+                (o.od_cart_price + o.od_send_cost + o.od_send_cost2) as orderprice,
+                (o.od_cart_coupon + o.od_coupon + o.od_send_coupon) as couponprice
+           from {$g5['g5_shop_order_table']} o
+          where SUBSTRING(o.od_time,1,10) = '$date'
+          " . $order_where_condition . "
+          order by o.od_id desc ";
 $result = sql_query($sql);
 ?>
 

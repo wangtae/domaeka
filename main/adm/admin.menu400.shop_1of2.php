@@ -27,4 +27,4 @@ $menu['menu400'][] = array('400500', '상품옵션재고관리 <i class="fa fa-f
 $menu['menu400'][] = array('400800', '쿠폰관리', G5_ADMIN_URL . '/shop_admin/couponlist.php', 'scf_coupon');
 $menu['menu400'][] = array('400810', '쿠폰존관리', G5_ADMIN_URL . '/shop_admin/couponzonelist.php', 'scf_coupon_zone');
 $menu['menu400'][] = array('400750', '추가배송비관리', G5_ADMIN_URL . '/shop_admin/sendcostlist.php', 'scf_sendcost', 1);
-$menu['menu400'][] = array('400410', '미완료주문', G5_ADMIN_URL . '/shop_admin/inorderlist.php', 'scf_inorder', 1);
+$menu['menu400'][] = array('400410', '미완료주문 <i class="fa fa-flag" title="개조"></i>', G5_ADMIN_URL . '/shop_admin/inorderlist.php', 'scf_inorder', 1);

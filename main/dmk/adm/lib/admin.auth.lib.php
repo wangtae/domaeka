@@ -165,14 +165,22 @@ function dmk_get_item_where_condition() {
 /**
  * 주문 조회를 위한 WHERE 조건을 생성합니다.
  * 
+ * @param string|null $br_id 지점 ID (선택적)
+ * @param string|null $ag_id 대리점 ID (선택적)
+ * @param string|null $dt_id 총판 ID (선택적)
  * @return string SQL WHERE 조건
  */
-function dmk_get_order_where_condition() {
+function dmk_get_order_where_condition($br_id = null, $ag_id = null, $dt_id = null) {
     $auth = dmk_get_admin_auth();
     
     if (!$auth || $auth['is_super']) {
         return ''; // 모든 주문 조회 가능 (영카트 최고 관리자)
     }
+    
+    // 매개변수가 전달된 경우 해당 값을 사용, 그렇지 않으면 인증 정보 사용
+    $user_br_id = $br_id ?: (isset($auth['br_id']) ? $auth['br_id'] : '');
+    $user_ag_id = $ag_id ?: (isset($auth['ag_id']) ? $auth['ag_id'] : '');
+    $user_dt_id = $dt_id ?: (isset($auth['dt_id']) ? $auth['dt_id'] : '');
     
     switch ($auth['mb_type']) {
         case DMK_MB_TYPE_DISTRIBUTOR:
@@ -180,14 +188,14 @@ function dmk_get_order_where_condition() {
             
         case DMK_MB_TYPE_AGENCY:
             // 대리점은 소속 지점들의 주문만 조회 가능
-            $branch_ids = dmk_get_agency_branch_ids($auth['ag_id']);
+            $branch_ids = dmk_get_agency_branch_ids($user_ag_id);
             if (empty($branch_ids)) {
                 return ' AND 1=0'; // 소속 지점이 없으면 조회 불가
             }
             return " AND dmk_od_br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "')";
             
         case DMK_MB_TYPE_BRANCH:
-            return " AND dmk_od_br_id = '" . sql_escape_string($auth['br_id']) . "'";
+            return " AND dmk_od_br_id = '" . sql_escape_string($user_br_id) . "'";
             
         default:
             return ' AND 1=0'; // 접근 차단
