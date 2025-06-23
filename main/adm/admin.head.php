@@ -52,8 +52,31 @@ function print_menu2($key, $no = '')
             continue;
         }
 
-        if ($is_admin != 'super' && (!array_key_exists($menu[$key][$i][0], $auth) || !strstr($auth[$menu[$key][$i][0]], 'r'))) {
-            continue;
+        // 도매까 메뉴 권한 체크
+        $menu_code = $menu[$key][$i][0];
+        $menu_key = isset($menu[$key][$i][3]) ? $menu[$key][$i][3] : '';
+        
+        // 최고관리자가 아닌 경우 권한 체크
+        if ($is_admin != 'super') {
+            // 도매까 메뉴인 경우 (201000, 201100, 201200) 도매까 자체 권한 체크 사용
+            if (in_array($menu_code, array('201000', '201100', '201200'))) {
+                // 도매까 권한 체크 함수가 있는 경우 사용
+                if (function_exists('dmk_can_access_menu') && $menu_key) {
+                    if (!dmk_can_access_menu(str_replace('dmk_', '', $menu_key) . '_list')) {
+                        continue;
+                    }
+                } else {
+                    // 도매까 권한 체크 함수가 없거나 메뉴 키가 없는 경우 기본 권한 체크
+                    if (!array_key_exists($menu_code, $auth) || !strstr($auth[$menu_code], 'r')) {
+                        continue;
+                    }
+                }
+            } else {
+                // 기존 메뉴는 기존 권한 체크 방식 사용
+                if (!array_key_exists($menu_code, $auth) || !strstr($auth[$menu_code], 'r')) {
+                    continue;
+                }
+            }
         }
 
         $gnb_grp_div = $gnb_grp_style = '';

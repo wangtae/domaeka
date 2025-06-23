@@ -19,7 +19,7 @@ include_once (G5_ADMIN_PATH.'/admin.head.php');
 // 총판은 최고관리자 하위의 계층이므로, dmk_mb_type이 총판(1)인 회원들을 조회
 // 계층 구조: admin(영카트 최고관리자) > distributor(총판) > agency(대리점) > branch(지점)
 $sql_common = " FROM {$g5['member_table']} m ";
-$sql_search = " WHERE (m.dmk_mb_type = 1 OR (m.dmk_mb_type = 0 AND m.mb_level >= 9 AND m.mb_level < 10)) "; // 총판 레벨
+$sql_search = " WHERE m.dmk_mb_type = 1 "; // 총판 관리자만 조회
 
 // 권한에 따른 데이터 필터링
 $dmk_auth = dmk_get_admin_auth();
@@ -112,8 +112,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         $level_str = '';
         if (isset($row['dmk_mb_type']) && $row['dmk_mb_type'] == 1) {
             $level_str = '<span class="txt_true">총판</span>';
-        } else if ($row['mb_level'] >= 9) {
-            $level_str = '<span class="txt_blue">총판 후보</span>';
         } else {
             $level_str = '레벨 ' . $row['mb_level'];
         }
