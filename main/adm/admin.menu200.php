@@ -14,7 +14,7 @@ $menu['menu200'] = array(
 
 // 최고관리자 또는 총판 관리자만 계층별 관리 메뉴에 접근 가능
 if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
-    $menu['menu200'][] = array('201000', '총판관리', G5_ADMIN_URL . '/dmk/agency_admin/agency_list.php', 'dmk_distributor');
-    $menu['menu200'][] = array('201100', '대리점관리', G5_ADMIN_URL . '/dmk/agency_admin/agency_list.php', 'dmk_agency');
-    $menu['menu200'][] = array('201200', '지사관리', G5_ADMIN_URL . '/dmk/branch_admin/branch_list.php', 'dmk_branch');
+    $menu['menu200'][] = array('201000', '총판관리', G5_URL . '/dmk/adm/agency_admin/agency_list.php', 'dmk_distributor');
+    $menu['menu200'][] = array('201100', '대리점관리', G5_URL . '/dmk/adm/agency_admin/agency_list.php', 'dmk_agency');
+    $menu['menu200'][] = array('201200', '지사관리', G5_URL . '/dmk/adm/branch_admin/branch_list.php', 'dmk_branch');
 }
