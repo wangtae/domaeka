@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '500120';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 $fr_date = isset($_REQUEST['fr_date']) ? preg_replace('/[^0-9 :_\-]/i', '', $_REQUEST['fr_date']) : '';
 $to_date = isset($_REQUEST['to_date']) ? preg_replace('/[^0-9 :_\-]/i', '', $_REQUEST['to_date']) : '';
@@ -48,10 +49,12 @@ if ($csv == 'csv')
     $fr_date = date_conv($fr_date);
     $to_date = date_conv($to_date);
 
+    // 도매까 권한별 주문 조회 조건 추가
+    $order_where_condition = dmk_get_order_where_condition($member['dmk_br_id'], $member['dmk_ag_id'], $member['dmk_dt_id']);
 
-    $sql = " SELECT a.od_id, od_b_zip1, od_b_zip2, od_b_addr1, od_b_addr2, od_b_addr3, od_b_addr_jibeon, od_b_name, od_b_tel, od_b_hp, b.it_name, ct_qty, b.it_id, od_memo, od_invoice, b.ct_option, b.ct_send_cost, b.it_sc_type
+    $sql = " SELECT a.od_id, a.od_b_zip1, a.od_b_zip2, a.od_b_addr1, a.od_b_addr2, a.od_b_addr3, a.od_b_addr_jibeon, a.od_b_name, a.od_b_tel, a.od_b_hp, b.it_name, b.ct_qty, b.it_id, a.od_memo, a.od_invoice, b.ct_option, b.ct_send_cost, b.it_sc_type
                FROM {$g5['g5_shop_order_table']} a, {$g5['g5_shop_cart_table']} b
-              where a.od_id = b.od_id ";
+              where a.od_id = b.od_id " . $order_where_condition;
     if ($case == 1) // 출력기간
         $sql .= " and a.od_time between '$fr_date 00:00:00' and '$to_date 23:59:59' ";
     else // 주문번호구간
@@ -153,9 +156,12 @@ if ($csv == 'xls')
     $fr_date = date_conv($fr_date);
     $to_date = date_conv($to_date);
 
-    $sql = " SELECT a.od_id, od_b_zip1, od_b_zip2, od_b_addr1, od_b_addr2, od_b_addr3, od_b_addr_jibeon, od_b_name, od_b_tel, od_b_hp, b.it_name, ct_qty, b.it_id, od_memo, od_invoice, b.ct_option, b.ct_send_cost, b.it_sc_type
+    // 도매까 권한별 주문 조회 조건 추가
+    $order_where_condition = dmk_get_order_where_condition($member['dmk_br_id'], $member['dmk_ag_id'], $member['dmk_dt_id']);
+
+    $sql = " SELECT a.od_id, a.od_b_zip1, a.od_b_zip2, a.od_b_addr1, a.od_b_addr2, a.od_b_addr3, a.od_b_addr_jibeon, a.od_b_name, a.od_b_tel, a.od_b_hp, b.it_name, b.ct_qty, b.it_id, a.od_memo, a.od_invoice, b.ct_option, b.ct_send_cost, b.it_sc_type
                FROM {$g5['g5_shop_order_table']} a, {$g5['g5_shop_cart_table']} b
-              where a.od_id = b.od_id ";
+              where a.od_id = b.od_id " . $order_where_condition;
     if ($case == 1) // 출력기간
         $sql .= " and a.od_time between '$fr_date 00:00:00' and '$to_date 23:59:59' ";
     else // 주문번호구간

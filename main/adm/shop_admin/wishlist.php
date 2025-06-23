@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '500140';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
@@ -17,11 +18,14 @@ $sort2 = (isset($_GET['sort2']) && in_array($_GET['sort2'], array('desc', 'asc')
 
 $sel_ca_id = isset($_GET['sel_ca_id']) ? get_search_string($_GET['sel_ca_id']) : '';
 
+// 도매까 권한별 상품 조회 조건 추가
+$item_where_condition = dmk_get_item_where_condition();
+
 $sql  = " select a.it_id,
                  b.it_name,
                  COUNT(a.it_id) as it_id_cnt
             from {$g5['g5_shop_wish_table']} a, {$g5['g5_shop_item_table']} b ";
-$sql .= " where a.it_id = b.it_id ";
+$sql .= " where a.it_id = b.it_id " . $item_where_condition;
 if ($fr_date && $to_date)
 {
     $fr = preg_replace("/([0-9]{4})([0-9]{2})([0-9]{2})/", "\\1-\\2-\\3", $fr_date);

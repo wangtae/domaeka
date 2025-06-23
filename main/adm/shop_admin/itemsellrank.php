@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '500100';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
@@ -17,25 +18,29 @@ $sort2 = (isset($_GET['sort2']) && in_array($_GET['sort2'], array('desc', 'asc')
 
 $sel_ca_id = isset($_GET['sel_ca_id']) ? get_search_string($_GET['sel_ca_id']) : '';
 
+// 도매까 권한별 상품 및 장바구니 조회 조건 추가
+$cart_where_condition = dmk_get_cart_where_condition($member['dmk_br_id'], $member['dmk_ag_id'], $member['dmk_dt_id']);
+$item_where_condition = dmk_get_item_where_condition();
+
 $sql  = " select a.it_id,
                  b.*,
-                 SUM(IF(ct_status = '쇼핑',ct_qty, 0)) as ct_status_1,
-                 SUM(IF(ct_status = '주문',ct_qty, 0)) as ct_status_2,
-                 SUM(IF(ct_status = '입금',ct_qty, 0)) as ct_status_3,
-                 SUM(IF(ct_status = '준비',ct_qty, 0)) as ct_status_4,
-                 SUM(IF(ct_status = '배송',ct_qty, 0)) as ct_status_5,
-                 SUM(IF(ct_status = '완료',ct_qty, 0)) as ct_status_6,
-                 SUM(IF(ct_status = '취소',ct_qty, 0)) as ct_status_7,
-                 SUM(IF(ct_status = '반품',ct_qty, 0)) as ct_status_8,
-                 SUM(IF(ct_status = '품절',ct_qty, 0)) as ct_status_9,
-                 SUM(ct_qty) as ct_status_sum
+                 SUM(IF(a.ct_status = '쇼핑',a.ct_qty, 0)) as ct_status_1,
+                 SUM(IF(a.ct_status = '주문',a.ct_qty, 0)) as ct_status_2,
+                 SUM(IF(a.ct_status = '입금',a.ct_qty, 0)) as ct_status_3,
+                 SUM(IF(a.ct_status = '준비',a.ct_qty, 0)) as ct_status_4,
+                 SUM(IF(a.ct_status = '배송',a.ct_qty, 0)) as ct_status_5,
+                 SUM(IF(a.ct_status = '완료',a.ct_qty, 0)) as ct_status_6,
+                 SUM(IF(a.ct_status = '취소',a.ct_qty, 0)) as ct_status_7,
+                 SUM(IF(a.ct_status = '반품',a.ct_qty, 0)) as ct_status_8,
+                 SUM(IF(a.ct_status = '품절',a.ct_qty, 0)) as ct_status_9,
+                 SUM(a.ct_qty) as ct_status_sum
             from {$g5['g5_shop_cart_table']} a, {$g5['g5_shop_item_table']} b ";
-$sql .= " where a.it_id = b.it_id ";
+$sql .= " where a.it_id = b.it_id " . $cart_where_condition . $item_where_condition;
 if ($fr_date && $to_date)
 {
     $fr = preg_replace("/([0-9]{4})([0-9]{2})([0-9]{2})/", "\\1-\\2-\\3", $fr_date);
     $to = preg_replace("/([0-9]{4})([0-9]{2})([0-9]{2})/", "\\1-\\2-\\3", $to_date);
-    $sql .= " and ct_time between '$fr 00:00:00' and '$to 23:59:59' ";
+    $sql .= " and a.ct_time between '$fr 00:00:00' and '$to 23:59:59' ";
 }
 if ($sel_ca_id)
 {
