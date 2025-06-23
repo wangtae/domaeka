@@ -1,12 +1,20 @@
 <?php
 $sub_menu = "200100";
 require_once './_common.php';
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, 'r');
 
 $sql_common = " from {$g5['member_table']} ";
 
 $sql_search = " where (1) ";
+
+// 도매까 회원 필터링 조건 추가
+$member_filter_condition = dmk_get_member_where_condition();
+if ($member_filter_condition) {
+    $sql_search .= ' AND ' . substr($member_filter_condition, 5); // ' AND ' 제거
+}
+
 if ($stx) {
     $sql_search .= " and ( ";
     switch ($sfl) {

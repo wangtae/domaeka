@@ -3,6 +3,7 @@ $sub_menu = "200100";
 require_once "./_common.php";
 require_once G5_LIB_PATH . "/register.lib.php";
 require_once G5_LIB_PATH . '/thumbnail.lib.php';
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 if ($w == 'u') {
     check_demo();
@@ -120,7 +121,9 @@ $sql_common = "  mb_name = '{$posts['mb_name']}',
                  mb_7 = '{$posts['mb_7']}',
                  mb_8 = '{$posts['mb_8']}',
                  mb_9 = '{$posts['mb_9']}',
-                 mb_10 = '{$posts['mb_10']}' ";
+                 mb_10 = '{$posts['mb_10']}',
+                 dmk_mb_owner_type = '{$_POST['dmk_mb_owner_type']}',
+                 dmk_mb_owner_id = '{$_POST['dmk_mb_owner_id']}' ";
 
 if ($w == '') {
     $mb = get_member($mb_id);
@@ -144,6 +147,11 @@ if ($w == '') {
 
     sql_query(" insert into {$g5['member_table']} set mb_id = '{$mb_id}', mb_password = '" . get_encrypt_string($mb_password) . "', mb_datetime = '" . G5_TIME_YMDHIS . "', mb_ip = '{$_SERVER['REMOTE_ADDR']}', mb_email_certify = '" . G5_TIME_YMDHIS . "', {$sql_common} ");
 } elseif ($w == 'u') {
+    // 도매까 권한 확인
+    if (!dmk_can_modify_member($mb_id)) {
+        alert("수정 할 권한이 없는 회원입니다.");
+    }
+
     $mb = get_member($mb_id);
     if (!(isset($mb['mb_id']) && $mb['mb_id'])) {
         alert('존재하지 않는 회원자료입니다.');

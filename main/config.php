@@ -129,6 +129,8 @@ define('G5_LGXPAY_PATH',    G5_PLUGIN_PATH.'/'.G5_LGXPAY_DIR);
 define('G5_SNS_PATH',       G5_PLUGIN_PATH.'/'.G5_SNS_DIR);
 define('G5_SYNDI_PATH',     G5_PLUGIN_PATH.'/'.G5_SYNDI_DIR);
 define('G5_PHPMAILER_PATH', G5_PLUGIN_PATH.'/'.G5_PHPMAILER_DIR);
+// 도매까 관련 경로 상수 추가
+define('G5_DMK_PATH', G5_PATH.'/dmk'); // Domaeka Core Path
 //==============================================================================
 
 

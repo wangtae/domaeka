@@ -1,6 +1,6 @@
 <?php
 $sub_menu = "200200";
-include_once './_common.php';
+include_once dirname(__FILE__) . '/../../../adm/_common.php';
 
 // 메뉴 접근 권한 확인
 if (!dmk_can_access_menu('branch_list')) {

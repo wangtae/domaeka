@@ -17,6 +17,10 @@ if (file_exists($gnuboard_main_common_path)) {
 // G5_ADMIN_PATH가 정의된 후 admin.lib.php를 포함합니다.
 require_once G5_ADMIN_PATH . '/admin.lib.php';
 
+// 도매까 관리자 권한 라이브러리를 포함합니다.
+// G5_DMK_PATH 상수가 정의된 후에 로드되어야 합니다.
+require_once G5_DMK_PATH . '/adm/lib/admin.auth.lib.php';
+
 if (isset($token)) {
     $token = @htmlspecialchars(strip_tags($token), ENT_QUOTES);
 }

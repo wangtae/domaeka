@@ -2,6 +2,7 @@
 $sub_menu = '400200';
 include_once('./_common.php');
 include_once(G5_EDITOR_LIB);
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "w");
 
@@ -22,6 +23,9 @@ $ca = array(
 'ca_tail_html'=>'',
 'ca_mobile_head_html'=>'',
 'ca_mobile_tail_html'=>'',
+// 도매까 카테고리 소유 정보 추가
+'dmk_ca_owner_type' => '',
+'dmk_ca_owner_id' => '',
 );
 
 for($i=0;$i<=10;$i++){
@@ -30,13 +34,12 @@ for($i=0;$i<=10;$i++){
 }
 
 $sql_common = " from {$g5['g5_shop_category_table']} ";
-if ($is_admin != 'super')
-    $sql_common .= " where ca_mb_id = '{$member['mb_id']}' ";
 
 if ($w == "")
 {
-    if ($is_admin != 'super' && !$ca_id)
-        alert("최고관리자만 1단계 분류를 추가할 수 있습니다.");
+    // 최고관리자만 1단계 분류를 추가할 수 있다는 제약 제거
+    // if ($is_admin != 'super' && !$ca_id)
+    //     alert("최고관리자만 1단계 분류를 추가할 수 있습니다.");
 
     $len = strlen($ca_id);
     if ($len == 10)
@@ -86,13 +89,21 @@ if ($w == "")
     }
     $ca['ca_skin'] = "list.10.skin.php";
     $ca['ca_mobile_skin'] = "list.10.skin.php";
-}
-else if ($w == "u")
-{
+
+    // 도매까 카테고리 소유 정보 기본 설정
+    $owner_info = dmk_get_category_owner_info();
+    $ca['dmk_ca_owner_type'] = $owner_info['owner_type'];
+    $ca['dmk_ca_owner_id'] = $owner_info['owner_id'];
+} else if ($w == "u") {
     $sql = " select * from {$g5['g5_shop_category_table']} where ca_id = '$ca_id' ";
     $ca = sql_fetch($sql);
     if (! (isset($ca['ca_id']) && $ca['ca_id']))
         alert("자료가 없습니다.");
+
+    // 도매까 권한 확인
+    if (!dmk_can_modify_category($ca_id)) {
+        alert("수정 할 권한이 없는 카테고리입니다.");
+    }
 
     $html_title = $ca['ca_name'] . " 수정";
     $ca['ca_name'] = get_text($ca['ca_name']);
@@ -163,6 +174,8 @@ else {
 <input type="hidden" name="stx" value="<?php echo $stx; ?>">
 <input type="hidden" name="page" value="<?php echo $page; ?>">
 <input type="hidden" name="ca_explan_html" value="<?php echo $ca['ca_explan_html']; ?>">
+<input type="hidden" name="dmk_ca_owner_type" value="<?php echo $ca['dmk_ca_owner_type']; ?>">
+<input type="hidden" name="dmk_ca_owner_id" value="<?php echo $ca['dmk_ca_owner_id']; ?>">
 
 <section id="anc_scatefrm_basic">
     <h2 class="h2_frm">필수입력</h2>

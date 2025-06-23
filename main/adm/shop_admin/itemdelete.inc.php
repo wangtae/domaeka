@@ -4,6 +4,8 @@
 if (!defined('_GNUBOARD_')) exit;
 if (!defined('_ITEM_DELETE_')) exit; // 개별 페이지 접근 불가
 
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+
 if (!function_exists("itemdelete")) {
 
     // 상품삭제
@@ -11,6 +13,12 @@ if (!function_exists("itemdelete")) {
     function itemdelete($it_id)
     {
         global $g5, $is_admin;
+
+        // 도매까 권한 확인
+        if (!dmk_can_modify_item($it_id)) {
+            alert("삭제 할 권한이 없는 상품입니다.");
+            return; // 권한이 없으면 함수 실행 중단
+        }
 
         $sql = " select it_explan, it_mobile_explan, it_img1, it_img2, it_img3, it_img4, it_img5, it_img6, it_img7, it_img8, it_img9, it_img10
                     from {$g5['g5_shop_item_table']} where it_id = '$it_id' ";

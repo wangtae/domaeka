@@ -1,6 +1,7 @@
 <?php
 $sub_menu = "200100";
 require_once './_common.php';
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, 'w');
 
@@ -37,6 +38,8 @@ $mb = array(
     'mb_8' => null,
     'mb_9' => null,
     'mb_10' => null,
+    'dmk_mb_owner_type' => '',
+    'dmk_mb_owner_id' => '',
 );
 
 $sound_only = '';
@@ -55,10 +58,18 @@ if ($w == '') {
     $mb['mb_open'] = 1;
     $mb['mb_level'] = $config['cf_register_level'];
     $html_title = '추가';
+
+    $owner_info = dmk_get_member_owner_info();
+    $mb['dmk_mb_owner_type'] = $owner_info['owner_type'];
+    $mb['dmk_mb_owner_id'] = $owner_info['owner_id'];
 } elseif ($w == 'u') {
     $mb = get_member($mb_id);
     if (!$mb['mb_id']) {
         alert('존재하지 않는 회원자료입니다.');
+    }
+
+    if (!dmk_can_modify_member($mb_id)) {
+        alert("수정 할 권한이 없는 회원입니다.");
     }
 
     if ($is_admin != 'super' && $mb['mb_level'] >= $member['mb_level']) {
@@ -212,6 +223,14 @@ require_once './admin.head.php';
 
 // add_javascript('js 구문', 출력순서); 숫자가 작을 수록 먼저 출력됨
 add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
+
+// dmk_mb_owner_type, dmk_mb_owner_id 필드 추가
+if (!sql_query(" select dmk_mb_owner_type from {$g5['member_table']} limit 1", false)) {
+    sql_query(" ALTER TABLE `{$g5['member_table']}`
+                    ADD `dmk_mb_owner_type` varchar(20) NOT NULL DEFAULT '' AFTER `mb_level`,
+                    ADD `dmk_mb_owner_id` varchar(20) NOT NULL DEFAULT '' AFTER `dmk_mb_owner_type` ", true);
+}
+
 ?>
 
 <form name="fmember" id="fmember" action="./member_form_update.php" onsubmit="return fmember_submit(this);" method="post" enctype="multipart/form-data">
@@ -222,6 +241,8 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
     <input type="hidden" name="sod" value="<?php echo $sod ?>">
     <input type="hidden" name="page" value="<?php echo $page ?>">
     <input type="hidden" name="token" value="">
+    <input type="hidden" name="dmk_mb_owner_type" value="<?php echo $mb['dmk_mb_owner_type']; ?>">
+    <input type="hidden" name="dmk_mb_owner_id" value="<?php echo $mb['dmk_mb_owner_id']; ?>">
 
     <div class="tbl_frm01 tbl_wrap">
         <table>

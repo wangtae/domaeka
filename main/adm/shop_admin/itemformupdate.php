@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '400300';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 if ($w == "u" || $w == "d")
     check_demo();
@@ -22,23 +23,17 @@ $ca_id = isset($_POST['ca_id']) ? preg_replace('/[^0-9a-z]/i', '', $_POST['ca_id
 $ca_id2 = isset($_POST['ca_id2']) ? preg_replace('/[^0-9a-z]/i', '', $_POST['ca_id2']) : '';
 $ca_id3 = isset($_POST['ca_id3']) ? preg_replace('/[^0-9a-z]/i', '', $_POST['ca_id3']) : '';
 
-if ($is_admin != 'super') {     // 최고관리자가 아니면 체크
-    if( $w === '' ){
-        $sql = "select ca_mb_id from {$g5['g5_shop_category_table']} where ca_id = '$ca_id'";
-    } else {
-        $sql = "select b.ca_mb_id from {$g5['g5_shop_item_table']} a , {$g5['g5_shop_category_table']} b where (a.ca_id = b.ca_id) and a.it_id = '$it_id'";
-    }
-    $checks = sql_fetch($sql);
-
-    if( ! (isset($checks['ca_mb_id']) && $checks['ca_mb_id']) || $checks['ca_mb_id'] !== $member['mb_id'] ){
-        alert("해당 분류의 관리회원이 아닙니다.");
+if ($w == 'u') {
+    // 도매까 권한 확인
+    if (!dmk_can_modify_item($it_id)) {
+        alert("수정 할 권한이 없는 상품입니다.");
     }
 }
 
 $it_img1 = $it_img2 = $it_img3 = $it_img4 = $it_img5 = $it_img6 = $it_img7 = $it_img8 = $it_img9 = $it_img10 = '';
 // 파일정보
 if($w == "u") {
-    $sql = " select it_img1, it_img2, it_img3, it_img4, it_img5, it_img6, it_img7, it_img8, it_img9, it_img10
+    $sql = " select it_img1, it_img2, it_img3, it_img4, it_img5, it_img6, it_img7, it_img8, it_img9, it_img10, dmk_it_owner_type, dmk_it_owner_id
                 from {$g5['g5_shop_item_table']}
                 where it_id = '$it_id' ";
     $file = sql_fetch($sql);
@@ -53,6 +48,8 @@ if($w == "u") {
     $it_img8    = $file['it_img8'];
     $it_img9    = $file['it_img9'];
     $it_img10   = $file['it_img10'];
+    $dmk_it_owner_type = $file['dmk_it_owner_type'];
+    $dmk_it_owner_id = $file['dmk_it_owner_id'];
 }
 
 $it_img_dir = G5_DATA_PATH.'/item';
@@ -205,7 +202,7 @@ if ($_FILES['it_img10']['name']) {
     $it_img10 = it_img_upload($_FILES['it_img10']['tmp_name'], $_FILES['it_img10']['name'], $it_img_dir.'/'.$it_id);
 }
 
-if ($w == "" || $w == "u")
+if ($w == "")
 {
     // 다음 입력을 위해서 옵션값을 쿠키로 한달동안 저장함
     //@setcookie("ck_ca_id",  $ca_id,  time() + 86400*31, $default[de_cookie_dir], $default[de_cookie_domain]);
@@ -418,8 +415,9 @@ $sql_common = " ca_id               = '$ca_id',
                 it_7                = '$it_7',
                 it_8                = '$it_8',
                 it_9                = '$it_9',
-                it_10               = '$it_10'
-                ";
+                it_10               = '$it_10',
+                dmk_it_owner_type   = '{$dmk_it_owner_type}',
+                dmk_it_owner_id     = '{$dmk_it_owner_id}' ";
 
 if ($w == "")
 {

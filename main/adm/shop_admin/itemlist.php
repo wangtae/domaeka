@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '400300';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
@@ -45,12 +46,8 @@ if ($sca != "") {
 
 if ($sfl == "")  $sfl = "it_name";
 
-$sql_common = " from {$g5['g5_shop_item_table']} a ,
-                     {$g5['g5_shop_category_table']} b
-               where (a.ca_id = b.ca_id";
-if ($is_admin != 'super')
-    $sql_common .= " and b.ca_mb_id = '{$member['mb_id']}'";
-$sql_common .= ") ";
+$sql_common = " from {$g5['g5_shop_item_table']} a ,\n                     {$g5['g5_shop_category_table']} b\n               where a.ca_id = b.ca_id";
+$sql_common .= dmk_get_item_where_condition();
 $sql_common .= $sql_search;
 
 // 테이블의 전체 레코드수만 얻음

@@ -2,7 +2,7 @@
 /**
  * Domaeka 관리자 인증 및 권한 관리 라이브러리
  * 
- * 본사-대리점-지점 계층 구조에 따른 관리자 권한 처리
+ * 영카트 최고관리자 - 총판 - 대리점 - 지사 계층 구조에 따른 관리자 권한 처리
  * 
  * @author Domaeka Development Team
  * @version 1.0
@@ -15,16 +15,16 @@ if (!defined('_GNUBOARD_')) exit; // 개별 접근 차단
  * 도매까 관리자 유형 상수 정의
  */
 define('DMK_MB_TYPE_NORMAL', 0);     // 일반 회원
-define('DMK_MB_TYPE_HQ', 1);         // 본사 관리자
+define('DMK_MB_TYPE_DISTRIBUTOR', 1); // 총판 관리자 (구 본사 관리자)
 define('DMK_MB_TYPE_AGENCY', 2);     // 대리점 관리자
 define('DMK_MB_TYPE_BRANCH', 3);     // 지점 관리자
 
 /**
  * 도매까 상품 소유 계층 상수 정의
  */
-define('DMK_OWNER_TYPE_HQ', 'HQ');           // 본사
-define('DMK_OWNER_TYPE_AGENCY', 'AGENCY');   // 대리점
-define('DMK_OWNER_TYPE_BRANCH', 'BRANCH');   // 지점
+define('DMK_OWNER_TYPE_DISTRIBUTOR', 'DISTRIBUTOR'); // 총판 (구 본사)
+define('DMK_OWNER_TYPE_AGENCY', 'AGENCY');           // 대리점
+define('DMK_OWNER_TYPE_BRANCH', 'BRANCH');           // 지점
 
 /**
  * 현재 로그인한 관리자의 도매까 권한 정보를 가져옵니다.
@@ -38,11 +38,11 @@ function dmk_get_admin_auth() {
         return false;
     }
     
-    // 최고 관리자는 모든 권한 보유
+    // 그누보드 최고 관리자 (영카트 최고 관리자)는 모든 권한 보유
     if (is_super_admin($member['mb_id'])) {
         return array(
             'mb_id' => $member['mb_id'],
-            'mb_type' => DMK_MB_TYPE_HQ,
+            'mb_type' => DMK_MB_TYPE_DISTRIBUTOR, // 영카트 최고 관리자는 총판 관리자 권한을 가집니다.
             'ag_id' => null,
             'br_id' => null,
             'is_super' => true,
@@ -68,7 +68,7 @@ function dmk_get_admin_auth() {
  */
 function dmk_get_permissions_by_type($mb_type) {
     switch ($mb_type) {
-        case DMK_MB_TYPE_HQ:
+        case DMK_MB_TYPE_DISTRIBUTOR:
             return array('agency_manage', 'branch_manage', 'item_all', 'order_all', 'stock_all');
             
         case DMK_MB_TYPE_AGENCY:
@@ -112,20 +112,20 @@ function dmk_get_item_where_condition() {
     $auth = dmk_get_admin_auth();
     
     if (!$auth || $auth['is_super']) {
-        return ''; // 모든 상품 조회 가능
+        return ''; // 모든 상품 조회 가능 (영카트 최고 관리자)
     }
     
     switch ($auth['mb_type']) {
-        case DMK_MB_TYPE_HQ:
-            return ''; // 본사는 모든 상품 조회 가능
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            return ''; // 총판 관리자는 모든 상품 조회 가능
             
         case DMK_MB_TYPE_AGENCY:
-            return " AND (dmk_it_owner_type = 'HQ' OR (dmk_it_owner_type = 'AGENCY' AND dmk_it_owner_id = '" . sql_escape_string($auth['ag_id']) . "'))";
+            return " AND (dmk_it_owner_type = '" . DMK_OWNER_TYPE_DISTRIBUTOR . "' OR (dmk_it_owner_type = 'AGENCY' AND dmk_it_owner_id = '" . sql_escape_string($auth['ag_id']) . "'))";
             
         case DMK_MB_TYPE_BRANCH:
-            // 지점은 본사, 소속 대리점, 자신의 상품만 조회 가능
+            // 지점은 총판, 소속 대리점, 자신의 상품만 조회 가능
             $ag_id = dmk_get_branch_agency_id($auth['br_id']);
-            $condition = " AND (dmk_it_owner_type = 'HQ'";
+            $condition = " AND (dmk_it_owner_type = '" . DMK_OWNER_TYPE_DISTRIBUTOR . "'";
             if ($ag_id) {
                 $condition .= " OR (dmk_it_owner_type = 'AGENCY' AND dmk_it_owner_id = '" . sql_escape_string($ag_id) . "')";
             }
@@ -146,12 +146,12 @@ function dmk_get_order_where_condition() {
     $auth = dmk_get_admin_auth();
     
     if (!$auth || $auth['is_super']) {
-        return ''; // 모든 주문 조회 가능
+        return ''; // 모든 주문 조회 가능 (영카트 최고 관리자)
     }
     
     switch ($auth['mb_type']) {
-        case DMK_MB_TYPE_HQ:
-            return ''; // 본사는 모든 주문 조회 가능
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            return ''; // 총판 관리자는 모든 주문 조회 가능
             
         case DMK_MB_TYPE_AGENCY:
             // 대리점은 소속 지점들의 주문만 조회 가능
@@ -223,7 +223,7 @@ function dmk_can_modify_item($it_id) {
         return false;
     }
     
-    // 최고 관리자는 모든 권한 보유
+    // 최고 관리자는 모든 권한 보유 (영카트 최고 관리자)
     if ($auth['is_super']) {
         return true;
     }
@@ -238,8 +238,8 @@ function dmk_can_modify_item($it_id) {
     
     // 소유권 확인
     switch ($auth['mb_type']) {
-        case DMK_MB_TYPE_HQ:
-            return $item['dmk_it_owner_type'] === DMK_OWNER_TYPE_HQ;
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            return $item['dmk_it_owner_type'] === DMK_OWNER_TYPE_DISTRIBUTOR;
             
         case DMK_MB_TYPE_AGENCY:
             return $item['dmk_it_owner_type'] === DMK_OWNER_TYPE_AGENCY && 
@@ -267,8 +267,8 @@ function dmk_get_item_owner_info() {
     }
     
     switch ($auth['mb_type']) {
-        case DMK_MB_TYPE_HQ:
-            return array('owner_type' => DMK_OWNER_TYPE_HQ, 'owner_id' => null);
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            return array('owner_type' => DMK_OWNER_TYPE_DISTRIBUTOR, 'owner_id' => null);
             
         case DMK_MB_TYPE_AGENCY:
             return array('owner_type' => DMK_OWNER_TYPE_AGENCY, 'owner_id' => $auth['ag_id']);
@@ -294,20 +294,20 @@ function dmk_can_access_menu($menu_code) {
         return false;
     }
     
-    // 최고 관리자는 모든 메뉴 접근 가능
+    // 최고 관리자는 모든 메뉴 접근 가능 (영카트 최고 관리자)
     if ($auth['is_super']) {
         return true;
     }
     
     $menu_permissions = array(
-        'agency_list' => array(DMK_MB_TYPE_HQ),
-        'agency_form' => array(DMK_MB_TYPE_HQ),
-        'branch_list' => array(DMK_MB_TYPE_HQ, DMK_MB_TYPE_AGENCY),
-        'branch_form' => array(DMK_MB_TYPE_HQ, DMK_MB_TYPE_AGENCY),
-        'item_list' => array(DMK_MB_TYPE_HQ, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH),
-        'item_form' => array(DMK_MB_TYPE_HQ, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH),
-        'order_list' => array(DMK_MB_TYPE_HQ, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH),
-        'stock_list' => array(DMK_MB_TYPE_HQ, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH)
+        'agency_list' => array(DMK_MB_TYPE_DISTRIBUTOR),
+        'agency_form' => array(DMK_MB_TYPE_DISTRIBUTOR),
+        'branch_list' => array(DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY),
+        'branch_form' => array(DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY),
+        'item_list' => array(DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH),
+        'item_form' => array(DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH),
+        'order_list' => array(DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH),
+        'stock_list' => array(DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH)
     );
     
     if (!isset($menu_permissions[$menu_code])) {
@@ -316,4 +316,63 @@ function dmk_can_access_menu($menu_code) {
     
     return in_array($auth['mb_type'], $menu_permissions[$menu_code]);
 }
+
+/**
+ * 관리자의 접근 권한을 확인하고, 권한이 없는 경우 접근을 차단합니다.
+ *
+ * @param int $required_type 이 페이지에 접근하기 위해 필요한 관리자 유형 (DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH)
+ */
+function dmk_authenticate_admin($required_type) {
+    global $g5; // 그누보드 전역 변수 $g5를 사용합니다.
+
+    $auth = dmk_get_admin_auth();
+
+    // 1. 관리자 로그인 여부 확인 및 권한 정보 가져오기
+    if (!$auth) {
+        // 관리자가 아니거나 로그인하지 않은 경우, 로그인 페이지로 리디렉션
+        alert("관리자 권한이 필요합니다.", G5_ADMIN_URL);
+        exit;
+    }
+
+    // 2. 최고 관리자 (영카트 최고 관리자)는 모든 관리자 페이지에 접근 가능
+    if ($auth['is_super']) {
+        return true;
+    }
+
+    // 3. 필요한 관리자 유형에 따른 접근 권한 확인
+    $access_granted = false;
+
+    switch ($required_type) {
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            // 총판 관리자 페이지는 총판 관리자만 접근 가능 (슈퍼 관리자는 위에서 처리됨)
+            if ($auth['mb_type'] === DMK_MB_TYPE_DISTRIBUTOR) {
+                $access_granted = true;
+            }
+            break;
+        case DMK_MB_TYPE_AGENCY:
+            // 대리점 관리자 페이지는 총판 또는 대리점 관리자만 접근 가능
+            if ($auth['mb_type'] === DMK_MB_TYPE_DISTRIBUTOR || $auth['mb_type'] === DMK_MB_TYPE_AGENCY) {
+                $access_granted = true;
+            }
+            break;
+        case DMK_MB_TYPE_BRANCH:
+            // 지점 관리자 페이지는 총판, 대리점 또는 지점 관리자만 접근 가능
+            if ($auth['mb_type'] === DMK_MB_TYPE_DISTRIBUTOR || $auth['mb_type'] === DMK_MB_TYPE_AGENCY || $auth['mb_type'] === DMK_MB_TYPE_BRANCH) {
+                $access_granted = true;
+            }
+            break;
+        default:
+            // 정의되지 않은 유형은 접근 차단
+            $access_granted = false;
+            break;
+    }
+
+    if (!$access_granted) {
+        alert("접근 권한이 없습니다.", G5_ADMIN_URL);
+        exit;
+    }
+
+    return true;
+}
+
 ?> 

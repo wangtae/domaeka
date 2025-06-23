@@ -982,6 +982,12 @@ function is_admin($mb_id)
     return run_replace('is_admin', $is_authority, $mb_id);
 }
 
+// 최고 관리자인가?
+function is_super_admin($mb_id)
+{
+    return (is_admin($mb_id) == 'super');
+}
+
 
 // 분류 옵션을 얻음
 // 4.00 에서는 카테고리 테이블을 없애고 보드테이블에 있는 내용으로 대체

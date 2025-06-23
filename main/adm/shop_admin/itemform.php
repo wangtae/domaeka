@@ -3,6 +3,7 @@ $sub_menu = '400300';
 include_once('./_common.php');
 include_once(G5_EDITOR_LIB);
 include_once(G5_LIB_PATH.'/iteminfo.lib.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "w");
 
@@ -64,6 +65,9 @@ $it = array(
 'it_tail_html'=>'',
 'it_mobile_head_html'=>'',
 'it_mobile_tail_html'=>'',
+// 도매까 상품 소유 정보 추가
+'dmk_it_owner_type' => '',
+'dmk_it_owner_id' => '',
 );
 
 for($i=0;$i<=10;$i++){
@@ -74,6 +78,11 @@ for($i=0;$i<=10;$i++){
 if ($w == "")
 {
     $html_title .= "입력";
+
+    // 도매까 상품 소유 정보 기본 설정
+    $owner_info = dmk_get_item_owner_info();
+    $it['dmk_it_owner_type'] = $owner_info['owner_type'];
+    $it['dmk_it_owner_id'] = $owner_info['owner_id'];
 
     // 옵션은 쿠키에 저장된 값을 보여줌. 다음 입력을 위한것임
     //$it[ca_id] = _COOKIE[ck_ca_id];
@@ -97,21 +106,15 @@ else if ($w == "u")
 {
     $html_title .= "수정";
 
-    if ($is_admin != 'super')
-    {
-        $sql = " select it_id from {$g5['g5_shop_item_table']} a, {$g5['g5_shop_category_table']} b
-                  where a.it_id = '$it_id'
-                    and a.ca_id = b.ca_id
-                    and b.ca_mb_id = '{$member['mb_id']}' ";
-        $row = sql_fetch($sql);
-        if (!$row['it_id'])
-            alert("\'{$member['mb_id']}\' 님께서 수정 할 권한이 없는 상품입니다.");
-    }
-
     $it = get_shop_item($it_id);
 
     if(!$it)
         alert('상품정보가 존재하지 않습니다.');
+    
+    // 도매까 권한 확인
+    if (!dmk_can_modify_item($it_id)) {
+        alert("수정 할 권한이 없는 상품입니다.");
+    }
     
     if (function_exists('check_case_exist_title')) check_case_exist_title($it, G5_SHOP_DIR, false);
 

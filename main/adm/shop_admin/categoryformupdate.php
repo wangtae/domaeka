@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '400200';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "w");
 
@@ -113,11 +114,16 @@ auth_check_menu($auth, $sub_menu, "d");
 
 check_admin_token();
 
-if ($w == 'd' && $is_admin != 'super')
-    alert("최고관리자만 분류를 삭제할 수 있습니다.");
+if ($w == 'd') { // 삭제 시 도매까 권한 확인
+    if (!dmk_can_modify_category($ca_id)) {
+        alert("삭제 할 권한이 없는 카테고리입니다.");
+    }
+}
 
 if ($w == "" || $w == "u")
 {
+    // 기존 ca_mb_id 확인 로직 제거 (도매까 권한 로직으로 대체)
+    /*
     if ($ca_mb_id)
     {
         $sql = " select mb_id from {$g5['member_table']} where mb_id = '$ca_mb_id' ";
@@ -125,6 +131,7 @@ if ($w == "" || $w == "u")
         if (!$row['mb_id'])
             alert("\'$ca_mb_id\' 은(는) 존재하는 회원아이디가 아닙니다.");
     }
+    */
 }
 
 if( $ca_skin && ! is_include_path_check($ca_skin) ){
@@ -177,7 +184,9 @@ $sql_common = " ca_order                = '$ca_order',
                 ca_7                    = '$ca_7',
                 ca_8                    = '$ca_8',
                 ca_9                    = '$ca_9',
-                ca_10                   = '$ca_10' ";
+                ca_10                   = '$ca_10',
+                dmk_ca_owner_type       = '{$_POST['dmk_ca_owner_type']}',
+                dmk_ca_owner_id         = '{$_POST['dmk_ca_owner_id']}' ";
 
 
 if ($w == "")
@@ -194,9 +203,12 @@ if ($w == "")
                     $sql_common ";
     sql_query($sql);
     run_event('shop_admin_category_created', $ca_id);
-}
-else if ($w == "u")
-{
+} else if ($w == "u") {
+    // 도매까 권한 확인
+    if (!dmk_can_modify_category($ca_id)) {
+        alert("수정 할 권한이 없는 카테고리입니다.");
+    }
+
     $sql = " update {$g5['g5_shop_category_table']}
                 set ca_name = '$ca_name',
                     $sql_common
@@ -210,7 +222,7 @@ else if ($w == "u")
                     set $sql_common
                   where SUBSTRING(ca_id,1,$len) = '$ca_id' ";
         if ($is_admin != 'super')
-            $sql .= " and ca_mb_id = '{$member['mb_id']}' ";
+            $sql .= " and ca_mb_id = '{$member['mb_id']}' "; // 이 조건은 유지해야 하위 분류 업데이트 시 소유권 필터링 가능
         sql_query($sql);
     }
     run_event('shop_admin_category_updated', $ca_id);

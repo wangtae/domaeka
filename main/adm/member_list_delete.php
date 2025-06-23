@@ -1,6 +1,7 @@
 <?php
 $sub_menu = "200100";
 require_once "./_common.php";
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 check_demo();
 
@@ -21,8 +22,8 @@ for ($i = 0; $i < count($chk); $i++) {
         $msg .= "{$mb['mb_id']} : 로그인 중인 관리자는 삭제 할 수 없습니다.\\n";
     } elseif (is_admin($mb['mb_id']) == "super") {
         $msg .= "{$mb['mb_id']} : 최고 관리자는 삭제할 수 없습니다.\\n";
-    } elseif ($is_admin != "super" && $mb['mb_level'] >= $member['mb_level']) {
-        $msg .= "{$mb['mb_id']} : 자신보다 권한이 높거나 같은 회원은 삭제할 수 없습니다.\\n";
+    } elseif (!dmk_can_modify_member($mb['mb_id'])) {
+        $msg .= "{$mb['mb_id']} : 삭제 할 권한이 없는 회원입니다.\\n";
     } else {
         // 회원자료 삭제
         member_delete($mb['mb_id']);

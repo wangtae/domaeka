@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '400400';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
@@ -108,6 +109,17 @@ if ($fr_date && $to_date) {
 
 if ($where) {
     $sql_search = ' where '.implode(' and ', $where);
+} else {
+    $sql_search = '';
+}
+
+$order_filter_condition = dmk_get_order_where_condition();
+if ($order_filter_condition) {
+    if ($sql_search) {
+        $sql_search .= ' AND ' . substr($order_filter_condition, 5); // ' AND ' 제거
+    } else {
+        $sql_search = ' where ' . substr($order_filter_condition, 5); // ' AND ' 제거
+    }
 }
 
 if ($sel_field == "")  $sel_field = "od_id";
