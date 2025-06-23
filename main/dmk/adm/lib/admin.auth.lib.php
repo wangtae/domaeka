@@ -300,6 +300,7 @@ function dmk_can_access_menu($menu_code) {
     }
     
     $menu_permissions = array(
+        'distributor_list' => array(DMK_MB_TYPE_DISTRIBUTOR),
         'agency_list' => array(DMK_MB_TYPE_DISTRIBUTOR),
         'agency_form' => array(DMK_MB_TYPE_DISTRIBUTOR),
         'branch_list' => array(DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY),
@@ -415,6 +416,32 @@ function dmk_is_distributor($mb_id = null) {
     
     // 현재 로그인한 관리자의 경우
     return (int)$member['dmk_mb_type'] === DMK_MB_TYPE_DISTRIBUTOR;
+}
+
+/**
+ * 현재 로그인한 관리자가 특정 총판을 수정할 권한이 있는지 확인합니다.
+ * 
+ * @param string $distributor_mb_id 총판 회원 ID
+ * @return bool 수정 권한 여부
+ */
+function dmk_can_modify_distributor($distributor_mb_id) {
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth) {
+        return false;
+    }
+    
+    // 최고 관리자는 모든 총판 수정 가능
+    if ($auth['is_super']) {
+        return true;
+    }
+    
+    // 총판 관리자는 자신만 수정 가능
+    if ($auth['mb_type'] === DMK_MB_TYPE_DISTRIBUTOR) {
+        return $auth['mb_id'] === $distributor_mb_id;
+    }
+    
+    return false;
 }
 
 ?> 
