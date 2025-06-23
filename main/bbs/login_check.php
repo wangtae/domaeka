@@ -1,4 +1,5 @@
 <?php
+error_log("[DMK DEBUG] login_check.php: Script start.");
 include_once('./_common.php');
 
 $g5['title'] = "로그인 검사";
@@ -11,7 +12,9 @@ run_event('member_login_check_before', $mb_id);
 if (!$mb_id || run_replace('check_empty_member_login_password', !$mb_password, $mb_id))
     alert('회원아이디나 비밀번호가 공백이면 안됩니다.');
 
+error_log("[DMK DEBUG] login_check.php: Before get_member(). mb_id = {$mb_id}");
 $mb = get_member($mb_id);
+error_log("[DMK DEBUG] login_check.php: After get_member(). mb_id = " . ($mb['mb_id'] ?? 'not found'));
 
 //소셜 로그인추가 체크
 

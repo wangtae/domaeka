@@ -8,9 +8,18 @@ if (file_exists(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php')) {
     include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 }
 
+// 디버깅: 현재 로그인한 사용자의 권한 정보 로깅
+if (defined('G5_IS_ADMIN') && G5_IS_ADMIN) {
+    error_log("[DMK DEBUG] admin.head.php - member_id: " . ($member['mb_id'] ?? 'none') . ", is_admin: " . ($is_admin ?? 'none'));
+    if (function_exists('dmk_get_admin_auth')) {
+        $dmk_auth_debug = dmk_get_admin_auth();
+        error_log("[DMK DEBUG] dmk_auth - mb_type: " . $dmk_auth_debug['mb_type'] . ", is_super: " . ($dmk_auth_debug['is_super'] ? 'true' : 'false'));
+    }
+}
+
 // 도매까 관리자 스타일 포함
 if (file_exists(G5_ADMIN_PATH.'/css/admin_dmk.css')) {
-    add_stylesheet('<link rel="stylesheet" href="'.G5_ADMIN_URL.'/css/admin_dmk.css">', 100);
+    add_stylesheet('<link rel="stylesheet" href="'.G5_ADMIN_URL.'/css/admin_dmk.css?ver='.G5_CSS_VER.'">', 100);
 }
 
 $g5_debug['php']['begin_time'] = $begin_time = get_microtime();
@@ -44,7 +53,7 @@ function print_menu1($key, $no = '')
 
 function print_menu2($key, $no = '')
 {
-    global $menu, $auth_menu, $is_admin, $auth, $g5, $sub_menu;
+    global $menu, $auth_menu, $is_admin, $auth, $g5, $sub_menu, $member;
 
     $str = "<ul>";
     for ($i = 1; $i < count($menu[$key]); $i++) {
@@ -52,31 +61,12 @@ function print_menu2($key, $no = '')
             continue;
         }
 
-        // 도매까 메뉴 권한 체크
         $menu_code = $menu[$key][$i][0];
         $menu_key = isset($menu[$key][$i][3]) ? $menu[$key][$i][3] : '';
         
-        // 최고관리자가 아닌 경우 권한 체크
-        if ($is_admin != 'super') {
-            // 도매까 메뉴인 경우 (201000, 201100, 201200) 도매까 자체 권한 체크 사용
-            if (in_array($menu_code, array('201000', '201100', '201200'))) {
-                // 도매까 권한 체크 함수가 있는 경우 사용
-                if (function_exists('dmk_can_access_menu') && $menu_key) {
-                    if (!dmk_can_access_menu(str_replace('dmk_', '', $menu_key) . '_list')) {
-                        continue;
-                    }
-                } else {
-                    // 도매까 권한 체크 함수가 없거나 메뉴 키가 없는 경우 기본 권한 체크
-                    if (!array_key_exists($menu_code, $auth) || !strstr($auth[$menu_code], 'r')) {
-                        continue;
-                    }
-                }
-            } else {
-                // 기존 메뉴는 기존 권한 체크 방식 사용
-                if (!array_key_exists($menu_code, $auth) || !strstr($auth[$menu_code], 'r')) {
-                    continue;
-                }
-            }
+        // 모든 메뉴에 대해 통합된 dmk_auth_check_menu_display 함수를 사용하여 권한을 확인
+        if (!dmk_auth_check_menu_display($menu_code, $menu_key)) {
+            continue;
         }
 
         $gnb_grp_div = $gnb_grp_style = '';

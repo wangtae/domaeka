@@ -18,6 +18,7 @@ include_once(G5_LIB_PATH.'/poll.lib.php');
 include_once(G5_LIB_PATH.'/visit.lib.php');
 include_once(G5_LIB_PATH.'/connect.lib.php');
 include_once(G5_LIB_PATH.'/popular.lib.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php'); // 도매까 관리자 권한 라이브러리 포함
 ?>
 
 <!-- 상단 시작 { -->
@@ -103,7 +104,12 @@ include_once(G5_LIB_PATH.'/popular.lib.php');
             <?php if ($is_member) {  ?>
             <li><a href="<?php echo G5_BBS_URL ?>/member_confirm.php?url=<?php echo G5_BBS_URL ?>/register_form.php">정보수정</a></li>
             <li><a href="<?php echo G5_BBS_URL ?>/logout.php">로그아웃</a></li>
-            <?php if ($is_admin) {  ?>
+            <?php 
+            $dmk_auth = dmk_get_admin_auth();
+            // 도매까 관리자도 관리자 버튼을 볼 수 있도록 함
+            $show_admin_button = $is_admin || ($dmk_auth && $dmk_auth['mb_type'] > 0);
+            if ($show_admin_button) {
+            ?>
             <li class="tnb_admin"><a href="<?php echo correct_goto_url(G5_ADMIN_URL); ?>">관리자</a></li>
             <?php }  ?>
             <?php } else {  ?>

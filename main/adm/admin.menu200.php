@@ -1,9 +1,15 @@
 <?php
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+// 전역 변수 선언
+global $member, $is_admin;
+
+// 도매까 권한 라이브러리 포함
+if (defined('G5_DMK_PATH')) {
+    include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+}
 
 $menu['menu200'] = array(
     array('200000', '회원관리', G5_ADMIN_URL . '/member_list.php', 'member'),
-    array('200100', '회원목록', G5_ADMIN_URL . '/member_list.php', 'mb_list'),
+    array('200100', '회원목록 <i class="fa fa-flag" title="개조"></i>', G5_ADMIN_URL . '/member_list.php', 'mb_list'),
     array('200300', '회원메일발송', G5_ADMIN_URL . '/mail_list.php', 'mb_mail'),
     array('200200', '포인트관리', G5_ADMIN_URL . '/point_list.php', 'mb_point'),
     array('200800', '접속자집계', G5_ADMIN_URL . '/visit_list.php', 'mb_visit', 1),
@@ -12,9 +18,4 @@ $menu['menu200'] = array(
     array('200900', '투표관리', G5_ADMIN_URL . '/poll_list.php', 'mb_poll'),
 );
 
-// 최고관리자 또는 총판 관리자만 계층별 관리 메뉴에 접근 가능
-if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
-    $menu['menu200'][] = array('201000', '총판관리 <span class="dmk-new-menu">NEW</span>', G5_URL . '/dmk/adm/distributor_admin/distributor_list.php', 'dmk_distributor');
-    $menu['menu200'][] = array('201100', '대리점관리 <span class="dmk-new-menu">NEW</span>', G5_URL . '/dmk/adm/agency_admin/agency_list.php', 'dmk_agency');
-    $menu['menu200'][] = array('201200', '지점관리 <span class="dmk-new-menu">NEW</span>', G5_URL . '/dmk/adm/branch_admin/branch_list.php', 'dmk_branch');
-}
+// 도매까 메뉴는 별도의 menu210으로 이동됨

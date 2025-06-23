@@ -32,32 +32,57 @@ define('DMK_OWNER_TYPE_BRANCH', 'BRANCH');           // 지점
  * @return array|false 권한 정보 배열 또는 false (권한 없음)
  */
 function dmk_get_admin_auth() {
-    global $member, $is_admin;
-    
-    if (!$is_admin || !$member['mb_id']) {
-        return false;
-    }
-    
-    // 그누보드 최고 관리자 (영카트 최고 관리자)는 모든 권한 보유
-    if (is_super_admin($member['mb_id'])) {
-        return array(
-            'mb_id' => $member['mb_id'],
-            'mb_type' => DMK_MB_TYPE_DISTRIBUTOR, // 영카트 최고 관리자는 총판 관리자 권한을 가집니다.
-            'ag_id' => null,
-            'br_id' => null,
-            'is_super' => true,
-            'permissions' => array('all')
-        );
-    }
-    
-    return array(
-        'mb_id' => $member['mb_id'],
-        'mb_type' => (int)$member['dmk_mb_type'],
-        'ag_id' => $member['dmk_ag_id'],
-        'br_id' => $member['dmk_br_id'],
+    global $is_admin, $member, $g5;
+
+    $auth_info = [
         'is_super' => false,
-        'permissions' => dmk_get_permissions_by_type((int)$member['dmk_mb_type'])
-    );
+        'mb_type' => 0, // 0: 일반, 1: 총판, 2: 대리점, 3: 지점
+        'dt_id' => '',
+        'ag_id' => '',
+        'br_id' => '',
+    ];
+
+    if ($is_admin == 'super') {
+        $auth_info['is_super'] = true;
+    }
+
+    if (isset($member['mb_id']) && $member['mb_id']) {
+        $mb_id = sql_escape_string($member['mb_id']);
+        
+        // mb_id가 현재 로그인한 사용자와 일치하는지 확인
+        $auth_info['mb_id'] = $member['mb_id'];
+
+        // 총판 관리자인지 확인
+        $sql = " SELECT dt_id, dt_name FROM dmk_distributor WHERE dt_mb_id = '".$mb_id."' ";
+        $row = sql_fetch($sql);
+        if ($row) {
+            $auth_info['mb_type'] = 1; // 총판
+            $auth_info['dt_id'] = $row['dt_id'];
+            return $auth_info;
+        }
+
+        // 대리점 관리자인지 확인
+        $sql = " SELECT ag_id, ag_name, dt_id FROM dmk_agency WHERE ag_mb_id = '".$mb_id."' ";
+        $row = sql_fetch($sql);
+        if ($row) {
+            $auth_info['mb_type'] = 2; // 대리점
+            $auth_info['ag_id'] = $row['ag_id'];
+            $auth_info['dt_id'] = $row['dt_id'];
+            return $auth_info;
+        }
+
+        // 지점 관리자인지 확인
+        $sql = " SELECT br_id, br_name, ag_id FROM dmk_branch WHERE br_mb_id = '".$mb_id."' ";
+        $row = sql_fetch($sql);
+        if ($row) {
+            $auth_info['mb_type'] = 3; // 지점
+            $auth_info['br_id'] = $row['br_id'];
+            $auth_info['ag_id'] = $row['ag_id']; // 지점은 대리점에 소속되므로 ag_id도 가져옴
+            return $auth_info;
+        }
+    }
+
+    return $auth_info;
 }
 
 /**
@@ -442,6 +467,269 @@ function dmk_can_modify_distributor($distributor_mb_id) {
     }
     
     return false;
+}
+
+/**
+ * 회원 목록 조회를 위한 WHERE 조건을 생성합니다.
+ * 
+ * @return string SQL WHERE 조건
+ */
+function dmk_get_member_where_condition() {
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth || $auth['is_super']) {
+        return ''; // 모든 회원 조회 가능 (영카트 최고 관리자)
+    }
+    
+    switch ($auth['mb_type']) {
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            return ''; // 총판 관리자는 모든 회원 조회 가능
+            
+        case DMK_MB_TYPE_AGENCY:
+            // 대리점 관리자는 소속 지점 관리자들만 조회 가능
+            $branch_ids = dmk_get_agency_branch_ids($auth['ag_id']);
+            if (empty($branch_ids)) {
+                return ' AND 1=0'; // 소속 지점이 없으면 조회 불가
+            }
+            return " AND (dmk_mb_type = 0 OR (dmk_mb_type = 3 AND dmk_br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "')))";
+            
+        case DMK_MB_TYPE_BRANCH:
+            // 지점 관리자는 일반 회원만 조회 가능
+            return " AND dmk_mb_type = 0";
+            
+        default:
+            return ' AND 1=0'; // 접근 차단
+    }
+}
+
+/**
+ * 현재 로그인한 관리자가 특정 회원을 수정할 권한이 있는지 확인합니다.
+ * 
+ * @param string $mb_id 회원 ID
+ * @return bool 수정 권한 여부
+ */
+function dmk_can_modify_member($mb_id) {
+    global $g5;
+    
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth) {
+        return false;
+    }
+    
+    // 최고 관리자는 모든 회원 수정 가능
+    if ($auth['is_super']) {
+        return true;
+    }
+    
+    // 회원 정보 조회
+    $sql = " SELECT dmk_mb_type, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($mb_id) . "' ";
+    $member = sql_fetch($sql);
+    
+    if (!$member) {
+        return false;
+    }
+    
+    switch ($auth['mb_type']) {
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            // 총판 관리자는 모든 회원 수정 가능 (최고 관리자 제외)
+            return $member['dmk_mb_type'] != DMK_MB_TYPE_DISTRIBUTOR || $member['mb_id'] === $auth['mb_id'];
+            
+        case DMK_MB_TYPE_AGENCY:
+            // 대리점 관리자는 소속 지점 관리자들만 수정 가능
+            return $member['dmk_mb_type'] == DMK_MB_TYPE_NORMAL || 
+                   ($member['dmk_mb_type'] == DMK_MB_TYPE_BRANCH && $member['dmk_ag_id'] === $auth['ag_id']);
+            
+        case DMK_MB_TYPE_BRANCH:
+            // 지점 관리자는 일반 회원만 수정 가능
+            return $member['dmk_mb_type'] == DMK_MB_TYPE_NORMAL;
+            
+        default:
+            return false;
+    }
+}
+
+/**
+ * 회원 소유 정보를 가져옵니다.
+ * 
+ * @return array 소유 정보 배열 (owner_type, owner_id)
+ */
+function dmk_get_member_owner_info() {
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth) {
+        return array('owner_type' => '', 'owner_id' => '');
+    }
+    
+    switch ($auth['mb_type']) {
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            return array('owner_type' => 'DISTRIBUTOR', 'owner_id' => $auth['mb_id']);
+            
+        case DMK_MB_TYPE_AGENCY:
+            return array('owner_type' => 'AGENCY', 'owner_id' => $auth['ag_id']);
+            
+        case DMK_MB_TYPE_BRANCH:
+            return array('owner_type' => 'BRANCH', 'owner_id' => $auth['br_id']);
+            
+        default:
+            return array('owner_type' => '', 'owner_id' => '');
+    }
+}
+
+// Domaeka 관리자가 일반 그누보드/영카트 메뉴에 접근할 수 있는지 확인하는 함수
+function dmk_has_general_menu_access($menu_code) {
+    $dmk_auth = dmk_get_admin_auth();
+
+    // 최고관리자는 모든 일반 메뉴 접근 가능
+    if ($dmk_auth['is_super']) {
+        return true;
+    }
+
+    global $is_admin;
+    // 도매까 관리자도 기본 일반 메뉴 접근 가능
+    if ($is_admin == 'dmk_admin') {
+        return true;
+    }
+
+    // Domaeka 관리자 (총판, 대리점, 지점)는 특정 일반 메뉴에 접근 가능하도록 허용
+    // 예: 회원목록 (200100)
+    if ($dmk_auth['mb_type'] >= 1 && $dmk_auth['mb_type'] <= 3) {
+        switch ($menu_code) {
+            case '200100': // 회원목록
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    return false;
+}
+
+// 실제 메뉴 권한을 체크하는 함수 (admin.head.php에서 사용될 것)
+function dmk_auth_check_menu_display($menu_code, $menu_key) {
+    global $is_admin, $auth;
+
+    $dmk_auth = dmk_get_admin_auth();
+
+    // 1. 최고관리자는 모든 메뉴 접근 가능
+    if ($is_admin == 'super') {
+        return true;
+    }
+
+    // 1-1. 도매까 관리자도 기본 메뉴 접근 가능
+    if ($is_admin == 'dmk_admin') {
+        // 도매까 관리자는 기본적으로 메뉴 접근 허용
+        // 추후 세밀한 권한 제어 필요 시 여기서 구현
+        return true;
+    }
+
+    // 2. 도매까 메뉴 (190xxx)
+    if (substr($menu_code, 0, 3) == '190') {
+        return dmk_can_access_menu($menu_key);
+    }
+
+    // 3. 일반 그누보드/영카트 메뉴 (200xxx 등)
+    // 도매까 관리자에게 허용된 일반 메뉴인지 확인
+    if (dmk_has_general_menu_access($menu_code)) {
+        return true;
+    }
+
+    // 그 외 일반 메뉴는 기존 권한 배열 ($auth)에 따름
+    return (array_key_exists($menu_code, $auth) && strstr($auth[$menu_code], 'r'));
+}
+
+/**
+ * 도매까 관리자를 위한 권한 체크 함수 (기존 auth_check 대체)
+ * 
+ * @param string $auth_str 권한 문자열
+ * @param string $attr 요구 권한 (r, w, d)
+ * @param bool $return 오류 시 메시지 반환 여부
+ * @return string|void 오류 메시지 또는 void
+ */
+function dmk_auth_check($auth_str, $attr, $return = false) {
+    global $is_admin;
+
+    // 최고 관리자는 모든 권한 허용
+    if ($is_admin == 'super') {
+        return;
+    }
+
+    // 도매까 관리자도 기본 권한 허용
+    if ($is_admin == 'dmk_admin') {
+        return;
+    }
+
+    // 도매까 관리자 체크
+    $dmk_auth = dmk_get_admin_auth();
+    if ($dmk_auth['mb_type'] > 0) {
+        // 도매까 관리자는 기본적으로 읽기 권한 허용
+        // 쓰기/삭제 권한은 추가 체크 필요
+        if (strtolower($attr) == 'r') {
+            return;
+        }
+        // 쓰기/삭제 권한은 메뉴별로 별도 체크 (향후 확장 가능)
+        if (strtolower($attr) == 'w' || strtolower($attr) == 'd') {
+            return; // 임시로 허용, 추후 세밀한 권한 제어 구현
+        }
+    }
+
+    // 기존 권한 체크 로직
+    if (!trim($auth_str)) {
+        $msg = '이 메뉴에는 접근 권한이 없습니다.\\n\\n접근 권한은 최고관리자만 부여할 수 있습니다.';
+        if ($return) {
+            return $msg;
+        } else {
+            alert($msg);
+        }
+    }
+
+    $attr = strtolower($attr);
+
+    if (!strstr($auth_str, $attr)) {
+        if ($attr == 'r') {
+            $msg = '읽을 권한이 없습니다.';
+            if ($return) {
+                return $msg;
+            } else {
+                alert($msg);
+            }
+        } else if ($attr == 'w') {
+            $msg = '입력, 추가, 생성, 수정 권한이 없습니다.';
+            if ($return) {
+                return $msg;
+            } else {
+                alert($msg);
+            }
+        } else if ($attr == 'd') {
+            $msg = '삭제 권한이 없습니다.';
+            if ($return) {
+                return $msg;
+            } else {
+                alert($msg);
+            }
+        } else {
+            $msg = '속성이 잘못 되었습니다.';
+            if ($return) {
+                return $msg;
+            } else {
+                alert($msg);
+            }
+        }
+    }
+}
+
+/**
+ * 도매까 관리자를 위한 메뉴 권한 체크 함수 (기존 auth_check_menu 대체)
+ * 
+ * @param array $auth 권한 배열
+ * @param string $sub_menu 서브메뉴 코드
+ * @param string $attr 요구 권한 (r, w, d)
+ * @param bool $return 오류 시 메시지 반환 여부
+ * @return string|void 오류 메시지 또는 void
+ */
+function dmk_auth_check_menu($auth, $sub_menu, $attr, $return = false) {
+    $check_auth = isset($auth[$sub_menu]) ? $auth[$sub_menu] : '';
+    return dmk_auth_check($check_auth, $attr, $return);
 }
 
 ?> 

@@ -3,16 +3,47 @@ $sub_menu = "200100";
 require_once './_common.php';
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-auth_check_menu($auth, $sub_menu, 'r');
+dmk_auth_check_menu($auth, $sub_menu, 'r');
 
-$sql_common = " from {$g5['member_table']} ";
+$sql_common = " from {$g5['member_table']} m 
+                LEFT JOIN dmk_branch b ON m.dmk_br_id = b.br_id 
+                LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id ";
 
 $sql_search = " where (1) ";
 
-// 도매까 회원 필터링 조건 추가
-$member_filter_condition = dmk_get_member_where_condition();
-if ($member_filter_condition) {
-    $sql_search .= ' AND ' . substr($member_filter_condition, 5); // ' AND ' 제거
+// 관리자 계정 제외 <i class="fa fa-user-times dmk-new-icon" title="NEW"></i>
+$sql_search .= " AND m.mb_id NOT IN (
+    SELECT mb_id FROM {$g5['member_table']} 
+    WHERE mb_id IN ('admin', 'distributor_admin1', 'agency_admin1', 'agency_admin2', 'branch_admin1', 'branch_admin2')
+    OR mb_level >= 8
+) ";
+
+// 도매까 관리자 권한 정보 조회
+$dmk_auth = dmk_get_admin_auth();
+
+// 계층별 회원 필터링 <i class="fa fa-sitemap dmk-updated-icon" title="개조"></i>
+if (!$dmk_auth['is_super']) {
+    if ($dmk_auth['mb_type'] == 3) {
+        // 지점 관리자: 자신의 지점 회원만 조회
+        $sql_search .= " AND m.dmk_br_id = '".sql_escape_string($dmk_auth['br_id'])."' ";
+    } elseif ($dmk_auth['mb_type'] == 2) {
+        // 대리점 관리자: 소속 지점들의 회원 조회
+        $sql_search .= " AND m.dmk_br_id IN (SELECT br_id FROM dmk_branch WHERE ag_id = '".sql_escape_string($dmk_auth['ag_id'])."') ";
+    } elseif ($dmk_auth['mb_type'] == 1) {
+        // 총판 관리자: 소속 대리점들의 지점 회원 조회
+        $sql_search .= " AND m.dmk_br_id IN (
+            SELECT b.br_id FROM dmk_branch b 
+            JOIN dmk_agency a ON b.ag_id = a.ag_id 
+            JOIN dmk_distributor d ON a.dt_id = d.dt_id 
+            WHERE d.dt_mb_id = '".sql_escape_string($dmk_auth['mb_id'])."'
+        ) ";
+    }
+}
+
+// 지점 필터링 (GET 파라미터) <i class="fa fa-filter dmk-new-icon" title="NEW"></i>
+$filter_br_id = isset($_GET['br_id']) ? clean_xss_tags($_GET['br_id']) : '';
+if ($filter_br_id) {
+    $sql_search .= " AND m.dmk_br_id = '".sql_escape_string($filter_br_id)."' ";
 }
 
 if ($stx) {
@@ -69,13 +100,20 @@ $intercept_count = $row['cnt'];
 
 $listall = '<a href="' . $_SERVER['SCRIPT_NAME'] . '" class="ov_listall">전체목록</a>';
 
-$g5['title'] = '회원관리';
+$g5['title'] = '회원관리 <i class="fa fa-users dmk-updated-icon" title="개조"></i>';
+
+// URL 쿼리 스트링 생성
+$qstr = 'sst='.$sst.'&amp;sod='.$sod.'&amp;sfl='.$sfl.'&amp;stx='.$stx;
+if ($filter_br_id) {
+    $qstr .= '&amp;br_id='.$filter_br_id;
+}
+
 require_once './admin.head.php';
 
-$sql = " select * {$sql_common} {$sql_search} {$sql_order} limit {$from_record}, {$rows} ";
+$sql = " select m.*, b.br_name, a.ag_name {$sql_common} {$sql_search} {$sql_order} limit {$from_record}, {$rows} ";
 $result = sql_query($sql);
 
-$colspan = 16;
+$colspan = 17;
 ?>
 
 <div class="local_ov01 local_ov">
@@ -86,6 +124,43 @@ $colspan = 16;
 </div>
 
 <form id="fsearch" name="fsearch" class="local_sch01 local_sch" method="get">
+
+    <?php
+    // 지점 필터링 옵션 생성 <i class="fa fa-sitemap dmk-new-icon" title="NEW"></i>
+    $branch_options = '<option value="">전체 지점</option>';
+    if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == 1) {
+        // 최고관리자 또는 총판: 모든 지점 조회
+        $branch_sql = " SELECT b.br_id, b.br_name, a.ag_name 
+                        FROM dmk_branch b 
+                        LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
+                        WHERE b.br_status = 1 
+                        ORDER BY a.ag_name, b.br_name ";
+        $branch_result = sql_query($branch_sql);
+        while ($branch_row = sql_fetch_array($branch_result)) {
+            $selected = ($filter_br_id == $branch_row['br_id']) ? ' selected' : '';
+            $branch_options .= '<option value="' . $branch_row['br_id'] . '"' . $selected . '>' . 
+                              $branch_row['ag_name'] . ' - ' . $branch_row['br_name'] . ' (' . $branch_row['br_id'] . ')</option>';
+        }
+    } elseif ($dmk_auth['mb_type'] == 2) {
+        // 대리점 관리자: 소속 지점만 조회
+        $branch_sql = " SELECT br_id, br_name FROM dmk_branch 
+                        WHERE ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' AND br_status = 1 
+                        ORDER BY br_name ";
+        $branch_result = sql_query($branch_sql);
+        while ($branch_row = sql_fetch_array($branch_result)) {
+            $selected = ($filter_br_id == $branch_row['br_id']) ? ' selected' : '';
+            $branch_options .= '<option value="' . $branch_row['br_id'] . '"' . $selected . '>' . 
+                              $branch_row['br_name'] . ' (' . $branch_row['br_id'] . ')</option>';
+        }
+    }
+    ?>
+
+    <?php if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { ?>
+    <label for="br_id" class="sound_only">지점 선택</label>
+    <select name="br_id" id="br_id" onchange="this.form.submit();">
+        <?php echo $branch_options ?>
+    </select>
+    <?php } ?>
 
     <label for="sfl" class="sound_only">검색대상</label>
     <select name="sfl" id="sfl">
@@ -120,6 +195,7 @@ $colspan = 16;
     <input type="hidden" name="sfl" value="<?php echo $sfl ?>">
     <input type="hidden" name="stx" value="<?php echo $stx ?>">
     <input type="hidden" name="page" value="<?php echo $page ?>">
+    <input type="hidden" name="br_id" value="<?php echo $filter_br_id ?>">
     <input type="hidden" name="token" value="">
 
     <div class="tbl_head01 tbl_wrap">
@@ -140,6 +216,7 @@ $colspan = 16;
                     <th scope="col" id="mb_list_mobile">휴대폰</th>
                     <th scope="col" id="mb_list_lastcall"><?php echo subject_sort_link('mb_today_login', '', 'desc') ?>최종접속</a></th>
                     <th scope="col" id="mb_list_grp">접근그룹</th>
+                    <th scope="col" rowspan="2" id="mb_list_branch">소속 지점 <i class="fa fa-building dmk-new-icon" title="NEW"></i></th>
                     <th scope="col" rowspan="2" id="mb_list_mng">관리</th>
                 </tr>
                 <tr>
@@ -281,6 +358,15 @@ $colspan = 16;
                         <td headers="mb_list_mobile" class="td_tel"><?php echo get_text($row['mb_hp']); ?></td>
                         <td headers="mb_list_lastcall" class="td_date"><?php echo substr($row['mb_today_login'], 2, 8); ?></td>
                         <td headers="mb_list_grp" class="td_numsmall"><?php echo $group ?></td>
+                        <td headers="mb_list_branch" rowspan="2" class="td_branch">
+                            <?php 
+                            if ($row['br_name']) {
+                                echo $row['ag_name'] . '<br>' . $row['br_name'] . '<br>(' . $row['dmk_br_id'] . ')';
+                            } else {
+                                echo '<span style="color: #999;">미배정</span>';
+                            }
+                            ?>
+                        </td>
                         <td headers="mb_list_mng" rowspan="2" class="td_mng td_mng_s"><?php echo $s_mod ?><?php echo $s_grp ?></td>
                     </tr>
                     <tr class="<?php echo $bg; ?>">

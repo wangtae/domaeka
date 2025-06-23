@@ -2,41 +2,55 @@
  * 도매까(DMK) 관리자 메뉴 스타일
  * 
  * 이 파일은 도매까 시스템에서 추가된 관리자 메뉴들의 스타일을 정의합니다.
- * - 신규 추가된 메뉴 (NEW 아이콘)
- * - 도매까 계층 구조가 반영되어 개조된 메뉴 (개조 아이콘)
+ * - 신규 추가된 메뉴 아이콘 (NEW 툴팁)
+ * - 도매까 계층 구조가 반영되어 개조된 메뉴 아이콘 (개조 툴팁)
  */
 
-/* 신규 메뉴 아이콘 스타일 */
-.dmk-new-menu {
-    display: inline-block;
-    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-    color: white !important;
-    font-size: 9px;
-    font-weight: bold;
-    padding: 2px 5px;
-    border-radius: 3px;
-    margin-left: 5px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+/* Font Awesome 아이콘 스타일 */
+.dmk-new-icon {
+    color: #ff6b6b !important;
+    font-size: 12px;
+    margin-right: 3px; /* 아이콘과 텍스트 사이 간격 */
     animation: dmk-pulse 2s infinite;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     vertical-align: middle;
-    line-height: 1;
 }
 
-/* 개조된 메뉴 아이콘 스타일 */
-.dmk-updated-menu {
-    display: inline-block;
-    background: linear-gradient(135deg, #4834d4, #686de0);
-    color: white !important;
-    font-size: 9px;
-    font-weight: bold;
-    padding: 2px 5px;
-    border-radius: 3px;
-    margin-left: 5px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+.dmk-updated-icon {
+    color: #4834d4 !important;
+    font-size: 12px;
+    margin-right: 3px; /* 아이콘과 텍스트 사이 간격 */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     vertical-align: middle;
-    line-height: 1;
+}
+
+/* 아이콘 호버 효과 */
+.dmk-new-icon:hover {
+    color: #ee5a24 !important;
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
+
+.dmk-updated-icon:hover {
+    color: #686de0 !important;
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
+
+/* 페이지 제목에서의 아이콘 스타일 */
+h1 .dmk-new-icon,
+h1 .dmk-updated-icon,
+.page-title .dmk-new-icon,
+.page-title .dmk-updated-icon {
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+/* 테이블 헤더에서의 아이콘 스타일 */
+th .dmk-new-icon,
+th .dmk-updated-icon {
+    font-size: 11px;
+    margin-right: 2px;
 }
 
 /* NEW 메뉴 펄스 애니메이션 */
@@ -57,48 +71,26 @@
 
 /* 다크모드 호환성 */
 @media (prefers-color-scheme: dark) {
-    .dmk-new-menu {
-        background: linear-gradient(135deg, #ff7675, #fd79a8);
-        box-shadow: 0 1px 3px rgba(255,255,255,0.1);
+    .dmk-new-icon {
+        color: #ff7675 !important;
+        text-shadow: 0 1px 2px rgba(255,255,255,0.1);
     }
-    
-    .dmk-updated-menu {
-        background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-        box-shadow: 0 1px 3px rgba(255,255,255,0.1);
+    .dmk-updated-icon {
+        color: #6c5ce7 !important;
+        text-shadow: 0 1px 2px rgba(255,255,255,0.1);
     }
 }
 
 /* 메뉴 링크 내부의 아이콘 스타일 조정 */
-.gnb_2da .dmk-new-menu,
-.gnb_2da .dmk-updated-menu {
-    font-size: 8px;
-    padding: 1px 4px;
-    margin-left: 3px;
+.gnb_2da .dmk-new-icon,
+.gnb_2da .dmk-updated-icon {
+    font-size: 10px; /* 메뉴바 아이콘 크기 */
+    margin-right: 2px;
 }
 
-/* 호버 효과 */
-.dmk-new-menu:hover {
-    background: linear-gradient(135deg, #ee5a24, #ff6b6b);
-    transform: scale(1.05);
-}
-
-.dmk-updated-menu:hover {
-    background: linear-gradient(135deg, #686de0, #4834d4);
-    transform: scale(1.05);
-}
-
-/* 반응형 디자인 - 작은 화면에서는 아이콘 크기 조정 */
-@media (max-width: 768px) {
-    .dmk-new-menu,
-    .dmk-updated-menu {
-        font-size: 8px;
-        padding: 1px 3px;
-        margin-left: 3px;
-    }
-}
-
-/* 접근성 개선 - 스크린 리더용 텍스트 */
-.dmk-new-menu::before {
+/* 접근성 개선 - 스크린 리더용 텍스트 (필요 시 유지) */
+/*
+.dmk-new-text::before {
     content: "신규 메뉴: ";
     position: absolute;
     left: -9999px;
@@ -107,11 +99,12 @@
     overflow: hidden;
 }
 
-.dmk-updated-menu::before {
+.dmk-updated-text::before {
     content: "개조된 메뉴: ";
     position: absolute;
     left: -9999px;
     width: 1px;
     height: 1px;
     overflow: hidden;
-} 
+}
+*/ 

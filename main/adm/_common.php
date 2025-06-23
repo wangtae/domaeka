@@ -18,6 +18,12 @@ if (file_exists($gnuboard_main_common_path)) {
 // G5_DMK_PATH 상수가 정의된 후에 로드되어야 하며, admin.lib.php 보다 먼저 로드합니다.
 require_once G5_DMK_PATH . '/adm/lib/admin.auth.lib.php';
 
+// 도매까 관리자인 경우 $is_admin 변수를 설정
+$dmk_auth = dmk_get_admin_auth();
+if (!$is_admin && $dmk_auth && $dmk_auth['mb_type'] > 0) {
+    $is_admin = 'dmk_admin'; // 도매까 관리자를 위한 특별한 값
+}
+
 // G5_ADMIN_PATH가 정의된 후 admin.lib.php를 포함합니다.
 require_once G5_ADMIN_PATH . '/admin.lib.php';
 

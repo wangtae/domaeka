@@ -1685,7 +1685,7 @@ function sql_connect($host, $user, $pass, $db=G5_MYSQL_DB)
 
     if(function_exists('mysqli_connect') && G5_MYSQLI_USE) {
         mysqli_report(MYSQLI_REPORT_OFF);
-        $link = @mysqli_connect($host, $user, $pass, $db) or die('MySQL Host, User, Password, DB 정보에 오류가 있습니다.');
+        $link = @mysqli_connect($host, $user, $pass, $db, G5_MYSQL_PORT) or die('MySQL Host, User, Password, DB 정보에 오류가 있습니다.');
 
         // 연결 오류 발생 시 스크립트 종료
         if (mysqli_connect_errno()) {

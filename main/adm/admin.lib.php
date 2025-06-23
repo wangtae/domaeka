@@ -266,7 +266,7 @@ function auth_check($auth, $attr, $return = false)
 {
     global $is_admin;
 
-    if ($is_admin == 'super') {
+    if ($is_admin == 'super' || $is_admin == 'dmk_admin') {
         return;
     }
 
@@ -613,7 +613,7 @@ function admin_menu_find_by($call, $search_key)
 // 접근 권한 검사
 if (!$member['mb_id']) {
     alert('로그인 하십시오.', G5_BBS_URL . '/login.php?url=' . urlencode(correct_goto_url(G5_ADMIN_URL)));
-} else if ($is_admin != 'super') {
+} else if ($is_admin != 'super' && $is_admin != 'dmk_admin') {
     $auth = array();
     $sql = " select au_menu, au_auth from {$g5['auth_table']} where mb_id = '{$member['mb_id']}' ";
     $result = sql_query($sql);

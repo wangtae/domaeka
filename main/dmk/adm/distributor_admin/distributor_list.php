@@ -1,5 +1,5 @@
 <?php
-$sub_menu = "201000";
+$sub_menu = "190100";
 include_once './_common.php';
 
 // 메뉴 접근 권한 확인
@@ -13,7 +13,7 @@ if ($is_admin != 'super') {
 }
 // auth_check_menu($auth, $sub_menu, 'r'); // 도매까 자체 권한 체크로 대체
 
-$g5['title'] = '총판 관리';
+$g5['title'] = '총판 관리 <i class="fa fa-star dmk-new-icon" title="NEW"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
 // 총판은 최고관리자 하위의 계층이므로, dmk_mb_type이 총판(1)인 회원들을 조회
@@ -50,8 +50,8 @@ if ($page < 1) $page = 1; // 페이지가 없으면 첫 페이지 (1 페이지)
 $from_record = ($page - 1) * $rows; // 시작 열을 구함
 
 $sql = " SELECT m.*,
-            (SELECT COUNT(*) FROM dmk_agency WHERE ag_mb_id = m.mb_id) as agency_count,
-            (SELECT COUNT(*) FROM dmk_branch b JOIN dmk_agency a ON b.ag_id = a.ag_id WHERE a.ag_mb_id = m.mb_id) as branch_count
+            (SELECT COUNT(*) FROM dmk_agency a JOIN dmk_distributor d ON a.dt_id = d.dt_id WHERE d.dt_mb_id = m.mb_id) as agency_count,
+            (SELECT COUNT(*) FROM dmk_branch b JOIN dmk_agency a ON b.ag_id = a.ag_id JOIN dmk_distributor d ON a.dt_id = d.dt_id WHERE d.dt_mb_id = m.mb_id) as branch_count
          " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
@@ -140,7 +140,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         <td class="td_datetime"><?php echo substr($row['mb_datetime'], 0, 10) ?></td>
         <td class="td_mng"><?php echo $level_str ?></td>
         <td class="td_mng td_mng_s">
-            <a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&mb_id=<?php echo $row['mb_id'] ?>" target="_blank" class="btn btn_03">회원수정</a>
+            <a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&mb_id=<?php echo $row['mb_id'] ?>" target="_blank" class="btn btn_03">수정</a>
             <a href="../agency_admin/agency_list.php?distributor_id=<?php echo $row['mb_id'] ?>" class="btn btn_02">대리점관리</a>
         </td>
     </tr>

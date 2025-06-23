@@ -1,5 +1,5 @@
 <?php
-$sub_menu = "201100";
+$sub_menu = "190200";
 include_once './_common.php';
 
 // 메뉴 접근 권한 확인
@@ -13,26 +13,26 @@ if ($is_admin != 'super') {
 }
 // auth_check_menu($auth, $sub_menu, 'r'); // 도매까 자체 권한 체크로 대체
 
-$g5['title'] = '대리점 관리';
+$g5['title'] = '대리점 관리 <i class="fa fa-building-o dmk-updated-icon" title="개조"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
-$sql_common = " FROM dmk_agency ";
+$sql_common = " FROM dmk_agency a LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id ";
 $sql_search = " WHERE 1=1 ";
 
 // 권한에 따른 데이터 필터링
 $dmk_auth = dmk_get_admin_auth();
 if ($dmk_auth['mb_type'] == 2) {
     // 대리점 관리자는 자신의 대리점 정보만 조회
-    $sql_search .= " AND ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' ";
+    $sql_search .= " AND a.ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' ";
 }
 
 // 검색 조건
 if ($stx) {
-    $sql_search .= " AND (ag_id LIKE '%".sql_escape_string($stx)."%' OR ag_name LIKE '%".sql_escape_string($stx)."%' OR ag_ceo_name LIKE '%".sql_escape_string($stx)."%') ";
+    $sql_search .= " AND (a.ag_id LIKE '%".sql_escape_string($stx)."%' OR a.ag_name LIKE '%".sql_escape_string($stx)."%' OR a.ag_ceo_name LIKE '%".sql_escape_string($stx)."%') ";
 }
 
 if (!$sst) {
-    $sst = "ag_datetime";
+    $sst = "a.ag_datetime";
     $sod = "desc";
 }
 
@@ -47,7 +47,7 @@ $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
 if ($page < 1) $page = 1; // 페이지가 없으면 첫 페이지 (1 페이지)
 $from_record = ($page - 1) * $rows; // 시작 열을 구함
 
-$sql = " SELECT * " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
+$sql = " SELECT a.*, d.dt_name as distributor_name " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
@@ -91,6 +91,7 @@ $g5['title'] = '대리점 관리';
         </th>
         <th scope="col"><?php echo subject_sort_link('ag_id') ?>대리점ID</a></th>
         <th scope="col"><?php echo subject_sort_link('ag_name') ?>대리점명</a></th>
+        <th scope="col">소속 총판</th>
         <th scope="col">대표자명</th>
         <th scope="col">전화번호</th>
         <th scope="col">관리자ID</th>
@@ -125,6 +126,9 @@ $g5['title'] = '대리점 관리';
         <td class="td_left">
             <a href="./agency_form.php?w=u&ag_id=<?php echo $row['ag_id'] ?>"><?php echo get_text($row['ag_name']) ?></a>
         </td>
+        <td class="td_left">
+            <?php echo $row['distributor_name'] ? $row['distributor_name'] : '<span style="color:#999;">미배정</span>' ?>
+        </td>
         <td><?php echo get_text($row['ag_ceo_name']) ?></td>
         <td><?php echo $row['ag_phone'] ?></td>
         <td>
@@ -145,7 +149,7 @@ $g5['title'] = '대리점 관리';
     <?php
     }
     if ($i == 0)
-        echo '<tr><td colspan="9" class="empty_table">자료가 없습니다.</td></tr>';
+        echo '<tr><td colspan="10" class="empty_table">자료가 없습니다.</td></tr>';
     ?>
     </tbody>
     </table>

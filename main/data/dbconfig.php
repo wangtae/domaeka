@@ -4,6 +4,7 @@ define('G5_MYSQL_HOST', 'domaeka-mariadb');
 define('G5_MYSQL_USER', 'domaeka');
 define('G5_MYSQL_PASSWORD', '!domaekaservice@.');
 define('G5_MYSQL_DB', 'domaeka');
+define('G5_MYSQL_PORT', '3306'); // 기본 MySQL/MariaDB 포트
 define('G5_MYSQL_SET_MODE', false);
 
 define('G5_TABLE_PREFIX', 'g5_');

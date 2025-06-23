@@ -1,5 +1,5 @@
 <?php
-$sub_menu = "201200";
+$sub_menu = "190300";
 include_once dirname(__FILE__) . '/../../../adm/_common.php';
 
 // 메뉴 접근 권한 확인
@@ -22,7 +22,7 @@ if ($dmk_auth['mb_type'] == 2) {
     $filter_ag_id = $dmk_auth['ag_id'];
 }
 
-$g5['title'] = '지점 관리';
+$g5['title'] = '지점 관리 <i class="fa fa-map-marker dmk-updated-icon" title="개조"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
 $sql_common = " FROM dmk_branch b LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id ";
