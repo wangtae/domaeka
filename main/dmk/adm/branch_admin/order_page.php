@@ -1,19 +1,130 @@
 <?php
-$sub_menu = "600900";
+$sub_menu = "600700";
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, 'r');
 
-// 지점 정보 가져오기
-$branch_info = get_branch_info($member['dmk_br_id']);
+// 현재 관리자의 권한 정보 가져오기
+$dmk_auth = dmk_get_admin_auth();
+
+// 지점 선택 처리 (상위 계층 관리자용)
+$selected_br_id = '';
+$available_branches = array();
+
+if (is_super_admin($member['mb_id']) || ($dmk_auth && $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR)) {
+    // 최고관리자, 총판: 모든 지점 선택 가능
+    $sql = "SELECT br_id, br_name, ag_id FROM dmk_branch WHERE br_status = 1 ORDER BY br_name";
+    $result = sql_query($sql);
+    while ($row = sql_fetch_array($result)) {
+        $available_branches[] = $row;
+    }
+} elseif ($dmk_auth && $dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+    // 대리점: 소속 지점들만 선택 가능
+    $branch_ids = dmk_get_agency_branch_ids($dmk_auth['ag_id']);
+    if (!empty($branch_ids)) {
+        $sql = "SELECT br_id, br_name, ag_id FROM dmk_branch 
+                WHERE br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "') 
+                AND br_status = 1 
+                ORDER BY br_name";
+        $result = sql_query($sql);
+        while ($row = sql_fetch_array($result)) {
+            $available_branches[] = $row;
+        }
+    }
+} elseif ($dmk_auth && $dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+    // 지점: 자신의 지점만
+    $branch_info = get_branch_info($member['dmk_br_id']);
+    if ($branch_info) {
+        $available_branches[] = array(
+            'br_id' => $branch_info['br_id'],
+            'br_name' => $branch_info['br_name'],
+            'ag_id' => $branch_info['ag_id']
+        );
+    }
+}
+
+// 선택된 지점 ID 결정
+if (isset($_GET['br_id']) && $_GET['br_id']) {
+    $selected_br_id = trim($_GET['br_id']);
+    // 권한 확인
+    $has_permission = false;
+    foreach ($available_branches as $branch) {
+        if ($branch['br_id'] == $selected_br_id) {
+            $has_permission = true;
+            break;
+        }
+    }
+    if (!$has_permission) {
+        alert('해당 지점에 대한 권한이 없습니다.');
+        goto_url($_SERVER['PHP_SELF']);
+    }
+} elseif (count($available_branches) == 1) {
+    // 지점이 하나만 있으면 자동 선택
+    $selected_br_id = $available_branches[0]['br_id'];
+} elseif ($dmk_auth && $dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+    // 지점 관리자는 자신의 지점 자동 선택
+    $selected_br_id = $member['dmk_br_id'];
+}
+
+// 지점이 선택되지 않았으면 선택 페이지 표시
+if (!$selected_br_id && count($available_branches) > 1) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>지점 선택 - 도매까</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    </head>
+    <body class="bg-gray-50">
+        <div class="min-h-screen flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+                <div class="text-center mb-6">
+                    <i class="fas fa-store text-4xl text-blue-600 mb-4"></i>
+                    <h1 class="text-2xl font-bold text-gray-900">지점 선택</h1>
+                    <p class="text-gray-600 mt-2">주문을 진행할 지점을 선택해주세요.</p>
+                </div>
+                
+                <div class="space-y-3">
+                    <?php foreach ($available_branches as $branch) { ?>
+                    <a href="?br_id=<?php echo urlencode($branch['br_id']); ?>" 
+                       class="block w-full p-4 bg-gray-50 hover:bg-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-semibold text-gray-900"><?php echo htmlspecialchars($branch['br_name']); ?></h3>
+                                <p class="text-sm text-gray-500">지점 ID: <?php echo htmlspecialchars($branch['br_id']); ?></p>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400"></i>
+                        </div>
+                    </a>
+                    <?php } ?>
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <a href="<?php echo G5_DMK_ADM_URL; ?>" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-arrow-left mr-2"></i>관리자 메인으로 돌아가기
+                    </a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+// 선택된 지점 정보 가져오기
+$branch_info = get_branch_info($selected_br_id);
 if (!$branch_info) {
     alert('지점 정보를 찾을 수 없습니다.');
     goto_url(G5_DMK_ADM_URL);
 }
 
-// 상품 목록 가져오기 (권한별)
-$item_where_condition = dmk_get_item_where_condition($member['dmk_br_id'], $member['dmk_ag_id'], $member['dmk_dt_id']);
+// 상품 목록 가져오기 (선택된 지점 기준)
+$item_where_condition = dmk_get_item_where_condition($selected_br_id, $branch_info['ag_id'], '');
 
 $sql = "SELECT it_id, it_name, it_cust_price, it_use, it_soldout, it_stock_qty, ca_id, dmk_it_owner_type, dmk_it_owner_id
         FROM {$g5['g5_shop_item_table']} 
@@ -289,7 +400,7 @@ $g5['title'] = '주문 페이지 - ' . $branch_info['br_name'];
 
             <!-- Product List -->
             <form class="flex flex-col" id="orderForm" method="post" action="order_process.php">
-                <input type="hidden" name="branch_id" value="<?php echo $member['dmk_br_id']; ?>">
+                <input type="hidden" name="branch_id" value="<?php echo $selected_br_id; ?>">
                 <input type="hidden" name="order_date" value="<?php echo date('Y-m-d'); ?>">
                 
                 <!-- Products will be populated by JavaScript -->

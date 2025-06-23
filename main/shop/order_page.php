@@ -11,9 +11,10 @@ if (!$br_id) {
 }
 
 // 지점 정보 조회
-$branch_sql = " SELECT b.*, a.ag_name 
+$branch_sql = " SELECT b.*, a.ag_name, d.dt_name
                 FROM dmk_branch b 
                 LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
+                LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id
                 WHERE b.br_id = '$br_id' AND b.br_status = 1 ";
 $branch = sql_fetch($branch_sql);
 
@@ -21,334 +22,618 @@ if (!$branch) {
     alert('유효하지 않은 지점입니다.', G5_URL);
 }
 
+// 상품 조회 (권한에 따른 필터링)
+$items_sql = " SELECT it_id, it_name, it_cust_price as it_price, it_img1, it_stock_qty, ca_id
+               FROM {$g5['g5_shop_item_table']} 
+               WHERE it_use = '1' AND it_soldout != '1' 
+               ORDER BY it_order, it_id DESC ";
+$items_result = sql_query($items_sql);
+
+// 카테고리 조회
+$categories_sql = " SELECT ca_id, ca_name 
+                   FROM {$g5['g5_shop_category_table']} 
+                   WHERE ca_use = '1' 
+                   ORDER BY ca_order, ca_id ";
+$categories_result = sql_query($categories_sql);
+
 $g5['title'] = $branch['br_name'] . ' 주문페이지';
 ?>
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="emerald">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo $g5['title'] ?></title>
+    <meta name="description" content="도매까 지점 주문 시스템">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="<?php echo G5_URL ?>/favicon.ico">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Styles -->
     <style>
-    * { box-sizing: border-box; }
-    body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif; 
-        margin: 0; padding: 0; 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-    }
-    
-    .container {
-        max-width: 480px;
-        margin: 0 auto;
-        background: white;
-        min-height: 100vh;
-        box-shadow: 0 0 20px rgba(0,0,0,0.1);
-    }
-    
-    .header { 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem 1.5rem; 
-        text-align: center; 
-        position: relative;
-    }
-    
-    .header::after {
-        content: '';
-        position: absolute;
-        bottom: -10px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 20px solid transparent;
-        border-right: 20px solid transparent;
-        border-top: 10px solid #764ba2;
-    }
-    
-    .header h1 { 
-        margin: 0; 
-        font-size: 1.8rem; 
-        font-weight: 600;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    .header .branch-info { 
-        margin: 1rem 0 0 0; 
-        opacity: 0.9; 
-        font-size: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-    
-    .header .phone-number { 
-        margin: 0.8rem 0 0 0; 
-        font-size: 1.1rem;
-        font-weight: 500;
-        background: rgba(255,255,255,0.2);
-        padding: 0.5rem 1rem;
-        border-radius: 25px;
-        display: inline-block;
-    }
-    
-    .quick-actions {
-        padding: 1.5rem;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-    
-    .action-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 1.5rem 1rem;
-        background: white;
-        border: 2px solid #e9ecef;
-        border-radius: 15px;
-        text-decoration: none;
-        color: #333;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        min-height: 120px;
-        justify-content: center;
-    }
-    
-    .action-btn:hover, .action-btn:active {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-        border-color: #667eea;
-    }
-    
-    .action-btn.primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-color: transparent;
-    }
-    
-    .action-btn.success {
-        background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-        color: white;
-        border-color: transparent;
-    }
-    
-    .action-btn .icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .action-btn .text {
-        font-weight: 600;
-        font-size: 1rem;
-        text-align: center;
-    }
-    
-    .content { 
-        padding: 1.5rem; 
-    }
-    
-    .info-card {
-        background: #f8f9fa;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        border-left: 4px solid #667eea;
-    }
-    
-    .info-card h3 {
-        margin: 0 0 1rem 0;
-        color: #333;
-        font-size: 1.2rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .info-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #e9ecef;
-    }
-    
-    .info-item:last-child {
-        border-bottom: none;
-    }
-    
-    .info-label {
-        color: #666;
-        font-weight: 500;
-    }
-    
-    .info-value {
-        color: #333;
-        font-weight: 600;
-    }
-    
-    .notice {
-        background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
-        color: #2d3436;
-        padding: 1.5rem;
-        border-radius: 15px;
-        text-align: center;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    .notice h3 {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.3rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-    
-    .notice p {
-        margin: 0;
-        line-height: 1.6;
-        font-size: 1rem;
-    }
-    
-    .footer {
-        padding: 2rem 1.5rem;
-        text-align: center;
-        background: #f8f9fa;
-        border-top: 1px solid #e9ecef;
-        color: #666;
-        font-size: 0.9rem;
-    }
-    
-    /* 터치 친화적 개선 */
-    @media (max-width: 480px) {
-        .container {
-            max-width: 100%;
+        :root {
+            --primary: #10b981;
+            --primary-foreground: #ffffff;
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --default-100: #f1f5f9;
+            --default-200: #e2e8f0;
+            --default-500: #64748b;
+            --default-700: #334155;
+            --divider: #e2e8f0;
+            --danger: #ef4444;
+            --focus: #3b82f6;
         }
         
-        .quick-actions {
-            grid-template-columns: 1fr;
-            gap: 1rem;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
         }
         
-        .action-btn {
-            min-height: 100px;
-            padding: 1.2rem 1rem;
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
         
-        .action-btn .icon {
-            font-size: 2rem;
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
         }
         
-        .header h1 {
-            font-size: 1.6rem;
-        }
-    }
-    
-    /* 다크모드 지원 */
-    @media (prefers-color-scheme: dark) {
-        .container {
-            background: #1a1a1a;
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
         
-        .info-card {
-            background: #2d2d2d;
-            color: #e9ecef;
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
         }
         
-        .info-item {
-            border-bottom-color: #444;
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            border: 1px solid var(--primary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
         }
         
-        .info-label {
-            color: #aaa;
+        .btn-primary:hover {
+            opacity: 0.9;
         }
         
-        .info-value {
-            color: #e9ecef;
+        .btn-outline {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
         }
         
-        .footer {
-            background: #2d2d2d;
-            border-top-color: #444;
-            color: #aaa;
+        .btn-outline:hover {
+            opacity: 0.8;
         }
-    }
+        
+        .btn-default {
+            background-color: transparent;
+            color: var(--foreground);
+            border: 1px solid var(--default-200);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-default:hover {
+            opacity: 0.8;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--default-100);
+            border: 1px solid transparent;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            background-color: var(--default-100);
+            border-color: var(--focus);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+        
+        .product-card {
+            border-bottom: 1px solid var(--divider);
+            padding: 1.25rem 1.875rem;
+        }
+        
+        .quantity-btn {
+            width: 100%;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quantity-btn:hover {
+            background-color: var(--default-100);
+        }
+        
+        .quantity-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .sticky-header {
+            position: sticky;
+            top: 65px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            z-index: 49;
+        }
+        
+        .fixed-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1001;
+            background: white;
+            border-top: 1px solid var(--divider);
+        }
+        
+        @media (max-width: 768px) {
+            .product-card {
+                padding: 1.25rem 1rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1><?php echo htmlspecialchars($branch['br_name']) ?></h1>
-            <div class="branch-info">
-                <span>🏢</span>
-                <span><?php echo htmlspecialchars($branch['ag_name'] ?: '직영') ?> 소속</span>
-            </div>
-            <?php if ($branch['br_phone']) { ?>
-            <div class="phone-number">📞 <?php echo htmlspecialchars($branch['br_phone']) ?></div>
-            <?php } ?>
-        </div>
-        
-        <div class="quick-actions">
-            <a href="tel:<?php echo str_replace('-', '', $branch['br_phone']) ?>" class="action-btn primary">
-                <div class="icon">📞</div>
-                <div class="text">전화 주문</div>
-            </a>
-            
-            <a href="#info" class="action-btn">
-                <div class="icon">ℹ️</div>
-                <div class="text">지점 정보</div>
-            </a>
-            
-            <a href="<?php echo G5_SHOP_URL ?>" class="action-btn">
-                <div class="icon">🛒</div>
-                <div class="text">온라인 쇼핑몰</div>
-            </a>
-            
-            <a href="<?php echo G5_URL ?>" class="action-btn success">
-                <div class="icon">🏠</div>
-                <div class="text">메인으로</div>
-            </a>
-        </div>
-        
-        <div class="content">
-            <div class="notice">
-                <h3>🚧 주문 안내</h3>
-                <p>현재 온라인 주문 시스템을 구축 중입니다.<br>
-                주문은 전화 또는 온라인 쇼핑몰을 이용해 주세요.</p>
-            </div>
-            
-            <div class="info-card" id="info">
-                <h3>📍 지점 정보</h3>
-                <div class="info-item">
-                    <span class="info-label">지점명</span>
-                    <span class="info-value"><?php echo htmlspecialchars($branch['br_name']) ?></span>
+    <div class="bg-white min-h-screen">
+        <!-- Navigation -->
+        <nav class="flex z-40 w-full h-auto items-center justify-center sticky top-0 inset-x-0 border-b border-gray-200 backdrop-blur-lg bg-white/70" style="--navbar-height: 4rem;">
+            <header class="z-40 flex px-6 gap-4 w-full flex-row relative flex-nowrap items-center justify-between h-16 max-w-4xl">
+                <div class="flex gap-4 h-full flex-row flex-nowrap items-center flex-grow">
+                    <div class="flex flex-row flex-grow flex-nowrap justify-start bg-transparent items-center">
+                        <p class="font-bold text-inherit"><?php echo htmlspecialchars($branch['br_name']) ?></p>
+                        <span class="ml-2 text-sm text-gray-500"><?php echo htmlspecialchars($branch['ag_name'] ?: '직영') ?></span>
+                    </div>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">소속 대리점</span>
-                    <span class="info-value"><?php echo htmlspecialchars($branch['ag_name'] ?: '직영') ?></span>
+                <div class="flex gap-4 h-full flex-row flex-nowrap items-center">
+                    <a href="#info" class="btn-default">매장 정보</a>
+                    <?php if ($branch['br_phone']) { ?>
+                    <a href="tel:<?php echo str_replace('-', '', $branch['br_phone']) ?>" class="btn-default">전화 문의</a>
+                    <?php } ?>
                 </div>
-                <?php if ($branch['br_phone']) { ?>
-                <div class="info-item">
-                    <span class="info-label">전화번호</span>
-                    <span class="info-value"><?php echo htmlspecialchars($branch['br_phone']) ?></span>
+            </header>
+        </nav>
+
+        <!-- Date Selection -->
+        <div class="flex flex-col">
+            <div class="py-3 px-6 border-b overflow-x-auto scrollbar-hide">
+                <div class="flex items-center space-x-3">
+                    <?php
+                    for ($i = 0; $i < 5; $i++) {
+                        $date = date('Y-m-d', strtotime("+$i days"));
+                        $display_date = date('n월j일', strtotime($date));
+                        $yoil = get_yoil($date);
+                        $is_active = $i === 0;
+                        $btn_class = $is_active ? 'btn-outline' : 'btn-default';
+                    ?>
+                    <button class="<?php echo $btn_class ?> whitespace-nowrap" onclick="selectDate('<?php echo $date ?>')"><?php echo $display_date ?> (<?php echo $yoil ?>)</button>
+                    <?php } ?>
                 </div>
-                <?php } ?>
-                <?php if ($branch['br_address']) { ?>
-                <div class="info-item">
-                    <span class="info-label">주소</span>
-                    <span class="info-value"><?php echo htmlspecialchars($branch['br_address']) ?></span>
-                </div>
-                <?php } ?>
             </div>
         </div>
-        
-        <div class="footer">
-            <p>© <?php echo date('Y') ?> <?php echo htmlspecialchars($branch['br_name']) ?></p>
-            <p>도매까 플랫폼 지원</p>
+
+        <!-- Event Header -->
+        <div class="pb-10">
+            <div class="pt-5 px-5 pb-3 flex items-center">
+                <div>
+                    <h1 class="text-xl font-bold" id="orderTitle"><?php echo date('n.j.') . get_yoil(date('Y-m-d')) ?>요일 주문</h1>
+                    <span class="text-sm font-normal text-gray-500" id="orderDate">주문일 <?php echo date('Y년 m월 d일') ?></span>
+                </div>
+            </div>
+
+            <!-- Category Filter -->
+            <div class="no-scrollbar flex overflow-x-auto px-5 py-2 sticky-header gap-x-2 border-b">
+                <button class="btn-outline whitespace-nowrap" onclick="filterProducts('all')">전체</button>
+                <?php
+                $category_counts = [];
+                while ($cat = sql_fetch_array($categories_result)) {
+                    $count_sql = " SELECT COUNT(*) as cnt 
+                                  FROM {$g5['g5_shop_item_table']} 
+                                  WHERE ca_id = '{$cat['ca_id']}' AND it_use = '1' AND it_soldout != '1' ";
+                    $count_result = sql_fetch($count_sql);
+                    $count = $count_result['cnt'];
+                    if ($count > 0) {
+                        $category_counts[$cat['ca_id']] = $count;
+                ?>
+                <button class="btn-default whitespace-nowrap" onclick="filterProducts('<?php echo $cat['ca_id'] ?>')"><?php echo htmlspecialchars($cat['ca_name']) ?>(<?php echo $count ?>)</button>
+                <?php
+                    }
+                }
+                ?>
+            </div>
+
+            <!-- Product List -->
+            <form class="flex flex-col" id="orderForm" method="post" action="<?php echo G5_DMK_URL ?>/adm/branch_admin/order_process.php">
+                <input type="hidden" name="br_id" value="<?php echo $br_id ?>">
+                <input type="hidden" name="order_date" value="<?php echo date('Y-m-d') ?>" id="selectedDate">
+                
+                <!-- Products will be populated by JavaScript -->
+                <div id="productList">
+                    <?php
+                    $has_products = false;
+                    while ($item = sql_fetch_array($items_result)) {
+                        $has_products = true;
+                        $item_img = $item['it_img1'] ? G5_DATA_URL.'/item/'.$item['it_img1'] : '';
+                    ?>
+                    <div class="product-card" data-category="<?php echo $item['ca_id'] ?>">
+                        <div class="flex gap-x-5 items-center">
+                            <div class="min-w-[100px] min-h-[100px] relative">
+                                <?php if ($item_img) { ?>
+                                <img src="<?php echo $item_img ?>" 
+                                     alt="<?php echo htmlspecialchars($item['it_name']) ?>" 
+                                     class="w-[100px] h-[100px] object-cover rounded-xl shadow-sm"
+                                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjFGNUY5Ii8+CjxwYXRoIGQ9Ik01MCA2NUw2MCA0NUg0MEw1MCA2NVoiIGZpbGw9IiM2NDc0OEIiLz4KPC9zdmc+'" />
+                                <?php } else { ?>
+                                <div class="w-[100px] h-[100px] bg-gray-100 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-image text-gray-400 text-2xl"></i>
+                                </div>
+                                <?php } ?>
+                            </div>
+                            <div class="flex flex-1 flex-col gap-y-1">
+                                <div class="flex">
+                                    <p class="text-sm min-w-[60px] text-gray-500">상품명</p>
+                                    <p class="text-sm font-medium"><?php echo htmlspecialchars($item['it_name']) ?></p>
+                                </div>
+                                <div class="flex">
+                                    <p class="text-sm min-w-[60px] text-gray-500">가격</p>
+                                    <p class="text-sm font-medium"><?php echo number_format($item['it_price']) ?>원</p>
+                                </div>
+                                <div class="flex">
+                                    <p class="text-sm font-medium"><?php echo $item['it_stock_qty'] ?><span class="text-sm min-w-[60px] text-gray-500">개 재고</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col space-y-1 mt-5">
+                            <div class="w-full flex space-x-3">
+                                <button type="button" class="border flex items-center justify-center rounded-lg font-medium px-4 text-sm" 
+                                        onclick="showProductDetail('<?php echo $item['it_id'] ?>')">상세보기</button>
+                                <div class="border flex-1 flex items-center justify-center rounded-lg">
+                                    <button type="button" 
+                                            class="quantity-btn" 
+                                            onclick="updateQuantity('<?php echo $item['it_id'] ?>', -1)"
+                                            disabled>-</button>
+                                    <div class="flex items-center justify-center font-bold text-lg px-4">
+                                        <span id="qty_<?php echo $item['it_id'] ?>">0</span>개
+                                    </div>
+                                    <button type="button" 
+                                            class="quantity-btn" 
+                                            onclick="updateQuantity('<?php echo $item['it_id'] ?>', 1)">+</button>
+                                </div>
+                                <input type="hidden" name="items[<?php echo $item['it_id'] ?>][qty]" value="0" id="input_<?php echo $item['it_id'] ?>">
+                                <input type="hidden" name="items[<?php echo $item['it_id'] ?>][price]" value="<?php echo $item['it_price'] ?>">
+                                <input type="hidden" name="items[<?php echo $item['it_id'] ?>][name]" value="<?php echo htmlspecialchars($item['it_name']) ?>">
+                                <input type="hidden" name="items[<?php echo $item['it_id'] ?>][stock]" value="<?php echo $item['it_stock_qty'] ?>">
+                            </div>
+                        </div>
+                    </div>
+                    <?php } ?>
+                    
+                    <?php if (!$has_products) { ?>
+                    <div class="product-card text-center py-10">
+                        <div class="text-gray-500">
+                            <i class="fas fa-box-open text-4xl mb-4"></i>
+                            <p class="text-lg font-medium">등록된 상품이 없습니다</p>
+                            <p class="text-sm">상품 등록 후 주문이 가능합니다</p>
+                        </div>
+                    </div>
+                    <?php } ?>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="mx-8 gap-y-1 py-5 border-b flex flex-col">
+                    <div class="flex">
+                        <span>주문수량</span>
+                        <span class="ml-auto font-medium text-md" id="totalQuantity">0개</span>
+                    </div>
+                    <div class="flex">
+                        <span>주문금액</span>
+                        <span class="ml-auto font-medium text-md" id="totalAmount">0원</span>
+                    </div>
+                    <div class="flex">
+                        <span class="font-medium">합계</span>
+                        <span class="ml-auto font-bold text-lg" id="totalSum">0원</span>
+                    </div>
+                </div>
+
+                <!-- Delivery Method -->
+                <div class="mx-8 py-5 border-b">
+                    <div class="flex flex-col space-y-1 w-full">
+                        <div class="relative flex flex-col gap-2">
+                            <span class="text-gray-500">수령 방식</span>
+                            <div class="flex flex-col flex-wrap gap-2">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="delivery_type" value="PICKUP" checked class="mr-2">
+                                    <span>매장 픽업</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="delivery_type" value="DELIVERY" class="mr-2">
+                                    <span>배송 수령</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Information -->
+                <div class="mx-8 flex flex-col gap-y-3 py-5">
+                    <div class="flex flex-col space-y-1 w-full">
+                        <label class="text-sm font-medium text-gray-700">주문자명 *</label>
+                        <input type="text" name="customer_name" class="input-field" placeholder="주문자 이름을 입력해주세요" required>
+                    </div>
+                    
+                    <div class="flex flex-col space-y-1 w-full">
+                        <label class="text-sm font-medium text-gray-700">전화번호 *</label>
+                        <input type="tel" name="customer_phone" class="input-field" placeholder="연락 가능한 전화번호를 입력해주세요" required>
+                    </div>
+                    
+                    <div class="flex flex-col space-y-1 w-full">
+                        <label class="text-sm font-medium text-gray-700">배송주소</label>
+                        <input type="text" name="customer_address" class="input-field" placeholder="배송 수령 시 주소를 입력해주세요">
+                    </div>
+                    
+                    <div class="flex flex-col space-y-1 w-full">
+                        <label class="text-sm font-medium text-gray-700">요청사항</label>
+                        <input type="text" name="customer_message" class="input-field" placeholder="요청사항을 입력해주세요">
+                    </div>
+
+                    <!-- Branch Info -->
+                    <div class="mt-5 flex flex-col gap-y-5" id="info">
+                        <hr class="border-gray-200">
+                        <div class="flex flex-col gap-2">
+                            <p class="font-medium">📍 매장 정보</p>
+                            <div class="text-gray-500 text-sm space-y-1">
+                                <p><strong>매장:</strong> <?php echo htmlspecialchars($branch['br_name']) ?></p>
+                                <p><strong>소속:</strong> <?php echo htmlspecialchars($branch['ag_name'] ?: '직영') ?></p>
+                                <?php if ($branch['br_phone']) { ?>
+                                <p><strong>전화:</strong> <?php echo htmlspecialchars($branch['br_phone']) ?></p>
+                                <?php } ?>
+                                <?php if ($branch['br_address']) { ?>
+                                <p><strong>주소:</strong> <?php echo htmlspecialchars($branch['br_address']) ?></p>
+                                <?php } ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Footer -->
+            <footer class="mt-10 bg-gray-50">
+                <div class="w-full mx-auto max-w-4xl px-5 py-10">
+                    <div class="text-gray-500 text-xs">
+                        도매까 지점 주문 시스템 <br>
+                        <?php echo htmlspecialchars($branch['br_name']) ?> <br><br>
+                        Copyright © <?php echo date('Y') ?> 도매까 All Rights Reserved.
+                    </div>
+                </div>
+            </footer>
+
+            <!-- Fixed Bottom Bar -->
+            <div class="fixed-footer py-2 px-3 flex space-x-3">
+                <a href="<?php echo G5_DMK_URL ?>/adm/branch_admin/orderlist.php?br_id=<?php echo $br_id ?>" class="btn-outline">주문내역</a>
+                <button type="submit" form="orderForm" class="btn-primary flex-1" id="submitOrder">주문하기</button>
+            </div>
         </div>
     </div>
+
+    <!-- JavaScript -->
+    <script>
+        let cart = {};
+        let currentFilter = 'all';
+        let products = {};
+
+        // Initialize products data
+        <?php
+        sql_data_seek($items_result, 0);
+        echo "products = {\n";
+        while ($item = sql_fetch_array($items_result)) {
+            echo "    '{$item['it_id']}': {\n";
+            echo "        id: '{$item['it_id']}',\n";
+            echo "        name: '" . addslashes($item['it_name']) . "',\n";
+            echo "        price: {$item['it_price']},\n";
+            echo "        stock: {$item['it_stock_qty']},\n";
+            echo "        category: '{$item['ca_id']}'\n";
+            echo "    },\n";
+        }
+        echo "};\n";
+        ?>
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            updateOrderSummary();
+        });
+
+        // Filter products
+        function filterProducts(category) {
+            currentFilter = category;
+            
+            // Update button styles
+            document.querySelectorAll('.sticky-header button').forEach(btn => {
+                btn.className = btn.className.replace('btn-outline', 'btn-default');
+            });
+            
+            if (category === 'all') {
+                document.querySelector('[onclick="filterProducts(\'all\')"]').className = 
+                    document.querySelector('[onclick="filterProducts(\'all\')"]').className.replace('btn-default', 'btn-outline');
+                
+                // Show all products
+                document.querySelectorAll('.product-card').forEach(card => {
+                    card.style.display = 'block';
+                });
+            } else {
+                document.querySelector(`[onclick="filterProducts('${category}')"]`).className = 
+                    document.querySelector(`[onclick="filterProducts('${category}')"]`).className.replace('btn-default', 'btn-outline');
+                
+                // Filter products by category
+                document.querySelectorAll('.product-card').forEach(card => {
+                    const cardCategory = card.getAttribute('data-category');
+                    card.style.display = cardCategory === category ? 'block' : 'none';
+                });
+            }
+        }
+
+        // Update quantity
+        function updateQuantity(productId, change) {
+            const product = products[productId];
+            if (!product) return;
+
+            if (!cart[productId]) cart[productId] = 0;
+            
+            const newQuantity = cart[productId] + change;
+            
+            if (newQuantity >= 0 && newQuantity <= product.stock) {
+                cart[productId] = newQuantity;
+                if (cart[productId] === 0) {
+                    delete cart[productId];
+                }
+                
+                // Update display
+                document.getElementById('qty_' + productId).textContent = cart[productId] || 0;
+                document.getElementById('input_' + productId).value = cart[productId] || 0;
+                
+                // Update button states
+                const minusBtn = document.querySelector(`[onclick="updateQuantity('${productId}', -1)"]`);
+                if (cart[productId] && cart[productId] > 0) {
+                    minusBtn.disabled = false;
+                    minusBtn.classList.remove('opacity-50');
+                } else {
+                    minusBtn.disabled = true;
+                    minusBtn.classList.add('opacity-50');
+                }
+                
+                updateOrderSummary();
+            }
+        }
+
+        // Update order summary
+        function updateOrderSummary() {
+            let totalQuantity = 0;
+            let totalAmount = 0;
+
+            Object.keys(cart).forEach(productId => {
+                const product = products[productId];
+                if (product && cart[productId] > 0) {
+                    totalQuantity += cart[productId];
+                    totalAmount += product.price * cart[productId];
+                }
+            });
+
+            document.getElementById('totalQuantity').textContent = `${totalQuantity}개`;
+            document.getElementById('totalAmount').textContent = `${totalAmount.toLocaleString()}원`;
+            document.getElementById('totalSum').textContent = `${totalAmount.toLocaleString()}원`;
+        }
+
+        // Select date
+        function selectDate(date) {
+            document.getElementById('selectedDate').value = date;
+            
+            const dateObj = new Date(date);
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            const yoil = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
+            
+            document.getElementById('orderTitle').textContent = `${month}.${day}.${yoil}요일 주문`;
+            document.getElementById('orderDate').textContent = `주문일 ${dateObj.getFullYear()}년 ${String(month).padStart(2, '0')}월 ${String(day).padStart(2, '0')}일`;
+            
+            // Update button styles
+            document.querySelectorAll('[onclick^="selectDate"]').forEach(btn => {
+                btn.className = btn.className.replace('btn-outline', 'btn-default');
+            });
+            event.target.className = event.target.className.replace('btn-default', 'btn-outline');
+        }
+
+        // Show product detail
+        function showProductDetail(productId) {
+            const product = products[productId];
+            if (product) {
+                alert(`${product.name}\n가격: ${product.price.toLocaleString()}원\n재고: ${product.stock}개`);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('orderForm').addEventListener('submit', function(e) {
+            const customerName = document.querySelector('[name="customer_name"]').value;
+            const customerPhone = document.querySelector('[name="customer_phone"]').value;
+            
+            if (!customerName || !customerPhone) {
+                e.preventDefault();
+                alert('주문자명과 전화번호를 입력해주세요.');
+                return;
+            }
+            
+            if (Object.keys(cart).length === 0) {
+                e.preventDefault();
+                alert('주문할 상품을 선택해주세요.');
+                return;
+            }
+            
+            // Confirm order
+            let orderSummary = '주문 내역:\n';
+            Object.keys(cart).forEach(productId => {
+                const product = products[productId];
+                if (product && cart[productId] > 0) {
+                    orderSummary += `- ${product.name}: ${cart[productId]}개 (${(product.price * cart[productId]).toLocaleString()}원)\n`;
+                }
+            });
+            
+            const totalAmount = Object.keys(cart).reduce((total, productId) => {
+                const product = products[productId];
+                return total + (product ? product.price * cart[productId] : 0);
+            }, 0);
+            
+            orderSummary += `\n총 주문금액: ${totalAmount.toLocaleString()}원`;
+            
+            if (!confirm(orderSummary + '\n\n주문을 진행하시겠습니까?')) {
+                e.preventDefault();
+            }
+        });
+
+        // Handle scroll for sticky elements
+        window.addEventListener('scroll', function() {
+            const stickyHeader = document.querySelector('.sticky-header');
+            if (window.scrollY > 65) {
+                stickyHeader.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+            } else {
+                stickyHeader.style.boxShadow = 'none';
+            }
+        });
+    </script>
 </body>
 </html>
