@@ -16,9 +16,10 @@ if ($is_admin != 'super') {
 $g5['title'] = '총판 관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
-// 총판은 실제로는 영카트 최고관리자이므로, 회원 테이블에서 최고관리자 권한을 가진 회원들을 조회
+// 총판은 최고관리자 하위의 계층이므로, dmk_mb_type이 총판(1)인 회원들을 조회
+// 계층 구조: admin(영카트 최고관리자) > distributor(총판) > agency(대리점) > branch(지점)
 $sql_common = " FROM {$g5['member_table']} m ";
-$sql_search = " WHERE m.mb_level >= 10 "; // 최고관리자 레벨
+$sql_search = " WHERE (m.dmk_mb_type = 1 OR (m.dmk_mb_type = 0 AND m.mb_level >= 9 AND m.mb_level < 10)) "; // 총판 레벨
 
 // 권한에 따른 데이터 필터링
 $dmk_auth = dmk_get_admin_auth();
@@ -48,7 +49,7 @@ $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
 if ($page < 1) $page = 1; // 페이지가 없으면 첫 페이지 (1 페이지)
 $from_record = ($page - 1) * $rows; // 시작 열을 구함
 
-$sql = " SELECT m.*, 
+$sql = " SELECT m.*,
             (SELECT COUNT(*) FROM dmk_agency WHERE ag_mb_id = m.mb_id) as agency_count,
             (SELECT COUNT(*) FROM dmk_branch b JOIN dmk_agency a ON b.ag_id = a.ag_id WHERE a.ag_mb_id = m.mb_id) as branch_count
          " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
@@ -71,9 +72,9 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <div class="local_desc01 local_desc">
     <p>
         <strong>총판 관리</strong><br>
-        • 영카트 최고관리자 권한을 가진 회원들을 총판으로 관리합니다.<br>
-        • 각 총판은 여러 대리점을 관리할 수 있습니다.<br>
-        • 대리점 수와 지점 수를 확인할 수 있습니다.
+        • 계층 구조: <span style="color: #e74c3c; font-weight: bold;">admin(영카트 최고관리자)</span> → <span style="color: #3498db; font-weight: bold;">distributor(총판)</span> → <span style="color: #2ecc71; font-weight: bold;">agency(대리점)</span> → <span style="color: #f39c12; font-weight: bold;">branch(지점)</span><br>
+        • 총판은 영카트 최고관리자 하위의 관리자로서 여러 대리점을 관리합니다.<br>
+        • 각 총판별 관리 대리점 수와 산하 지점 수를 확인할 수 있습니다.
     </p>
 </div>
 
@@ -109,8 +110,10 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         
         // 권한 레벨 표시
         $level_str = '';
-        if ($row['mb_level'] >= 10) {
-            $level_str = '<span class="txt_true">최고관리자</span>';
+        if (isset($row['dmk_mb_type']) && $row['dmk_mb_type'] == 1) {
+            $level_str = '<span class="txt_true">총판</span>';
+        } else if ($row['mb_level'] >= 9) {
+            $level_str = '<span class="txt_blue">총판 후보</span>';
         } else {
             $level_str = '레벨 ' . $row['mb_level'];
         }

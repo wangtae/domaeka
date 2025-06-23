@@ -1,5 +1,5 @@
 <?php
-$sub_menu = "200200";
+$sub_menu = "201200";
 include_once dirname(__FILE__) . '/../../../adm/_common.php';
 
 // 메뉴 접근 권한 확인

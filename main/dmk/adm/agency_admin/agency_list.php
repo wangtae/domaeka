@@ -1,5 +1,5 @@
 <?php
-$sub_menu = "200100";
+$sub_menu = "201100";
 include_once './_common.php';
 
 // 메뉴 접근 권한 확인
