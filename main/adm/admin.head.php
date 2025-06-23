@@ -3,6 +3,11 @@ if (!defined('_GNUBOARD_')) {
     exit;
 }
 
+// 도매까 권한 라이브러리 포함
+if (file_exists(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php')) {
+    include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
+}
+
 $g5_debug['php']['begin_time'] = $begin_time = get_microtime();
 
 $files = glob(G5_ADMIN_PATH . '/css/admin_extend_*');

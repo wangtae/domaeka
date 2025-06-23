@@ -1,0 +1,20 @@
+{
+    "mcpServers": {
+      "mysql": {
+        "type": "stdio",
+        "command": "/home/wangt/cursor/projects/py/kakao-bot/venv/bin/uvx",
+        "args": [
+          "--from",
+          "mysql-mcp-server",
+          "mysql_mcp_server"
+        ],
+        "env": {
+          "MYSQL_HOST": "domaeka.com",
+          "MYSQL_PORT": "3307",
+          "MYSQL_USER": "domaeka",
+          "MYSQL_PASSWORD": "!domaekaservice@.",
+          "MYSQL_DATABASE": "domaeka"
+        }
+      }
+    }
+  }

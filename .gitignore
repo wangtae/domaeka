@@ -71,3 +71,6 @@ error.log
 /.idea/
 /vendor/
 /composer.lock # Composer lock file (depends on project preference, sometimes committed)
+
+#PMA
+_tools/
