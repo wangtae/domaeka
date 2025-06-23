@@ -375,4 +375,46 @@ function dmk_authenticate_admin($required_type) {
     return true;
 }
 
+/**
+ * 현재 로그인한 관리자가 총판 관리자인지 확인합니다.
+ * 
+ * @param string $mb_id 회원 ID (선택사항, 기본값은 현재 로그인한 관리자)
+ * @return bool 총판 관리자 여부
+ */
+function dmk_is_distributor($mb_id = null) {
+    global $member, $is_admin;
+    
+    // 관리자가 아니면 false
+    if (!$is_admin) {
+        return false;
+    }
+    
+    // mb_id가 지정되지 않으면 현재 로그인한 관리자 사용
+    if (!$mb_id) {
+        $mb_id = $member['mb_id'];
+    }
+    
+    // 영카트 최고 관리자는 총판 관리자 권한을 가집니다.
+    if (is_super_admin($mb_id)) {
+        return true;
+    }
+    
+    // 현재 로그인한 관리자가 아닌 다른 관리자를 확인하는 경우
+    if ($mb_id !== $member['mb_id']) {
+        // 다른 관리자 정보를 데이터베이스에서 조회
+        global $g5;
+        $sql = " SELECT dmk_mb_type FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($mb_id) . "' ";
+        $row = sql_fetch($sql);
+        
+        if ($row) {
+            return (int)$row['dmk_mb_type'] === DMK_MB_TYPE_DISTRIBUTOR;
+        } else {
+            return false;
+        }
+    }
+    
+    // 현재 로그인한 관리자의 경우
+    return (int)$member['dmk_mb_type'] === DMK_MB_TYPE_DISTRIBUTOR;
+}
+
 ?> 
