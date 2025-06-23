@@ -51,7 +51,9 @@ $sql  = " select it_id,
                  it_stock_sms,
                  it_noti_qty,
                  it_soldout,
-                 ca_id
+                 ca_id,
+                 dmk_it_owner_type,
+                 dmk_it_owner_id
            $sql_common
           order by $sort1 $sort2
           limit $from_record, $rows ";
@@ -121,6 +123,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <tr>
         <th scope="col"><a href="<?php echo title_sort("it_id") . "&amp;$qstr1"; ?>">상품코드</a></th>
         <th scope="col"><a href="<?php echo title_sort("it_name") . "&amp;$qstr1"; ?>">상품명</a></th>
+        <th scope="col">소유자</th>
         <th scope="col"><a href="<?php echo title_sort("it_stock_qty") . "&amp;$qstr1"; ?>">창고재고</a></th>
         <th scope="col">주문대기</th>
         <th scope="col">가재고</th>
@@ -172,6 +175,32 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <?php echo $row['it_id']; ?>
         </td>
         <td class="td_left"><a href="<?php echo $href; ?>"><?php echo get_it_image($row['it_id'], 50, 50); ?> <?php echo cut_str(stripslashes($row['it_name']), 60, "&#133"); ?></a></td>
+        <td class="td_center">
+            <?php 
+            // 도매까 소유자 정보 표시
+            $owner_display = '';
+            switch($row['dmk_it_owner_type']) {
+                case '1':
+                    $sql_owner = "SELECT dt_name FROM dmk_distributor WHERE dt_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
+                    $row_owner = sql_fetch($sql_owner);
+                    $owner_display = '<span class="label_type1">총판</span><br>' . ($row_owner ? $row_owner['dt_name'] : $row['dmk_it_owner_id']);
+                    break;
+                case '2':
+                    $sql_owner = "SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
+                    $row_owner = sql_fetch($sql_owner);
+                    $owner_display = '<span class="label_type2">대리점</span><br>' . ($row_owner ? $row_owner['ag_name'] : $row['dmk_it_owner_id']);
+                    break;
+                case '3':
+                    $sql_owner = "SELECT br_name FROM dmk_branch WHERE br_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
+                    $row_owner = sql_fetch($sql_owner);
+                    $owner_display = '<span class="label_type3">지점</span><br>' . ($row_owner ? $row_owner['br_name'] : $row['dmk_it_owner_id']);
+                    break;
+                default:
+                    $owner_display = '<span class="label_type0">미지정</span>';
+            }
+            echo $owner_display;
+            ?>
+        </td>
         <td class="td_num<?php echo $it_stock_qty_st; ?>"><?php echo $it_stock_qty; ?></td>
         <td class="td_num"><?php echo number_format((float)$wait_qty); ?></td>
         <td class="td_num"><?php echo number_format((float)$temporary_qty); ?></td>
@@ -200,7 +229,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <?php
     }
     if (!$i)
-        echo '<tr><td colspan="11" class="empty_table"><span>자료가 없습니다.</span></td></tr>';
+        echo '<tr><td colspan="12" class="empty_table"><span>자료가 없습니다.</span></td></tr>';
     ?>
     </tbody>
     </table>

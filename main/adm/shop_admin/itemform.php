@@ -355,6 +355,71 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                 <input type="text" name="it_name" value="<?php echo get_text(cut_str($it['it_name'], 250, "")); ?>" id="it_name" required class="frm_input required" size="95">
             </td>
         </tr>
+        
+        <?php 
+        // 도매까 소유 정보 표시
+        $dmk_auth = dmk_get_admin_auth();
+        if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 3) { // 최고관리자, 총판, 대리점, 지점만 표시
+        ?>
+        <tr>
+            <th scope="row" colspan="3" style="background:#f8f9fa; text-align:center; font-weight:bold; color:#495057; border-top:2px solid #dee2e6;">
+                <i class="fa fa-building"></i> 도매까 소유 정보
+            </th>
+        </tr>
+        <tr>
+            <th scope="row">소유 구분</th>
+            <td colspan="2">
+                <?php 
+                $owner_type_name = '';
+                $owner_name = '';
+                
+                switch($it['dmk_it_owner_type']) {
+                    case '1':
+                        $owner_type_name = '총판';
+                        $sql = "SELECT dt_name FROM dmk_distributor WHERE dt_id = '" . sql_escape_string($it['dmk_it_owner_id']) . "'";
+                        $row = sql_fetch($sql);
+                        $owner_name = $row ? $row['dt_name'] : '';
+                        break;
+                    case '2':
+                        $owner_type_name = '대리점';
+                        $sql = "SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($it['dmk_it_owner_id']) . "'";
+                        $row = sql_fetch($sql);
+                        $owner_name = $row ? $row['ag_name'] : '';
+                        break;
+                    case '3':
+                        $owner_type_name = '지점';
+                        $sql = "SELECT br_name FROM dmk_branch WHERE br_id = '" . sql_escape_string($it['dmk_it_owner_id']) . "'";
+                        $row = sql_fetch($sql);
+                        $owner_name = $row ? $row['br_name'] : '';
+                        break;
+                    default:
+                        $owner_type_name = '미지정';
+                        $owner_name = '최고관리자 관리';
+                }
+                ?>
+                
+                <input type="hidden" name="dmk_it_owner_type" value="<?php echo $it['dmk_it_owner_type']; ?>">
+                <input type="hidden" name="dmk_it_owner_id" value="<?php echo $it['dmk_it_owner_id']; ?>">
+                
+                <span class="frm_info" style="font-size:1.1em;">
+                    <strong style="color:#007bff;"><?php echo $owner_type_name; ?></strong>
+                    <?php if ($owner_name) { ?>
+                        - <strong><?php echo $owner_name; ?></strong> <span style="color:#6c757d;">(<?php echo $it['dmk_it_owner_id']; ?>)</span>
+                    <?php } ?>
+                </span>
+                
+                <div style="font-size:0.9em; color:#666; margin-top:8px; padding:8px; background:#f8f9fa; border-radius:4px;">
+                    <i class="fa fa-info-circle"></i> 
+                    <?php if ($w == '') { ?>
+                        새 상품은 현재 관리자의 소속에 따라 자동으로 설정됩니다.
+                    <?php } else { ?>
+                        상품의 소유 정보는 등록 시 결정되며, 수정할 수 없습니다.
+                    <?php } ?>
+                </div>
+            </td>
+        </tr>
+        <?php } ?>
+        
         <tr>
             <th scope="row"><label for="it_basic">기본설명</label></th>
             <td>

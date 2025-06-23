@@ -1,79 +1,57 @@
 <?php
-include_once './_common.php';
+$sub_menu = "200100";
+require_once './_common.php';
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-// AJAX 요청만 허용
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    exit;
-}
+// JSON 응답 헤더 설정
+header('Content-Type: application/json; charset=utf-8');
 
-// 권한 확인
-$dmk_auth = dmk_get_admin_auth();
-if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > 2) {
-    echo json_encode(['success' => false, 'message' => '권한이 없습니다.']);
-    exit;
-}
+// 권한 체크
+auth_check_menu($auth, $sub_menu, 'r');
 
 $owner_type = isset($_POST['owner_type']) ? (int)$_POST['owner_type'] : 0;
-$result = ['success' => false, 'data' => [], 'message' => ''];
+
+$response = array(
+    'success' => false,
+    'data' => array(),
+    'message' => ''
+);
 
 try {
     switch ($owner_type) {
         case 1: // 총판
-            $sql = " SELECT dt_id as id, dt_name as name 
-                     FROM dmk_distributor 
-                     WHERE dt_status = 1 
-                     ORDER BY dt_name ";
+            $sql = "SELECT dt_id as id, dt_name as name FROM dmk_distributor ORDER BY dt_name";
             break;
             
         case 2: // 대리점
-            $sql = " SELECT ag_id as id, ag_name as name 
-                     FROM dmk_agency 
-                     WHERE ag_status = 1 ";
-            
-            // 대리점 관리자는 자신의 대리점만 조회
-            if ($dmk_auth['mb_type'] == 2) {
-                $sql .= " AND ag_id = '" . sql_escape_string($dmk_auth['ag_id']) . "' ";
-            }
-            
-            $sql .= " ORDER BY ag_name ";
+            $sql = "SELECT ag_id as id, ag_name as name FROM dmk_agency ORDER BY ag_name";
             break;
             
         case 3: // 지점
-            $sql = " SELECT br_id as id, br_name as name 
-                     FROM dmk_branch 
-                     WHERE br_status = 1 ";
-            
-            // 대리점 관리자는 자신의 대리점 소속 지점만 조회
-            if ($dmk_auth['mb_type'] == 2) {
-                $sql .= " AND ag_id = '" . sql_escape_string($dmk_auth['ag_id']) . "' ";
-            }
-            
-            $sql .= " ORDER BY br_name ";
+            $sql = "SELECT br_id as id, br_name as name FROM dmk_branch ORDER BY br_name";
             break;
             
         default:
-            throw new Exception('유효하지 않은 소속 구분입니다.');
+            throw new Exception('잘못된 소속 구분입니다.');
     }
     
-    $query_result = sql_query($sql);
-    $data = [];
+    $result = sql_query($sql);
+    $data = array();
     
-    while ($row = sql_fetch_array($query_result)) {
-        $data[] = [
+    while ($row = sql_fetch_array($result)) {
+        $data[] = array(
             'id' => $row['id'],
             'name' => $row['name']
-        ];
+        );
     }
     
-    $result['success'] = true;
-    $result['data'] = $data;
+    $response['success'] = true;
+    $response['data'] = $data;
     
 } catch (Exception $e) {
-    $result['message'] = $e->getMessage();
+    $response['message'] = $e->getMessage();
 }
 
-header('Content-Type: application/json');
-echo json_encode($result, JSON_UNESCAPED_UNICODE);
+echo json_encode($response, JSON_UNESCAPED_UNICODE);
+exit;
 ?> 
