@@ -15,15 +15,15 @@ if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
 }
 
 // 모든 관리자 계층이 접근 가능한 쇼핑몰 메뉴 (데이터 필터링은 각 페이지에서 처리)
-$menu['menu400'][] = array('400400', '주문관리', G5_ADMIN_URL . '/shop_admin/orderlist.php', 'scf_order', 1);
+$menu['menu400'][] = array('400400', '주문관리 <span class="dmk-updated-menu">개조</span>', G5_ADMIN_URL . '/shop_admin/orderlist.php', 'scf_order', 1);
 $menu['menu400'][] = array('400440', '개인결제관리', G5_ADMIN_URL . '/shop_admin/personalpaylist.php', 'scf_personalpay', 1);
 $menu['menu400'][] = array('400200', '분류관리', G5_ADMIN_URL . '/shop_admin/categorylist.php', 'scf_cate');
-$menu['menu400'][] = array('400300', '상품관리', G5_ADMIN_URL . '/shop_admin/itemlist.php', 'scf_item');
+$menu['menu400'][] = array('400300', '상품관리 <span class="dmk-updated-menu">개조</span>', G5_ADMIN_URL . '/shop_admin/itemlist.php', 'scf_item');
 $menu['menu400'][] = array('400660', '상품문의', G5_ADMIN_URL . '/shop_admin/itemqalist.php', 'scf_item_qna');
 $menu['menu400'][] = array('400650', '사용후기', G5_ADMIN_URL . '/shop_admin/itemuselist.php', 'scf_ps');
-$menu['menu400'][] = array('400620', '재고관리', G5_ADMIN_URL . '/shop_admin/itemstocklist.php', 'scf_item_stock');
+$menu['menu400'][] = array('400620', '재고관리 <span class="dmk-updated-menu">개조</span>', G5_ADMIN_URL . '/shop_admin/itemstocklist.php', 'scf_item_stock');
 $menu['menu400'][] = array('400610', '상품유형관리', G5_ADMIN_URL . '/shop_admin/itemtypelist.php', 'scf_item_type');
-$menu['menu400'][] = array('400500', '상품옵션재고관리', G5_ADMIN_URL . '/shop_admin/optionstocklist.php', 'scf_item_option');
+$menu['menu400'][] = array('400500', '상품옵션재고관리 <span class="dmk-updated-menu">개조</span>', G5_ADMIN_URL . '/shop_admin/optionstocklist.php', 'scf_item_option');
 $menu['menu400'][] = array('400800', '쿠폰관리', G5_ADMIN_URL . '/shop_admin/couponlist.php', 'scf_coupon');
 $menu['menu400'][] = array('400810', '쿠폰존관리', G5_ADMIN_URL . '/shop_admin/couponzonelist.php', 'scf_coupon_zone');
 $menu['menu400'][] = array('400750', '추가배송비관리', G5_ADMIN_URL . '/shop_admin/sendcostlist.php', 'scf_sendcost', 1);

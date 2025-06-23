@@ -8,6 +8,11 @@ if (file_exists(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php')) {
     include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 }
 
+// 도매까 관리자 스타일 포함
+if (file_exists(G5_ADMIN_PATH.'/css/admin_dmk.css')) {
+    add_stylesheet('<link rel="stylesheet" href="'.G5_ADMIN_URL.'/css/admin_dmk.css">', 100);
+}
+
 $g5_debug['php']['begin_time'] = $begin_time = get_microtime();
 
 $files = glob(G5_ADMIN_PATH . '/css/admin_extend_*');

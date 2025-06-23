@@ -7,7 +7,11 @@ if (!dmk_can_access_menu('branch_list')) {
     alert('접근 권한이 없습니다.');
 }
 
-auth_check_menu($auth, $sub_menu, 'r');
+// 최고관리자가 아니면 도매까 자체 권한 체크 사용
+if ($is_admin != 'super') {
+    // 도매까 권한 체크를 이미 위에서 했으므로 여기서는 통과
+}
+// auth_check_menu($auth, $sub_menu, 'r'); // 도매까 자체 권한 체크로 대체
 
 // 권한 확인
 $dmk_auth = dmk_get_admin_auth();
