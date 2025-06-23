@@ -56,7 +56,24 @@ $summary_sql = "
     $branch_filter
 ";
 
-$summary = sql_fetch($summary_sql);
+$summary_result = sql_query($summary_sql);
+$summary_row = sql_fetch_array($summary_result);
+
+// 기본값으로 초기화
+$summary = array(
+    'total_orders' => 0,
+    'total_revenue' => 0,
+    'active_branches' => 0,
+    'avg_order_value' => 0
+);
+
+// 쿼리 결과가 있으면 값 업데이트
+if ($summary_row) {
+    $summary['total_orders'] = intval($summary_row['total_orders'] ?: 0);
+    $summary['total_revenue'] = intval($summary_row['total_revenue'] ?: 0);
+    $summary['active_branches'] = intval($summary_row['active_branches'] ?: 0);
+    $summary['avg_order_value'] = intval($summary_row['avg_order_value'] ?: 0);
+}
 
 // 상위 지점 조회
 $top_branches_sql = "
@@ -137,17 +154,31 @@ $top_branches_result = sql_query($top_branches_sql);
 }
 
 .filter-group input, .filter-group select {
-    padding: 10px 15px;
+    padding: 12px 15px;
     border: 2px solid #e1e5e9;
     border-radius: 8px;
     font-size: 14px;
+    line-height: 1.4;
+    height: 48px;
+    min-height: 48px;
+    box-sizing: border-box;
     transition: all 0.3s ease;
+    vertical-align: top;
 }
 
 .filter-group input:focus, .filter-group select:focus {
     outline: none;
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filter-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23666' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+    padding-right: 35px;
 }
 
 .btn-search {
@@ -314,25 +345,25 @@ $top_branches_result = sql_query($top_branches_sql);
     <div class="summary-cards">
         <div class="summary-card">
             <div class="icon"><i class="fa fa-shopping-cart"></i></div>
-            <div class="value"><?php echo number_format($summary['total_orders'] ?: 0); ?></div>
+            <div class="value"><?php echo number_format(isset($summary['total_orders']) ? $summary['total_orders'] : 0); ?></div>
             <div class="label">총 주문 건수</div>
         </div>
         
         <div class="summary-card">
             <div class="icon"><i class="fa fa-won-sign"></i></div>
-            <div class="value"><?php echo number_format($summary['total_revenue'] ?: 0); ?>원</div>
+            <div class="value"><?php echo number_format(isset($summary['total_revenue']) ? $summary['total_revenue'] : 0); ?>원</div>
             <div class="label">총 매출액</div>
         </div>
         
         <div class="summary-card">
             <div class="icon"><i class="fa fa-store"></i></div>
-            <div class="value"><?php echo number_format($summary['active_branches'] ?: 0); ?></div>
+            <div class="value"><?php echo number_format(isset($summary['active_branches']) ? $summary['active_branches'] : 0); ?></div>
             <div class="label">활성 지점 수</div>
         </div>
         
         <div class="summary-card">
             <div class="icon"><i class="fa fa-calculator"></i></div>
-            <div class="value"><?php echo number_format($summary['avg_order_value'] ?: 0); ?>원</div>
+            <div class="value"><?php echo number_format(isset($summary['avg_order_value']) ? $summary['avg_order_value'] : 0); ?>원</div>
             <div class="label">평균 주문액</div>
         </div>
     </div>

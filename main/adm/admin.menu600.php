@@ -11,7 +11,7 @@ if (is_super_admin($member['mb_id']) ||
     ($dmk_auth && in_array($dmk_auth['mb_type'], [DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH]))) {
     
     $menu['menu600'] = array(
-        array('600000', '도매까 관리', G5_DMK_URL.'/adm', 'dmk_admin'),
+        array('600000', '도매까 관리', G5_ADMIN_URL, 'dmk_admin'),
     );
     
     // 총판 관리 기능 (총판, 최고관리자만)
@@ -39,9 +39,9 @@ if (is_super_admin($member['mb_id']) ||
     
     // 공통 관리 기능 (모든 권한자)
     $common_menus = array(
-        array('600400', '회원 관리', G5_DMK_URL.'/adm/member_admin/member_list.php', 'member_list'),
-        array('600500', '상품 관리', G5_DMK_URL.'/adm/item_admin/item_list.php', 'item_list'),
-        array('600600', '주문 관리', G5_DMK_URL.'/adm/order_admin/order_list.php', 'order_list'),
+        array('600400', '회원 관리', G5_ADMIN_URL.'/member_list.php', 'member_list'),
+        array('600500', '상품 관리', G5_ADMIN_URL.'/shop_admin/itemlist.php', 'item_list'),
+        array('600600', '주문 관리', G5_ADMIN_URL.'/shop_admin/orderlist.php', 'order_list'),
     );
     $menu['menu600'] = array_merge($menu['menu600'], $common_menus);
     
@@ -56,8 +56,8 @@ if (is_super_admin($member['mb_id']) ||
     // 고급 관리 기능 (총판, 최고관리자만)
     if (is_super_admin($member['mb_id']) || ($dmk_auth && $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR)) {
         $advanced_menus = array(
-            array('601000', '정산 관리', G5_DMK_URL.'/adm/settlement_admin/settlement_list.php', 'settlement_list'),
-            array('601100', '통계 관리', G5_DMK_URL.'/adm/stats_admin/stats_dashboard.php', 'stats_dashboard'),
+            array('601000', '정산 관리', G5_DMK_URL.'/adm/statistics/statistics_dashboard.php', 'settlement_list'),
+            array('601100', '통계 관리', G5_DMK_URL.'/adm/statistics/statistics_dashboard.php', 'stats_dashboard'),
         );
         $menu['menu600'] = array_merge($menu['menu600'], $advanced_menus);
     }
