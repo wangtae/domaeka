@@ -631,12 +631,27 @@ function dmk_auth_check_menu_display($menu_code, $menu_key) {
         return true;
     }
 
-    // 2. 도매까 메뉴 (190xxx)
+    // 2. 도매까 관리 메뉴 (600xxx) - 새로운 메뉴 구조
+    if (substr($menu_code, 0, 3) == '600') {
+        // 도매까 관련 권한자만 접근 가능
+        if ($dmk_auth && in_array($dmk_auth['mb_type'], [DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH])) {
+            // 지점 전용 메뉴 (600900번대)는 지점 관리자와 상위 권한자만 접근 가능
+            if (substr($menu_code, 0, 5) == '60090' || substr($menu_code, 0, 5) == '60091' || substr($menu_code, 0, 5) == '60092' || substr($menu_code, 0, 5) == '60093') {
+                return ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) || 
+                       ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) || 
+                       ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // 3. 도매까 메뉴 (190xxx) - 기존 메뉴 구조
     if (substr($menu_code, 0, 3) == '190') {
         return dmk_can_access_menu($menu_key);
     }
 
-    // 3. 일반 그누보드/영카트 메뉴 (200xxx 등)
+    // 4. 일반 그누보드/영카트 메뉴 (200xxx 등)
     // 도매까 관리자에게 허용된 일반 메뉴인지 확인
     if (dmk_has_general_menu_access($menu_code)) {
         return true;
@@ -784,6 +799,65 @@ function dmk_get_category_owner_info() {
     }
     
     return $owner_info;
+}
+
+/**
+ * 지점 정보를 가져옵니다.
+ * 
+ * @param string $br_id 지점 ID
+ * @return array|false 지점 정보 또는 false
+ */
+function get_branch_info($br_id) {
+    global $g5;
+    
+    if (!$br_id) {
+        return false;
+    }
+    
+    $sql = "SELECT b.*, a.ag_name 
+            FROM dmk_branch b 
+            LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
+            WHERE b.br_id = '" . sql_escape_string($br_id) . "'";
+    
+    return sql_fetch($sql);
+}
+
+/**
+ * 장바구니 WHERE 조건을 반환합니다.
+ * 
+ * @param string $br_id 지점 ID
+ * @param string $ag_id 대리점 ID  
+ * @param string $dt_id 총판 ID
+ * @return string WHERE 조건
+ */
+function dmk_get_cart_where_condition($br_id = null, $ag_id = null, $dt_id = null) {
+    $auth = dmk_get_admin_auth();
+    
+    // 최고 관리자는 모든 데이터 조회 가능
+    if ($auth['is_super']) {
+        return '';
+    }
+    
+    switch ($auth['mb_type']) {
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            // 총판: 모든 데이터 조회 가능
+            return '';
+            
+        case DMK_MB_TYPE_AGENCY:
+            // 대리점: 소속 지점들의 데이터만
+            $branch_ids = dmk_get_agency_branch_ids($auth['ag_id']);
+            if (empty($branch_ids)) {
+                return " AND 1=0 ";
+            }
+            return " AND dmk_br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "') ";
+            
+        case DMK_MB_TYPE_BRANCH:
+            // 지점: 자신의 데이터만
+            return " AND dmk_br_id = '" . sql_escape_string($auth['br_id']) . "' ";
+            
+        default:
+            return " AND 1=0 ";
+    }
 }
 
 ?> 
