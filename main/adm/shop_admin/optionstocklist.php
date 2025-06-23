@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '400500';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
@@ -32,6 +33,12 @@ if ($sort2 == "") $sort2 = "asc";
 
 $sql_common = "  from {$g5['g5_shop_item_option_table']} a left join {$g5['g5_shop_item_table']} b on ( a.it_id = b.it_id ) ";
 $sql_common .= $sql_search;
+
+// 도매까 권한별 상품 필터링 조건 추가
+$item_where_condition = dmk_get_item_where_condition();
+if ($item_where_condition) {
+    $sql_common .= str_replace('AND', ' AND', $item_where_condition);
+}
 
 // 테이블의 전체 레코드수만 얻음
 $sql = " select count(*) as cnt " . $sql_common;

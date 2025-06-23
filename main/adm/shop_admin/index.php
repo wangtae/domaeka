@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '400010';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 $max_limit = 7; // 몇행 출력할 것인지?
 
@@ -15,15 +16,18 @@ $pg_anchor = '<ul class="anchor sidx_anchor">
 <li><a href="#anc_sidx_qna">상품문의</a></li>
 </ul>';
 
+// 도매까 권한별 주문 조회 조건 추가
+$order_where_condition = dmk_get_order_where_condition($member['dmk_br_id'], $member['dmk_ag_id'], $member['dmk_dt_id']);
+
 // 주문상태에 따른 합계 금액
 function get_order_status_sum($status)
 {
-    global $g5;
+    global $g5, $order_where_condition;
 
     $sql = " select count(*) as cnt,
                     sum(od_cart_price + od_send_cost + od_send_cost2 - od_cancel_price) as price
                 from {$g5['g5_shop_order_table']}
-                where od_status = '$status' ";
+                where od_status = '$status' " . $order_where_condition;
     $row = sql_fetch($sql);
 
     $info = array();
@@ -37,12 +41,12 @@ function get_order_status_sum($status)
 // 일자별 주문 합계 금액
 function get_order_date_sum($date)
 {
-    global $g5;
+    global $g5, $order_where_condition;
 
     $sql = " select sum(od_cart_price + od_send_cost + od_send_cost2) as orderprice,
                     sum(od_cancel_price) as cancelprice
                 from {$g5['g5_shop_order_table']}
-                where SUBSTRING(od_time, 1, 10) = '$date' ";
+                where SUBSTRING(od_time, 1, 10) = '$date' " . $order_where_condition;
     $row = sql_fetch($sql);
 
     $info = array();
@@ -55,7 +59,7 @@ function get_order_date_sum($date)
 // 일자별 결제수단 주문 합계 금액
 function get_order_settle_sum($date)
 {
-    global $g5, $default;
+    global $g5, $default, $order_where_condition;
 
     $case = array('신용카드', '계좌이체', '가상계좌', '무통장', '휴대폰');
     $info = array();
@@ -67,7 +71,7 @@ function get_order_settle_sum($date)
                         count(*) as cnt
                     from {$g5['g5_shop_order_table']}
                     where SUBSTRING(od_time, 1, 10) = '$date'
-                      and od_settle_case = '$val' ";
+                      and od_settle_case = '$val' " . $order_where_condition;
         $row = sql_fetch($sql);
 
         $info[$val]['price'] = (int)$row['price'];
@@ -79,7 +83,7 @@ function get_order_settle_sum($date)
                     count(*) as cnt
                 from {$g5['g5_shop_order_table']}
                 where SUBSTRING(od_time, 1, 10) = '$date'
-                  and od_receipt_point > 0 ";
+                  and od_receipt_point > 0 " . $order_where_condition;
     $row = sql_fetch($sql);
     $info['포인트']['price'] = (int)$row['price'];
     $info['포인트']['count'] = (int)$row['cnt'];
@@ -89,7 +93,7 @@ function get_order_settle_sum($date)
                     count(*) as cnt
                 from {$g5['g5_shop_order_table']}
                 where SUBSTRING(od_time, 1, 10) = '$date'
-                  and ( od_cart_coupon > 0 or od_coupon > 0 or od_send_coupon > 0 ) ";
+                  and ( od_cart_coupon > 0 or od_coupon > 0 or od_send_coupon > 0 ) " . $order_where_condition;
     $row = sql_fetch($sql);
     $info['쿠폰']['price'] = (int)$row['price'];
     $info['쿠폰']['count'] = (int)$row['cnt'];

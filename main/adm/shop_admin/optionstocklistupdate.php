@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '400500';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 check_demo();
 
@@ -25,6 +26,11 @@ for ($i=0; $i<$count_post_it_id; $i++)
     $it_id = isset($_POST['it_id'][$i]) ? safe_replace_regex($_POST['it_id'][$i], 'it_id') : '';
     $io_id = isset($_POST['io_id'][$i]) ? preg_replace(G5_OPTION_ID_FILTER, '', $_POST['io_id'][$i]) : '';
     $io_type = isset($_POST['io_type'][$i]) ? (int) $_POST['io_type'][$i] : 0;
+
+    // 상품 수정 권한 확인
+    if (!dmk_can_modify_item($it_id)) {
+        continue; // 권한이 없으면 해당 상품은 수정하지 않음
+    }
 
     $sql = "update {$g5['g5_shop_item_option_table']}
                set io_stock_qty    = '".$io_stock_qty."',
