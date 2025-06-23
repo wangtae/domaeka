@@ -6,6 +6,12 @@ include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "w");
 
+// 도매까 권한 확인 - 총판 관리자만 분류 관리 가능
+$dmk_auth = dmk_get_admin_auth();
+if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > 1) {
+    alert('분류관리는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+}
+
 $ca_id = isset($_GET['ca_id']) ? preg_replace('/[^0-9a-z]/i', '', $_GET['ca_id']) : '';
 $ca = array(
 'ca_skin_dir'=>'',
@@ -86,14 +92,14 @@ if ($w == "")
         $ca['ca_mobile_list_mod'] = 3;
         $ca['ca_mobile_list_row'] = 5;
         $ca['ca_stock_qty'] = 99999;
+
+        // 도매까 카테고리 소유 정보 기본 설정
+        $owner_info = dmk_get_category_owner_info();
+        $ca['dmk_ca_owner_type'] = $owner_info['owner_type'];
+        $ca['dmk_ca_owner_id'] = $owner_info['owner_id'];
     }
     $ca['ca_skin'] = "list.10.skin.php";
     $ca['ca_mobile_skin'] = "list.10.skin.php";
-
-    // 도매까 카테고리 소유 정보 기본 설정
-    $owner_info = dmk_get_category_owner_info();
-    $ca['dmk_ca_owner_type'] = $owner_info['owner_type'];
-    $ca['dmk_ca_owner_id'] = $owner_info['owner_id'];
 } else if ($w == "u") {
     $sql = " select * from {$g5['g5_shop_category_table']} where ca_id = '$ca_id' ";
     $ca = sql_fetch($sql);

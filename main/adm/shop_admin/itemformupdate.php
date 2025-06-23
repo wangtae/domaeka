@@ -632,6 +632,51 @@ if($all_fields) {
 $is_seo_title_edit = $w ? true : false;
 if( function_exists('shop_seo_title_update') ) shop_seo_title_update($it_id, $is_seo_title_edit);
 
+// 도매까 지점별 재고 테이블 생성 및 데이터 처리
+if (!sql_query(" DESC dmk_item_branch_stock ", false)) {
+    $create_table_sql = "
+        CREATE TABLE IF NOT EXISTS `dmk_item_branch_stock` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `it_id` varchar(20) NOT NULL,
+            `br_id` varchar(10) NOT NULL,
+            `stock_qty` int(11) NOT NULL DEFAULT 0,
+            `safe_qty` int(11) NOT NULL DEFAULT 0,
+            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `unique_item_branch` (`it_id`, `br_id`),
+            KEY `idx_it_id` (`it_id`),
+            KEY `idx_br_id` (`br_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ";
+    sql_query($create_table_sql);
+}
+
+// 지점별 재고 데이터 처리
+if (isset($_POST['branch_stocks']) && is_array($_POST['branch_stocks'])) {
+    // 기존 지점별 재고 데이터 삭제
+    sql_query(" DELETE FROM dmk_item_branch_stock WHERE it_id = '" . sql_escape_string($it_id) . "' ");
+    
+    // 새로운 지점별 재고 데이터 삽입
+    foreach ($_POST['branch_stocks'] as $branch_stock) {
+        if (!empty($branch_stock['br_id'])) {
+            $br_id = sql_escape_string($branch_stock['br_id']);
+            $stock_qty = (int)($branch_stock['stock_qty'] ?? 0);
+            $safe_qty = (int)($branch_stock['safe_qty'] ?? 0);
+            
+            $insert_sql = " INSERT INTO dmk_item_branch_stock 
+                           (it_id, br_id, stock_qty, safe_qty) 
+                           VALUES 
+                           ('" . sql_escape_string($it_id) . "', '$br_id', $stock_qty, $safe_qty) 
+                           ON DUPLICATE KEY UPDATE 
+                           stock_qty = $stock_qty, 
+                           safe_qty = $safe_qty,
+                           updated_at = NOW() ";
+            sql_query($insert_sql);
+        }
+    }
+}
+
 run_event('shop_admin_itemformupdate', $it_id, $w);
 
 $qstr = "$qstr&amp;sca=$sca&amp;page=$page";

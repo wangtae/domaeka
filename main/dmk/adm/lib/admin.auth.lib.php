@@ -732,4 +732,50 @@ function dmk_auth_check_menu($auth, $sub_menu, $attr, $return = false) {
     return dmk_auth_check($check_auth, $attr, $return);
 }
 
+/**
+ * 카테고리 수정 권한을 확인합니다.
+ * 
+ * @param string $ca_id 카테고리 ID
+ * @return bool 수정 권한 여부
+ */
+function dmk_can_modify_category($ca_id) {
+    $auth = dmk_get_admin_auth();
+    
+    // 최고 관리자는 모든 카테고리 수정 가능
+    if ($auth['is_super']) {
+        return true;
+    }
+    
+    // 총판 관리자만 카테고리 수정 가능
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        return true;
+    }
+    
+    // 대리점, 지점 관리자는 카테고리 수정 불가
+    return false;
+}
+
+/**
+ * 카테고리 소유 정보를 가져옵니다.
+ * 
+ * @return array 카테고리 소유 정보
+ */
+function dmk_get_category_owner_info() {
+    $auth = dmk_get_admin_auth();
+    
+    // 기본값: 총판 소유
+    $owner_info = [
+        'owner_type' => DMK_OWNER_TYPE_DISTRIBUTOR,
+        'owner_id' => ''
+    ];
+    
+    // 최고 관리자나 총판 관리자인 경우 총판 소유로 설정
+    if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        $owner_info['owner_type'] = DMK_OWNER_TYPE_DISTRIBUTOR;
+        $owner_info['owner_id'] = $auth['dt_id'] ?: '';
+    }
+    
+    return $owner_info;
+}
+
 ?> 

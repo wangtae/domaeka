@@ -1,8 +1,15 @@
 <?php
 $sub_menu = '400200';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
+
+// 도매까 권한 확인 - 총판 관리자만 분류 관리 가능
+$dmk_auth = dmk_get_admin_auth();
+if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > 1) {
+    alert('분류관리는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+}
 
 $g5['title'] = '분류관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');

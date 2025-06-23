@@ -1,10 +1,16 @@
 <?php
 $sub_menu = '400610';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 check_demo();
 
 auth_check_menu($auth, $sub_menu, "w");
+
+// 도매까 권한 확인 - 상품유형관리는 총판 관리자만 접근 가능
+if (!dmk_can_modify_category()) {
+    alert('상품유형관리는 최고관리자 또는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+}
 
 check_admin_token();
 

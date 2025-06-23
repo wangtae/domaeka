@@ -1,12 +1,33 @@
 <?php
 $sub_menu = '400410';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
-$sql_common = " from {$g5['g5_shop_order_data_table']} ";
+// 도매까 권한에 따른 조건 추가
+$dmk_auth = dmk_get_admin_auth();
+$branch_filter = '';
 
-$sql_search = " where cart_id <> '0' ";
+if ($dmk_auth && !$dmk_auth['is_super']) {
+    switch ($dmk_auth['mb_type']) {
+        case 2: // 대리점 - 소속 지점의 주문만
+            $branch_ids = dmk_get_agency_branch_ids($dmk_auth['ag_id']);
+            if (!empty($branch_ids)) {
+                $branch_filter = " AND EXISTS (SELECT 1 FROM {$g5['g5_shop_cart_table']} ct WHERE ct.od_id = o.cart_id AND ct.dmk_br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "'))";
+            } else {
+                $branch_filter = " AND 1=0"; // 소속 지점이 없으면 조회 불가
+            }
+            break;
+        case 3: // 지점 - 자신의 주문만
+            $branch_filter = " AND EXISTS (SELECT 1 FROM {$g5['g5_shop_cart_table']} ct WHERE ct.od_id = o.cart_id AND ct.dmk_br_id = '" . sql_escape_string($dmk_auth['br_id']) . "')";
+            break;
+    }
+}
+
+$sql_common = " from {$g5['g5_shop_order_data_table']} o ";
+
+$sql_search = " where cart_id <> '0' " . $branch_filter;
 if ($stx) {
     $sql_search .= " and ( ";
     switch ($sfl) {

@@ -46,6 +46,7 @@ $od['mb_id'] = $od['mb_id'] ? $od['mb_id'] : "비회원";
 
 $pg_anchor = '<ul class="anchor">
 <li><a href="#anc_sodr_list">주문상품 목록</a></li>
+<li><a href="#anc_branch_order_info">지점별 주문정보</a></li>
 <li><a href="#anc_sodr_pay">주문결제 내역</a></li>
 <li><a href="#anc_sodr_chk">결제상세정보 확인</a></li>
 <li><a href="#anc_sodr_paymo">결제상세정보 수정</a></li>
@@ -295,6 +296,126 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
     </section>
     <?php } ?>
 
+</section>
+
+<!-- 도매까 지점별 주문 정보 섹션 -->
+<section id="anc_branch_order_info" style="margin: 20px 0;">
+    <h2 class="h2_frm"><i class="fa fa-map-marker" style="color:#007bff;"></i> 지점별 주문 정보</h2>
+    
+    <?php
+    // 지점별 주문 상품 정보 조회
+    $branch_order_sql = " SELECT 
+                            c.dmk_br_id,
+                            b.br_name,
+                            a.ag_name,
+                            c.it_id,
+                            c.it_name,
+                            c.ct_option,
+                            c.ct_qty,
+                            c.ct_price,
+                            c.io_price,
+                            c.ct_status,
+                            i.it_img1
+                          FROM {$g5['g5_shop_cart_table']} c
+                          LEFT JOIN dmk_branch b ON c.dmk_br_id = b.br_id
+                          LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id
+                          LEFT JOIN {$g5['g5_shop_item_table']} i ON c.it_id = i.it_id
+                          WHERE c.od_id = '" . sql_escape_string($od_id) . "' 
+                          AND c.dmk_br_id IS NOT NULL 
+                          AND c.dmk_br_id != ''
+                          ORDER BY a.ag_name, b.br_name, c.it_name ";
+    
+    $branch_order_result = sql_query($branch_order_sql);
+    $branch_orders = array();
+    
+    while ($branch_row = sql_fetch_array($branch_order_result)) {
+        $branch_id = $branch_row['dmk_br_id'];
+        if (!isset($branch_orders[$branch_id])) {
+            $branch_orders[$branch_id] = array(
+                'branch_info' => $branch_row,
+                'items' => array()
+            );
+        }
+        $branch_orders[$branch_id]['items'][] = $branch_row;
+    }
+    ?>
+    
+    <?php if (!empty($branch_orders)) { ?>
+    <div class="tbl_head01 tbl_wrap">
+        <?php foreach ($branch_orders as $branch_id => $branch_data) { ?>
+        <div style="margin-bottom: 30px; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+            <div style="background: #f8f9fa; padding: 15px; border-bottom: 1px solid #e9ecef;">
+                <h4 style="margin: 0; color: #495057;">
+                    <i class="fa fa-building" style="color: #007bff; margin-right: 8px;"></i>
+                    <?php echo htmlspecialchars($branch_data['branch_info']['ag_name'] . ' - ' . $branch_data['branch_info']['br_name']); ?>
+                    <span style="color: #6c757d; font-size: 0.9em;">(지점코드: <?php echo $branch_id ?>)</span>
+                </h4>
+            </div>
+            
+            <table style="width: 100%; margin: 0;">
+                <thead>
+                <tr style="background: #ffffff;">
+                    <th scope="col" style="padding: 12px; border-bottom: 1px solid #dee2e6;">상품</th>
+                    <th scope="col" style="padding: 12px; border-bottom: 1px solid #dee2e6;">옵션</th>
+                    <th scope="col" style="padding: 12px; border-bottom: 1px solid #dee2e6;">상태</th>
+                    <th scope="col" style="padding: 12px; border-bottom: 1px solid #dee2e6;">수량</th>
+                    <th scope="col" style="padding: 12px; border-bottom: 1px solid #dee2e6;">단가</th>
+                    <th scope="col" style="padding: 12px; border-bottom: 1px solid #dee2e6;">소계</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php 
+                $branch_total = 0;
+                foreach ($branch_data['items'] as $item) { 
+                    $item_price = $item['ct_price'] + $item['io_price'];
+                    $item_total = $item_price * $item['ct_qty'];
+                    $branch_total += $item_total;
+                ?>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f3f4;">
+                        <?php if ($item['it_img1']) { ?>
+                        <img src="<?php echo G5_DATA_URL ?>/item/<?php echo $item['it_img1'] ?>" alt="상품이미지" style="width: 40px; height: 40px; margin-right: 8px; vertical-align: middle;">
+                        <?php } ?>
+                        <?php echo htmlspecialchars($item['it_name']) ?>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f3f4; font-size: 0.9em; color: #666;">
+                        <?php echo htmlspecialchars($item['ct_option'] ?: '-') ?>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f3f4; text-align: center;">
+                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.8em; background: #e9ecef; color: #495057;">
+                            <?php echo htmlspecialchars($item['ct_status']) ?>
+                        </span>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f3f4; text-align: right;">
+                        <?php echo number_format($item['ct_qty']) ?>개
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f3f4; text-align: right;">
+                        <?php echo number_format($item_price) ?>원
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f3f4; text-align: right; font-weight: bold;">
+                        <?php echo number_format($item_total) ?>원
+                    </td>
+                </tr>
+                <?php } ?>
+                <tr style="background: #f8f9fa;">
+                    <td colspan="5" style="padding: 12px; font-weight: bold; text-align: right;">지점별 합계</td>
+                    <td style="padding: 12px; text-align: right; font-weight: bold; color: #007bff; font-size: 1.1em;">
+                        <?php echo number_format($branch_total) ?>원
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <?php } ?>
+    </div>
+    <?php } else { ?>
+    <div class="local_desc02 local_desc">
+        <p style="text-align: center; color: #6c757d; padding: 40px;">
+            <i class="fa fa-info-circle" style="font-size: 1.2em; margin-right: 8px;"></i>
+            이 주문에는 지점별 주문 정보가 없습니다.
+        </p>
+    </div>
+    <?php } ?>
 </section>
 
 <?php if($od['od_test']) { ?>

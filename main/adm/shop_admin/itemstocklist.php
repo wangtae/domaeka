@@ -1,6 +1,7 @@
 <?php
 $sub_menu = '400620';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
@@ -31,6 +32,7 @@ if ($sort2 == "") $sort2 = "asc";
 
 $sql_common = "  from {$g5['g5_shop_item_table']} ";
 $sql_common .= $sql_search;
+$sql_common .= dmk_get_item_where_condition();
 
 // 테이블의 전체 레코드수만 얻음
 $sql = " select count(*) as cnt " . $sql_common;

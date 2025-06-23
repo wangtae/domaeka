@@ -1,8 +1,14 @@
 <?php
 $sub_menu = '400610';
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
+
+// 도매까 권한 확인 - 상품유형관리는 총판 관리자만 접근 가능
+if (!dmk_can_modify_category()) {
+    alert('상품유형관리는 최고관리자 또는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+}
 
 $doc = isset($_GET['doc']) ? clean_xss_tags($_GET['doc'], 1, 1) : '';
 $sfl = in_array($sfl, array('it_name', 'it_id')) ? $sfl : '';

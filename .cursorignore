@@ -19,6 +19,12 @@
 /main/js/tooltipster/
 /main/lib/PHPExcel/ # 대규모 외부 라이브러리
 /main/lib/Excel/php_writeexcel/ # 대규모 외부 라이브러리
+
+/main/data/
+/main/mobile/
+/main/plugin/
+/main/adm/sms_admin/
+
 /main/plugin/PHPMailer/ # 대규모 외부 라이브러리
 /main/plugin/editor/cheditor5/
 /main/plugin/editor/smarteditor2/

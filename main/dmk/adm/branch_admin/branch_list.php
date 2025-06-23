@@ -157,6 +157,7 @@ if ($dmk_auth['mb_type'] == 1 || $dmk_auth['is_super']) {
         </td>
         <td class="td_mng td_mng_s">
             <a href="./branch_form.php?w=u&br_id=<?php echo $row['br_id'] ?>" class="btn btn_03">수정</a>
+            <a href="<?php echo G5_URL ?>/shop/order_page.php?br_id=<?php echo $row['br_id'] ?>" class="btn btn_02" target="_blank">주문페이지</a>
         </td>
     </tr>
 

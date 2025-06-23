@@ -702,6 +702,45 @@ $(function(){
                 <label for="chk_all_it_stock_qty">전체적용</label>
             </td>
         </tr>
+
+        <!-- 도매까 지점별 재고 관리 -->
+        <?php
+        $dmk_auth = dmk_get_admin_auth();
+        if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, 총판, 대리점만 지점별 재고 설정 가능
+        ?>
+        <tr>
+            <th scope="row" colspan="3" style="background:#e3f2fd; text-align:center; font-weight:bold; color:#1976d2; padding:15px;">
+                <i class="fa fa-cubes"></i> 지점별 재고 관리
+                <button type="button" onclick="toggleBranchStock()" style="margin-left:10px; padding:5px 10px; background:#2196f3; color:white; border:none; border-radius:3px; cursor:pointer;">
+                    <span id="branch-stock-toggle-text">펼치기</span>
+                </button>
+            </th>
+        </tr>
+        <tr id="branch-stock-section" style="display:none;">
+            <td colspan="3" style="padding:20px; background:#f8f9fa;">
+                <div style="margin-bottom:15px; color:#6c757d; font-size:0.9em;">
+                    <strong>안내:</strong> 각 지점별로 다른 재고 수량을 설정할 수 있습니다.
+                </div>
+                
+                <div id="branch-stock-list">
+                    <div style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
+                        <div><strong>지점명</strong></div>
+                        <div><strong>재고수량</strong></div>
+                        <div><strong>안전재고</strong></div>
+                        <div><strong>관리</strong></div>
+                    </div>
+                </div>
+                
+                <div style="margin-top:15px;">
+                    <select id="new-branch-select" class="frm_input" style="width:200px;">
+                        <option value="">지점을 선택하세요</option>
+                    </select>
+                    <button type="button" onclick="addBranchStock()" style="margin-left:10px; padding:5px 10px; background:#28a745; color:white; border:none; border-radius:3px;">지점 추가</button>
+                </div>
+            </td>
+        </tr>
+        <?php } ?>
+
         <tr>
             <th scope="row"><label for="it_noti_qty">재고 통보수량</label></th>
             <td>
@@ -1897,6 +1936,127 @@ function categorychange(f)
 }
 
 categorychange(document.fitemform);
+
+// 도매까 지점별 재고 관리 JavaScript 함수들
+function toggleBranchStock() {
+    var section = document.getElementById('branch-stock-section');
+    var text = document.getElementById('branch-stock-toggle-text');
+    
+    if (section.style.display === 'none') {
+        section.style.display = 'table-row';
+        text.textContent = '접기';
+        loadAvailableBranches();
+    } else {
+        section.style.display = 'none';
+        text.textContent = '펼치기';
+    }
+}
+
+function loadAvailableBranches() {
+    var select = document.getElementById('new-branch-select');
+    
+    // AJAX로 사용 가능한 지점 목록 가져오기
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', './ajax_get_owners.php', true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            var response = JSON.parse(xhr.responseText);
+            
+            // 기존 옵션 제거 (첫 번째 옵션 제외)
+            select.innerHTML = '<option value="">지점을 선택하세요</option>';
+            
+            if (response.success) {
+                response.data.forEach(function(branch) {
+                    var option = document.createElement('option');
+                    option.value = branch.id;
+                    option.textContent = branch.name + ' (' + branch.id + ')';
+                    select.appendChild(option);
+                });
+            }
+        }
+    };
+    
+    xhr.send('owner_type=3'); // 지점 타입
+}
+
+function addBranchStock() {
+    var select = document.getElementById('new-branch-select');
+    var branchId = select.value;
+    var branchName = select.options[select.selectedIndex].text;
+    
+    if (!branchId) {
+        alert('지점을 선택해주세요.');
+        return;
+    }
+    
+    // 이미 추가된 지점인지 확인
+    var existingInputs = document.querySelectorAll('input[name*="[br_id]"]');
+    for (var i = 0; i < existingInputs.length; i++) {
+        if (existingInputs[i].value === branchId) {
+            alert('이미 추가된 지점입니다.');
+            return;
+        }
+    }
+    
+    var list = document.getElementById('branch-stock-list');
+    var index = list.children.length - 1; // 헤더 제외
+    
+    var item = document.createElement('div');
+    item.className = 'branch-stock-item';
+    item.style.cssText = 'display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; margin-bottom:5px; padding:10px; background:#ffffff; border:1px solid #dee2e6; border-radius:5px;';
+    
+    item.innerHTML = `
+        <div>
+            <strong>${branchName}</strong>
+            <input type="hidden" name="branch_stocks[${index}][br_id]" value="${branchId}">
+        </div>
+        <div>
+            <input type="number" name="branch_stocks[${index}][stock_qty]" 
+                   value="0" min="0" class="frm_input" style="width:80px;" onchange="calculateTotalStock()"> 개
+        </div>
+        <div>
+            <input type="number" name="branch_stocks[${index}][safe_qty]" 
+                   value="0" min="0" class="frm_input" style="width:80px;"> 개
+        </div>
+        <div>
+            <button type="button" onclick="removeBranchStock(this)" style="padding:5px 10px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">삭제</button>
+        </div>
+    `;
+    
+    list.appendChild(item);
+    select.value = '';
+    calculateTotalStock();
+}
+
+function removeBranchStock(button) {
+    button.closest('.branch-stock-item').remove();
+    calculateTotalStock();
+}
+
+function calculateTotalStock() {
+    var stockInputs = document.querySelectorAll('input[name*="[stock_qty]"]');
+    var total = 0;
+    
+    stockInputs.forEach(function(input) {
+        total += parseInt(input.value) || 0;
+    });
+    
+    var totalDisplay = document.getElementById('total-branch-stock');
+    if (totalDisplay) {
+        totalDisplay.textContent = total;
+    }
+}
+
+function syncTotalStock() {
+    var totalBranchStock = document.getElementById('total-branch-stock').textContent;
+    var mainStockInput = document.getElementById('it_stock_qty');
+    
+    if (confirm('지점별 재고 합계(' + totalBranchStock + '개)를 상단 재고수량에 반영하시겠습니까?')) {
+        mainStockInput.value = totalBranchStock;
+    }
+}
 </script>
 
 <?php

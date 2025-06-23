@@ -5,6 +5,12 @@ include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "w");
 
+// 도매까 권한 확인 - 총판 관리자만 분류 관리 가능
+$dmk_auth = dmk_get_admin_auth();
+if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > 1) {
+    alert('분류관리는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+}
+
 $ca_include_head = isset($_POST['ca_include_head']) ? trim($_POST['ca_include_head']) : '';
 $ca_include_tail = isset($_POST['ca_include_tail']) ? trim($_POST['ca_include_tail']) : '';
 $ca_id = isset($_REQUEST['ca_id']) ? preg_replace('/[^0-9a-z]/i', '', $_REQUEST['ca_id']) : '';
@@ -81,6 +87,9 @@ foreach( $check_str_keys as $key=>$val ){
     $$key = $_POST[$key] = $value;
 }
 
+$dmk_ca_owner_type = isset($_POST['dmk_ca_owner_type']) ? clean_xss_tags($_POST['dmk_ca_owner_type'], 1, 1) : '';
+$dmk_ca_owner_id = isset($_POST['dmk_ca_owner_id']) ? clean_xss_tags($_POST['dmk_ca_owner_id'], 1, 1) : '';
+
 $ca_head_html = isset($_POST['ca_head_html']) ? $_POST['ca_head_html'] : '';
 $ca_tail_html = isset($_POST['ca_tail_html']) ? $_POST['ca_tail_html'] : '';
 $ca_mobile_head_html = isset($_POST['ca_mobile_head_html']) ? $_POST['ca_mobile_head_html'] : '';
@@ -132,6 +141,13 @@ if ($w == "" || $w == "u")
             alert("\'$ca_mb_id\' 은(는) 존재하는 회원아이디가 아닙니다.");
     }
     */
+
+    if ($w == "") {
+        // 새로운 카테고리 생성 시 도매까 카테고리 소유 정보 기본 설정
+        $owner_info = dmk_get_category_owner_info();
+        $dmk_ca_owner_type = $owner_info['owner_type'];
+        $dmk_ca_owner_id = $owner_info['owner_id'];
+    }
 }
 
 if( $ca_skin && ! is_include_path_check($ca_skin) ){
@@ -185,8 +201,8 @@ $sql_common = " ca_order                = '$ca_order',
                 ca_8                    = '$ca_8',
                 ca_9                    = '$ca_9',
                 ca_10                   = '$ca_10',
-                dmk_ca_owner_type       = '{$_POST['dmk_ca_owner_type']}',
-                dmk_ca_owner_id         = '{$_POST['dmk_ca_owner_id']}' ";
+                dmk_ca_owner_type       = '$dmk_ca_owner_type',
+                dmk_ca_owner_id         = '$dmk_ca_owner_id' ";
 
 
 if ($w == "")

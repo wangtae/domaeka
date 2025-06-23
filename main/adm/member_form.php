@@ -584,7 +584,52 @@ if (!sql_query(" select dmk_mb_owner_type from {$g5['member_table']} limit 1", f
                 }   //end if
 
                 run_event('admin_member_form_add', $mb, $w, 'table');
+
+                // 도매까 소속 정보 관리 필드 추가
+                $dmk_auth = dmk_get_admin_auth();
+                if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, 총판, 대리점만 소속 설정 가능
                 ?>
+                <tr>
+                    <th scope="row" colspan="4" style="background:#f8f9fa; text-align:center; font-weight:bold; color:#495057;">
+                        <i class="fa fa-building"></i> 도매까 소속 정보
+                    </th>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="dmk_mb_owner_type">소속 구분</label></th>
+                    <td>
+                        <select name="dmk_mb_owner_type" id="dmk_mb_owner_type" class="frm_input" onchange="loadOwnerOptions()">
+                            <option value="0"<?php echo ($mb['dmk_mb_owner_type'] == '0') ? ' selected' : ''; ?>>미지정</option>
+                            <option value="1"<?php echo ($mb['dmk_mb_owner_type'] == '1') ? ' selected' : ''; ?>>총판</option>
+                            <option value="2"<?php echo ($mb['dmk_mb_owner_type'] == '2') ? ' selected' : ''; ?>>대리점</option>
+                            <option value="3"<?php echo ($mb['dmk_mb_owner_type'] == '3') ? ' selected' : ''; ?>>지점</option>
+                        </select>
+                    </td>
+                    <th scope="row"><label for="dmk_mb_owner_id">소속 대상</label></th>
+                    <td>
+                        <select name="dmk_mb_owner_id" id="dmk_mb_owner_id" class="frm_input">
+                            <option value="">선택하세요</option>
+                        </select>
+                        <div style="font-size:0.9em; color:#666; margin-top:5px;">
+                            회원이 소속될 총판/대리점/지점을 선택합니다.
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="padding:10px; background:#f8f9fa; border-top:1px solid #dee2e6;">
+                        <div style="font-size:0.85em; color:#6c757d; line-height:1.4;">
+                            <strong>참고:</strong> 소속 구분에 따라 해당 회원의 관리 권한이 결정됩니다.<br>
+                            • <strong>총판:</strong> 해당 총판 소속 회원으로 등록<br>
+                            • <strong>대리점:</strong> 해당 대리점 소속 회원으로 등록<br>
+                            • <strong>지점:</strong> 해당 지점 소속 회원으로 등록<br>
+                            • <strong>미지정:</strong> 최고관리자만 관리 가능한 회원
+                        </div>
+                    </td>
+                </tr>
+                
+                <!-- 숨겨진 필드로 소유자 정보 전송 -->
+                <input type="hidden" name="dmk_mb_owner_type" value="<?php echo $mb['dmk_mb_owner_type'] ?>">
+                <input type="hidden" name="dmk_mb_owner_id" value="<?php echo $mb['dmk_mb_owner_id'] ?>">
+                <?php } ?>
 
                 <?php for ($i = 1; $i <= 10; $i++) { ?>
                     <tr>
@@ -643,7 +688,56 @@ if (!sql_query(" select dmk_mb_owner_type from {$g5['member_table']} limit 1", f
                 if($("#"+tooptipid).length && ! is_invisible_recaptcha){ $parent.find("#"+tooptipid).remove(); }
             }
         });
+
+        // 도매까 소속 정보 초기 로드
+        loadOwnerOptions();
     });
+
+    // 소속 구분에 따른 대상 목록 로드
+    function loadOwnerOptions() {
+        var ownerType = document.getElementById('dmk_mb_owner_type').value;
+        var ownerIdSelect = document.getElementById('dmk_mb_owner_id');
+        var currentOwnerId = '<?php echo $mb['dmk_mb_owner_id'] ?>';
+        
+        // 기존 옵션 제거
+        ownerIdSelect.innerHTML = '<option value="">선택하세요</option>';
+        
+        if (ownerType == '0') {
+            ownerIdSelect.disabled = true;
+            return;
+        }
+        
+        ownerIdSelect.disabled = false;
+        
+        // AJAX로 해당 구분의 목록 가져오기
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', './ajax_get_owners.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+                
+                if (response.success) {
+                    response.data.forEach(function(item) {
+                        var option = document.createElement('option');
+                        option.value = item.id;
+                        option.textContent = item.name + ' (' + item.id + ')';
+                        
+                        if (item.id === currentOwnerId) {
+                            option.selected = true;
+                        }
+                        
+                        ownerIdSelect.appendChild(option);
+                    });
+                } else {
+                    alert('목록을 불러오는데 실패했습니다: ' + response.message);
+                }
+            }
+        };
+        
+        xhr.send('owner_type=' + encodeURIComponent(ownerType));
+    }
 </script>
 <?php
 run_event('admin_member_form_after', $mb, $w);
