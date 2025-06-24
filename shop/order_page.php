@@ -235,7 +235,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 </div>
                 <div class="flex gap-4 h-full flex-row flex-nowrap items-center">
                     <a href="#info" class="btn-default">매장 정보</a>
-                    <?php if ($branch['br_phone']) { ?>
+        <?php if ($branch['br_phone']) { ?>
                     <a href="tel:<?php echo str_replace('-', '', $branch['br_phone']) ?>" class="btn-default">전화 문의</a>
                     <?php } ?>
                 </div>
@@ -364,9 +364,9 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                             <p class="text-sm">상품 등록 후 주문이 가능합니다</p>
                         </div>
                     </div>
-                    <?php } ?>
-                </div>
-
+        <?php } ?>
+    </div>
+    
                 <!-- Order Summary -->
                 <div class="mx-8 gap-y-1 py-5 border-b flex flex-col">
                     <div class="flex">
@@ -462,7 +462,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             </div>
         </div>
     </div>
-
+    
     <!-- JavaScript -->
     <script>
         let cart = {};
