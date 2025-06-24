@@ -11,12 +11,8 @@ $sql_common = " from {$g5['member_table']} m
 
 $sql_search = " where (1) ";
 
-// 관리자 계정 제외 <i class="fa fa-user-times dmk-new-icon" title="NEW"></i>
-$sql_search .= " AND m.mb_id NOT IN (
-    SELECT mb_id FROM {$g5['member_table']} 
-    WHERE mb_id IN ('admin', 'distributor_admin1', 'agency_admin1', 'agency_admin2', 'branch_admin1', 'branch_admin2')
-    OR mb_level >= 8
-) ";
+// 관리자 계정 제외 (mb_level 4 이상은 관리자)
+$sql_search .= " AND m.mb_level < 4 ";
 
 // 도매까 관리자 권한 정보 조회
 $dmk_auth = dmk_get_admin_auth();

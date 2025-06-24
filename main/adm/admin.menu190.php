@@ -19,6 +19,8 @@ if (isset($member['mb_id']) &&
         array('190300', '지점관리 <i class="fa fa-star" title="NEW"></i> ', G5_URL . '/dmk/adm/branch_admin/branch_list.php', 'dmk_branch'),
         array('190400', '통계분석 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/statistics/statistics_dashboard.php', 'dmk_statistics'),
         array('190500', 'URL관리 <i class="fa fa-link" title="URL"></i>', G5_URL . '/dmk/adm/branch_admin/url_management.php', 'dmk_url'),
+        array('190600', '관리자관리 <i class="fa fa-users-cog" title="관리자"></i>', G5_URL . '/dmk/adm/admin_manager/admin_list.php', 'dmk_admin'),
+        array('190700', '도매까권한설정 <i class="fa fa-shield-alt" title="권한"></i>', G5_URL . '/dmk/adm/admin_manager/dmk_auth_list.php', 'dmk_auth'),
     );
 } else {
     $menu['menu190'] = array(); // 권한이 없으면 빈 배열로 설정하여 메뉴를 숨김

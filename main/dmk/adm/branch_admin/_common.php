@@ -9,7 +9,7 @@
 
 // 그누보드 관리자 공통 파일을 포함하여 필요한 상수 및 함수를 로드합니다.
 // main/adm/_common.php는 이제 main/common.php를 절대 경로로 로드합니다.
-require_once '/../../../adm/_common.php';
+require_once G5_ADMIN_PATH . '/_common.php';
 
 // 도매까 권한 라이브러리를 포함합니다.
 require_once G5_DMK_PATH . '/adm/lib/admin.auth.lib.php';

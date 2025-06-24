@@ -72,7 +72,8 @@ $check_keys = array(
     'mb_sms',
     'mb_open',
     'mb_profile',
-    'mb_level'
+    'mb_level',
+    'dmk_mb_type'
 );
 
 for ($i = 1; $i <= 10; $i++) {
@@ -88,6 +89,29 @@ foreach ($check_keys as $key) {
 }
 
 $mb_memo = isset($_POST['mb_memo']) ? $_POST['mb_memo'] : '';
+
+// dmk_mb_type 에 따라 mb_level 값 재설정 (서버측 유효성 검사 및 최종 설정)
+$dmk_mb_type_val = $posts['dmk_mb_type'];
+switch ($dmk_mb_type_val) {
+    case '0': // 본사
+        $posts['mb_level'] = 10;
+        break;
+    case '1': // 총판
+        $posts['mb_level'] = 8;
+        break;
+    case '2': // 대리점
+        $posts['mb_level'] = 6;
+        break;
+    case '3': // 지점
+        $posts['mb_level'] = 4;
+        break;
+    case '99': // 일반 회원
+        $posts['mb_level'] = 2;
+        break;
+    default:
+        $posts['mb_level'] = 2; // 기본값
+        break;
+}
 
 $sql_common = "  mb_name = '{$posts['mb_name']}',
                  mb_nick = '{$mb_nick}',
@@ -123,7 +147,8 @@ $sql_common = "  mb_name = '{$posts['mb_name']}',
                  mb_9 = '{$posts['mb_9']}',
                  mb_10 = '{$posts['mb_10']}',
                  dmk_mb_owner_type = '{$_POST['dmk_mb_owner_type']}',
-                 dmk_mb_owner_id = '{$_POST['dmk_mb_owner_id']}' ";
+                 dmk_mb_owner_id = '{$_POST['dmk_mb_owner_id']}',
+                 dmk_mb_type = '{$posts['dmk_mb_type']}' ";
 
 if ($w == '') {
     $mb = get_member($mb_id);

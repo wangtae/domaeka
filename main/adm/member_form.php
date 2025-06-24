@@ -40,6 +40,8 @@ $mb = array(
     'mb_10' => null,
     'dmk_mb_owner_type' => '',
     'dmk_mb_owner_id' => '',
+    'dmk_mb_type' => null,
+    'mb_level' => null,
 );
 
 $sound_only = '';
@@ -283,7 +285,16 @@ if (!sql_query(" select dmk_mb_owner_type from {$g5['member_table']} limit 1", f
                 </tr>
                 <tr>
                     <th scope="row"><label for="mb_level">회원 권한</label></th>
-                    <td><?php echo get_member_level_select('mb_level', 1, $member['mb_level'], $mb['mb_level']) ?></td>
+                    <td>
+                        <select name="dmk_mb_type" id="dmk_mb_type">
+                            <option value="0" <?php echo ($mb['dmk_mb_type'] == 0) ? 'selected' : ''; ?>>본사 (레벨 10)</option>
+                            <option value="1" <?php echo ($mb['dmk_mb_type'] == 1) ? 'selected' : ''; ?>>총판 (레벨 8)</option>
+                            <option value="2" <?php echo ($mb['dmk_mb_type'] == 2) ? 'selected' : ''; ?>>대리점 (레벨 6)</option>
+                            <option value="3" <?php echo ($mb['dmk_mb_type'] == 3) ? 'selected' : ''; ?>>지점 (레벨 4)</option>
+                            <option value="99" <?php echo ($mb['dmk_mb_type'] == 99) ? 'selected' : ''; ?>>일반 회원 (레벨 2)</option>
+                        </select>
+                        <input type="hidden" name="mb_level" id="mb_level" value="<?php echo $mb['mb_level']; ?>">
+                    </td>
                     <th scope="row">포인트</th>
                     <td><a href="./point_list.php?sfl=mb_id&amp;stx=<?php echo $mb['mb_id'] ?>" target="_blank"><?php echo number_format($mb['mb_point']) ?></a> 점</td>
                 </tr>
@@ -375,7 +386,7 @@ if (!sql_query(" select dmk_mb_owner_type from {$g5['member_table']} limit 1", f
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row">메일 수신</th>
+                    <th scope="row"><label for="mb_mailling">메일 수신</label></th>
                     <td>
                         <input type="radio" name="mb_mailling" value="1" id="mb_mailling_yes" <?php echo $mb_mailling_yes; ?>>
                         <label for="mb_mailling_yes">예</label>
@@ -738,6 +749,43 @@ if (!sql_query(" select dmk_mb_owner_type from {$g5['member_table']} limit 1", f
         
         xhr.send('owner_type=' + encodeURIComponent(ownerType));
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const dmkMbTypeSelect = document.getElementById('dmk_mb_type');
+        const mbLevelInput = document.getElementById('mb_level');
+
+        function updateMbLevel() {
+            const selectedDmkMbType = dmkMbTypeSelect.value;
+            let newMbLevel = 0;
+            switch (selectedDmkMbType) {
+                case '0': // 본사
+                    newMbLevel = 10;
+                    break;
+                case '1': // 총판
+                    newMbLevel = 8;
+                    break;
+                case '2': // 대리점
+                    newMbLevel = 6;
+                    break;
+                case '3': // 지점
+                    newMbLevel = 4;
+                    break;
+                case '99': // 일반 회원
+                    newMbLevel = 2;
+                    break;
+                default:
+                    newMbLevel = 2; // 기본값
+                    break;
+            }
+            mbLevelInput.value = newMbLevel;
+        }
+
+        // 페이지 로드 시 초기값 설정
+        updateMbLevel();
+
+        // dmk_mb_type 변경 시 mb_level 업데이트
+        dmkMbTypeSelect.addEventListener('change', updateMbLevel);
+    });
 </script>
 <?php
 run_event('admin_member_form_after', $mb, $w);
