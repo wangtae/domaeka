@@ -200,11 +200,8 @@ if ($w == 'u') {
                 br_phone = '" . sql_escape_string($br_phone) . "',
                 br_address = '" . sql_escape_string($br_address) . "',
                 br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
-                br_mb_id = '" . sql_escape_string($mb_id) . "',
                 br_datetime = NOW(),
-                br_status = $br_status,
-                br_created_by = '" . sql_escape_string($current_admin['mb_id']) . "',
-                br_admin_type = 'main' ";
+                br_status = $br_status ";
     sql_query($sql);
     
     $msg = '지점과 관리자가 등록되었습니다.';

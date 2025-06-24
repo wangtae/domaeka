@@ -26,9 +26,19 @@ if ($w == 'u') {
         alert('존재하지 않는 대리점입니다.');
     }
     
-    // 기존 관리자 정보 조회
-    $admin_sql = " SELECT mb_id, mb_name, mb_email, mb_phone FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($agency['ag_mb_id']) . "' ";
+    // 기존 관리자 정보 조회 (ag_id가 곧 관리자 ID)
+    $admin_sql = " SELECT mb_id, mb_name, mb_email, mb_phone FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($agency['ag_id']) . "' ";
     $admin_info = sql_fetch($admin_sql);
+    
+    // 관리자 정보가 없을 경우 기본값으로 초기화
+    if (!$admin_info) {
+        $admin_info = array(
+            'mb_id' => $agency['ag_id'], // ag_id를 관리자 ID로 사용
+            'mb_name' => '',
+            'mb_email' => '',
+            'mb_phone' => ''
+        );
+    }
     
 } else {
     $html_title .= '등록';
@@ -46,12 +56,11 @@ if ($w == 'u') {
         'ag_ceo_name' => '',
         'ag_phone' => '',
         'ag_address' => '',
-        'ag_mb_id' => '',
         'ag_status' => 1
     );
     
     $admin_info = array(
-        'mb_id' => '',
+        'mb_id' => $agency_id, // ag_id를 관리자 ID로 사용
         'mb_name' => '',
         'mb_email' => '',
         'mb_phone' => ''
@@ -142,14 +151,9 @@ $qstr = http_build_query($params, '', '&amp;');
     <tr>
         <th scope="row"><label for="mb_id">관리자 아이디<strong class="sound_only">필수</strong></label></th>
         <td>
-            <?php if ($w == 'u') { ?>
-                <input type="text" name="mb_id_display" value="<?php echo $admin_info['mb_id'] ?>" id="mb_id_display" class="frm_input" size="20" readonly>
-                <span class="frm_info">관리자 아이디는 수정할 수 없습니다.</span>
-                <input type="hidden" name="mb_id" value="<?php echo $admin_info['mb_id'] ?>">
-            <?php } else { ?>
-                <input type="text" name="mb_id" value="<?php echo $admin_info['mb_id'] ?>" id="mb_id" required class="frm_input required" size="20" maxlength="20">
-                <span class="frm_info">영문, 숫자, 언더스코어만 사용 가능 (3~20자)</span>
-            <?php } ?>
+            <input type="text" name="mb_id_display" value="<?php echo $admin_info['mb_id'] ?>" id="mb_id_display" class="frm_input" size="20" readonly>
+            <span class="frm_info">관리자 아이디는 대리점 ID와 동일합니다.</span>
+            <input type="hidden" name="mb_id" value="<?php echo $admin_info['mb_id'] ?>">
         </td>
     </tr>
     <?php if ($w != 'u') { ?>
@@ -208,6 +212,20 @@ $qstr = http_build_query($params, '', '&amp;');
 </form>
 
 <script>
+// 대리점 ID 변경 시 관리자 ID도 동일하게 업데이트
+document.addEventListener('DOMContentLoaded', function() {
+    var ag_id_input = document.getElementById('ag_id');
+    var mb_id_display = document.getElementById('mb_id_display');
+    var mb_id_hidden = document.querySelector('input[name="mb_id"]');
+    
+    if (ag_id_input) {
+        ag_id_input.addEventListener('input', function() {
+            mb_id_display.value = this.value;
+            mb_id_hidden.value = this.value;
+        });
+    }
+});
+
 function fagency_submit(f)
 {
     if (!f.ag_id.value) {
@@ -222,11 +240,7 @@ function fagency_submit(f)
         return false;
     }
     
-    if (!f.mb_id.value) {
-        alert("관리자 아이디를 입력하세요.");
-        f.mb_id.focus();
-        return false;
-    }
+    // mb_id는 ag_id와 동일하므로 별도 체크 불필요
     
     // 신규 등록시 비밀번호 확인
     <?php if ($w != 'u') { ?>

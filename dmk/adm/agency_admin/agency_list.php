@@ -95,6 +95,7 @@ $g5['title'] = '대리점 관리';
         <th scope="col">대표자명</th>
         <th scope="col">전화번호</th>
         <th scope="col">관리자ID</th>
+        <th scope="col">관리 지점수</th>
         <th scope="col"><?php echo subject_sort_link('ag_datetime') ?>등록일</a></th>
         <th scope="col"><?php echo subject_sort_link('ag_status') ?>상태</a></th>
         <th scope="col">관리</th>
@@ -105,8 +106,8 @@ $g5['title'] = '대리점 관리';
     for ($i=0; $row=sql_fetch_array($result); $i++) {
         $bg = 'bg'.($i%2);
         
-        // 관리자 정보 조회
-        $admin_sql = " SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '{$row['ag_mb_id']}' ";
+        // 관리자 정보 조회 (ag_id가 곧 관리자 ID)
+        $admin_sql = " SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '{$row['ag_id']}' ";
         $admin_row = sql_fetch($admin_sql);
         $admin_name = $admin_row ? $admin_row['mb_name'] : '미지정';
         
@@ -132,10 +133,11 @@ $g5['title'] = '대리점 관리';
         <td><?php echo get_text($row['ag_ceo_name']) ?></td>
         <td><?php echo $row['ag_phone'] ?></td>
         <td>
-            <a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&mb_id=<?php echo $row['ag_mb_id'] ?>" target="_blank">
-                <?php echo $row['ag_mb_id'] ?> (<?php echo $admin_name ?>)
+            <a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&mb_id=<?php echo $row['ag_id'] ?>" target="_blank">
+                <?php echo $row['ag_id'] ?> (<?php echo $admin_name ?>)
             </a>
         </td>
+        <td class="td_num"> <?php echo number_format($branch_count) ?> </td>
         <td class="td_datetime"><?php echo substr($row['ag_datetime'], 0, 10) ?></td>
         <td class="td_mng">
             <?php echo $row['ag_status'] ? '<span class="txt_true">활성</span>' : '<span class="txt_false">비활성</span>' ?>
@@ -149,7 +151,7 @@ $g5['title'] = '대리점 관리';
     <?php
     }
     if ($i == 0)
-        echo '<tr><td colspan="10" class="empty_table">자료가 없습니다.</td></tr>';
+        echo '<tr><td colspan="11" class="empty_table">자료가 없습니다.</td></tr>';
     ?>
     </tbody>
     </table>

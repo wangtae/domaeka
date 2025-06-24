@@ -27,9 +27,19 @@ if ($w == 'u') {
         alert('존재하지 않는 지점입니다.');
     }
     
-    // 기존 관리자 정보 조회
-    $admin_sql = " SELECT mb_id, mb_name, mb_email, mb_phone FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($branch['br_mb_id']) . "' ";
+    // 기존 관리자 정보 조회 (br_id가 곧 관리자 ID)
+    $admin_sql = " SELECT mb_id, mb_name, mb_email, mb_phone FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($branch['br_id']) . "' ";
     $admin_info = sql_fetch($admin_sql);
+
+    // 관리자 정보가 없을 경우 기본값으로 초기화
+    if (!$admin_info) {
+        $admin_info = array(
+            'mb_id' => $branch['br_id'], // br_id를 관리자 ID로 사용
+            'mb_name' => '',
+            'mb_email' => '',
+            'mb_phone' => ''
+        );
+    }
     
 } else {
     $html_title .= '등록';
@@ -41,6 +51,24 @@ if ($w == 'u') {
     $next_num = $row['max_num'] ? $row['max_num'] + 1 : 1;
     $branch_id = 'BR' . str_pad($next_num, 3, '0', STR_PAD_LEFT);
     
+    // 8~12자리 단축 코드 자동 생성 함수
+    function generate_shortcut_code() {
+        $length = rand(8, 12);
+        $characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        $shortcut_code = '';
+        for ($i = 0; $i < $length; $i++) {
+            $shortcut_code .= $characters[rand(0, strlen($characters) - 1)];
+        }
+        return $shortcut_code;
+    }
+    
+    // 중복되지 않는 단축 코드 생성
+    do {
+        $shortcut_code = generate_shortcut_code();
+        $check_sql = " SELECT COUNT(*) as cnt FROM dmk_branch WHERE br_shortcut_code = '" . sql_escape_string($shortcut_code) . "' ";
+        $check_result = sql_fetch($check_sql);
+    } while ($check_result['cnt'] > 0);
+    
     $branch = array(
         'br_id' => $branch_id,
         'ag_id' => $ag_id,
@@ -48,13 +76,12 @@ if ($w == 'u') {
         'br_ceo_name' => '',
         'br_phone' => '',
         'br_address' => '',
-        'br_shortcut_code' => '',
-        'br_mb_id' => '',
+        'br_shortcut_code' => $shortcut_code,
         'br_status' => 1
     );
     
     $admin_info = array(
-        'mb_id' => '',
+        'mb_id' => $branch_id, // br_id를 관리자 ID로 사용
         'mb_name' => '',
         'mb_email' => '',
         'mb_phone' => ''
@@ -85,7 +112,18 @@ while ($agency_row = sql_fetch_array($agency_result)) {
     $agency_options .= '<option value="' . $agency_row['ag_id'] . '"' . $selected . '>' . $agency_row['ag_name'] . ' (' . $agency_row['ag_id'] . ')</option>';
 }
 
-$qstr = get_query_string($qstr_valid, Array('w', 'br_id', 'ag_id'));
+// 기존 get_query_string()의 역할을 대체합니다.
+// 현재 쿼리 스트링에서 'w', 'br_id', 'ag_id'를 제외한 새로운 쿼리 스트링을 생성합니다.
+$current_query_string = $_SERVER['QUERY_STRING'];
+parse_str($current_query_string, $params);
+
+// 제외할 파라미터들
+$exclude_params = array('w', 'br_id', 'ag_id');
+foreach ($exclude_params as $param) {
+    unset($params[$param]);
+}
+
+$qstr = http_build_query($params, '', '&amp;');
 ?>
 
 <form name="fbranch" id="fbranch" action="./branch_form_update.php" onsubmit="return fbranch_submit(this);" method="post" enctype="multipart/form-data">
@@ -171,14 +209,9 @@ $qstr = get_query_string($qstr_valid, Array('w', 'br_id', 'ag_id'));
     <tr>
         <th scope="row"><label for="mb_id">관리자 아이디<strong class="sound_only">필수</strong></label></th>
         <td>
-            <?php if ($w == 'u') { ?>
-                <input type="text" name="mb_id_display" value="<?php echo $admin_info['mb_id'] ?>" id="mb_id_display" class="frm_input" size="20" readonly>
-                <span class="frm_info">관리자 아이디는 수정할 수 없습니다.</span>
-                <input type="hidden" name="mb_id" value="<?php echo $admin_info['mb_id'] ?>">
-            <?php } else { ?>
-                <input type="text" name="mb_id" value="<?php echo $admin_info['mb_id'] ?>" id="mb_id" required class="frm_input required" size="20" maxlength="20">
-                <span class="frm_info">영문, 숫자, 언더스코어만 사용 가능 (3~20자)</span>
-            <?php } ?>
+            <input type="text" name="mb_id_display" value="<?php echo $admin_info['mb_id'] ?>" id="mb_id_display" class="frm_input" size="20" readonly>
+            <span class="frm_info">관리자 아이디는 지점 ID와 동일합니다.</span>
+            <input type="hidden" name="mb_id" value="<?php echo $admin_info['mb_id'] ?>">
         </td>
     </tr>
     <?php if ($w != 'u') { ?>
@@ -237,6 +270,20 @@ $qstr = get_query_string($qstr_valid, Array('w', 'br_id', 'ag_id'));
 </form>
 
 <script>
+// 지점 ID 변경 시 관리자 ID도 동일하게 업데이트
+document.addEventListener('DOMContentLoaded', function() {
+    var br_id_input = document.getElementById('br_id');
+    var mb_id_display = document.getElementById('mb_id_display');
+    var mb_id_hidden = document.querySelector('input[name="mb_id"]');
+    
+    if (br_id_input) {
+        br_id_input.addEventListener('input', function() {
+            mb_id_display.value = this.value;
+            mb_id_hidden.value = this.value;
+        });
+    }
+});
+
 function fbranch_submit(f)
 {
     if (!f.br_id.value) {
@@ -257,11 +304,7 @@ function fbranch_submit(f)
         return false;
     }
     
-    if (!f.mb_id.value) {
-        alert("관리자 아이디를 입력하세요.");
-        f.mb_id.focus();
-        return false;
-    }
+    // mb_id는 br_id와 동일하므로 별도 체크 불필요
     
     // 신규 등록시 비밀번호 확인
     <?php if ($w != 'u') { ?>

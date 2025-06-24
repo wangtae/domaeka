@@ -5,6 +5,11 @@ include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
 
 $dmk_auth = dmk_get_admin_auth();
 
+// 권한이 없거나 로그인하지 않은 경우 처리
+if (!is_array($dmk_auth)) {
+    alert('접근 권한이 없습니다.', G5_ADMIN_URL);
+}
+
 // 도매까 관련 메뉴만 필터링
 $dmk_menu_codes = array('190000', '190100', '190200', '190300', '190400', '190500', '190600', '190700');
 

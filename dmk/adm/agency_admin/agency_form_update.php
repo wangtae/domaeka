@@ -156,11 +156,8 @@ if ($w == 'u') {
                 ag_ceo_name = '" . sql_escape_string($ag_ceo_name) . "',
                 ag_phone = '" . sql_escape_string($ag_phone) . "',
                 ag_address = '" . sql_escape_string($ag_address) . "',
-                ag_mb_id = '" . sql_escape_string($mb_id) . "',
                 ag_datetime = NOW(),
-                ag_status = $ag_status,
-                ag_created_by = '" . sql_escape_string($current_admin['mb_id']) . "',
-                ag_admin_type = 'main' ";
+                ag_status = $ag_status ";
     sql_query($sql);
     
     $msg = '대리점과 관리자가 등록되었습니다.';
