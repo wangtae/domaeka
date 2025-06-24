@@ -631,29 +631,6 @@ function dmk_auth_check_menu_display($menu_code, $menu_key) {
         return true;
     }
 
-    // 2. 도매까 관리 메뉴 (600xxx) - 통합된 계층형 구조
-    if (substr($menu_code, 0, 3) == '600') {
-        // 도매까 관련 권한자만 접근 가능
-        if ($dmk_auth && in_array($dmk_auth['mb_type'], [DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY, DMK_MB_TYPE_BRANCH])) {
-            
-            // 총판 전용 기능 (600100, 601000, 601100)
-            if (in_array($menu_code, ['600100', '601000', '601100'])) {
-                return ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR);
-            }
-            
-            // 대리점 이상 접근 가능한 기능 (600200)
-            if ($menu_code == '600200') {
-                return in_array($dmk_auth['mb_type'], [DMK_MB_TYPE_DISTRIBUTOR, DMK_MB_TYPE_AGENCY]);
-            }
-            
-            // 모든 계층이 접근 가능한 기능 (상위 계층은 하위 기능 모두 사용 가능)
-            // 600300(지점관리), 600400(회원관리), 600500(상품관리), 600600(주문관리)
-            // 600700(지점주문), 600800(주문내역), 600900(URL관리)
-            return true;
-        }
-        return false;
-    }
-
     // 3. 도매까 메뉴 (190xxx) - 기존 메뉴 구조
     if (substr($menu_code, 0, 3) == '190') {
         return dmk_can_access_menu($menu_key);

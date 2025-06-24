@@ -1,5 +1,5 @@
 <?php
-$sub_menu = "600900";
+$sub_menu = "190500";
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
