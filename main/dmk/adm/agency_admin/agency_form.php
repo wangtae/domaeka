@@ -1,5 +1,5 @@
 <?php
-$sub_menu = "200100";
+$sub_menu = "190200";
 include_once './_common.php';
 
 // 도매까 권한 라이브러리 포함

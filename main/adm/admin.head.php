@@ -22,6 +22,11 @@ if (file_exists(G5_ADMIN_PATH.'/css/admin_dmk.css')) {
     add_stylesheet('<link rel="stylesheet" href="'.G5_ADMIN_URL.'/css/admin_dmk.css?ver='.G5_CSS_VER.'">', 100);
 }
 
+// Tailwind CSS 파일 포함 (도매까 관리자 페이지용)
+if (file_exists(G5_PATH.'/main/dmk/css/tailwind/admin_tailwind.css')) {
+    add_stylesheet('<link rel="stylesheet" href="'.G5_URL.'/main/dmk/css/tailwind/admin_tailwind.css?ver='.G5_CSS_VER.'">', 101);
+}
+
 $g5_debug['php']['begin_time'] = $begin_time = get_microtime();
 
 $files = glob(G5_ADMIN_PATH . '/css/admin_extend_*');
