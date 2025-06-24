@@ -61,7 +61,18 @@ if ($w == 'u') {
 $g5['title'] = $html_title;
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
-$qstr = get_query_string($qstr_valid, Array('w', 'ag_id'));
+// 기존 get_query_string()의 역할을 대체합니다.
+// 현재 쿼리 스트링에서 'w'와 'ag_id'를 제외한 새로운 쿼리 스트링을 생성합니다.
+$current_query_string = $_SERVER['QUERY_STRING'];
+parse_str($current_query_string, $params);
+
+// 제외할 파라미터들
+$exclude_params = array('w', 'ag_id');
+foreach ($exclude_params as $param) {
+    unset($params[$param]);
+}
+
+$qstr = http_build_query($params, '', '&amp;');
 ?>
 
 <form name="fagency" id="fagency" action="./agency_form_update.php" onsubmit="return fagency_submit(this);" method="post" enctype="multipart/form-data">
