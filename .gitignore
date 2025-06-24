@@ -59,7 +59,6 @@ error.log
 *.zip
 *.tar.gz
 *.rar
-*~
 *.bak
 *.backup
 *.orig
