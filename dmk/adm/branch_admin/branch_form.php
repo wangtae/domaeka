@@ -45,12 +45,6 @@ if ($w == 'u') {
     $html_title .= '등록';
     $w = '';
     
-    // 새 지점 ID 생성
-    $sql = " SELECT MAX(CAST(SUBSTRING(br_id, 3) AS UNSIGNED)) as max_num FROM dmk_branch WHERE br_id LIKE 'BR%' ";
-    $row = sql_fetch($sql);
-    $next_num = $row['max_num'] ? $row['max_num'] + 1 : 1;
-    $branch_id = 'BR' . str_pad($next_num, 3, '0', STR_PAD_LEFT);
-    
     // 8~12자리 단축 코드 자동 생성 함수
     function generate_shortcut_code() {
         $length = rand(8, 12);
@@ -68,9 +62,9 @@ if ($w == 'u') {
         $check_sql = " SELECT COUNT(*) as cnt FROM dmk_branch WHERE br_shortcut_code = '" . sql_escape_string($shortcut_code) . "' ";
         $check_result = sql_fetch($check_sql);
     } while ($check_result['cnt'] > 0);
-    
+
     $branch = array(
-        'br_id' => $branch_id,
+        'br_id' => '',
         'ag_id' => $ag_id,
         'br_name' => '',
         'br_ceo_name' => '',
@@ -78,13 +72,6 @@ if ($w == 'u') {
         'br_address' => '',
         'br_shortcut_code' => $shortcut_code,
         'br_status' => 1
-    );
-    
-    $admin_info = array(
-        'mb_id' => $branch_id, // br_id를 관리자 ID로 사용
-        'mb_name' => '',
-        'mb_email' => '',
-        'mb_phone' => ''
     );
 }
 
@@ -199,56 +186,6 @@ $qstr = http_build_query($params, '', '&amp;');
             <input type="text" name="br_address" value="<?php echo get_text($branch['br_address']) ?>" id="br_address" class="frm_input" size="80" maxlength="255">
         </td>
     </tr>
-    
-    <!-- 관리자 계정 정보 섹션 -->
-    <tr>
-        <th scope="row" colspan="2" style="background-color: #f8f9fa; text-align: center; font-weight: bold; padding: 15px;">
-            <?php echo $w == 'u' ? '관리자 계정 정보' : '신규 관리자 계정 생성' ?>
-        </th>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_id">관리자 아이디<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="text" name="mb_id_display" value="<?php echo $admin_info['mb_id'] ?>" id="mb_id_display" class="frm_input" size="20" readonly>
-            <span class="frm_info">관리자 아이디는 지점 ID와 동일합니다.</span>
-            <input type="hidden" name="mb_id" value="<?php echo $admin_info['mb_id'] ?>">
-        </td>
-    </tr>
-    <?php if ($w != 'u') { ?>
-    <tr>
-        <th scope="row"><label for="mb_password">비밀번호<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="password" name="mb_password" id="mb_password" required class="frm_input required" size="20" maxlength="20">
-            <span class="frm_info">영문, 숫자, 특수문자 조합 (6~20자)</span>
-        </td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_password_confirm">비밀번호 확인<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="password" name="mb_password_confirm" id="mb_password_confirm" required class="frm_input required" size="20" maxlength="20">
-        </td>
-    </tr>
-    <?php } ?>
-    <tr>
-        <th scope="row"><label for="mb_name">관리자 이름<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="text" name="mb_name" value="<?php echo get_text($admin_info['mb_name']) ?>" id="mb_name" required class="frm_input required" size="30" maxlength="50">
-        </td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_email">이메일<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="email" name="mb_email" value="<?php echo $admin_info['mb_email'] ?>" id="mb_email" required class="frm_input required" size="50" maxlength="100">
-        </td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_phone">휴대폰번호</label></th>
-        <td>
-            <input type="text" name="mb_phone" value="<?php echo $admin_info['mb_phone'] ?>" id="mb_phone" class="frm_input" size="20" maxlength="20">
-            <span class="frm_info">예: 010-1234-5678</span>
-        </td>
-    </tr>
-    
     <tr>
         <th scope="row"><label for="br_status">상태</label></th>
         <td>
@@ -270,20 +207,6 @@ $qstr = http_build_query($params, '', '&amp;');
 </form>
 
 <script>
-// 지점 ID 변경 시 관리자 ID도 동일하게 업데이트
-document.addEventListener('DOMContentLoaded', function() {
-    var br_id_input = document.getElementById('br_id');
-    var mb_id_display = document.getElementById('mb_id_display');
-    var mb_id_hidden = document.querySelector('input[name="mb_id"]');
-    
-    if (br_id_input) {
-        br_id_input.addEventListener('input', function() {
-            mb_id_display.value = this.value;
-            mb_id_hidden.value = this.value;
-        });
-    }
-});
-
 function fbranch_submit(f)
 {
     if (!f.br_id.value) {
@@ -291,21 +214,16 @@ function fbranch_submit(f)
         f.br_id.focus();
         return false;
     }
-    
     if (!f.ag_id.value) {
         alert("소속 대리점을 선택하세요.");
         f.ag_id.focus();
         return false;
     }
-    
     if (!f.br_name.value) {
         alert("지점명을 입력하세요.");
         f.br_name.focus();
         return false;
     }
-    
-    // mb_id는 br_id와 동일하므로 별도 체크 불필요
-    
     // 신규 등록시 비밀번호 확인
     <?php if ($w != 'u') { ?>
     if (!f.mb_password.value) {
@@ -313,13 +231,11 @@ function fbranch_submit(f)
         f.mb_password.focus();
         return false;
     }
-    
     if (f.mb_password.value !== f.mb_password_confirm.value) {
         alert("비밀번호가 일치하지 않습니다.");
         f.mb_password_confirm.focus();
         return false;
     }
-    
     // 비밀번호 강도 체크
     var password = f.mb_password.value;
     if (password.length < 6) {
@@ -328,19 +244,6 @@ function fbranch_submit(f)
         return false;
     }
     <?php } ?>
-    
-    if (!f.mb_name.value) {
-        alert("관리자 이름을 입력하세요.");
-        f.mb_name.focus();
-        return false;
-    }
-    
-    if (!f.mb_email.value) {
-        alert("이메일을 입력하세요.");
-        f.mb_email.focus();
-        return false;
-    }
-    
     return true;
 }
 </script>

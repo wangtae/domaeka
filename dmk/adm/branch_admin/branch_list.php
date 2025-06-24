@@ -125,8 +125,8 @@ if ($dmk_auth['mb_type'] == 1 || $dmk_auth['is_super']) {
     for ($i=0; $row=sql_fetch_array($result); $i++) {
         $bg = 'bg'.($i%2);
         
-        // 관리자 정보 조회
-        $admin_sql = " SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '{$row['br_mb_id']}' ";
+        // 관리자 정보 조회 (br_id가 곧 관리자 ID)
+        $admin_sql = " SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '{$row['br_id']}' ";
         $admin_row = sql_fetch($admin_sql);
         $admin_name = $admin_row ? $admin_row['mb_name'] : '미지정';
     ?>
@@ -147,8 +147,8 @@ if ($dmk_auth['mb_type'] == 1 || $dmk_auth['is_super']) {
         <td><?php echo get_text($row['br_ceo_name']) ?></td>
         <td><?php echo $row['br_phone'] ?></td>
         <td>
-            <a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&mb_id=<?php echo $row['br_mb_id'] ?>" target="_blank">
-                <?php echo $row['br_mb_id'] ?> (<?php echo $admin_name ?>)
+            <a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&mb_id=<?php echo $row['br_id'] ?>" target="_blank">
+                <?php echo $row['br_id'] ?> (<?php echo $admin_name ?>)
             </a>
         </td>
         <td class="td_datetime"><?php echo substr($row['br_datetime'], 0, 10) ?></td>

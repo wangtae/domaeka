@@ -26,44 +26,17 @@ if ($w == 'u') {
         alert('존재하지 않는 대리점입니다.');
     }
     
-    // 기존 관리자 정보 조회 (ag_id가 곧 관리자 ID)
-    $admin_sql = " SELECT mb_id, mb_name, mb_email, mb_phone FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($agency['ag_id']) . "' ";
-    $admin_info = sql_fetch($admin_sql);
-    
-    // 관리자 정보가 없을 경우 기본값으로 초기화
-    if (!$admin_info) {
-        $admin_info = array(
-            'mb_id' => $agency['ag_id'], // ag_id를 관리자 ID로 사용
-            'mb_name' => '',
-            'mb_email' => '',
-            'mb_phone' => ''
-        );
-    }
-    
 } else {
     $html_title .= '등록';
     $w = '';
     
-    // 새 대리점 ID 생성
-    $sql = " SELECT MAX(CAST(SUBSTRING(ag_id, 3) AS UNSIGNED)) as max_num FROM dmk_agency WHERE ag_id LIKE 'AG%' ";
-    $row = sql_fetch($sql);
-    $next_num = $row['max_num'] ? $row['max_num'] + 1 : 1;
-    $agency_id = 'AG' . str_pad($next_num, 3, '0', STR_PAD_LEFT);
-    
     $agency = array(
-        'ag_id' => $agency_id,
+        'ag_id' => '',
         'ag_name' => '',
         'ag_ceo_name' => '',
         'ag_phone' => '',
         'ag_address' => '',
         'ag_status' => 1
-    );
-    
-    $admin_info = array(
-        'mb_id' => $agency_id, // ag_id를 관리자 ID로 사용
-        'mb_name' => '',
-        'mb_email' => '',
-        'mb_phone' => ''
     );
 }
 
@@ -116,6 +89,21 @@ $qstr = http_build_query($params, '', '&amp;');
             <?php } ?>
         </td>
     </tr>
+    <?php if ($w != 'u') { // 신규 등록 시에만 비밀번호 입력 ?>
+    <tr>
+        <th scope="row"><label for="mb_password">비밀번호<strong class="sound_only">필수</strong></label></th>
+        <td>
+            <input type="password" name="mb_password" id="mb_password" required class="frm_input required" size="20" maxlength="20">
+            <span class="frm_info">영문, 숫자, 특수문자 조합 (6~20자)</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_password_confirm">비밀번호 확인<strong class="sound_only">필수</strong></label></th>
+        <td>
+            <input type="password" name="mb_password_confirm" id="mb_password_confirm" required class="frm_input required" size="20" maxlength="20">
+        </td>
+    </tr>
+    <?php } ?>
     <tr>
         <th scope="row"><label for="ag_name">대리점명<strong class="sound_only">필수</strong></label></th>
         <td>
@@ -142,55 +130,6 @@ $qstr = http_build_query($params, '', '&amp;');
         </td>
     </tr>
     
-    <!-- 관리자 계정 정보 섹션 -->
-    <tr>
-        <th scope="row" colspan="2" style="background-color: #f8f9fa; text-align: center; font-weight: bold; padding: 15px;">
-            <?php echo $w == 'u' ? '관리자 계정 정보' : '신규 관리자 계정 생성' ?>
-        </th>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_id">관리자 아이디<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="text" name="mb_id_display" value="<?php echo $admin_info['mb_id'] ?>" id="mb_id_display" class="frm_input" size="20" readonly>
-            <span class="frm_info">관리자 아이디는 대리점 ID와 동일합니다.</span>
-            <input type="hidden" name="mb_id" value="<?php echo $admin_info['mb_id'] ?>">
-        </td>
-    </tr>
-    <?php if ($w != 'u') { ?>
-    <tr>
-        <th scope="row"><label for="mb_password">비밀번호<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="password" name="mb_password" id="mb_password" required class="frm_input required" size="20" maxlength="20">
-            <span class="frm_info">영문, 숫자, 특수문자 조합 (6~20자)</span>
-        </td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_password_confirm">비밀번호 확인<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="password" name="mb_password_confirm" id="mb_password_confirm" required class="frm_input required" size="20" maxlength="20">
-        </td>
-    </tr>
-    <?php } ?>
-    <tr>
-        <th scope="row"><label for="mb_name">관리자 이름<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="text" name="mb_name" value="<?php echo get_text($admin_info['mb_name']) ?>" id="mb_name" required class="frm_input required" size="30" maxlength="50">
-        </td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_email">이메일<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <input type="email" name="mb_email" value="<?php echo $admin_info['mb_email'] ?>" id="mb_email" required class="frm_input required" size="50" maxlength="100">
-        </td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_phone">휴대폰번호</label></th>
-        <td>
-            <input type="text" name="mb_phone" value="<?php echo $admin_info['mb_phone'] ?>" id="mb_phone" class="frm_input" size="20" maxlength="20">
-            <span class="frm_info">예: 010-1234-5678</span>
-        </td>
-    </tr>
-    
     <tr>
         <th scope="row"><label for="ag_status">상태</label></th>
         <td>
@@ -212,20 +151,6 @@ $qstr = http_build_query($params, '', '&amp;');
 </form>
 
 <script>
-// 대리점 ID 변경 시 관리자 ID도 동일하게 업데이트
-document.addEventListener('DOMContentLoaded', function() {
-    var ag_id_input = document.getElementById('ag_id');
-    var mb_id_display = document.getElementById('mb_id_display');
-    var mb_id_hidden = document.querySelector('input[name="mb_id"]');
-    
-    if (ag_id_input) {
-        ag_id_input.addEventListener('input', function() {
-            mb_id_display.value = this.value;
-            mb_id_hidden.value = this.value;
-        });
-    }
-});
-
 function fagency_submit(f)
 {
     if (!f.ag_id.value) {
@@ -239,8 +164,6 @@ function fagency_submit(f)
         f.ag_name.focus();
         return false;
     }
-    
-    // mb_id는 ag_id와 동일하므로 별도 체크 불필요
     
     // 신규 등록시 비밀번호 확인
     <?php if ($w != 'u') { ?>
@@ -265,22 +188,10 @@ function fagency_submit(f)
     }
     <?php } ?>
     
-    if (!f.mb_name.value) {
-        alert("관리자 이름을 입력하세요.");
-        f.mb_name.focus();
-        return false;
-    }
-    
-    if (!f.mb_email.value) {
-        alert("이메일을 입력하세요.");
-        f.mb_email.focus();
-        return false;
-    }
-    
     return true;
 }
 </script>
 
 <?php
-include_once(G5_ADMIN_PATH.'/admin.tail.php');
+include_once (G5_ADMIN_PATH.'/admin.tail.php');
 ?> 
