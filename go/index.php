@@ -9,26 +9,30 @@ $path_info = parse_url($request_uri, PHP_URL_PATH);
 // /go/ 이후의 경로 추출
 $pattern = '/\/go\/([^\/\?]+)/';
 if (preg_match($pattern, $path_info, $matches)) {
-    $br_shortcut_code = $matches[1];
+    $url_code = $matches[1];
 } else {
     // 코드가 없으면 메인 페이지로 리디렉션
     goto_url(G5_URL);
 }
 
-// br_shortcut_code 검증 및 정리
-$br_shortcut_code = preg_replace('/[^a-zA-Z0-9_-]/', '', $br_shortcut_code);
+// url_code 검증 및 정리
+$url_code = preg_replace('/[^a-zA-Z0-9_-]/', '', $url_code);
 
-if (!$br_shortcut_code) {
-    alert('유효하지 않은 단축 URL 코드입니다.', G5_URL);
+if (!$url_code) {
+    alert('유효하지 않은 URL 코드입니다.', G5_URL);
 }
 
-// dmk_branch 테이블에서 br_shortcut_code를 사용하여 실제 br_id 조회
-$br_shortcut_code_safe = sql_real_escape_string($br_shortcut_code);
+// dmk_branch 테이블에서 br_shortcut_code 또는 br_id로 지점 정보 조회
+$url_code_safe = sql_real_escape_string($url_code);
 $branch_sql = " SELECT b.*, a.ag_name, d.dt_name
                 FROM dmk_branch b 
                 LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
                 LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id
-                WHERE b.br_shortcut_code = '$br_shortcut_code_safe' AND b.br_status = 1 ";
+                WHERE (b.br_shortcut_code = '$url_code_safe' OR b.br_id = '$url_code_safe') 
+                AND b.br_status = 1 
+                ORDER BY 
+                    CASE WHEN b.br_shortcut_code = '$url_code_safe' THEN 1 ELSE 2 END
+                LIMIT 1 ";
 $branch = sql_fetch($branch_sql);
 
 if (!$branch) {
