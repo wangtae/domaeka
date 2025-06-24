@@ -35,24 +35,33 @@ for ($i=0; $i<count($chk); $i++) {
         continue;
     }
     
-    // 해당 관리자의 레벨 확인
-    $sql = " SELECT mb_level FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($del_mb_id)."' ";
+    // 해당 관리자의 정보 확인 (sub 관리자만 권한 삭제 가능)
+    $sql = " SELECT mb_level, dmk_mb_type, dmk_admin_type, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($del_mb_id)."' ";
     $member = sql_fetch($sql);
     
     if (!$member) {
         continue;
     }
     
-    // 삭제 권한 체크
+    // SUB 관리자만 권한 삭제 가능
+    if ($member['dmk_admin_type'] !== 'sub') {
+        continue;
+    }
+    
+    // 삭제 권한 체크 (MAIN 관리자만 SUB 관리자 권한 삭제 가능)
     $can_delete = false;
     if ($dmk_auth['is_super']) {
         $can_delete = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && $member['mb_level'] <= DMK_MB_LEVEL_DISTRIBUTOR) {
-        $can_delete = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && $member['mb_level'] <= DMK_MB_LEVEL_AGENCY) {
-        $can_delete = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH && $member['mb_level'] == DMK_MB_LEVEL_BRANCH) {
-        $can_delete = true;
+    } elseif ($dmk_auth['admin_type'] === 'main') {
+        // 같은 계층 또는 하위 계층의 sub 관리자만 권한 삭제 가능
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            $can_delete = in_array($member['dmk_mb_type'], [1, 2, 3]); // 총판, 대리점, 지점
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            $can_delete = in_array($member['dmk_mb_type'], [2, 3]) && 
+                         ($member['dmk_ag_id'] === $dmk_auth['ag_id'] || $member['dmk_mb_type'] == 2);
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            $can_delete = $member['dmk_mb_type'] == 3 && $member['dmk_br_id'] === $dmk_auth['br_id'];
+        }
     }
     
     if (!$can_delete) {

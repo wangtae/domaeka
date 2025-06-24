@@ -42,69 +42,43 @@ define('DMK_OWNER_TYPE_BRANCH',      'BRANCH');           // 지점
  * @return array|false 권한 정보 배열 또는 false (권한 없음)
  */
 function dmk_get_admin_auth() {
-    global $is_admin, $member, $g5;
-
-    $auth_info = [
-        'is_super' => false,
-        'mb_type' => DMK_MB_TYPE_NONE, // 0: 일반, 1: 총판, 2: 대리점, 3: 지점
-        'dt_id' => '',
-        'ag_id' => '',
-        'br_id' => '',
-        'mb_level' => (int)($member['mb_level'] ?? 1), // 기본값 1 (비회원)
-    ];
-
-    if (!isset($member['mb_id']) || !$member['mb_id']) {
-        return $auth_info; // 로그인하지 않았거나 회원 ID가 없으면 기본 정보 반환
-    }
-
-    $mb_id = sql_escape_string($member['mb_id']);
-    $auth_info['mb_id'] = $member['mb_id'];
-    $mb_level = (int)$member['mb_level'];
-
-    // 1. 최고 관리자 (mb_level 10)
-    if ($mb_level == DMK_MB_LEVEL_SUPER) {
-        $auth_info['is_super'] = true;
-        $auth_info['mb_type'] = DMK_MB_TYPE_NONE; // 최고관리자는 도매까 유형에 속하지 않음
-        return $auth_info;
+    global $member, $is_admin, $g5;
+    
+    if (!$member || !$member['mb_id']) {
+        return false;
     }
     
-    // 2. 총판 관리자 (mb_level 8)
-    if ($mb_level == DMK_MB_LEVEL_DISTRIBUTOR) {
-        $sql = " SELECT dt_id, dt_name FROM dmk_distributor WHERE dt_mb_id = '" . $mb_id . "' ";
-        $row = sql_fetch($sql);
-        if ($row) {
-            $auth_info['mb_type'] = DMK_MB_TYPE_DISTRIBUTOR;
-            $auth_info['dt_id'] = $row['dt_id'];
-        }
-        return $auth_info;
-    }
-
-    // 3. 대리점 관리자 (mb_level 6)
-    if ($mb_level == DMK_MB_LEVEL_AGENCY) {
-        $sql = " SELECT ag_id, ag_name, dt_id FROM dmk_agency WHERE ag_mb_id = '" . $mb_id . "' ";
-        $row = sql_fetch($sql);
-        if ($row) {
-            $auth_info['mb_type'] = DMK_MB_TYPE_AGENCY;
-            $auth_info['ag_id'] = $row['ag_id'];
-            $auth_info['dt_id'] = $row['dt_id'];
-        }
-        return $auth_info;
-    }
-
-    // 4. 지점 관리자 (mb_level 4)
-    if ($mb_level == DMK_MB_LEVEL_BRANCH) {
-        $sql = " SELECT br_id, br_name, ag_id FROM dmk_branch WHERE br_mb_id = '" . $mb_id . "' ";
-        $row = sql_fetch($sql);
-        if ($row) {
-            $auth_info['mb_type'] = DMK_MB_TYPE_BRANCH;
-            $auth_info['br_id'] = $row['br_id'];
-            $auth_info['ag_id'] = $row['ag_id'];
-        }
-        return $auth_info;
+    // 영카트 최고관리자 확인
+    $is_super = false;
+    if (function_exists('is_super_admin') && is_super_admin($member['mb_id'])) {
+        $is_super = true;
     }
     
-    // 그 외 (mb_level 2 이하)는 일반 회원 또는 비회원
-    return $auth_info;
+    // 도매까 관리자 정보 조회 (admin_type 포함)
+    $sql = " SELECT mb_id, mb_name, mb_level, dmk_mb_type, dmk_ag_id, dmk_br_id, dmk_admin_type,
+                    a.ag_name, b.br_name
+             FROM {$g5['member_table']} m
+             LEFT JOIN dmk_agency a ON m.dmk_ag_id = a.ag_id
+             LEFT JOIN dmk_branch b ON m.dmk_br_id = b.br_id
+             WHERE m.mb_id = '" . sql_escape_string($member['mb_id']) . "' ";
+    $admin_info = sql_fetch($sql);
+    
+    if (!$admin_info) {
+        return false;
+    }
+    
+    return array(
+        'mb_id' => $admin_info['mb_id'],
+        'mb_name' => $admin_info['mb_name'],
+        'mb_level' => (int)$admin_info['mb_level'],
+        'mb_type' => (int)$admin_info['dmk_mb_type'],
+        'admin_type' => $admin_info['dmk_admin_type'] ?: 'main', // 기본값 main
+        'ag_id' => $admin_info['dmk_ag_id'],
+        'br_id' => $admin_info['dmk_br_id'],
+        'ag_name' => $admin_info['ag_name'],
+        'br_name' => $admin_info['br_name'],
+        'is_super' => $is_super
+    );
 }
 
 /**
@@ -659,7 +633,18 @@ function dmk_auth_check($auth_str, $attr, $return = false) {
 
     $attr = strtolower($attr);
 
-    if (!strstr($auth_str, $attr)) {
+    // SET 타입 권한 문자열 처리
+    $has_auth = false;
+    if (is_string($auth_str)) {
+        // 일반 문자열 형태 (예: "rwd")
+        $has_auth = strstr($auth_str, $attr) !== false;
+    } else {
+        // 배열이나 다른 형태로 전달된 경우 문자열로 변환
+        $auth_str = (string)$auth_str;
+        $has_auth = strstr($auth_str, $attr) !== false;
+    }
+
+    if (!$has_auth) {
         if ($attr == 'r') {
             $msg = '읽을 권한이 없습니다.';
             if ($return) {
@@ -809,6 +794,190 @@ function dmk_get_cart_where_condition($br_id = null, $ag_id = null, $dt_id = nul
         default:
             return " AND 1=0 ";
     }
+}
+
+/**
+ * 현재 관리자가 main 관리자인지 확인합니다.
+ * 
+ * @return bool main 관리자 여부
+ */
+function dmk_is_main_admin() {
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth || $auth['is_super']) {
+        return true; // 최고관리자는 항상 main으로 간주
+    }
+    
+    return $auth['admin_type'] === 'main';
+}
+
+/**
+ * 현재 관리자가 sub 관리자인지 확인합니다.
+ * 
+ * @return bool sub 관리자 여부
+ */
+function dmk_is_sub_admin() {
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth || $auth['is_super']) {
+        return false; // 최고관리자는 sub가 아님
+    }
+    
+    return $auth['admin_type'] === 'sub';
+}
+
+/**
+ * 관리자가 특정 계층에서 추가 관리자를 생성할 권한이 있는지 확인합니다.
+ * 
+ * @param string $target_type 생성하려는 관리자 타입 ('distributor', 'agency', 'branch')
+ * @return bool 생성 권한 여부
+ */
+function dmk_can_create_admin($target_type) {
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth) {
+        return false;
+    }
+    
+    // 최고관리자는 모든 권한
+    if ($auth['is_super']) {
+        return true;
+    }
+    
+    // main 관리자만 하위 계층 관리자 생성 가능
+    if ($auth['admin_type'] !== 'main') {
+        return false;
+    }
+    
+    switch ($auth['mb_type']) {
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            // 총판은 대리점, 지점 관리자 생성 가능
+            return in_array($target_type, ['agency', 'branch']);
+            
+        case DMK_MB_TYPE_AGENCY:
+            // 대리점은 지점 관리자만 생성 가능
+            return $target_type === 'branch';
+            
+        case DMK_MB_TYPE_BRANCH:
+            // 지점은 관리자 생성 불가
+            return false;
+            
+        default:
+            return false;
+    }
+}
+
+/**
+ * 관리자가 특정 메뉴에 접근할 권한이 있는지 확인합니다.
+ * main 관리자는 모든 권한을 가지고, sub 관리자는 영카트의 기존 권한 시스템을 확인합니다.
+ * 
+ * @param string $menu_id 메뉴 ID 또는 메뉴 키
+ * @return bool 접근 권한 여부
+ */
+function dmk_can_access_menu_new($menu_id) {
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth) {
+        return false;
+    }
+    
+    // 최고관리자는 모든 권한
+    if ($auth['is_super']) {
+        return true;
+    }
+    
+    // main 관리자는 해당 계층의 모든 메뉴 접근 가능
+    if ($auth['admin_type'] === 'main') {
+        return dmk_check_hierarchy_access($menu_id, $auth['mb_type']);
+    }
+    
+    // sub 관리자는 영카트의 기존 권한 시스템으로 개별 권한 확인
+    // 메뉴 키를 메뉴 코드로 변환
+    $menu_code = dmk_convert_menu_key_to_code($menu_id);
+    return dmk_check_individual_menu_permission($auth['mb_id'], $menu_code);
+}
+
+/**
+ * 계층별 기본 메뉴 접근 권한을 확인합니다.
+ * 
+ * @param string $menu_id 메뉴 ID
+ * @param int $mb_type 관리자 타입
+ * @return bool 접근 권한 여부
+ */
+function dmk_check_hierarchy_access($menu_id, $mb_type) {
+    // 계층별 접근 가능한 메뉴 정의
+    $hierarchy_menus = array(
+        DMK_MB_TYPE_DISTRIBUTOR => array(
+            'distributor_list', 'distributor_form', 'agency_list', 'agency_form', 
+            'branch_list', 'branch_form', 'admin_list', 'admin_form', 'statistics'
+        ),
+        DMK_MB_TYPE_AGENCY => array(
+            'branch_list', 'branch_form', 'admin_list', 'admin_form', 'order_list', 'member_list'
+        ),
+        DMK_MB_TYPE_BRANCH => array(
+            'order_list', 'member_list', 'item_list'
+        )
+    );
+    
+    return isset($hierarchy_menus[$mb_type]) && in_array($menu_id, $hierarchy_menus[$mb_type]);
+}
+
+/**
+ * 메뉴 키를 메뉴 코드로 변환합니다.
+ * 
+ * @param string $menu_key 메뉴 키
+ * @return string 메뉴 코드
+ */
+function dmk_convert_menu_key_to_code($menu_key) {
+    // 메뉴 키와 메뉴 코드 매핑
+    $menu_mapping = array(
+        'dmk_manage' => '190000',
+        'dmk_distributor' => '190100',
+        'dmk_agency' => '190200',
+        'dmk_branch' => '190300',
+        'dmk_statistics' => '190400',
+        'dmk_url' => '190500',
+        'dmk_admin' => '190600',
+        'dmk_auth' => '190700',
+        'agency_form' => '190200',
+        'branch_form' => '190300',
+        'distributor_list' => '190100',
+        'distributor_form' => '190100',
+        'agency_list' => '190200',
+        'branch_list' => '190300',
+        'admin_list' => '190600',
+        'admin_form' => '190600',
+        'statistics' => '190400'
+    );
+    
+    // 이미 메뉴 코드 형식이면 그대로 반환
+    if (preg_match('/^\d{6}$/', $menu_key)) {
+        return $menu_key;
+    }
+    
+    return isset($menu_mapping[$menu_key]) ? $menu_mapping[$menu_key] : $menu_key;
+}
+
+/**
+ * sub 관리자의 개별 메뉴 권한을 확인합니다.
+ * 영카트의 기존 권한 시스템(g5_auth 테이블)을 활용합니다.
+ * 
+ * @param string $mb_id 관리자 ID
+ * @param string $menu_id 메뉴 ID
+ * @return bool 접근 권한 여부
+ */
+function dmk_check_individual_menu_permission($mb_id, $menu_id) {
+    global $g5;
+    
+    // 영카트의 기존 권한 테이블에서 권한 확인 (SET 타입 처리)
+    $sql = " SELECT au_auth FROM {$g5['auth_table']} 
+             WHERE mb_id = '" . sql_escape_string($mb_id) . "' 
+             AND au_menu = '" . sql_escape_string($menu_id) . "'
+             AND FIND_IN_SET('r', au_auth) > 0 ";
+    $row = sql_fetch($sql);
+    
+    // 권한이 설정되어 있고, 읽기 권한(r)이 있으면 접근 허용
+    return $row !== false;
 }
 
 ?> 

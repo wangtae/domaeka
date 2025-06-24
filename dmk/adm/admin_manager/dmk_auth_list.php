@@ -8,56 +8,73 @@ $dmk_auth = dmk_get_admin_auth();
 // 도매까 관련 메뉴만 필터링
 $dmk_menu_codes = array('190000', '190100', '190200', '190300', '190400', '190500', '190600', '190700');
 
-// 현재 관리자가 권한을 부여할 수 있는 관리자 목록 조회
+// 현재 관리자가 권한을 부여할 수 있는 관리자 목록 조회 (sub 관리자만)
 $available_admins = array();
-$admin_sql = "SELECT mb_id, mb_nick, mb_level FROM {$g5['member_table']} WHERE mb_level >= 4 ";
+$admin_sql = "SELECT mb_id, mb_nick, mb_level, dmk_mb_type, dmk_admin_type, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_level >= 4 AND dmk_admin_type = 'sub' ";
 
 if (!$dmk_auth['is_super']) {
-    if ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
-        $admin_sql .= " AND mb_level <= 8 AND mb_level >= 4 ";
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY) {
-        $admin_sql .= " AND mb_level <= 6 AND mb_level >= 4 ";
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH) {
-        $admin_sql .= " AND mb_level = 4 ";
+    // main 관리자만 sub 관리자 권한 설정 가능
+    if ($dmk_auth['admin_type'] !== 'main') {
+        $admin_sql .= " AND 1=0 "; // sub 관리자는 권한 설정 불가
+    } else {
+        // 같은 계층 또는 하위 계층의 sub 관리자만 권한 설정 가능
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            $admin_sql .= " AND dmk_mb_type IN (1, 2, 3) "; // 총판, 대리점, 지점
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            $admin_sql .= " AND dmk_mb_type IN (2, 3) AND (dmk_ag_id = '" . sql_escape_string($dmk_auth['ag_id']) . "' OR dmk_mb_type = 2) ";
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            $admin_sql .= " AND dmk_mb_type = 3 AND dmk_br_id = '" . sql_escape_string($dmk_auth['br_id']) . "' ";
+        }
     }
 } else {
-    $admin_sql .= " AND mb_level >= 4 ";
+    $admin_sql .= " AND dmk_mb_type > 0 "; // 최고관리자는 모든 sub 관리자 권한 설정 가능
 }
 
-$admin_sql .= " ORDER BY mb_level DESC, mb_id ASC ";
+$admin_sql .= " ORDER BY dmk_mb_type ASC, mb_id ASC ";
 $admin_result = sql_query($admin_sql);
 while ($admin_row = sql_fetch_array($admin_result)) {
     $level_name = '';
-    switch ($admin_row['mb_level']) {
-        case 10: $level_name = '본사'; break;
-        case 8: $level_name = '총판'; break;
-        case 6: $level_name = '대리점'; break;
-        case 4: $level_name = '지점'; break;
+    switch ($admin_row['dmk_mb_type']) {
+        case 1: $level_name = '총판'; break;
+        case 2: $level_name = '대리점'; break;
+        case 3: $level_name = '지점'; break;
         default: $level_name = '관리자'; break;
     }
+    $admin_type_name = $admin_row['dmk_admin_type'] === 'sub' ? 'SUB' : 'MAIN';
+    
     $available_admins[] = array(
         'mb_id' => $admin_row['mb_id'],
         'mb_nick' => $admin_row['mb_nick'],
         'mb_level' => $admin_row['mb_level'],
-        'level_name' => $level_name
+        'dmk_mb_type' => $admin_row['dmk_mb_type'],
+        'admin_type' => $admin_row['dmk_admin_type'],
+        'level_name' => $level_name . '(' . $admin_type_name . ')'
     );
 }
 
 $sql_common = " from {$g5['auth_table']} a left join {$g5['member_table']} b on (a.mb_id=b.mb_id) ";
 
-$sql_search = " where a.au_menu IN ('".implode("','", $dmk_menu_codes)."') ";
+$sql_search = " where a.au_menu IN ('".implode("','", $dmk_menu_codes)."') AND b.dmk_admin_type = 'sub' ";
 
-// 권한별 관리자 필터링
+// 권한별 관리자 필터링 (sub 관리자만)
 if (!$dmk_auth['is_super']) {
     $sql_search .= " AND b.mb_level >= 4 "; // 관리자만
     
-    if ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
-        $sql_search .= " AND b.mb_level <= 8 ";
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY) {
-        $sql_search .= " AND b.mb_level <= 6 ";
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH) {
-        $sql_search .= " AND b.mb_level = 4 ";
+    // main 관리자만 sub 관리자 권한 조회 가능
+    if ($dmk_auth['admin_type'] !== 'main') {
+        $sql_search .= " AND 1=0 "; // sub 관리자는 권한 조회 불가
+    } else {
+        // 같은 계층 또는 하위 계층의 sub 관리자만 조회 가능
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            $sql_search .= " AND b.dmk_mb_type IN (1, 2, 3) "; // 총판, 대리점, 지점
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            $sql_search .= " AND b.dmk_mb_type IN (2, 3) AND (b.dmk_ag_id = '" . sql_escape_string($dmk_auth['ag_id']) . "' OR b.dmk_mb_type = 2) ";
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            $sql_search .= " AND b.dmk_mb_type = 3 AND b.dmk_br_id = '" . sql_escape_string($dmk_auth['br_id']) . "' ";
+        }
     }
+} else {
+    $sql_search .= " AND b.dmk_mb_type > 0 "; // 최고관리자는 모든 sub 관리자 권한 조회 가능
 }
 
 if ($stx) {
@@ -98,7 +115,7 @@ $listall = '<a href="' . $_SERVER['SCRIPT_NAME'] . '" class="ov_listall btn_ov02
 $g5['title'] = "도매까 권한설정";
 require_once G5_ADMIN_PATH.'/admin.head.php';
 
-$colspan = 5;
+$colspan = 6;
 
 // 도매까 메뉴 정의
 $dmk_auth_menu = array(
@@ -144,6 +161,7 @@ $dmk_auth_menu = array(
                     </th>
                     <th scope="col"><?php echo subject_sort_link('a.mb_id') ?>회원아이디</a></th>
                     <th scope="col"><?php echo subject_sort_link('mb_nick') ?>닉네임</a></th>
+                    <th scope="col">관리자타입</th>
                     <th scope="col">메뉴</th>
                     <th scope="col">권한</th>
                 </tr>
@@ -171,6 +189,16 @@ $dmk_auth_menu = array(
 
                     $mb_nick = get_sideview($row['mb_id'], $row['mb_nick'], $row['mb_email'], $row['mb_homepage']);
                     $bg = 'bg' . ($i % 2);
+                    
+                    // 관리자 타입 표시
+                    $admin_type_display = '';
+                    switch ($row['dmk_mb_type']) {
+                        case 1: $admin_type_display = '총판'; break;
+                        case 2: $admin_type_display = '대리점'; break;
+                        case 3: $admin_type_display = '지점'; break;
+                        default: $admin_type_display = '관리자'; break;
+                    }
+                    $admin_type_display .= '(' . ($row['dmk_admin_type'] === 'sub' ? 'SUB' : 'MAIN') . ')';
                 ?>
                     <tr class="<?php echo $bg; ?>">
                         <td class="td_chk">
@@ -181,9 +209,10 @@ $dmk_auth_menu = array(
                         </td>
                         <td class="td_mbid"><a href="?sfl=a.mb_id&amp;stx=<?php echo $row['mb_id'] ?>"><?php echo $row['mb_id'] ?></a></td>
                         <td class="td_auth_mbnick"><?php echo $mb_nick ?></td>
+                        <td class="td_admin_type"><?php echo $admin_type_display ?></td>
                         <td class="td_menu">
                             <?php echo $row['au_menu'] ?>
-                            <?php echo isset($dmk_auth_menu[$row['au_menu']]) ? $dmk_auth_menu[$row['au_menu']] : '' ?>
+                            <?php echo isset($dmk_auth_menu[$row['au_menu']]) ? ' - ' . $dmk_auth_menu[$row['au_menu']] : '' ?>
                         </td>
                         <td class="td_auth"><?php echo $row['au_auth'] ?></td>
                     </tr>
@@ -230,8 +259,9 @@ echo $pagelist;
 
         <div class="local_desc01 local_desc">
             <p>
-                도매까 관리자에게 메뉴별 권한을 부여할 수 있습니다.<br>
-                권한 <strong>r</strong>은 읽기권한, <strong>w</strong>는 쓰기권한, <strong>d</strong>는 삭제권한입니다.
+                <strong>SUB 관리자</strong>에게만 메뉴별 권한을 부여할 수 있습니다. MAIN 관리자는 해당 계층의 모든 권한을 자동으로 가집니다.<br>
+                권한 <strong>r</strong>은 읽기권한, <strong>w</strong>는 쓰기권한, <strong>d</strong>는 삭제권한입니다.<br>
+                <span style="color: #666;">※ MAIN 관리자만 SUB 관리자의 권한을 설정할 수 있습니다.</span>
             </p>
         </div>
 
