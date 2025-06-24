@@ -9,7 +9,7 @@ data/tmp/
 # 설치 관련 파일 (운영 시 불필요)
 install/
 data/db_config.php
-config.php
+
 
 # 특정 플러그인의 과도한 파일 또는 불필요한 파일 (AI 분석 효율 증대)
 plugin/debugbar/
