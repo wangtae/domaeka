@@ -1903,11 +1903,8 @@ function sql_free_result($result)
  */
 function sql_password($value)
 {
-    // mysql 4.0x 이하 버전에서는 password() 함수의 결과가 16bytes
-    // mysql 4.1x 이상 버전에서는 password() 함수의 결과가 41bytes
-    $row = sql_fetch(" SELECT password('{$value}') as pass ");
-
-    return $row['pass'];
+    // 기존 MySQL PASSWORD() 함수 대신 PHP의 password_hash() 함수를 사용하여 bcrypt로 해싱
+    return password_hash($value, PASSWORD_BCRYPT);
 }
 
 
@@ -3618,13 +3615,25 @@ function get_encrypt_string($str)
 // 비밀번호 비교
 function check_password($pass, $hash)
 {
-    if(defined('G5_STRING_ENCRYPT_FUNCTION') && G5_STRING_ENCRYPT_FUNCTION === 'create_hash') {
-        return validate_password($pass, $hash);
+    // 1. PHP 내장 bcrypt 해시 확인
+    if (password_verify($pass, $hash)) {
+        return true;
     }
 
-    $password = get_encrypt_string($pass);
+    // 2. PBKDF2 해시 확인 (기존 create_hash 함수로 생성된 경우)
+    if (defined('G5_STRING_ENCRYPT_FUNCTION') && G5_STRING_ENCRYPT_FUNCTION === 'create_hash') {
+        if (validate_password($pass, $hash)) {
+            return true;
+        }
+    }
 
-    return ($password === $hash);
+    // 3. 레거시 MySQL PASSWORD() 해시 확인
+    // 이전에 sql_password() 함수가 MySQL PASSWORD()를 사용했으므로, 이 경우를 처리
+    if (sql_password($pass) === $hash) {
+        return true;
+    }
+
+    return false;
 }
 
 // 로그인 패스워드 체크
@@ -3637,22 +3646,32 @@ function login_password_check($mb, $pass, $hash)
     if(!$mb_id)
         return false;
 
-    if(G5_STRING_ENCRYPT_FUNCTION === 'create_hash' && (strlen($hash) === G5_MYSQL_PASSWORD_LENGTH || strlen($hash) === 16)) {
-        if( sql_password($pass) === $hash ){
+    // 먼저, 통합된 check_password 함수를 사용하여 비밀번호를 검증합니다.
+    if (check_password($pass, $hash)) {
+        // 비밀번호가 올바른 경우, 현재 저장된 해시가 bcrypt인지 확인합니다.
+        // bcrypt 해시는 '$2a$', '$2b$', 또는 '$2y$'로 시작합니다.
+        // (PHP 5.5 이상에서 password_hash()로 생성된 해시)
+        $is_bcrypt_hash = preg_match('/^\$2[aby]\$/', $hash);
 
-            if( ! isset($mb['mb_password2']) ){
+        // 현재 해시가 bcrypt가 아니라면 (즉, 구형 MySQL PASSWORD() 또는 PBKDF2 해시라면) bcrypt로 재해싱합니다.
+        if (!$is_bcrypt_hash) {
+            $new_bcrypt_hash = password_hash($pass, PASSWORD_BCRYPT);
+
+            // mb_password2 컬럼이 존재하는지 확인하고, 없으면 추가합니다.
+            // 이는 기존 해시를 백업하기 위함입니다.
+            if (!isset($mb['mb_password2'])) {
                 $sql = "ALTER TABLE `{$g5['member_table']}` ADD `mb_password2` varchar(255) NOT NULL default '' AFTER `mb_password`";
                 sql_query($sql);
             }
             
-            $new_password = create_hash($pass);
-            $sql = " update {$g5['member_table']} set mb_password = '$new_password', mb_password2 = '$hash' where mb_id = '$mb_id' ";
+            // mb_password를 새 bcrypt 해시로 업데이트하고, mb_password2에 이전 해시를 백업합니다.
+            $sql = " UPDATE {$g5['member_table']} SET mb_password = '".sql_escape_string($new_bcrypt_hash)."', mb_password2 = '".sql_escape_string($hash)."' WHERE mb_id = '".sql_escape_string($mb_id)."' ";
             sql_query($sql);
-            return true;
         }
+        return true; // 비밀번호가 올바르며, 필요한 경우 재해싱되었습니다.
     }
 
-    return check_password($pass, $hash);
+    return false; // 비밀번호 검증에 실패했습니다.
 }
 
 function safe_filter_url_host($url) {
