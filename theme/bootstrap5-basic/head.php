@@ -49,7 +49,7 @@ if ($is_member) {
                 </a>
                 <a href="/" class="logo d-flex align-items-center my-2 my-lg-0 me-lg-auto text-white text-decoration-none">
                     <i class="bi bi-globe-central-south-asia"></i>
-                    &nbsp;ASK-SEO.NET
+                    &nbsp;도매까
                 </a>
                 <!-- 모바일 회원 메뉴 호출 -->
                 <a class="off-menu-btn off-member d-lg-none d-flex opacity-75" data-bs-toggle="offcanvas" data-bs-target="#offcanvas_member" aria-controls="offcanvasmember">
@@ -97,7 +97,7 @@ if ($is_member) {
                     }   //end foreach $row
 
                     if ($i === 0) {  ?>
-                        <li class="menu-empty p-2">메뉴 준비 중입니다.<?php if ($is_admin) { ?> <a href="<?php echo G5_ADMIN_URL; ?>/menu_list.php">관리자모드 &gt; 환경설정 &gt; 메뉴설정</a>에서 설정하실 수 있습니다.<?php } ?></li>
+                        <li class="menu-empty p-2"><?php if ($is_admin) { ?> <a href="<?php echo G5_ADMIN_URL; ?>/menu_list.php">관리자모드 &gt; 환경설정 &gt; 메뉴설정</a>에서 설정하실 수 있습니다.<?php } ?></li>
                     <?php } ?>
                     <!-- 검색 버튼 -->
                     <li>

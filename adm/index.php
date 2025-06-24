@@ -117,7 +117,7 @@ if (!auth_check_menu($auth, '200100', 'r', true)) {
                             <td><a href="./point_list.php?sfl=mb_id&amp;stx=<?php echo $row['mb_id'] ?>"><?php echo number_format($row['mb_point']) ?></a></td>
                             <td class="td_boolean"><?php echo $row['mb_mailling'] ? '예' : '아니오'; ?></td>
                             <td class="td_boolean"><?php echo $row['mb_open'] ? '예' : '아니오'; ?></td>
-                            <td class="td_boolean"><?php echo preg_match('/[1-9]/', $row['mb_email_certify']) ? '예' : '아니오'; ?></td>
+                            <td class="td_boolean"><?php echo ($row['mb_email_certify'] && preg_match('/[1-9]/', $row['mb_email_certify'])) ? '예' : '아니오'; ?></td>
                             <td class="td_boolean"><?php echo $row['mb_intercept_date'] ? '예' : '아니오'; ?></td>
                             <td class="td_category"><?php echo $group ?></td>
                         </tr>

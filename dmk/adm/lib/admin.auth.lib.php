@@ -11,6 +11,9 @@
 
 if (!defined('_GNUBOARD_')) exit; // 개별 접근 차단
 
+// 도매까 전역 설정 포함
+include_once(G5_PATH . '/dmk/dmk_global_settings.php');
+
 /**
  * 도매까 관리자 유형 상수 정의 (mb_level 기반)
  */
@@ -566,24 +569,52 @@ function dmk_has_general_menu_access($menu_code) {
     return false;
 }
 
-// 실제 메뉴 권한을 체크하는 함수 (admin.head.php에서 사용될 것)
+/**
+ * 메뉴 표시 권한을 체크하는 함수 (admin.head.php에서 사용)
+ * 전역 설정(dmk_global_settings.php)을 기반으로 계층별 메뉴 권한을 확인합니다.
+ * 
+ * @param string $menu_code 메뉴 코드
+ * @param string $menu_key 메뉴 키
+ * @return bool 메뉴 표시 여부
+ */
 function dmk_auth_check_menu_display($menu_code, $menu_key) {
-    global $is_admin, $auth;
-
-    $dmk_auth = dmk_get_admin_auth();
+    global $is_admin, $auth, $member;
 
     // 1. 최고관리자는 모든 메뉴 접근 가능
-    if ($is_admin == 'super') {
+    if ($is_admin == 'super' || (function_exists('is_super_admin') && is_super_admin($member['mb_id']))) {
         return true;
     }
 
-    // 3. 도매까 메뉴 (190xxx) - 기존 메뉴 구조
+    // 2. DMK 관리자 권한 정보 가져오기
+    $dmk_auth = dmk_get_admin_auth();
+    if (!$dmk_auth) {
+        // DMK 관리자가 아닌 경우 기존 권한 체크
+        return (array_key_exists($menu_code, $auth) && strstr($auth[$menu_code], 'r'));
+    }
+
+    // 3. 현재 사용자의 계층 타입 가져오기
+    $user_type = dmk_get_current_user_type();
+    if ($user_type === 'none') {
+        return false;
+    }
+
+    // 4. 전역 설정을 사용한 메뉴 권한 체크
+    if (function_exists('dmk_is_menu_allowed')) {
+        $is_allowed = dmk_is_menu_allowed($menu_code, $user_type);
+        
+        // 디버그 로그 추가
+        error_log("[DMK MENU DEBUG] menu_code: $menu_code, user_type: $user_type, allowed: " . ($is_allowed ? 'true' : 'false'));
+        
+        return $is_allowed;
+    }
+
+    // 5. 기존 방식 fallback
+    // 도매까 메뉴 (190xxx) - 기존 메뉴 구조
     if (substr($menu_code, 0, 3) == '190') {
         return dmk_can_access_menu($menu_key);
     }
 
-    // 4. 일반 그누보드/영카트 메뉴 (200xxx 등)
-    // 도매까 관리자에게 허용된 일반 메뉴인지 확인
+    // 일반 그누보드/영카트 메뉴
     if (dmk_has_general_menu_access($menu_code)) {
         return true;
     }

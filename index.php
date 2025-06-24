@@ -1,73 +1,198 @@
 <?php
+// 루트 URL 접속 시 관리자 로그인 페이지로 리다이렉션
+
 include_once('./_common.php');
 
-define('_INDEX_', true);
-if (!defined('_GNUBOARD_')) exit; // 개별 페이지 접근 불가
-
-if(defined('G5_THEME_PATH')) {
-    require_once(G5_THEME_PATH.'/index.php');
-    return;
+// 이미 로그인 중이라면 관리자 페이지로 리다이렉션
+if ($is_admin || $is_member) {
+    goto_url(G5_ADMIN_URL);
 }
 
-if (G5_IS_MOBILE) {
-    include_once(G5_MOBILE_PATH.'/index.php');
-    return;
-}
+// 로그인 액션 URL
+$login_action_url = G5_BBS_URL . "/login_check.php";
+$login_url = G5_URL; // 로그인 성공 후 이동할 기본 URL
 
-include_once(G5_PATH.'/head.php');
+// CSRF 토큰 생성 (필요한 경우)
+// if (function_exists(\'get_login_token\')) {
+//     $token = get_login_token();
+// } else {
+//     $token = ""; // 또는 다른 방식으로 토큰 생성
+// }
+
+// 페이지 타이틀 설정
+$g5['title'] = '관리자 로그인';
 ?>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $g5['title']; ?> - 도매까 관리 시스템</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
 
-<h2 class="sound_only">최신글</h2>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            transition: background-color 0.3s ease;
+        }
 
-<div class="latest_top_wr">
-    <?php
-    // 이 함수가 바로 최신글을 추출하는 역할을 합니다.
-    // 사용방법 : latest(스킨, 게시판아이디, 출력라인, 글자수);
-    // 테마의 스킨을 사용하려면 theme/basic 과 같이 지정
-    echo latest('pic_list', 'free', 4, 23);			// 최소설치시 자동생성되는 자유게시판
-	echo latest('pic_list', 'qa', 4, 23);			// 최소설치시 자동생성되는 질문답변게시판
-	echo latest('pic_list', 'notice', 4, 23);		// 최소설치시 자동생성되는 공지사항게시판
-    ?>
-</div>
-<div class="latest_wr">
-    <!-- 사진 최신글2 { -->
-    <?php
-    // 이 함수가 바로 최신글을 추출하는 역할을 합니다.
-    // 사용방법 : latest(스킨, 게시판아이디, 출력라인, 글자수);
-    // 테마의 스킨을 사용하려면 theme/basic 과 같이 지정
-    echo latest('pic_block', 'gallery', 4, 23);		// 최소설치시 자동생성되는 갤러리게시판
-    ?>
-    <!-- } 사진 최신글2 끝 -->
-</div>
+        .login-container {
+            background-color: #2d3748;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+        }
 
-<div class="latest_wr">
-<!-- 최신글 시작 { -->
-    <?php
-    //  최신글
-    $sql = " select bo_table
-                from `{$g5['board_table']}` a left join `{$g5['group_table']}` b on (a.gr_id=b.gr_id)
-                where a.bo_device <> 'mobile' ";
-    if(!$is_admin)
-	$sql .= " and a.bo_use_cert = '' ";
-    $sql .= " and a.bo_table not in ('notice', 'gallery') ";     //공지사항과 갤러리 게시판은 제외
-    $sql .= " order by b.gr_order, a.bo_order ";
-    $result = sql_query($sql);
-    for ($i=0; $row=sql_fetch_array($result); $i++) {
-		$lt_style = '';
-    	if ($i%3 !== 0 ) $lt_style = "margin-left:2%";
-    ?>
-    <div style="float:left;<?php echo $lt_style ?>" class="lt_wr">
-        <?php
-        // 이 함수가 바로 최신글을 추출하는 역할을 합니다.
-        // 사용방법 : latest(스킨, 게시판아이디, 출력라인, 글자수);
-        // 테마의 스킨을 사용하려면 theme/basic 과 같이 지정
-        echo latest('basic', $row['bo_table'], 6, 24);
-        ?>
+        .login-container h1 {
+            color: #63b3ed;
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            color: #cbd5e0;
+        }
+
+        .input-group input[type="text"],
+        .input-group input[type="password"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+            background-color: #242b38;
+            color: #e2e8f0;
+            font-size: 1em;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input[type="text"]:focus,
+        .input-group input[type="password"]:focus {
+            border-color: #63b3ed;
+            outline: none;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 15px;
+            background-color: #63b3ed;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .login-button:hover {
+            background-color: #4299e1;
+        }
+
+        .links {
+            margin-top: 25px;
+            font-size: 0.9em;
+        }
+
+        .links a {
+            color: #90cdf4;
+            text-decoration: none;
+            margin: 0 10px;
+            transition: color 0.3s ease;
+        }
+
+        .links a:hover {
+            color: #63b3ed;
+        }
+
+        .footer-text {
+            margin-top: 30px;
+            font-size: 0.8em;
+            color: #a0aec0;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>도매까 관리 시스템</h1>
+        <form name="flogin" action="<?php echo $login_action_url; ?>" onsubmit="return flogin_submit(this);" method="post">
+            <input type="hidden" name="url" value="<?php echo $login_url; ?>">
+            <?php // if ($token) { ?>
+                <!-- <input type="hidden" name="token" value="<?php echo $token; ?>"> -->
+            <?php // } ?>
+
+            <div class="input-group">
+                <label for="mb_id">아이디</label>
+                <input type="text" name="mb_id" id="mb_id" placeholder="관리자 아이디" required autofocus>
+            </div>
+            <div class="input-group">
+                <label for="mb_password">비밀번호</label>
+                <input type="password" name="mb_password" id="mb_password" placeholder="비밀번호" required>
+            </div>
+            <button type="submit" class="login-button">로그인</button>
+        </form>
+        <div class="links">
+            <a href="<?php echo G5_BBS_URL; ?>/password_lost.php">아이디/비밀번호 찾기</a>
+            <a href="<?php echo G5_BBS_URL; ?>/register.php">회원가입</a>
+        </div>
+        <p class="footer-text">© <?php echo date("Y"); ?> Domaeka. All rights reserved.</p>
     </div>
-    <?php
-    }
-    ?>
-    <!-- } 최신글 끝 -->
-</div>
-<?php
-include_once(G5_PATH.'/tail.php');
+
+    <script>
+        function flogin_submit(f) {
+            // 이메일 유효성 검사는 관리자 ID와는 다를 수 있으므로 주석 처리
+            // if (!f.mb_email.value) {
+            //     alert("이메일을 입력하세요.");
+            //     f.mb_email.focus();
+            //     return false;
+            // }
+            // var emailRegex = /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/;
+            // if (!emailRegex.test(f.mb_email.value)) {
+            //     alert("유효한 이메일 주소를 입력하세요.");
+            //     f.mb_email.focus();
+            //     return false;
+            // }
+
+            if (!f.mb_id.value) {
+                alert("아이디를 입력하세요.");
+                f.mb_id.focus();
+                return false;
+            }
+            if (!f.mb_password.value) {
+                alert("비밀번호를 입력하세요.");
+                f.mb_password.focus();
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>

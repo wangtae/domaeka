@@ -179,18 +179,37 @@ if (!empty($_COOKIE['g5_admin_btn_gnb'])) {
                     continue;
                 }
 
+                // 메인 메뉴 아이콘에 대한 권한 검사 추가
+                $menu_code = $menu['menu' . $key][0][0];
+                $menu_key = isset($menu['menu' . $key][0][3]) ? $menu['menu' . $key][0][3] : '';
+                
+                // DMK 권한 검사 - 메인 메뉴 아이콘 표시 여부 확인
+                if (!dmk_auth_check_menu_display($menu_code, $menu_key)) {
+                    continue;
+                }
+
                 $current_class = "";
                 if (isset($sub_menu) && (substr($sub_menu, 0, 3) == substr($menu['menu' . $key][0][0], 0, 3))) {
                     $current_class = " on";
                 }
 
+                // 계층별 메뉴 제목 변경 적용
                 $button_title = $menu['menu' . $key][0][1];
+                
+                // DMK 전역 설정에서 계층별 메뉴 제목 가져오기
+                if (function_exists('dmk_get_current_user_type') && function_exists('dmk_get_menu_title')) {
+                    $user_type = dmk_get_current_user_type();
+                    $custom_title = dmk_get_menu_title($menu_code, $user_type);
+                    if ($custom_title) {
+                        $button_title = $custom_title;
+                    }
+                }
             ?>
                 <li class="gnb_li<?php echo $current_class; ?>">
                     <button type="button" class="btn_op menu-<?php echo $key; ?> menu-order-<?php echo $jj; ?>" title="<?php echo $button_title; ?>"><?php echo $button_title; ?></button>
                     <div class="gnb_oparea_wr">
                         <div class="gnb_oparea">
-                            <h3><?php echo $menu['menu' . $key][0][1]; ?></h3>
+                            <h3><?php echo $button_title; ?></h3>
                             <?php echo print_menu1('menu' . $key, 1); ?>
                         </div>
                     </div>
