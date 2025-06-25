@@ -6,6 +6,18 @@ include_once(G5_LIB_PATH.'/iteminfo.lib.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 include_once(G5_PLUGIN_PATH.'/jquery-ui/datepicker.php'); // 유효기간 달력 UI를 위해 datepicker.php 포함
 
+// 도매까 관리자 유형 상수 정의
+if (!defined('DMK_MB_TYPE_SUPER_ADMIN')) define('DMK_MB_TYPE_SUPER_ADMIN', 0);
+if (!defined('DMK_MB_TYPE_DISTRIBUTOR')) define('DMK_MB_TYPE_DISTRIBUTOR', 1);
+if (!defined('DMK_MB_TYPE_AGENCY')) define('DMK_MB_TYPE_AGENCY', 2);
+if (!defined('DMK_MB_TYPE_BRANCH')) define('DMK_MB_TYPE_BRANCH', 3);
+
+// 도매까 소유자 유형 상수 정의
+if (!defined('DMK_OWNER_TYPE_SUPER_ADMIN')) define('DMK_OWNER_TYPE_SUPER_ADMIN', 'super_admin');
+if (!defined('DMK_OWNER_TYPE_DISTRIBUTOR')) define('DMK_OWNER_TYPE_DISTRIBUTOR', 'distributor');
+if (!defined('DMK_OWNER_TYPE_AGENCY')) define('DMK_OWNER_TYPE_AGENCY', 'agency');
+if (!defined('DMK_OWNER_TYPE_BRANCH')) define('DMK_OWNER_TYPE_BRANCH', 'branch');
+
 auth_check_menu($auth, $sub_menu, "w");
 
 $html_title = "상품 ";
@@ -65,7 +77,7 @@ $it = array(
 'it_head_html'=>'',
 'it_tail_html'=>'',
 'it_mobile_head_html'=>'',
-'it_mobile_tail_html',
+'it_mobile_tail_html'=>'',
 // 도매까 상품 소유 정보 추가
 'dmk_it_owner_type' => '',
 'dmk_it_owner_id' => '',
@@ -437,7 +449,6 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                 <input type="text" name="it_name" value="<?php echo get_text(cut_str($it['it_name'], 250, "")); ?>" id="it_name" required class="frm_input required" size="95">
             </td>
         </tr>
-        
         <?php if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= DMK_MB_TYPE_AGENCY) { // 최고관리자, 총판, 대리점만 상품 등록 시 계층 선택 가능 ?>
         <tr>
             <th scope="row" colspan="3" style="background:#f0f8ff; text-align:center; font-weight:bold; color:#0056b3; border-top:1px solid #cce5ff;">
@@ -499,7 +510,7 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
             <td class="td_grpset"></td>
         </tr>
         <?php } ?>
-
+        
         <?php 
         // 도매까 소유 정보 표시
         $dmk_auth = dmk_get_admin_auth();
@@ -593,6 +604,37 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                 <input type="checkbox" name="chk_all_it_order" value="1" id="chk_all_it_order">
                 <label for="chk_all_it_order">전체적용</label>
             </td>
+        </tr>
+        <tr>
+            <th scope="row" colspan="3" style="background:#fff3cd; text-align:center; font-weight:bold; color:#856404; border-top:2px solid #ffeaa7;">
+                <i class="fa fa-tag"></i> 도매까 상품 설정
+            </th>
+        </tr>
+        <tr>
+            <th scope="row">상품 유형</th>
+            <td>
+                <?php echo help("상품의 판매 유형을 선택하세요."); ?>
+                <select name="dmk_it_type" id="dmk_it_type" class="frm_input">
+                    <option value="0" <?php echo get_selected($it['dmk_it_type'], '0'); ?>>일반 상품</option>
+                    <option value="1" <?php echo get_selected($it['dmk_it_type'], '1'); ?>>일별 공구</option>
+                    <option value="2" <?php echo get_selected($it['dmk_it_type'], '2'); ?>>예약 공구</option>
+                </select>
+            </td>
+            <td class="td_grpset"></td>
+        </tr>
+        <tr>
+            <th scope="row">유효 기간</th>
+            <td>
+                <?php echo help("상품의 판매 유효 기간을 설정하세요. 기간을 설정하지 않으면 무제한으로 판매됩니다."); ?>
+                <label for="dmk_it_valid_start_date">시작일:</label>
+                <input type="text" name="dmk_it_valid_start_date" value="<?php echo $it['dmk_it_valid_start_date']; ?>" id="dmk_it_valid_start_date" class="frm_input datepicker" size="12" maxlength="10" placeholder="YYYY-MM-DD">
+                
+                <label for="dmk_it_valid_end_date" style="margin-left:20px;">종료일:</label>
+                <input type="text" name="dmk_it_valid_end_date" value="<?php echo $it['dmk_it_valid_end_date']; ?>" id="dmk_it_valid_end_date" class="frm_input datepicker" size="12" maxlength="10" placeholder="YYYY-MM-DD">
+                
+                <button type="button" onclick="clearValidDates()" class="btn_frmline" style="margin-left:10px;">기간 초기화</button>
+            </td>
+            <td class="td_grpset"></td>
         </tr>
         <tr>
             <th scope="row">상품유형</th>
@@ -2408,6 +2450,129 @@ function syncTotalStock() {
         mainStockInput.value = totalBranchStock;
     }
 }
+
+// 유효기간 초기화 함수
+function clearValidDates() {
+    document.getElementById('dmk_it_valid_start_date').value = '';
+    document.getElementById('dmk_it_valid_end_date').value = '';
+    alert('유효기간이 초기화되었습니다.');
+}
+
+// 계층별 선택박스 동적 로딩 기능
+$(document).ready(function() {
+    // 총판 선택 시 대리점 목록 로드
+    $('#dt_id').change(function() {
+        var dt_id = $(this).val();
+        var $ag_select = $('#ag_id');
+        var $br_select = $('#br_id');
+        
+        // 대리점, 지점 선택박스 초기화
+        $ag_select.html('<option value="">- 대리점 선택 -</option>');
+        $br_select.html('<option value="">- 지점 선택 -</option>');
+        
+        if (dt_id) {
+            $.ajax({
+                url: './ajax_get_owners.php',
+                type: 'POST',
+                data: { 
+                    owner_type: '2', // 대리점
+                    parent_id: dt_id 
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        $.each(response.data, function(index, agency) {
+                            $ag_select.append('<option value="' + agency.id + '">' + agency.name + ' (' + agency.id + ')</option>');
+                        });
+                    }
+                },
+                error: function() {
+                    console.log('대리점 목록 로드 실패');
+                }
+            });
+        }
+    });
+    
+    // 대리점 선택 시 지점 목록 로드
+    $('#ag_id').change(function() {
+        var ag_id = $(this).val();
+        var $br_select = $('#br_id');
+        
+        // 지점 선택박스 초기화
+        $br_select.html('<option value="">- 지점 선택 -</option>');
+        
+        if (ag_id) {
+            $.ajax({
+                url: './ajax_get_owners.php',
+                type: 'POST',
+                data: { 
+                    owner_type: '3', // 지점
+                    parent_id: ag_id 
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        $.each(response.data, function(index, branch) {
+                            $br_select.append('<option value="' + branch.id + '">' + branch.name + ' (' + branch.id + ')</option>');
+                        });
+                    }
+                },
+                error: function() {
+                    console.log('지점 목록 로드 실패');
+                }
+            });
+        }
+    });
+});
+
+// jQuery UI Datepicker 초기화
+$(document).ready(function() {
+    // 한국어 설정
+    $.datepicker.setDefaults({
+        closeText: '닫기',
+        prevText: '이전달',
+        nextText: '다음달',
+        currentText: '오늘',
+        monthNames: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+        monthNamesShort: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+        dayNames: ['일','월','화','수','목','금','토'],
+        dayNamesShort: ['일','월','화','수','목','금','토'],
+        dayNamesMin: ['일','월','화','수','목','금','토'],
+        weekHeader: 'Wk',
+        dateFormat: 'yy-mm-dd',
+        firstDay: 0,
+        isRTL: false,
+        showMonthAfterYear: true,
+        yearSuffix: '년'
+    });
+    
+    // 시작일 datepicker
+    $('#dmk_it_valid_start_date').datepicker({
+        onSelect: function(selectedDate) {
+            // 시작일이 선택되면 종료일의 최소값을 시작일로 설정
+            $('#dmk_it_valid_end_date').datepicker('option', 'minDate', selectedDate);
+        }
+    });
+    
+    // 종료일 datepicker
+    $('#dmk_it_valid_end_date').datepicker({
+        onSelect: function(selectedDate) {
+            // 종료일이 선택되면 시작일의 최대값을 종료일로 설정
+            $('#dmk_it_valid_start_date').datepicker('option', 'maxDate', selectedDate);
+        }
+    });
+    
+    // 기존에 값이 있으면 범위 설정
+    var startDate = $('#dmk_it_valid_start_date').val();
+    var endDate = $('#dmk_it_valid_end_date').val();
+    
+    if (startDate) {
+        $('#dmk_it_valid_end_date').datepicker('option', 'minDate', startDate);
+    }
+    if (endDate) {
+        $('#dmk_it_valid_start_date').datepicker('option', 'maxDate', endDate);
+    }
+});
 </script>
 
 <?php

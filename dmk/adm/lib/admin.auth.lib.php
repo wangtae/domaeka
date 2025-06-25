@@ -1242,4 +1242,55 @@ function dmk_get_agency_distributor_id($ag_id) {
     return $row ? $row['dt_id'] : null;
 }
 
+/**
+ * 회원 이름을 가져옵니다.
+ * 
+ * @param string $mb_id 회원 ID
+ * @return string 회원 이름
+ */
+function dmk_get_member_name($mb_id) {
+    global $g5;
+    
+    if (!$mb_id) return '';
+    
+    $sql = " SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($mb_id) . "' ";
+    $row = sql_fetch($sql);
+    
+    return $row ? $row['mb_name'] : '';
+}
+
+/**
+ * 대리점 이름을 가져옵니다.
+ * 
+ * @param string $ag_id 대리점 ID
+ * @return string 대리점 이름
+ */
+function dmk_get_agency_name($ag_id) {
+    global $g5;
+    
+    if (!$ag_id) return '';
+    
+    $sql = " SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($ag_id) . "' ";
+    $row = sql_fetch($sql);
+    
+    return $row ? $row['ag_name'] : '';
+}
+
+/**
+ * 지점 이름을 가져옵니다.
+ * 
+ * @param string $br_id 지점 ID
+ * @return string 지점 이름
+ */
+function dmk_get_branch_name($br_id) {
+    global $g5;
+    
+    if (!$br_id) return '';
+    
+    $sql = " SELECT br_name FROM dmk_branch WHERE br_id = '" . sql_escape_string($br_id) . "' ";
+    $row = sql_fetch($sql);
+    
+    return $row ? $row['br_name'] : '';
+}
+
 ?> 
