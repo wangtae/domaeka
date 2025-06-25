@@ -49,6 +49,14 @@ if (is_array($files)) {
 
 require_once G5_PATH . '/head.sub.php';
 
+// jQuery UI CSS (Google CDN) - Datepicker 기본 테마
+add_stylesheet('<link type="text/css" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.min.css" rel="stylesheet" />', 0);
+// jQuery UI Datepicker 추가 스타일 (로컬)
+add_stylesheet('<link type="text/css" href="'.G5_PLUGIN_URL.'/jquery-ui/style.css">', 0);
+
+// jQuery UI JavaScript (Google CDN)
+add_javascript('<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>', 10);
+
 function print_menu1($key, $no = '')
 {
     global $menu;

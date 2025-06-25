@@ -3,6 +3,12 @@ $sub_menu = '400300';
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
+// 도매까 소유자 유형 상수 정의
+if (!defined('DMK_OWNER_TYPE_SUPER_ADMIN')) define('DMK_OWNER_TYPE_SUPER_ADMIN', 'super_admin');
+if (!defined('DMK_OWNER_TYPE_DISTRIBUTOR')) define('DMK_OWNER_TYPE_DISTRIBUTOR', 'distributor');
+if (!defined('DMK_OWNER_TYPE_AGENCY')) define('DMK_OWNER_TYPE_AGENCY', 'agency');
+if (!defined('DMK_OWNER_TYPE_BRANCH')) define('DMK_OWNER_TYPE_BRANCH', 'branch');
+
 auth_check_menu($auth, $sub_menu, "r");
 
 if (isset($sfl) && $sfl && !in_array($sfl, array('it_name','it_id','it_maker','it_brand','it_model','it_origin','it_sell_email'))) {
@@ -135,6 +141,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <input type="checkbox" name="chkall" value="1" id="chkall" onclick="check_all(this.form)">
         </th>
         <th scope="col" rowspan="3"><?php echo subject_sort_link('it_id', 'sca='.$sca); ?>상품코드</a></th>
+        <th scope="col" rowspan="3">계층 정보</th>
         <th scope="col" colspan="5">분류</th>
         <th scope="col" rowspan="3"><?php echo subject_sort_link('it_order', 'sca='.$sca); ?>순서</a></th>
         <th scope="col" rowspan="3"><?php echo subject_sort_link('it_use', 'sca='.$sca, 1); ?>판매</a></th>
@@ -174,6 +181,42 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         <td rowspan="3" class="td_num">
             <input type="hidden" name="it_id[<?php echo $i; ?>]" value="<?php echo $row['it_id']; ?>">
             <?php echo $row['it_id']; ?>
+        </td>
+        <td rowspan="3" class="td_hierarchy">
+            <?php
+            // 계층 정보 표시
+            $hierarchy_info = '';
+            $hierarchy_name = '';
+            
+            switch($row['dmk_it_owner_type']) {
+                case DMK_OWNER_TYPE_DISTRIBUTOR:
+                    $hierarchy_info = '총판';
+                    $sql = "SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
+                    $owner_row = sql_fetch($sql);
+                    $hierarchy_name = $owner_row ? $owner_row['mb_name'] : '';
+                    break;
+                case DMK_OWNER_TYPE_AGENCY:
+                    $hierarchy_info = '대리점';
+                    $sql = "SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
+                    $owner_row = sql_fetch($sql);
+                    $hierarchy_name = $owner_row ? $owner_row['ag_name'] : '';
+                    break;
+                case DMK_OWNER_TYPE_BRANCH:
+                    $hierarchy_info = '지점';
+                    $sql = "SELECT br_name FROM dmk_branch WHERE br_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
+                    $owner_row = sql_fetch($sql);
+                    $hierarchy_name = $owner_row ? $owner_row['br_name'] : '';
+                    break;
+                default:
+                    $hierarchy_info = '본사';
+                    $hierarchy_name = '최고관리자';
+            }
+            ?>
+            <div style="text-align:center; font-size:11px;">
+                <strong style="color:#007bff;"><?php echo $hierarchy_info; ?></strong><br>
+                <span style="color:#666;"><?php echo $hierarchy_name; ?></span><br>
+                <span style="color:#999; font-size:10px;">(<?php echo $row['dmk_it_owner_id']; ?>)</span>
+            </div>
         </td>
         <td colspan="5" class="td_sort">
             <label for="ca_id_<?php echo $i; ?>" class="sound_only"><?php echo get_text($row['it_name']); ?> 기본분류</label>
