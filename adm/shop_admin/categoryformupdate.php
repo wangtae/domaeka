@@ -221,28 +221,7 @@ if ($w == "")
                     ca_name = '$ca_name',
                     $sql_common ";
 
-    // === 디버그 코드 시작 ===
-    ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL);
-
-    echo "<h2>[DEBUG] Category Insert Attempt</h2>";
-    echo "<p>Generated SQL Query:</p><pre>" . htmlspecialchars($sql) . "</pre>";
-
     $result = sql_query($sql);
-
-    echo "<p>SQL Query Result (true for success, false for failure): " . var_export($result, true) . "</p>";
-
-    if (!$result) {
-        echo "<p style=\"color:red;\"><b>SQL Error Detected!</b></p>";
-        echo "<p>MySQL Error Code: " . mysqli_errno($g5['connect_db']) . "</p>";
-        echo "<p>MySQL Error Message: " . htmlspecialchars(mysqli_error($g5['connect_db'])) . "</p>";
-    } else {
-        echo "<p style=\"color:green;\"><b>SQL Query Executed Successfully.</b></p>";
-    }
-    
-    exit; // 디버그 정보 확인을 위해 스크립트 강제 중단
-    // === 디버그 코드 끝 ===
 
     run_event('shop_admin_category_created', $ca_id);
 } else if ($w == "u") {
@@ -305,12 +284,12 @@ else if ($w == "d")
 if(function_exists('get_admin_captcha_by'))
     get_admin_captcha_by('remove');
 
-// 최종 리다이렉션 로직도 임시 주석 처리
-// if ($w == "")
-// {
-//     goto_url("./categorylist.php?$qstr");
-// } else if ($w == "u") {
-//     goto_url("./categoryform.php?w=u&amp;ca_id=$ca_id&amp;$qstr");
-// } else {
-//     goto_url("./categorylist.php?$qstr");
-// }
+// 최종 리다이렉션 로직
+if ($w == "")
+{
+    goto_url("./categorylist.php?$qstr");
+} else if ($w == "u") {
+    goto_url("./categoryform.php?w=u&amp;ca_id=$ca_id&amp;$qstr");
+} else {
+    goto_url("./categorylist.php?$qstr");
+}

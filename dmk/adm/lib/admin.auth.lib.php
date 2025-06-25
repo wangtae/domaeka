@@ -1225,4 +1225,21 @@ function dmk_get_branches_for_distributor($dt_id) {
     return $branch_ids;
 }
 
+/**
+ * 대리점의 소속 총판 ID를 가져옵니다.
+ * 
+ * @param string $ag_id 대리점 ID
+ * @return string|null 총판 ID
+ */
+function dmk_get_agency_distributor_id($ag_id) {
+    global $g5;
+    
+    if (!$ag_id) return null;
+    
+    $sql = " SELECT dt_id FROM dmk_agency WHERE ag_id = '" . sql_escape_string($ag_id) . "' ";
+    $row = sql_fetch($sql);
+    
+    return $row ? $row['dt_id'] : null;
+}
+
 ?> 

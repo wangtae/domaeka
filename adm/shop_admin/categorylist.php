@@ -114,9 +114,8 @@ if ($hierarchy_where) {
 }
 
 $sql_common = " from {$g5['g5_shop_category_table']} ";
-// 기존 is_admin != 'super' 조건은 dmk_get_category_where_condition에서 처리되므로 제거
-// if ($is_admin != 'super')
-//     $sql_search .= " $where ca_mb_id = '{$member['mb_id']}' ";
+if ($is_admin != 'super' && !$dmk_auth['is_super'])
+    $sql_search .= " $where ca_mb_id = '{$member['mb_id']}' ";
 $sql_common .= $sql_search;
 
 // 테이블의 전체 레코드수만 얻음
@@ -143,6 +142,12 @@ $sql  = " select *
              limit $from_record, $rows ";
 $result = sql_query($sql);
 
+// 결과를 $list 배열에 저장
+$list = array();
+while ($row = sql_fetch_array($result)) {
+    $list[] = $row;
+}
+
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
 ?>
 
@@ -151,162 +156,284 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <span class="btn_ov01"><span class="ov_txt">생성된  분류 수</span><span class="ov_num">  <?php echo number_format($total_count); ?>개</span></span>
 </div>
 
-<form name="fsearch" id="fsearch" class="frm_search" action="<?php echo G5_ADMIN_URL; ?>/shop_admin/categorylist.php" method="get">
-    <input type="hidden" name="save_stx" value="<?php echo $stx; ?>">
-    <input type="hidden" name="sst" value="<?php echo $sst; ?>">
-    <input type="hidden" name="sod" value="<?php echo $sod; ?>">
+<!-- 도매까 계층 필터링 추가 -->
+<?php if ($display_dt_select || $display_ag_select || $display_br_select) { ?>
+<form name="fhierarchy" class="local_sch01 local_sch" method="get">
+<input type="hidden" name="sfl" value="<?php echo $sfl; ?>">
+<input type="hidden" name="stx" value="<?php echo $stx; ?>">
+<input type="hidden" name="sst" value="<?php echo $sst; ?>">
+<input type="hidden" name="sod" value="<?php echo $sod; ?>">
+<input type="hidden" name="page" value="<?php echo $page; ?>">
 
-    <?php if ($display_dt_select) { ?>
-    <div style="display: inline-block; margin-right: 5px;">
-        <label for="dt_id" class="sound_only">총판 선택</label>
-        <select name="dt_id" id="dt_id">
-            <option value="">- 총판 선택 -</option>
-            <?php foreach ($distributors as $dt) { ?>
-            <option value="<?php echo $dt['mb_id']; ?>" <?php echo get_selected($selected_dt_id, $dt['mb_id']); ?>><?php echo $dt['mb_name']; ?></option>
-            <?php } ?>
-        </select>
-    </div>
+<?php if ($display_dt_select) { ?>
+<label for="dt_id" class="sound_only">총판 선택</label>
+<select name="dt_id" id="dt_id">
+    <option value="">- 총판 선택 -</option>
+    <?php foreach ($distributors as $dt) { ?>
+    <option value="<?php echo $dt['mb_id']; ?>" <?php echo get_selected($selected_dt_id, $dt['mb_id']); ?>><?php echo $dt['mb_name']; ?></option>
     <?php } ?>
+</select>
+<?php } ?>
 
-    <?php if ($display_ag_select) { ?>
-    <div style="display: inline-block; margin-right: 5px;">
-        <label for="ag_id" class="sound_only">대리점 선택</label>
-        <select name="ag_id" id="ag_id">
-            <option value="">- 대리점 선택 -</option>
-            <?php foreach ($agencies as $ag) { ?>
-            <option value="<?php echo $ag['ag_id']; ?>" <?php echo get_selected($selected_ag_id, $ag['ag_id']); ?>><?php echo $ag['ag_name']; ?></option>
-            <?php } ?>
-        </select>
-    </div>
+<?php if ($display_ag_select) { ?>
+<label for="ag_id" class="sound_only">대리점 선택</label>
+<select name="ag_id" id="ag_id">
+    <option value="">- 대리점 선택 -</option>
+    <?php foreach ($agencies as $ag) { ?>
+    <option value="<?php echo $ag['ag_id']; ?>" <?php echo get_selected($selected_ag_id, $ag['ag_id']); ?>><?php echo $ag['ag_name']; ?></option>
     <?php } ?>
+</select>
+<?php } ?>
 
-    <?php if ($display_br_select) { ?>
-    <div style="display: inline-block; margin-right: 5px;">
-        <label for="br_id" class="sound_only">지점 선택</label>
-        <select name="br_id" id="br_id">
-            <option value="">- 지점 선택 -</option>
-            <?php foreach ($branches as $br) { ?>
-            <option value="<?php echo $br['br_id']; ?>" <?php echo get_selected($selected_br_id, $br['br_id']); ?>><?php echo $br['br_name']; ?></option>
-            <?php } ?>
-        </select>
-    </div>
+<?php if ($display_br_select) { ?>
+<label for="br_id" class="sound_only">지점 선택</label>
+<select name="br_id" id="br_id">
+    <option value="">- 지점 선택 -</option>
+    <?php foreach ($branches as $br) { ?>
+    <option value="<?php echo $br['br_id']; ?>" <?php echo get_selected($selected_br_id, $br['br_id']); ?>><?php echo $br['br_name']; ?></option>
     <?php } ?>
+</select>
+<?php } ?>
 
-    <label for="sfl" class="sound_only">검색대상</label>
-    <select name="sfl" id="sfl">
-        <option value="ca_name" <?php echo get_selected($sfl, 'ca_name', true); ?>>분류명</option>
-        <option value="ca_id" <?php echo get_selected($sfl, 'ca_id'); ?>>분류코드</option>
-        <option value="ca_mb_id" <?php echo get_selected($sfl, 'ca_mb_id'); ?>>관리자ID</option>
-    </select>
-    <label for="stx" class="sound_only">검색어<strong class="sound_only"> 필수</strong></label>
-    <input type="text" name="stx" value="<?php echo $stx; ?>" required class="frm_input required" size="20">
-    <button type="submit" class="btn_submit">검색</button>
+
 </form>
+<?php } ?>
 
-<div class="btn_confirm">
-    <a href="<?php echo G5_ADMIN_URL; ?>/shop_admin/categoryform.php" class="btn_frm_setup">분류 추가</a>
-</div>
+<form name="flist" class="local_sch01 local_sch">
+<input type="hidden" name="page" value="<?php echo $page; ?>">
+<input type="hidden" name="save_stx" value="<?php echo $stx; ?>">
+<input type="hidden" name="dt_id" value="<?php echo $selected_dt_id; ?>">
+<input type="hidden" name="ag_id" value="<?php echo $selected_ag_id; ?>">
+<input type="hidden" name="br_id" value="<?php echo $selected_br_id; ?>">
 
-<h2>분류 목록</h2>
+<label for="sfl" class="sound_only">검색대상</label>
+<select name="sfl" id="sfl">
+    <option value="ca_name"<?php echo get_selected($sfl, "ca_name", true); ?>>분류명</option>
+    <option value="ca_id"<?php echo get_selected($sfl, "ca_id", true); ?>>분류코드</option>
+    <option value="ca_mb_id"<?php echo get_selected($sfl, "ca_mb_id", true); ?>>회원아이디</option>
+</select>
 
-<div class="local_desc01 local_desc">
-    <p>
-        하위 분류는 더블 클릭하면 분류 등록 / 수정 화면으로 이동합니다.<br>
-        분류명 클릭으로도 분류 등록 / 수정 화면으로 이동합니다.
-    </p>
-</div>
-
-<form name="fcategorylist" id="fcategorylist" action="./categorylistupdate.php" method="post">
-    <input type="hidden" name="sst" value="<?php echo $sst; ?>">
-    <input type="hidden" name="sod" value="<?php echo $sod; ?>">
-    <input type="hidden" name="sfl" value="<?php echo $sfl; ?>">
-    <input type="hidden" name="stx" value="<?php echo $stx; ?>">
-    <input type="hidden" name="page" value="<?php echo $page; ?>">
-    <input type="hidden" name="token" value="<?php echo get_token(); ?>">
-
-    <div class="tbl_head01 tbl_wrap">
-        <table>
-            <caption><?php echo $g5['title']; ?> 목록</caption>
-            <thead>
-                <tr>
-                    <th scope="col">
-                        <label for="chkall" class="sound_only">분류 전체</label>
-                        <input type="checkbox" name="chkall" value="1" id="chkall" onclick="check_all(this.form)">
-                    </th>
-                    <th scope="col"><?php echo subject_sort_link('ca_id', '분류코드'); ?></th>
-                    <th scope="col">이미지</th>
-                    <th scope="col"><?php echo subject_sort_link('ca_name', '분류명'); ?></th>
-                    <th scope="col">계층 정보</th>
-                    <th scope="col"><?php echo subject_sort_link('ca_use', '노출'); ?></th>
-                    <th scope="col"><?php echo subject_sort_link('ca_order', '순서'); ?></th>
-                    <th scope="col">관리</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                if (isset($list) && is_array($list)) {
-                    for ($i=0; $i<count($list); $i++) {
-                        $row = $list[$i];
-                        $bg = 'bg'.($i%2);
-
-                        $s_level = strlen($row['ca_id']) / 2 - 1;
-                        $ca_name = '';
-                        if ($s_level > 0) {
-                            $ca_name = str_repeat('&nbsp;&nbsp;&nbsp;', $s_level) . '<img src="'.G5_ADMIN_URL.'/img/icon_tree.gif" alt="트리" align="absmiddle">';
-                        }
-                        $ca_name .= get_text($row['ca_name']);
-
-                        $category_info = dmk_get_category_owner_info($row['dmk_ca_owner_type'], $row['dmk_ca_owner_id']);
-                        $owner_info_display = '';
-                        if ($category_info) {
-                            $owner_info_display = "({$category_info['type_name']}: {$category_info['owner_name']} ({$category_info['owner_id']}))";
-                        }
-                ?>
-                <tr class="<?php echo $bg; ?>">
-                    <td class="td_chk">
-                        <label for="chk_ca_id_<?php echo $i; ?>" class="sound_only"><?php echo $ca_name; ?> 분류</label>
-                        <input type="checkbox" name="chk_ca_id[]" value="<?php echo $row['ca_id']; ?>" id="chk_ca_id_<?php echo $i; ?>">
-                    </td>
-                    <td class="td_category_id"><a href="./categoryform.php?ca_id=<?php echo $row['ca_id']; ?>"><?php echo $row['ca_id']; ?></a></td>
-                    <td class="td_img"><?php echo get_it_image($row['ca_id'], 50, 50); ?></td>
-                    <td class="td_category_name">
-                        <div class="category_name" style="float:left;">
-                            <a href="./categoryform.php?ca_id=<?php echo $row['ca_id']; ?>"><?php echo $ca_name; ?></a>
-                        </div>
-                    </td>
-                    <td class="td_category_owner"><?php echo $owner_info_display; ?></td>
-                    <td class="td_num">
-                        <?php echo ($row['ca_use']) ? '<span class="txt_true">예</span>' : '<span class="txt_false">아니오</span>'; ?>
-                    </td>
-                    <td class="td_num">
-                        <label for="ca_order_<?php echo $i; ?>" class="sound_only">정렬순서</label>
-                        <input type="text" name="ca_order[<?php echo $i; ?>]" value="<?php echo $row['ca_order']; ?>" id="ca_order_<?php echo $i; ?>" class="frm_input" size="3">
-                        <input type="hidden" name="ca_id[<?php echo $i; ?>]" value="<?php echo $row['ca_id']; ?>">
-                    </td>
-                    <td class="td_mng">
-                        <a href="./categoryform.php?ca_id=<?php echo $row['ca_id']; ?>" class="btn_frm_modify">수정</a>
-                        <a href="./categoryformupdate.php?w=d&amp;ca_id=<?php echo $row['ca_id']; ?>&amp;<?php echo $qstr; ?>" onclick="del(this.href); return false;" class="btn_frm_del">삭제</a>
-                    </td>
-                </tr>
-                <?php
-                    }
-                }
-                if ($i == 0)
-                    echo '<tr><td colspan="8" class="empty_table">자료가 없습니다.</td></tr>';
-                ?>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="btn_list03 btn_list">
-        <input type="submit" name="act_button" value="선택수정" onclick="document.fcategorylist.action='./categorylistupdate.php'" class="btn_submit">
-    </div>
+<label for="stx" class="sound_only">검색어<strong class="sound_only"> 필수</strong></label>
+<input type="text" name="stx" value="<?php echo $stx; ?>" id="stx" required class="required frm_input">
+<input type="submit" value="검색" class="btn_submit">
 
 </form>
 
-<?php
-echo get_paging($config['cf_write_pages'], $page, $total_page, $_SERVER['SCRIPT_NAME'].'?'.$qstr.'&amp;page=');
-?>
+<form name="fcategorylist" method="post" action="./categorylistupdate.php" autocomplete="off">
+<input type="hidden" name="sst" value="<?php echo $sst; ?>">
+<input type="hidden" name="sod" value="<?php echo $sod; ?>">
+<input type="hidden" name="sfl" value="<?php echo $sfl; ?>">
+<input type="hidden" name="stx" value="<?php echo $stx; ?>">
+<input type="hidden" name="page" value="<?php echo $page; ?>">
+<input type="hidden" name="dt_id" value="<?php echo $selected_dt_id; ?>">
+<input type="hidden" name="ag_id" value="<?php echo $selected_ag_id; ?>">
+<input type="hidden" name="br_id" value="<?php echo $selected_br_id; ?>">
+
+<div id="sct" class="tbl_head01 tbl_wrap">
+    <table>
+    <caption><?php echo $g5['title']; ?> 목록</caption>
+    <thead>
+    <tr>
+        <th scope="col" rowspan="2"><?php echo subject_sort_link("ca_id"); ?>분류코드</a></th>
+        <th scope="col" id="sct_cate"><?php echo subject_sort_link("ca_name"); ?>분류명</a></th>
+        <th scope="col" id="sct_amount">상품수</th>
+        <th scope="col" id="sct_owner" rowspan="2">계층 정보</th>
+        <th scope="col" id="sct_hpcert">본인인증</th>
+        <th scope="col" id="sct_imgw">이미지 폭</th>
+        <th scope="col" id="sct_imgcol">1행이미지수</th>
+        <th scope="col" id="sct_mobileimg">모바일<br>1행이미지수</th>
+        <th scope="col" id="sct_pcskin">PC스킨지정</th>
+        <th scope="col" rowspan="2">관리</th>
+    </tr>
+    <tr>
+        <th scope="col" id="sct_admin"><?php echo subject_sort_link("ca_mb_id"); ?>관리회원아이디</a></th>
+        <th scope="col" id="sct_sell"><?php echo subject_sort_link("ca_use"); ?>판매가능</a></th>
+        <th scope="col" id="sct_adultcert">성인인증</th>
+        <th scope="col" id="sct_imgh">이미지 높이</th>
+        <th scope="col" id="sct_imgrow">이미지 행수</th>
+        <th scope="col" id="sct_mobilerow">모바일<br>이미지 행수</th>
+        <th scope="col" id="sct_mskin">모바일스킨지정</th>
+    </tr>
+    </thead>
+    <tbody>
+    <?php
+    $s_add = $s_vie = $s_upd = $s_del = '';
+    for ($i=0; $i<count($list); $i++)
+    {
+        $row = $list[$i];
+        $level = strlen($row['ca_id']) / 2 - 1;
+        $p_ca_name = '';
+
+        if ($level > 0) {
+            $class = 'class="name_lbl"'; // 2단 이상 분류의 label 에 스타일 부여
+            // 상위단계의 분류명
+            $p_ca_id = substr($row['ca_id'], 0, $level*2);
+            $sql = " select ca_name from {$g5['g5_shop_category_table']} where ca_id = '$p_ca_id' ";
+            $temp = sql_fetch($sql);
+            $p_ca_name = $temp['ca_name'].'의하위';
+        } else {
+            $class = '';
+        }
+
+        $s_level = '<div><label for="ca_name_'.($i).'" '.$class.'><span class="sound_only">'.$p_ca_name.''.($level+1).'단 분류</span></label></div>';
+        $s_level_input_size = 25 - $level *2; // 하위 분류일 수록 입력칸 넓이 작아짐
+
+        if ($level+2 < 6) $s_add = '<a href="./categoryform.php?ca_id='.$row['ca_id'].'&amp;'.$qstr.'" class="btn btn_03">추가</a> '; // 분류는 5단계까지만 가능
+        else $s_add = '';
+        $s_upd = '<a href="./categoryform.php?w=u&amp;ca_id='.$row['ca_id'].'&amp;'.$qstr.'" class="btn btn_02"><span class="sound_only">'.get_text($row['ca_name']).' </span>수정</a> ';
+
+        if ($dmk_auth['is_super'] || dmk_can_modify_category($row['ca_id']))
+            $s_del = '<a href="./categoryformupdate.php?w=d&amp;ca_id='.$row['ca_id'].'&amp;'.$qstr.'" onclick="return delete_confirm(this);" class="btn btn_02"><span class="sound_only">'.get_text($row['ca_name']).' </span>삭제</a> ';
+
+        // 해당 분류에 속한 상품의 수
+        $sql1 = " select COUNT(*) as cnt from {$g5['g5_shop_item_table']}
+                      where ca_id = '{$row['ca_id']}'
+                      or ca_id2 = '{$row['ca_id']}'
+                      or ca_id3 = '{$row['ca_id']}' ";
+        $row1 = sql_fetch($sql1);
+
+        // 계층 정보 표시
+        $owner_info_display = '';
+        if ($row['dmk_ca_owner_type'] && $row['dmk_ca_owner_id']) {
+            switch ($row['dmk_ca_owner_type']) {
+                case DMK_OWNER_TYPE_DISTRIBUTOR:
+                    $owner_info_display = "총판<br>({$row['dmk_ca_owner_id']})";
+                    break;
+                case DMK_OWNER_TYPE_AGENCY:
+                    $owner_info_display = "대리점<br>({$row['dmk_ca_owner_id']})";
+                    break;
+                case DMK_OWNER_TYPE_BRANCH:
+                    $owner_info_display = "지점<br>({$row['dmk_ca_owner_id']})";
+                    break;
+                default:
+                    $owner_info_display = "{$row['dmk_ca_owner_type']}: {$row['dmk_ca_owner_id']}";
+                    break;
+            }
+        } else if ($row['dmk_ca_owner_type']) {
+            $owner_info_display = $row['dmk_ca_owner_type'];
+        } else {
+            $owner_info_display = '-';
+        }
+
+        // 스킨 Path
+        if(!$row['ca_skin_dir'])
+            $g5_shop_skin_path = G5_SHOP_SKIN_PATH;
+        else {
+            if(preg_match('#^theme/(.+)$#', $row['ca_skin_dir'], $match))
+                $g5_shop_skin_path = G5_THEME_PATH.'/'.G5_SKIN_DIR.'/shop/'.$match[1];
+            else
+                $g5_shop_skin_path  = G5_PATH.'/'.G5_SKIN_DIR.'/shop/'.$row['ca_skin_dir'];
+        }
+
+        if(!$row['ca_mobile_skin_dir'])
+            $g5_mshop_skin_path = G5_MSHOP_SKIN_PATH;
+        else {
+            if(preg_match('#^theme/(.+)$#', $row['ca_mobile_skin_dir'], $match))
+                $g5_mshop_skin_path = G5_THEME_MOBILE_PATH.'/'.G5_SKIN_DIR.'/shop/'.$match[1];
+            else
+                $g5_mshop_skin_path = G5_MOBILE_PATH.'/'.G5_SKIN_DIR.'/shop/'.$row['ca_mobile_skin_dir'];
+        }
+
+        $bg = 'bg'.($i%2);
+    ?>
+    <tr class="<?php echo $bg; ?>">
+        <td class="td_code" rowspan="2">
+            <input type="hidden" name="ca_id[<?php echo $i; ?>]" value="<?php echo $row['ca_id']; ?>">
+            <a href="<?php echo shop_category_url($row['ca_id']); ?>"><?php echo $row['ca_id']; ?></a>
+        </td>
+        <td headers="sct_cate" class="sct_name<?php echo $level; ?>"><?php echo $s_level; ?> <input type="text" name="ca_name[<?php echo $i; ?>]" value="<?php echo get_text($row['ca_name']); ?>" id="ca_name_<?php echo $i; ?>" required class="tbl_input full_input required"></td>
+        <td headers="sct_amount" class="td_amount"><a href="./itemlist.php?sca=<?php echo $row['ca_id']; ?>"><?php echo $row1['cnt']; ?></a></td>
+        <td headers="sct_owner" class="td_owner" rowspan="2"><?php echo $owner_info_display; ?></td>
+        <td headers="sct_hpcert" class="td_possible">
+            <input type="checkbox" name="ca_cert_use[<?php echo $i; ?>]" value="1" id="ca_cert_use_yes<?php echo $i; ?>" <?php if($row['ca_cert_use']) echo 'checked="checked"'; ?>>
+            <label for="ca_cert_use_yes<?php echo $i; ?>">사용</label>
+        </td>
+        <td headers="sct_imgw">
+            <label for="ca_out_width<?php echo $i; ?>" class="sound_only">출력이미지 폭</label>
+            <input type="text" name="ca_img_width[<?php echo $i; ?>]" value="<?php echo get_text($row['ca_img_width']); ?>" id="ca_out_width<?php echo $i; ?>" required class="required tbl_input" size="3" > <span class="sound_only">픽셀</span>
+        </td>
+        
+        <td headers="sct_imgcol">
+            <label for="ca_lineimg_num<?php echo $i; ?>" class="sound_only">1줄당 이미지 수</label>
+            <input type="text" name="ca_list_mod[<?php echo $i; ?>]" size="3" value="<?php echo $row['ca_list_mod']; ?>" id="ca_lineimg_num<?php echo $i; ?>" required class="required tbl_input"> <span class="sound_only">개</span>
+        </td>
+        <td headers="sct_mobileimg">
+            <label for="ca_mobileimg_num<?php echo $i; ?>" class="sound_only">모바일 1줄당 이미지 수</label>
+            <input type="text" name="ca_mobile_list_mod[<?php echo $i; ?>]" size="3" value="<?php echo $row['ca_mobile_list_mod']; ?>" id="ca_mobileimg_num<?php echo $i; ?>" required class="required tbl_input"> <span class="sound_only">개</span>
+        </td>
+        <td headers="sct_pcskin" class="sct_pcskin">
+            <label for="ca_skin_dir<?php echo $i; ?>" class="sound_only">PC스킨폴더</label>
+            <?php echo get_skin_select('shop', 'ca_skin_dir'.$i, 'ca_skin_dir['.$i.']', $row['ca_skin_dir'], 'class="skin_dir"'); ?>
+            <label for="ca_skin<?php echo $i; ?>" class="sound_only">PC스킨파일</label>
+            <select id="ca_skin<?php echo $i; ?>" name="ca_skin[<?php echo $i; ?>]" required class="required">
+                <?php echo get_list_skin_options("^list.[0-9]+\.skin\.php", $g5_shop_skin_path, $row['ca_skin']); ?>
+            </select>
+        </td>
+        <td class="td_mng td_mng_s" rowspan="2">
+            <?php echo $s_add; ?>
+            <?php echo $s_vie; ?>
+            <?php echo $s_upd; ?>
+            <?php echo $s_del; ?>
+        </td>
+    </tr>
+    <tr class="<?php echo $bg; ?>">
+        <td headers="sct_admin">
+            <?php if ($is_admin == 'super' || dmk_can_modify_category($row['ca_id'])) {?>
+            <label for="ca_mb_id<?php echo $i; ?>" class="sound_only">관리회원아이디</label>
+            <input type="text" name="ca_mb_id[<?php echo $i; ?>]" value="<?php echo $row['ca_mb_id']; ?>" id="ca_mb_id<?php echo $i; ?>" class="tbl_input full_input" size="15" maxlength="20">
+            <?php } else { ?>
+            <input type="hidden" name="ca_mb_id[<?php echo $i; ?>]" value="<?php echo $row['ca_mb_id']; ?>">
+            <?php echo $row['ca_mb_id']; ?>
+            <?php } ?>
+        </td>
+        <td headers="sct_sell" class="td_possible">
+            <input type="checkbox" name="ca_use[<?php echo $i; ?>]" value="1" id="ca_use<?php echo $i; ?>" <?php echo ($row['ca_use'] ? "checked" : ""); ?>>
+            <label for="ca_use<?php echo $i; ?>">판매</label>
+        </td>
+
+        <td headers="sct_adultcert" class="td_possible">
+            <input type="checkbox" name="ca_adult_use[<?php echo $i; ?>]" value="1" id="ca_adult_use_yes<?php echo $i; ?>" <?php if($row['ca_adult_use']) echo 'checked="checked"'; ?>>
+            <label for="ca_adult_use_yes<?php echo $i; ?>">사용</label>
+        </td>
+        <td headers="sct_imgh">
+            <label for="ca_img_height<?php echo $i; ?>" class="sound_only">출력이미지 높이</label>
+            <input type="text" name="ca_img_height[<?php echo $i; ?>]" value="<?php echo $row['ca_img_height']; ?>" id="ca_img_height<?php echo $i; ?>" required class="required tbl_input" size="3" > <span class="sound_only">픽셀</span>
+        </td>
+        <td headers="sct_imgrow">
+            <label for="ca_imgline_num<?php echo $i; ?>" class="sound_only">이미지 줄 수</label>
+            <input type="text" name="ca_list_row[<?php echo $i; ?>]" value='<?php echo $row['ca_list_row']; ?>' id="ca_imgline_num<?php echo $i; ?>" required class="required tbl_input" size="3"> <span class="sound_only">줄</span>
+        </td>
+        <td headers="sct_mobilerow">
+            <label for="ca_mobileimg_row<?php echo $i; ?>" class="sound_only">모바일 이미지 줄 수</label>
+            <input type="text" name="ca_mobile_list_row[<?php echo $i; ?>]" value='<?php echo $row['ca_mobile_list_row']; ?>' id="ca_mobileimg_row<?php echo $i; ?>" required class="required tbl_input" size="3">
+        </td>
+        <td headers="sct_mskin"  class="sct_mskin">
+            <label for="ca_mobile_skin_dir<?php echo $i; ?>" class="sound_only">모바일스킨폴더</label>
+            <?php echo get_mobile_skin_select('shop', 'ca_mobile_skin_dir'.$i, 'ca_mobile_skin_dir['.$i.']', $row['ca_mobile_skin_dir'], 'class="skin_dir"'); ?>
+            <label for="ca_mobile_skin<?php echo $i; ?>" class="sound_only">모바일스킨파일</label>
+            <select id="ca_mobile_skin<?php echo $i; ?>" name="ca_mobile_skin[<?php echo $i; ?>]" required class="required">
+                <?php echo get_list_skin_options("^list.[0-9]+\.skin\.php", $g5_mshop_skin_path, $row['ca_mobile_skin']); ?>
+            </select>
+        </td>
+    </tr>
+    <?php }
+    if ($i == 0) echo "<tr><td colspan=\"10\" class=\"empty_table\">자료가 한 건도 없습니다.</td></tr>\n";
+    ?>
+    </tbody>
+    </table>
+</div>
+
+<div class="btn_fixed_top">
+    <input type="submit" value="일괄수정" class="btn_02 btn">
+
+    <?php if ($is_admin == 'super' || $dmk_auth['is_super']) {?>
+    <a href="./categoryform.php" id="cate_add" class="btn btn_01">분류 추가</a>
+    <?php } ?>
+</div>
+
+</form>
+
+<?php echo get_paging(G5_IS_MOBILE ? $config['cf_mobile_pages'] : $config['cf_write_pages'], $page, $total_page, "{$_SERVER['SCRIPT_NAME']}?$qstr&amp;page="); ?>
 
 <script>
 jQuery(document).ready(function($) {
@@ -322,72 +449,48 @@ jQuery(document).ready(function($) {
     var $brSelect = $('#br_id');
 
     function populateDropdown(targetSelect, items, selectedValue, emptyOptionText) {
-        console.log('[DMK DEBUG] populateDropdown 호출:', {
-            items: items,
-            selectedValue: selectedValue,
-            emptyOptionText: emptyOptionText
-        });
-        
         targetSelect.empty();
         targetSelect.append('<option value="">' + emptyOptionText + '</option>');
         
         if (Array.isArray(items)) {
             $.each(items, function(index, item) {
-                console.log('[DMK DEBUG] 아이템 처리:', item);
-                
-                // AJAX 응답에서 받은 데이터 구조 (id, name)
                 var id = item.id || item.mb_id || item.ag_id || item.br_id;
                 var name = item.name || item.mb_name || item.ag_name || item.br_name;
                 
                 if (id && name) {
                     var selectedAttr = (selectedValue === id) ? 'selected' : '';
                     targetSelect.append('<option value="' + id + '" ' + selectedAttr + '>' + name + ' (' + id + ')</option>');
-                } else {
-                    console.warn('[DMK WARNING] 유효하지 않은 아이템:', item);
                 }
             });
-        } else {
-            console.error('[DMK ERROR] items가 배열이 아닙니다:', items);
         }
-        
-        console.log('[DMK DEBUG] 드롭다운 업데이트 완료, 옵션 수:', targetSelect.find('option').length - 1);
     }
 
     // 총판 선택 변경 시
     $dtSelect.on('change', function() {
         var dt_id = $(this).val();
-        console.log('[DMK DEBUG] 총판 선택 변경:', dt_id);
-        
         $agSelect.empty().append('<option value="">- 대리점 선택 -</option>');
         $brSelect.empty().append('<option value="">- 지점 선택 -</option>');
 
         if (dt_id) {
-            console.log('[DMK DEBUG] AJAX 요청 시작 - owner_type:', dmkJsConsts.DMK_OWNER_TYPE_AGENCY, 'parent_id:', dt_id);
-            
             $.ajax({
                 url: './ajax.get_dmk_owner_ids.php',
                 type: 'GET',
                 dataType: 'json',
                 data: { owner_type: dmkJsConsts.DMK_OWNER_TYPE_AGENCY, parent_id: dt_id },
                 success: function(data) {
-                    console.log('[DMK DEBUG] AJAX 성공 응답:', data);
                     if (data.error) {
-                        console.error('[DMK ERROR] 서버 오류:', data.error);
                         alert('대리점 목록을 가져오는 중 오류가 발생했습니다: ' + data.error);
                     } else {
                         populateDropdown($agSelect, data, selectedAgId, '- 대리점 선택 -');
+                        $('form[name="fhierarchy"]').submit(); // 대리점 로드 후 폼 자동 제출
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error("[DMK ERROR] AJAX 오류:", {
-                        status: status,
-                        error: error,
-                        responseText: xhr.responseText,
-                        statusCode: xhr.status
-                    });
                     alert('대리점 목록을 가져오는 중 네트워크 오류가 발생했습니다.');
                 }
             });
+        } else {
+            $('form[name="fhierarchy"]').submit(); // 총판 선택 해제 시 폼 자동 제출
         }
     });
 
@@ -403,19 +506,30 @@ jQuery(document).ready(function($) {
                 dataType: 'json',
                 data: { owner_type: dmkJsConsts.DMK_OWNER_TYPE_BRANCH, parent_id: ag_id },
                 success: function(data) {
-                    populateDropdown($brSelect, data, selectedBrId, '- 지점 선택 -');
+                    if (data.error) {
+                        alert('지점 목록을 가져오는 중 오류가 발생했습니다: ' + data.error);
+                    } else {
+                        populateDropdown($brSelect, data, selectedBrId, '- 지점 선택 -');
+                        $('form[name="fhierarchy"]').submit(); // 지점 로드 후 폼 자동 제출
+                    }
                 },
                 error: function(xhr, status, error) {
-                    console.error("AJAX Error (지점 로드): ", status, error);
+                    alert('지점 목록을 가져오는 중 네트워크 오류가 발생했습니다.');
                 }
             });
+        } else {
+            $('form[name="fhierarchy"]').submit(); // 대리점 선택 해제 시 폼 자동 제출
         }
+    });
+
+    // 지점 선택 변경 시
+    $brSelect.on('change', function() {
+        $('form[name="fhierarchy"]').submit(); // 지점 선택 변경 시 폼 자동 제출
     });
 
     // 페이지 로드 시 초기값 설정 및 비활성화 처리
     if (dmkAuth.mb_type == dmkJsConsts.DMK_MB_TYPE_DISTRIBUTOR) {
         $dtSelect.prop('disabled', true);
-        // 총판 본인이므로 대리점 목록만 로드
         if (selectedDtId) {
             $.ajax({
                 url: './ajax.get_dmk_owner_ids.php',
@@ -424,7 +538,6 @@ jQuery(document).ready(function($) {
                 data: { owner_type: dmkJsConsts.DMK_OWNER_TYPE_AGENCY, parent_id: selectedDtId },
                 success: function(data) {
                     populateDropdown($agSelect, data, selectedAgId, '- 대리점 선택 -');
-                    // 대리점 선택이 되어있다면 지점 목록도 로드
                     if (selectedAgId) {
                          $.ajax({
                             url: './ajax.get_dmk_owner_ids.php',
@@ -442,7 +555,6 @@ jQuery(document).ready(function($) {
     } else if (dmkAuth.mb_type == dmkJsConsts.DMK_MB_TYPE_AGENCY) {
         $dtSelect.prop('disabled', true);
         $agSelect.prop('disabled', true);
-        // 대리점 본인이므로 지점 목록만 로드
         if (selectedAgId) {
             $.ajax({
                 url: './ajax.get_dmk_owner_ids.php',
@@ -459,7 +571,6 @@ jQuery(document).ready(function($) {
         $agSelect.prop('disabled', true);
         $brSelect.prop('disabled', true);
     } else { // Super Admin
-        // 총판이 선택되어 있다면 대리점 목록 로드
         if (selectedDtId) {
             $.ajax({
                 url: './ajax.get_dmk_owner_ids.php',
@@ -468,7 +579,6 @@ jQuery(document).ready(function($) {
                 data: { owner_type: dmkJsConsts.DMK_OWNER_TYPE_AGENCY, parent_id: selectedDtId },
                 success: function(data) {
                     populateDropdown($agSelect, data, selectedAgId, '- 대리점 선택 -');
-                    // 대리점도 선택되어 있다면 지점 목록 로드
                     if (selectedAgId) {
                         $.ajax({
                             url: './ajax.get_dmk_owner_ids.php',
@@ -484,8 +594,29 @@ jQuery(document).ready(function($) {
             });
         }
     }
+
+    // 스킨 선택 기능 (원본 영카트 기능 유지)
+    $("select.skin_dir").on("change", function() {
+        var type = "";
+        var dir = $(this).val();
+        if(!dir)
+            return false;
+
+        var id = $(this).attr("id");
+        var $sel = $(this).siblings("select");
+        var sval = $sel.find("option:selected").val();
+
+        if(id.search("mobile") > -1)
+            type = "mobile";
+
+        $sel.load(
+            "./ajax.skinfile.php",
+            { dir : dir, type : type, sval: sval }
+        );
+    });
 });
 </script>
 
 <?php
 include_once (G5_ADMIN_PATH.'/admin.tail.php');
+?> 
