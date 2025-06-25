@@ -16,7 +16,6 @@ if (defined('G5_IS_ADMIN') && G5_IS_ADMIN) {
     error_log("[DMK DEBUG] admin.head.php - member_id: " . ($member['mb_id'] ?? 'none') . ", is_admin: " . ($is_admin ?? 'none'));
     if (function_exists('dmk_get_admin_auth')) {
         $dmk_auth_debug = dmk_get_admin_auth();
-        error_log("[DMK DEBUG] dmk_auth - mb_type: " . $dmk_auth_debug['mb_type'] . ", is_super: " . ($dmk_auth_debug['is_super'] ? 'true' : 'false'));
     }
 }
 
@@ -189,7 +188,10 @@ if (!empty($_COOKIE['g5_admin_btn_gnb'])) {
                 }
 
                 $current_class = "";
-                if (isset($sub_menu) && (substr($sub_menu, 0, 3) == substr($menu['menu' . $key][0][0], 0, 3))) {
+                // 디버깅: sub_menu 값과 현재 메뉴 코드 로깅
+                error_log("[DMK DEBUG] admin.head.php - Loop: sub_menu=" . ($sub_menu ?? 'N/A') . ", current_menu_code=" . $menu_code);
+                if (isset($sub_menu) && (substr($sub_menu, 0, 3) == substr($menu_code, 0, 3))) {
+                    error_log("[DMK DEBUG] admin.head.php - 'on' class condition met for menu " . $menu_code);
                     $current_class = " on";
                 }
 
@@ -204,6 +206,9 @@ if (!empty($_COOKIE['g5_admin_btn_gnb'])) {
                         $button_title = $custom_title;
                     }
                 }
+                // 디버깅: 현재 메뉴의 sub_menu 값 확인
+                error_log("[DMK DEBUG] admin.head.php: current page " . G5_URL . $_SERVER['REQUEST_URI'] . ", $sub_menu: " . ($sub_menu ?? 'N/A'));
+                error_log("[DMK DEBUG] Menu Loop: Menu ID=" . $menu_code . ", $current_class=" . $current_class . ", button_title=" . $button_title);
             ?>
                 <li class="gnb_li<?php echo $current_class; ?>">
                     <button type="button" class="btn_op menu-<?php echo $key; ?> menu-order-<?php echo $jj; ?>" title="<?php echo $button_title; ?>"><?php echo $button_title; ?></button>

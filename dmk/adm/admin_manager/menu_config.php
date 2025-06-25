@@ -12,6 +12,9 @@ if (file_exists($admin_common_path)) {
     die('관리자 공통 파일을 찾을 수 없습니다: ' . $admin_common_path);
 }
 
+// 현재 페이지의 서브메뉴 코드 설정
+$sub_menu = '190800';
+
 // 최고 관리자만 접근 가능
 if (!is_super_admin($member['mb_id'])) {
     alert('최고관리자만 접근 가능합니다.');
