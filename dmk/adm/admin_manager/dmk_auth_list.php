@@ -1,5 +1,5 @@
 <?php
-$sub_menu = "190700";
+$sub_menu = "190800";
 require_once '../../../adm/_common.php';
 include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
 

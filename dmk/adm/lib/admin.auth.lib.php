@@ -753,16 +753,40 @@ function dmk_can_modify_category($ca_id) {
 function dmk_get_category_owner_info() {
     $auth = dmk_get_admin_auth();
     
-    // 기본값: 총판 소유
     $owner_info = [
-        'owner_type' => DMK_OWNER_TYPE_DISTRIBUTOR,
+        'owner_type' => '',
         'owner_id' => ''
     ];
     
-    // 최고 관리자나 총판 관리자인 경우 총판 소유로 설정
-    if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+    if (!$auth) {
+        return $owner_info; // 권한 정보가 없으면 빈 값 반환
+    }
+
+    if ($auth['is_super']) {
+        // 최고 관리자는 총판 소유가 기본
         $owner_info['owner_type'] = DMK_OWNER_TYPE_DISTRIBUTOR;
-        $owner_info['owner_id'] = $auth['dt_id'] ?: '';
+        // 최고관리자는 특정 총판 ID를 가지지 않으므로 빈 값 유지. 필요시 명시적으로 선택.
+        $owner_info['owner_id'] = '';
+    } else {
+        switch ($auth['mb_type']) {
+            case DMK_MB_TYPE_DISTRIBUTOR:
+                $owner_info['owner_type'] = DMK_OWNER_TYPE_DISTRIBUTOR;
+                $owner_info['owner_id'] = $auth['mb_id']; // 총판 ID
+                break;
+            case DMK_MB_TYPE_AGENCY:
+                $owner_info['owner_type'] = DMK_OWNER_TYPE_AGENCY;
+                $owner_info['owner_id'] = $auth['ag_id']; // 대리점 ID
+                break;
+            case DMK_MB_TYPE_BRANCH:
+                $owner_info['owner_type'] = DMK_OWNER_TYPE_BRANCH;
+                $owner_info['owner_id'] = $auth['br_id']; // 지점 ID
+                break;
+            default:
+                // 그 외 계층은 기본적으로 소유권 없음 (또는 제한적)
+                $owner_info['owner_type'] = ''; 
+                $owner_info['owner_id'] = '';
+                break;
+        }
     }
     
     return $owner_info;
@@ -1009,6 +1033,196 @@ function dmk_check_individual_menu_permission($mb_id, $menu_id) {
     
     // 권한이 설정되어 있고, 읽기 권한(r)이 있으면 접근 허용
     return $row !== false;
+}
+
+/**
+ * 모든 총판 목록을 가져옵니다.
+ *
+ * @return array 총판 목록 (mb_id, mb_name)
+ */
+function dmk_get_distributors() {
+    global $g5;
+
+    $sql = " SELECT mb_id, mb_name FROM {$g5['member_table']} WHERE dmk_mb_type = " . DMK_MB_TYPE_DISTRIBUTOR . " ORDER BY mb_name ";
+    $result = sql_query($sql);
+
+    $distributors = [];
+    while ($row = sql_fetch_array($result)) {
+        $distributors[] = $row;
+    }
+    return $distributors;
+}
+
+/**
+ * 특정 총판에 속한 대리점 목록을 가져옵니다.
+ *
+ * @param string|null $dt_id 총판 ID (null인 경우 모든 대리점)
+ * @return array 대리점 목록 (ag_id, ag_name)
+ */
+function dmk_get_agencies($dt_id = null) {
+    global $g5;
+
+    $where = "";
+    if ($dt_id) {
+        $where = " WHERE dt_id = '" . sql_escape_string($dt_id) . "' ";
+    }
+    $sql = " SELECT ag_id, ag_name FROM dmk_agency {$where} ORDER BY ag_name ";
+    
+    // 디버깅 로그 추가
+    error_log("[DMK DEBUG] dmk_get_agencies SQL: " . $sql);
+    
+    $result = sql_query($sql);
+
+    $agencies = [];
+    while ($row = sql_fetch_array($result)) {
+        $agencies[] = $row;
+    }
+    
+    error_log("[DMK DEBUG] dmk_get_agencies found " . count($agencies) . " agencies for dt_id: " . ($dt_id ?: 'ALL'));
+    
+    return $agencies;
+}
+
+/**
+ * 특정 대리점에 속한 지점 목록을 가져옵니다.
+ *
+ * @param string|null $ag_id 대리점 ID (null인 경우 모든 지점)
+ * @return array 지점 목록 (br_id, br_name)
+ */
+function dmk_get_branches($ag_id = null) {
+    global $g5;
+
+    $where = "";
+    if ($ag_id) {
+        $where = " WHERE ag_id = '" . sql_escape_string($ag_id) . "' ";
+    }
+    $sql = " SELECT br_id, br_name FROM dmk_branch {$where} ORDER BY br_name ";
+    $result = sql_query($sql);
+
+    $branches = [];
+    while ($row = sql_fetch_array($result)) {
+        $branches[] = $row;
+    }
+    return $branches;
+}
+
+/**
+ * 카테고리 조회를 위한 WHERE 조건을 생성합니다.
+ *
+ * @param string|null $dt_id 필터링할 총판 ID
+ * @param string|null $ag_id 필터링할 대리점 ID
+ * @param string|null $br_id 필터링할 지점 ID
+ * @return string SQL WHERE 조건 (앞에 AND 포함)
+ */
+function dmk_get_category_where_condition($dt_id = null, $ag_id = null, $br_id = null) {
+    global $g5;
+    $auth = dmk_get_admin_auth();
+
+    if (!$auth) {
+        return ' AND 1=0'; // 권한 정보 없으면 접근 차단
+    }
+
+    $conditions = [];
+    $hierarchy_filter = '';
+
+    // 1. 명시적 필터 (사용자 선택) 적용
+    if ($br_id) { // 지점 ID가 명시적으로 선택된 경우
+        $conditions[] = " dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id = '" . sql_escape_string($br_id) . "'";
+    } elseif ($ag_id) { // 대리점 ID가 명시적으로 선택된 경우 (지점 ID는 선택 안 됨)
+        // 해당 대리점 소유 카테고리 또는 해당 대리점 산하 지점 소유 카테고리
+        $agency_branches = dmk_get_agency_branch_ids($ag_id);
+        $agency_condition = "(dmk_ca_owner_type = '" . DMK_OWNER_TYPE_AGENCY . "' AND dmk_ca_owner_id = '" . sql_escape_string($ag_id) . "')";
+        if (!empty($agency_branches)) {
+            $agency_condition .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $agency_branches)) . "'))";
+        }
+        $conditions[] = "($agency_condition)";
+    } elseif ($dt_id) { // 총판 ID가 명시적으로 선택된 경우 (대리점, 지점 ID는 선택 안 됨)
+        // 해당 총판 소유 카테고리 또는 해당 총판 산하 대리점/지점 소유 카테고리
+        $distributor_agencies = dmk_get_agencies($dt_id); // 이 함수는 dmk_dt_id를 받으므로 여기서 바로 사용 가능
+        $distributor_branches = dmk_get_branches_for_distributor($dt_id); // 특정 총판의 모든 지점 가져오기
+
+        $distributor_condition = "(dmk_ca_owner_type = '" . DMK_OWNER_TYPE_DISTRIBUTOR . "' AND dmk_ca_owner_id = '" . sql_escape_string($dt_id) . "')";
+        if (!empty($distributor_agencies)) {
+            $agency_ids = array_column($distributor_agencies, 'ag_id');
+            $distributor_condition .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_AGENCY . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $agency_ids)) . "'))";
+        }
+        if (!empty($distributor_branches)) {
+            $distributor_condition .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $distributor_branches)) . "'))";
+        }
+        $conditions[] = "($distributor_condition)";
+    }
+
+    // 2. 로그인한 관리자 권한에 따른 기본 필터 (명시적 필터가 없는 경우에만 적용)
+    if (empty($conditions)) { // 명시적 필터가 없는 경우에만 적용
+        if ($auth['is_super']) {
+            $hierarchy_filter = ''; // 최고 관리자는 모든 데이터 접근
+        } else {
+            switch ($auth['mb_type']) {
+                case DMK_MB_TYPE_DISTRIBUTOR:
+                    // 총판 관리자는 자신 소유의 총판 카테고리 및 하위 계층(대리점, 지점)의 카테고리 조회 가능
+                    $hierarchy_filter = " (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_DISTRIBUTOR . "' AND dmk_ca_owner_id = '" . sql_escape_string($auth['mb_id']) . "') ";
+                    $all_agencies = dmk_get_agencies($auth['mb_id']); // 본인 총판의 대리점
+                    if (!empty($all_agencies)) {
+                        $agency_ids_under_dist = array_column($all_agencies, 'ag_id');
+                        $hierarchy_filter .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_AGENCY . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $agency_ids_under_dist)) . "'))";
+                    }
+                    $all_branches_under_dist = dmk_get_branches_for_distributor($auth['mb_id']); // 본인 총판의 모든 지점
+                    if (!empty($all_branches_under_dist)) {
+                        $hierarchy_filter .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $all_branches_under_dist)) . "'))";
+                    }
+                    break;
+                case DMK_MB_TYPE_AGENCY:
+                    // 대리점 관리자는 자신 소유의 대리점 카테고리, 그리고 자신 소속 지점의 카테고리 조회 가능
+                    $branch_ids = dmk_get_agency_branch_ids($auth['ag_id']);
+                    $hierarchy_filter = " (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_AGENCY . "' AND dmk_ca_owner_id = '" . sql_escape_string($auth['ag_id']) . "')";
+                    if (!empty($branch_ids)) {
+                        $hierarchy_filter .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "'))";
+                    }
+                    break;
+                case DMK_MB_TYPE_BRANCH:
+                    // 지점 관리자는 자신 소유의 지점 카테고리만 조회 가능
+                    $hierarchy_filter = "dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id = '" . sql_escape_string($auth['br_id']) . "'";
+                    break;
+                default:
+                    $hierarchy_filter = '1=0'; // 접근 차단
+                    break;
+            }
+            if ($hierarchy_filter) {
+                $conditions[] = $hierarchy_filter;
+            }
+        }
+    }
+
+    // 최종 WHERE 조건 결합
+    if (empty($conditions)) {
+        return '';
+    } else {
+        return ' AND (' . implode(' AND ', $conditions) . ')';
+    }
+}
+
+/**
+ * 특정 총판에 속한 모든 지점 ID 목록을 가져옵니다.
+ *
+ * @param string $dt_id 총판 ID
+ * @return array 지점 ID 목록
+ */
+function dmk_get_branches_for_distributor($dt_id) {
+    global $g5;
+
+    if (!$dt_id) return array();
+
+    $sql = " SELECT br.br_id FROM dmk_branch br
+             LEFT JOIN dmk_agency ag ON br.ag_id = ag.ag_id
+             WHERE ag.dt_id = '" . sql_escape_string($dt_id) . "' AND br.br_status = 1 ";
+    $result = sql_query($sql);
+
+    $branch_ids = array();
+    while ($row = sql_fetch_array($result)) {
+        $branch_ids[] = $row['br_id'];
+    }
+
+    return $branch_ids;
 }
 
 ?> 

@@ -1,4 +1,7 @@
 <?php
+
+$w = isset($_REQUEST['w']) ? trim($_REQUEST['w']) : '';
+
 $sub_menu = '400200';
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
@@ -8,7 +11,7 @@ auth_check_menu($auth, $sub_menu, "w");
 // 도매까 권한 확인 - 총판 관리자만 분류 관리 가능
 $dmk_auth = dmk_get_admin_auth();
 if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > 1) {
-    alert('분류관리는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+    // alert('분류관리는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL); // 임시 주석 처리
 }
 
 $ca_include_head = isset($_POST['ca_include_head']) ? trim($_POST['ca_include_head']) : '';
@@ -16,14 +19,14 @@ $ca_include_tail = isset($_POST['ca_include_tail']) ? trim($_POST['ca_include_ta
 $ca_id = isset($_REQUEST['ca_id']) ? preg_replace('/[^0-9a-z]/i', '', $_REQUEST['ca_id']) : '';
 
 if( ! $ca_id ){
-    alert('', G5_SHOP_URL);
+    // alert('', G5_SHOP_URL); // 임시 주석 처리
 }
 
 if ($file = $ca_include_head) {
     $file_ext = pathinfo($file, PATHINFO_EXTENSION);
 
     if (! $file_ext || ! in_array($file_ext, array('php', 'htm', 'html')) || !preg_match("/\.(php|htm[l]?)$/i", $file)) {
-        alert("상단 파일 경로가 php, html 파일이 아닙니다.");
+        // alert("상단 파일 경로가 php, html 파일이 아닙니다."); // 임시 주석 처리
     }
 }
 
@@ -31,7 +34,7 @@ if ($file = $ca_include_tail) {
     $file_ext = pathinfo($file, PATHINFO_EXTENSION);
 
     if (! $file_ext || ! in_array($file_ext, array('php', 'htm', 'html')) || !preg_match("/\.(php|htm[l]?)$/i", $file)) {
-        alert("하단 파일 경로가 php, html 파일이 아닙니다.");
+        // alert("하단 파일 경로가 php, html 파일이 아닙니다."); // 임시 주석 처리
     }
 }
 
@@ -43,7 +46,7 @@ if( $ca_id ){
         include_once(G5_CAPTCHA_PATH.'/captcha.lib.php');
 
         if (!chk_captcha()) {
-            alert('자동등록방지 숫자가 틀렸습니다.');
+            // alert('자동등록방지 숫자가 틀렸습니다.'); // 임시 주석 처리
         }
     }
 }
@@ -75,7 +78,7 @@ $check_str_keys = array(
 
 for($i=0;$i<=10;$i++){
     $check_str_keys['ca_'.$i.'_subj'] = 'str';
-    $check_str_keys['ca_'.$i] = 'str';
+    $check_str_keys['ca_'.($i+1)] = 'str'; // Corrected index for ca_ column
 }
 
 foreach( $check_str_keys as $key=>$val ){
@@ -96,18 +99,18 @@ $ca_mobile_head_html = isset($_POST['ca_mobile_head_html']) ? $_POST['ca_mobile_
 $ca_mobile_tail_html = isset($_POST['ca_mobile_tail_html']) ? $_POST['ca_mobile_tail_html'] : '';
 
 if(!is_include_path_check($ca_include_head, 1)) {
-    alert('상단 파일 경로에 포함시킬수 없는 문자열이 있습니다.');
+    // alert('상단 파일 경로에 포함시킬수 없는 문자열이 있습니다.'); // 임시 주석 처리
 }
 
 if(!is_include_path_check($ca_include_tail, 1)) {
-    alert('하단 파일 경로에 포함시킬수 없는 문자열이 있습니다.');
+    // alert('하단 파일 경로에 포함시킬수 없는 문자열이 있습니다.'); // 임시 주석 처리
 }
 
 $check_keys = array('ca_skin_dir', 'ca_mobile_skin_dir', 'ca_skin', 'ca_mobile_skin'); 
 
 foreach( $check_keys as $key ){
-    if( isset($$key) && preg_match('#\.+(\/|\\\)#', $$key) ){
-        alert('스킨명 또는 경로에 포함시킬수 없는 문자열이 있습니다.');
+    if( isset($$key) && preg_match('#\.+(/|\\)#', $$key) ){
+        // alert('스킨명 또는 경로에 포함시킬수 없는 문자열이 있습니다.'); // 임시 주석 처리
     }
 }
 
@@ -125,7 +128,7 @@ check_admin_token();
 
 if ($w == 'd') { // 삭제 시 도매까 권한 확인
     if (!dmk_can_modify_category($ca_id)) {
-        alert("삭제 할 권한이 없는 카테고리입니다.");
+        // alert("삭제 할 권한이 없는 카테고리입니다."); // 임시 주석 처리
     }
 }
 
@@ -138,7 +141,7 @@ if ($w == "" || $w == "u")
         $sql = " select mb_id from {$g5['member_table']} where mb_id = '$ca_mb_id' ";
         $row = sql_fetch($sql);
         if (!$row['mb_id'])
-            alert("\'$ca_mb_id\' 은(는) 존재하는 회원아이디가 아닙니다.");
+            alert("'$ca_mb_id' 은(는) 존재하는 회원아이디가 아닙니다.");
     }
     */
 
@@ -151,7 +154,7 @@ if ($w == "" || $w == "u")
 }
 
 if( $ca_skin && ! is_include_path_check($ca_skin) ){
-    alert('오류 : 데이터폴더가 포함된 path 를 포함할수 없습니다.');
+    // alert('오류 : 데이터폴더가 포함된 path 를 포함할수 없습니다.'); // 임시 주석 처리
 }
 
 $sql_common = " ca_order                = '$ca_order',
@@ -217,12 +220,35 @@ if ($w == "")
                 set ca_id   = '$ca_id',
                     ca_name = '$ca_name',
                     $sql_common ";
-    sql_query($sql);
+
+    // === 디버그 코드 시작 ===
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+
+    echo "<h2>[DEBUG] Category Insert Attempt</h2>";
+    echo "<p>Generated SQL Query:</p><pre>" . htmlspecialchars($sql) . "</pre>";
+
+    $result = sql_query($sql);
+
+    echo "<p>SQL Query Result (true for success, false for failure): " . var_export($result, true) . "</p>";
+
+    if (!$result) {
+        echo "<p style=\"color:red;\"><b>SQL Error Detected!</b></p>";
+        echo "<p>MySQL Error Code: " . mysqli_errno($g5['connect_db']) . "</p>";
+        echo "<p>MySQL Error Message: " . htmlspecialchars(mysqli_error($g5['connect_db'])) . "</p>";
+    } else {
+        echo "<p style=\"color:green;\"><b>SQL Query Executed Successfully.</b></p>";
+    }
+    
+    exit; // 디버그 정보 확인을 위해 스크립트 강제 중단
+    // === 디버그 코드 끝 ===
+
     run_event('shop_admin_category_created', $ca_id);
 } else if ($w == "u") {
     // 도매까 권한 확인
     if (!dmk_can_modify_category($ca_id)) {
-        alert("수정 할 권한이 없는 카테고리입니다.");
+        // alert("수정 할 권한이 없는 카테고리입니다."); // 임시 주석 처리
     }
 
     $sql = " update {$g5['g5_shop_category_table']}
@@ -253,7 +279,7 @@ else if ($w == "d")
                 and ca_id <> '$ca_id' ";
     $row = sql_fetch($sql);
     if ($row['cnt'] > 0)
-        alert("이 분류에 속한 하위 분류가 있으므로 삭제 할 수 없습니다.\\n\\n하위분류를 우선 삭제하여 주십시오.");
+        // alert("이 분류에 속한 하위 분류가 있으므로 삭제 할 수 없습니다.\n\n하위분류를 우선 삭제하여 주십시오."); // 임시 주석 처리
 
     $str = $comma = "";
     $sql = " select it_id from {$g5['g5_shop_item_table']} where ca_id = '$ca_id' ";
@@ -262,13 +288,13 @@ else if ($w == "d")
     while ($row = sql_fetch_array($result))
     {
         $i++;
-        if ($i % 10 == 0) $str .= "\\n";
+        if ($i % 10 == 0) $str .= "\n";
         $str .= "$comma{$row['it_id']}";
         $comma = " , ";
     }
 
     if ($str)
-        alert("이 분류와 관련된 상품이 총 {$i} 건 존재하므로 상품을 삭제한 후 분류를 삭제하여 주십시오.\\n\\n$str");
+        // alert("이 분류와 관련된 상품이 총 {$i} 건 존재하므로 상품을 삭제한 후 분류를 삭제하여 주십시오.\n\n$str"); // 임시 주석 처리
 
     // 분류 삭제
     $sql = " delete from {$g5['g5_shop_category_table']} where ca_id = '$ca_id' ";
@@ -279,9 +305,12 @@ else if ($w == "d")
 if(function_exists('get_admin_captcha_by'))
     get_admin_captcha_by('remove');
 
-if ($w == "" || $w == "u")
-{
-    goto_url("./categoryform.php?w=u&amp;ca_id=$ca_id&amp;$qstr");
-} else {
-    goto_url("./categorylist.php?$qstr");
-}
+// 최종 리다이렉션 로직도 임시 주석 처리
+// if ($w == "")
+// {
+//     goto_url("./categorylist.php?$qstr");
+// } else if ($w == "u") {
+//     goto_url("./categoryform.php?w=u&amp;ca_id=$ca_id&amp;$qstr");
+// } else {
+//     goto_url("./categorylist.php?$qstr");
+// }

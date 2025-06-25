@@ -1,4 +1,6 @@
 <?php
+
+
 $sub_menu = '400200';
 include_once('./_common.php');
 include_once(G5_EDITOR_LIB);
@@ -180,8 +182,6 @@ else {
 <input type="hidden" name="stx" value="<?php echo $stx; ?>">
 <input type="hidden" name="page" value="<?php echo $page; ?>">
 <input type="hidden" name="ca_explan_html" value="<?php echo $ca['ca_explan_html']; ?>">
-<input type="hidden" name="dmk_ca_owner_type" value="<?php echo $ca['dmk_ca_owner_type']; ?>">
-<input type="hidden" name="dmk_ca_owner_id" value="<?php echo $ca['dmk_ca_owner_id']; ?>">
 
 <section id="anc_scatefrm_basic">
     <h2 class="h2_frm">필수입력</h2>
@@ -195,6 +195,99 @@ else {
             <col>
         </colgroup>
         <tbody>
+        <?php
+        // 현재 관리자 정보 가져오기
+        $dmk_auth = dmk_get_admin_auth();
+        $is_super_admin = $dmk_auth['is_super'];
+        $current_mb_type = $dmk_auth['mb_type'];
+        $current_ag_id = $dmk_auth['ag_id'];
+        $current_br_id = $dmk_auth['br_id'];
+
+        $owner_types = [
+            DMK_OWNER_TYPE_DISTRIBUTOR => '총판',
+            DMK_OWNER_TYPE_AGENCY => '대리점',
+            DMK_OWNER_TYPE_BRANCH => '지점',
+        ];
+
+        $selected_owner_type = $ca['dmk_ca_owner_type'] ?: ($is_super_admin ? DMK_OWNER_TYPE_DISTRIBUTOR : '');
+        $selected_owner_id = $ca['dmk_ca_owner_id'] ?: '';
+
+        // 기본값 설정 (새로운 분류 추가 시)
+        if ($w == "") {
+            $owner_info = dmk_get_category_owner_info();
+            $selected_owner_type = $owner_info['owner_type'];
+            $selected_owner_id = $owner_info['owner_id'];
+        }
+
+        // 선택 가능한 계층 필터링
+        $display_owner_type_select = false;
+        $display_owner_id_select = false;
+        $filtered_owner_types = [];
+
+        if ($is_super_admin) {
+            $display_owner_type_select = true;
+            $display_owner_id_select = true;
+            $filtered_owner_types = $owner_types; // 최고관리자는 모든 계층 선택 가능
+        } else if ($current_mb_type == DMK_MB_TYPE_DISTRIBUTOR) {
+            $display_owner_type_select = true;
+            $display_owner_id_select = true;
+            $filtered_owner_types = [
+                DMK_OWNER_TYPE_DISTRIBUTOR => '총판',
+                DMK_OWNER_TYPE_AGENCY => '대리점',
+                DMK_OWNER_TYPE_BRANCH => '지점',
+            ];
+            // 총판인 경우 기본적으로 자신의 총판으로 설정
+            if ($w == "" && empty($selected_owner_type)) {
+                $selected_owner_type = DMK_OWNER_TYPE_DISTRIBUTOR;
+                $selected_owner_id = $dmk_auth['mb_id']; // 총판 ID
+            }
+        } else if ($current_mb_type == DMK_MB_TYPE_AGENCY) {
+            $display_owner_type_select = true;
+            $display_owner_id_select = true;
+            $filtered_owner_types = [
+                DMK_OWNER_TYPE_AGENCY => '대리점',
+                DMK_OWNER_TYPE_BRANCH => '지점',
+            ];
+            // 대리점인 경우 기본적으로 자신의 대리점으로 설정
+            if ($w == "" && empty($selected_owner_type)) {
+                $selected_owner_type = DMK_OWNER_TYPE_AGENCY;
+                $selected_owner_id = $current_ag_id; // 대리점 ID
+            }
+        } else if ($current_mb_type == DMK_MB_TYPE_BRANCH) {
+            // 지점은 자신의 지점만 소유 가능
+            $selected_owner_type = DMK_OWNER_TYPE_BRANCH;
+            $selected_owner_id = $current_br_id;
+            // 지점 관리자는 선택 UI를 숨기거나 자신의 정보만 표시
+        }
+        ?>
+
+        <?php if ($display_owner_type_select || $current_mb_type == DMK_MB_TYPE_BRANCH) { ?>
+        <tr>
+            <th scope="row">카테고리 소유 계층</th>
+            <td>
+                <?php if ($current_mb_type == DMK_MB_TYPE_BRANCH) { ?>
+                    <input type="hidden" name="dmk_ca_owner_type" value="<?php echo DMK_OWNER_TYPE_BRANCH; ?>">
+                    <input type="hidden" name="dmk_ca_owner_id" value="<?php echo $current_br_id; ?>">
+                    <span><?php echo $owner_types[DMK_OWNER_TYPE_BRANCH]; ?>: <?php echo $dmk_auth['br_name']; ?> (<?php echo $current_br_id; ?>)</span>
+                <?php } else { ?>
+                <select name="dmk_ca_owner_type" id="dmk_ca_owner_type">
+                    <?php foreach ($filtered_owner_types as $type_value => $type_name) { ?>
+                        <option value="<?php echo $type_value; ?>" <?php echo ($selected_owner_type == $type_value) ? 'selected' : ''; ?>><?php echo $type_name; ?></option>
+                    <?php } ?>
+                </select>
+                <?php if ($display_owner_id_select) { ?>
+                <select name="dmk_ca_owner_id" id="dmk_ca_owner_id">
+                    <!-- JavaScript로 동적으로 채워질 부분 -->
+                </select>
+                <?php } ?>
+                <?php } ?>
+            </td>
+        </tr>
+        <?php } else { ?>
+            <!-- 비표시 시에도 값은 전달되도록 hidden 필드 유지 -->
+            <input type="hidden" name="dmk_ca_owner_type" value="<?php echo $ca['dmk_ca_owner_type']; ?>">
+            <input type="hidden" name="dmk_ca_owner_id" value="<?php echo $ca['dmk_ca_owner_id']; ?>">
+        <?php } ?>
         <tr>
             <th scope="row"><label for="ca_id">분류코드</label></th>
             <td>
@@ -649,6 +742,70 @@ jQuery(function($){
             }
         });
     });
+});
+
+jQuery(document).ready(function($) {
+    var dmkAuth = <?php echo json_encode($dmk_auth); ?>;
+    var initialOwnerType = '<?php echo $selected_owner_type; ?>';
+    var initialOwnerId = '<?php echo $selected_owner_id; ?>';
+
+    function populateOwnerIdSelect(ownerType, currentSelectedId) {
+        var ownerIdSelect = $('#dmk_ca_owner_id');
+        ownerIdSelect.empty(); // Clear existing options
+
+        if (!ownerType) {
+            ownerIdSelect.append('<option value="">계층을 선택해주세요</option>');
+            return;
+        }
+
+        var parentId = '';
+        // 현재 로그인한 관리자 유형에 따라 parent_id 결정
+        if (!dmkAuth.is_super) { 
+            if (ownerType === 'AGENCY' && dmkAuth.mb_type === <?php echo DMK_MB_TYPE_DISTRIBUTOR; ?>) {
+                parentId = dmkAuth.mb_id; // 현재 사용자가 총판이면 총판 ID가 부모 ID
+            } else if (ownerType === 'BRANCH' && dmkAuth.mb_type === <?php echo DMK_MB_TYPE_AGENCY; ?>) {
+                parentId = dmkAuth.ag_id; // 현재 사용자가 대리점이면 대리점 ID가 부모 ID
+            }
+        }
+        // 최고 관리자의 경우 parentId는 빈 문자열로 유지되어 ajax.get_dmk_owner_ids.php 에서 모든 목록을 가져오게 됨
+
+        $.ajax({
+            url: './ajax.get_dmk_owner_ids.php',
+            type: 'GET',
+            dataType: 'json',
+            data: {
+                owner_type: ownerType,
+                parent_id: parentId 
+            },
+            success: function(data) {
+                if (data.length > 0) {
+                    $.each(data, function(index, item) {
+                        var selectedAttr = (currentSelectedId === item.id) ? 'selected' : '';
+                        ownerIdSelect.append('<option value="' + item.id + '" ' + selectedAttr + '>' + item.name + ' (' + item.id + ')</option>');
+                    });
+                } else {
+                    ownerIdSelect.append('<option value="">선택 가능한 ID 없음</option>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX Error: ", status, error);
+                ownerIdSelect.append('<option value="">데이터 로드 실패</option>');
+            }
+        });
+    }
+
+    // 페이지 로드 시 초기 드롭다운 채우기
+    // 지점 관리자의 경우 select 박스가 없으므로 체크
+    if ($('#dmk_ca_owner_type').length) { 
+        var initialType = $('#dmk_ca_owner_type').val();
+        populateOwnerIdSelect(initialType, initialOwnerId);
+
+        // dmk_ca_owner_type 변경 시 이벤트 리스너
+        $('#dmk_ca_owner_type').on('change', function() {
+            // 유형 변경 시 dmk_ca_owner_id는 초기화 (선택된 값 없이 다시 로드)
+            populateOwnerIdSelect($(this).val(), ''); 
+        });
+    }
 });
 
 /*document.fcategoryform.ca_name.focus(); 포커스 해제*/

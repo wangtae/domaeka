@@ -220,6 +220,8 @@ if (isset($SESSION_CACHE_LIMITER))
 else
     @session_cache_limiter("no-cache, must-revalidate");
 
+// 세션이 시작되지 않은 경우에만 세션 설정 변경
+if (session_status() == PHP_SESSION_NONE) {
 ini_set("session.cache_expire", 180); // 세션 캐쉬 보관시간 (분)
 ini_set("session.gc_maxlifetime", 10800); // session data의 garbage collection 존재 기간을 지정 (초)
 ini_set("session.gc_probability", 1); // session.gc_probability는 session.gc_divisor와 연계하여 gc(쓰레기 수거) 루틴의 시작 확률을 관리합니다. 기본값은 1입니다. 자세한 내용은 session.gc_divisor를 참고하십시오.
@@ -232,6 +234,7 @@ if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
 }
 
 ini_set("session.cookie_domain", G5_COOKIE_DOMAIN);
+}
 
 function chrome_domain_session_name(){
     // 크롬90버전대부터 아래 도메인을 포함된 주소로 접속시 특정조건에서 세션이 생성 안되는 문제가 있을수 있다.

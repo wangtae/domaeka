@@ -30,28 +30,27 @@ h2{font-size: 1.083em;font-weight: bold;margin:10px 0}
 #wrapper {min-height:480px}
 /* 레이아웃 */
 #hd h1 {position:absolute;font-size:0;line-height:0;overflow:hidden}
-#hd_top{position:fixed;top:0;left:0;width:100%;height:50px;background:#3f51b5;z-index:1000}
+#hd_top{position:fixed;top:0;left:0;width:100%;height:50px;background:rgb(45, 55, 72);z-index:1000;border-bottom:1px solid rgb(74, 85, 104);box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
 #hd_top:after{display:block;visibility:hidden;clear:both;content:""}
-#logo{background:#2f409f;height:100%;float:left;width:220px;padding:15px 0 15px 50px;text-align:center}
-#btn_gnb{background:url(../img/menu-cl.png) 50% 50% no-repeat #223390;width:50px;height:50px;border:0;position:absolute;top:0;left:0;text-indent:-999px;overflow:hidden}
-#btn_gnb.btn_gnb_open{background:url(../img/menu-op.png) 50% 50% no-repeat #223390;width:50px;height:50px;border:0;position:absolute;top:0;left:0;text-indent:-999px;overflow:hidden}
+#logo{background:rgb(45, 55, 72);height:100%;float:left;width:220px;padding:15px 0 15px 50px;text-align:center}
+#btn_gnb{background:url(../img/menu-cl.png) 50% 50% no-repeat rgb(36, 43, 56);width:50px;height:50px;border:0;position:absolute;top:0;left:0;text-indent:-999px;overflow:hidden}
+#btn_gnb.btn_gnb_open{background:url(../img/menu-op.png) 50% 50% no-repeat rgb(36, 43, 56);width:50px;height:50px;border:0;position:absolute;top:0;left:0;text-indent:-999px;overflow:hidden}
 
 #tnb{float:right;padding:10px}
 #tnb ul:after{display:block;visibility:hidden;clear:both;content:""}
 #tnb li{float:left;position:relative;margin-left:3px}
-#tnb a{color:#fff;padding:0 10px;display:block;line-height:30px;}
-#tnb .tnb_service{border-radius:3px;background:#4e5eb7;color:#fff;padding:0 10px;text-align:left;height:30px;line-height:30px;}
-#tnb .tnb_service:hover{background:#5969c3}
-#tnb button{width:100px;border:0;border-radius:3px;background:#4e5eb7;color:#fff;padding:0 30px 0 10px;text-align:left;height:30px;position:relative;text-overflow: ellipsis;overflow: hidden;white-space: nowrap;}
-#tnb button span{display:block;text-indent:-999px;overflow:hidden;width:30px;border-radius:3px;height:30px;position:absolute;top:0;right:0;background:url(../img/op_btn.png) 50% 50% no-repeat #5969c3}
-#tnb button:hover {background:#5969c3}
-#tnb .tnb_mb_area{display:none;background:#5e6dc2;width:100px;position:absolute;padding:5px;margin-top:1px;}
-#tnb .tnb_mb_area a{padding:0}
-#tnb .tnb_mb_area li{float:none;}
-#tnb .tnb_community{background:url(../img/home_icon.png) no-repeat 50% 50%;width:30px;height:30px;overflow:hidden;text-indent:-999px;border-radius:5px}
-#tnb .tnb_community:hover{background-color:#2b3d9f}
-#tnb .tnb_shop{background:url(../img/shop_icon.png) no-repeat 50% 50%;width:30px;height:30px;overflow:hidden;text-indent:-999px;border-radius:5px}
-#tnb .tnb_shop:hover{background-color:#2b3d9f}
+#tnb a{color:rgb(226, 232, 240);padding:0 10px;display:block;line-height:30px;}
+#tnb .tnb_service{border-radius:3px;background:rgb(36, 43, 56);color:rgb(226, 232, 240);padding:0 10px;text-align:left;height:30px;line-height:30px;}
+#tnb .tnb_service:hover{background:rgb(55, 65, 82)}
+#tnb button{width:100px;border:0;border-radius:3px;background:rgb(36, 43, 56);color:rgb(226, 232, 240);padding:0 30px 0 10px;text-align:left;height:30px;position:relative;text-overflow: ellipsis;overflow: hidden;white-space: nowrap;}
+#tnb button span{display:block;text-indent:-999px;overflow:hidden;width:30px;border-radius:3px;height:30px;position:absolute;top:0;right:0;background:url(../img/op_btn.png) 50% 50% no-repeat rgb(45, 55, 72)}
+#tnb button:hover {background:rgb(55, 65, 82)}
+#tnb .tnb_mb_area{display:none;background:rgb(45, 55, 72);width:100px;position:absolute;padding:5px;margin-top:1px;}
+#tnb .tnb_mb_area a{color:rgb(226, 232, 240);padding:0}
+#tnb .tnb_community{background:url(../img/home_icon.png) no-repeat 50% 50%;width:30px;height:30px;overflow:hidden;text-indent:-999px;border-radius:5px;background-color:rgb(36, 43, 56)}
+#tnb .tnb_community:hover{background-color:rgb(55, 65, 82)}
+#tnb .tnb_shop{background:url(../img/shop_icon.png) no-repeat 50% 50%;width:30px;height:30px;overflow:hidden;text-indent:-999px;border-radius:5px;background-color:rgb(36, 43, 56)}
+#tnb .tnb_shop:hover{background-color:rgb(55, 65, 82)}
 
 /*gnb*/
 #gnb{position:fixed;top:0;left:0;max-width:220px;height:100%;padding-top:50px;z-index:999}
@@ -91,7 +90,7 @@ box-shadow: 2px 0 2px rgba(150,150,150,0.1);}
 #container{padding:0 0 0 220px;margin-top:100px;height:100%;background:#fff;min-width:1200px;}
 #container.container-small{padding-left:50px}
 #container_wr{padding:25px;min-height:500px}
-#container_title{position:fixed;top:50px;left:0;width:100%;line-height:50px;font-size:1.5em;padding:0 20px;padding-left:240px;border-bottom:1px solid #ddd;background:#fff;z-index:99}
+#container_title{position:fixed;top:50px;left:0;width:100%;line-height:50px;font-size:1.5em;padding:0 20px;padding-left:240px;border-bottom:1px solid #ddd;background:#fff;color:#000;z-index:99}
 #container.container-small #container_title{padding-left:70px}
 .container_wr{padding:20px}
 

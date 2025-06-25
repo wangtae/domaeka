@@ -159,10 +159,12 @@ $g5['title'] = '관리자 로그인';
             </div>
             <button type="submit" class="login-button">로그인</button>
         </form>
+        <?php /* ?>
         <div class="links">
             <a href="<?php echo G5_BBS_URL; ?>/password_lost.php">아이디/비밀번호 찾기</a>
             <a href="<?php echo G5_BBS_URL; ?>/register.php">회원가입</a>
         </div>
+        <?php */ ?>
         <p class="footer-text">© <?php echo date("Y"); ?> Domaeka. All rights reserved.</p>
     </div>
 

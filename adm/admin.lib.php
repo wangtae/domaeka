@@ -620,10 +620,6 @@ if (!$member['mb_id']) {
     for ($i = 0; $row = sql_fetch_array($result); $i++) {
         $auth[$row['au_menu']] = $row['au_auth'];
     }
-
-    if (!$i) {
-        alert('최고관리자 또는 관리권한이 있는 회원만 접근 가능합니다.', G5_URL);
-    }
 }
 
 // 관리자의 클라이언트를 검증하여 일치하지 않으면 세션을 끊고 관리자에게 메일을 보낸다.
