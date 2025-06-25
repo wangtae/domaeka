@@ -598,14 +598,28 @@ function dmk_auth_check_menu_display($menu_code, $menu_key) {
         return false;
     }
 
-    // 4. 전역 설정을 사용한 메뉴 권한 체크
+    // 4. Main 관리자와 Sub 관리자 구분 처리
+    if ($dmk_auth['admin_type'] === 'main') {
+        // Main 관리자는 전역 설정을 사용한 메뉴 권한 체크
     if (function_exists('dmk_is_menu_allowed')) {
         $is_allowed = dmk_is_menu_allowed($menu_code, $user_type);
         
         // 디버그 로그 추가
-        error_log("[DMK MENU DEBUG] menu_code: $menu_code, user_type: $user_type, allowed: " . ($is_allowed ? 'true' : 'false'));
+            error_log("[DMK MENU DEBUG] MAIN admin - menu_code: $menu_code, user_type: $user_type, allowed: " . ($is_allowed ? 'true' : 'false'));
         
         return $is_allowed;
+        }
+    } else {
+        // Sub 관리자는 개별 권한 설정 확인
+        error_log("[DMK MENU DEBUG] SUB admin - menu_code: $menu_code, checking individual permissions");
+        
+        // 도매까 메뉴 (190xxx)에 대해서는 개별 권한 확인
+        if (substr($menu_code, 0, 3) == '190') {
+            return dmk_check_individual_menu_permission($dmk_auth['mb_id'], $menu_code);
+        }
+        
+        // 일반 그누보드/영카트 메뉴에 대해서는 기존 권한 배열 확인
+        return (array_key_exists($menu_code, $auth) && strstr($auth[$menu_code], 'r'));
     }
 
     // 5. 기존 방식 fallback
@@ -718,6 +732,42 @@ function dmk_auth_check($auth_str, $attr, $return = false) {
  * @return string|void 오류 메시지 또는 void
  */
 function dmk_auth_check_menu($auth, $sub_menu, $attr, $return = false) {
+    global $is_admin;
+
+    // 최고 관리자는 모든 권한 허용
+    if ($is_admin == 'super') {
+        return;
+    }
+
+    // DMK 관리자 권한 확인
+    $dmk_auth = dmk_get_admin_auth();
+    if ($dmk_auth && $dmk_auth['mb_level'] > DMK_MB_LEVEL_MEMBER) {
+        // Main 관리자는 전역 설정에 따른 권한 체크
+        if ($dmk_auth['admin_type'] === 'main') {
+            $user_type = dmk_get_current_user_type();
+            if ($user_type !== 'none' && function_exists('dmk_is_menu_allowed')) {
+                $is_allowed = dmk_is_menu_allowed($sub_menu, $user_type);
+                if ($is_allowed) {
+                    return; // 권한 허용
+                }
+            }
+        } else {
+            // Sub 관리자는 개별 권한 설정 확인
+            if (dmk_check_individual_menu_permission($dmk_auth['mb_id'], $sub_menu)) {
+                return; // 권한 허용
+            }
+        }
+        
+        // DMK 관리자지만 권한이 없는 경우
+        $msg = '이 메뉴에는 접근 권한이 없습니다.\\n\\n접근 권한은 상위 관리자가 부여할 수 있습니다.';
+        if ($return) {
+            return $msg;
+        } else {
+            alert($msg);
+        }
+    }
+
+    // 기존 권한 체크 로직 (DMK 관리자가 아닌 경우)
     $check_auth = isset($auth[$sub_menu]) ? $auth[$sub_menu] : '';
     return dmk_auth_check($check_auth, $attr, $return);
 }

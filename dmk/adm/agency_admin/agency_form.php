@@ -10,7 +10,7 @@ if (!dmk_can_access_menu('agency_form')) {
     alert('접근 권한이 없습니다.');
 }
 
-auth_check_menu($auth, $sub_menu, 'w');
+dmk_auth_check_menu($auth, $sub_menu, 'w');
 
 $ag_id = isset($_GET['ag_id']) ? clean_xss_tags($_GET['ag_id']) : '';
 $w = isset($_GET['w']) ? clean_xss_tags($_GET['w']) : '';

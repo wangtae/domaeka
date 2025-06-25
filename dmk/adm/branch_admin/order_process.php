@@ -3,7 +3,7 @@ $sub_menu = "300400";
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-auth_check_menu($auth, $sub_menu, 'w');
+dmk_auth_check_menu($auth, $sub_menu, 'w');
 
 // POST 데이터 검증
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

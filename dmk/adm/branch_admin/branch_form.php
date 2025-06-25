@@ -10,7 +10,7 @@ if (!dmk_can_access_menu('branch_form')) {
     alert('접근 권한이 없습니다.');
 }
 
-auth_check_menu($auth, $sub_menu, 'w');
+dmk_auth_check_menu($auth, $sub_menu, 'w');
 
 $br_id = isset($_GET['br_id']) ? clean_xss_tags($_GET['br_id']) : '';
 $ag_id = isset($_GET['ag_id']) ? clean_xss_tags($_GET['ag_id']) : '';

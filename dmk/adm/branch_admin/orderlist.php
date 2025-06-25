@@ -3,7 +3,7 @@ $sub_menu = "600800";
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-auth_check_menu($auth, $sub_menu, 'r');
+dmk_auth_check_menu($auth, $sub_menu, 'r');
 
 // 현재 관리자의 권한 정보 가져오기
 $dmk_auth = dmk_get_admin_auth();
