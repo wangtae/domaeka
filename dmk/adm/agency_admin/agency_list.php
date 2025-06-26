@@ -5,13 +5,6 @@ include_once './_common.php';
 // 도매까 권한 라이브러리 포함
 include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 
-global $member;
-error_log("[DMK DEBUG] agency_list.php - Current member mb_id: " . ($member['mb_id'] ?? 'N/A') . ", mb_level: " . ($member['mb_level'] ?? 'N/A'));
-
-$dmk_auth_debug = dmk_get_admin_auth();
-error_log("[DMK DEBUG] agency_list.php - dmk_auth: " . json_encode($dmk_auth_debug));
-error_log("[DMK DEBUG] agency_list.php - dmk_can_access_menu('agency_list') result: " . (dmk_can_access_menu('agency_list') ? 'true' : 'false'));
-
 // 메뉴 접근 권한 확인
 if (!dmk_can_access_menu($sub_menu)) {
     alert('접근 권한이 없습니다.');
@@ -35,12 +28,17 @@ $sql_search = " WHERE 1=1 ";
 
 // 권한에 따른 데이터 필터링
 $dmk_auth = dmk_get_admin_auth();
-if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
-    // 대리점 관리자는 자신의 대리점 정보만 조회
-    $sql_search .= " AND a.ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' ";
-} else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-    // 총판 관리자는 자신의 총판에 소속된 대리점 정보만 조회
-    $sql_search .= " AND a.dt_id = '".sql_escape_string($dmk_auth['dt_id'])."' ";
+if (!$dmk_auth['is_super']) { // 최고관리자가 아닌 경우
+    if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+        // 대리점 관리자는 자신의 대리점 정보만 조회
+        $sql_search .= " AND a.ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' ";
+    } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        // 총판 관리자는 자신의 총판에 소속된 대리점 정보만 조회
+        $sql_search .= " AND a.dt_id = '".sql_escape_string($dmk_auth['dt_id'])."' ";
+    } else {
+        // 그 외의 경우 (지점 관리자 등)에는 대리점 목록에 접근 불가
+        alert('접근 권한이 없습니다.');
+    }
 }
 
 // 검색 조건
@@ -79,8 +77,6 @@ $sql = " SELECT a.*, dt_m.mb_name AS distributor_name,
 $result = sql_query($sql);
 
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
-
-$g5['title'] = '대리점 관리';
 ?>
 
 <div class="local_ov01 local_ov">
@@ -90,9 +86,18 @@ $g5['title'] = '대리점 관리';
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
 <label for="stx" class="sound_only">검색어<strong class="sound_only"> 필수</strong></label>
-<input type="text" name="stx" value="<?php echo $stx ?>" id="stx" class="frm_input">
+<input type="text" name="stx" value="<?php echo $stx ?>" id="stx" class="frm_input" placeholder="대리점ID, 대리점명, 대표자명">
 <input type="submit" class="btn_submit" value="검색">
 </form>
+
+<div class="local_desc01 local_desc">
+    <p>
+        <strong>대리점 관리</strong><br>
+        • 계층 구조: <span style="color: #e74c3c; font-weight: bold;">HEAD(본사)</span> → <span style="color: #3498db; font-weight: bold;">DISTRUBUTOR(총판)</span> → <span style="color: #2ecc71; font-weight: bold;">AGENCY(대리점)</span> → <span style="color: #f39c12; font-weight: bold;">BRANCH(지점)</span><br>
+        • 대리점은 총판 하위의 관리자로서 여러 지점을 관리합니다.<br>
+        • 각 대리점별 관리 지점 수를 확인할 수 있습니다.
+    </p>
+</div>
 
 <?php if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR || $dmk_auth['is_super']) { ?>
 <div class="btn_add01 btn_add">

@@ -7,12 +7,15 @@ include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 // 관리자 액션 로깅 라이브러리 포함 (필요할 경우)
 include_once(G5_DMK_PATH . "/adm/lib/admin.log.lib.php"); 
 
-// 메뉴 접근 권한 확인
-// 총판 관리자 이상만 접근 가능하도록 설정
-dmk_authenticate_admin(DMK_MB_LEVEL_DISTRIBUTOR);
+// 현재 관리자 권한 정보 가져오기
+$auth = dmk_get_admin_auth();
 
+// 메뉴 접근 권한 확인
+// dmk_authenticate_form_access 함수를 사용하여 통합 권한 체크
+$w = isset($_GET['w']) ? $_GET['w'] : '';
 $ag_id = isset($_GET['ag_id']) ? clean_xss_tags($_GET['ag_id']) : '';
-$w = isset($_GET['w']) ? clean_xss_tags($_GET['w']) : '';
+
+dmk_authenticate_form_access('agency_form', $w, $ag_id);
 
 $html_title = '대리점 ';
 $agency = array();
@@ -85,10 +88,23 @@ foreach ($exclude_params as $param) {
 
 $qstr = http_build_query($params, '', '&amp;');
 
-// 총판 목록 조회 (드롭다운에 사용)
+// 총판 목록 조회 (드롭다운에 사용) - 권한에 따라 필터링
 $distributors = array();
-$sql = " SELECT dt.dt_id, m.mb_name, m.mb_nick FROM dmk_distributor dt JOIN {$g5['member_table']} m ON dt.dt_id = m.mb_id WHERE dt.dt_status = 1 ORDER BY m.mb_name ASC ";
-$dt_result = sql_query($sql);
+$dt_sql = " SELECT dt.dt_id, m.mb_name, m.mb_nick FROM dmk_distributor dt JOIN {$g5['member_table']} m ON dt.dt_id = m.mb_id WHERE dt.dt_status = 1 ";
+
+// 권한에 따른 총판 목록 필터링
+if (!$auth['is_super']) {
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        // 총판 관리자는 자신의 총판만 선택 가능
+        $dt_sql .= " AND dt.dt_id = '".sql_escape_string($auth['dt_id'])."' ";
+    } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+        // 대리점 관리자는 자신이 속한 총판만 표시 (수정 시에만 해당)
+        $dt_sql .= " AND dt.dt_id = '".sql_escape_string($auth['dt_id'])."' ";
+    }
+}
+
+$dt_sql .= " ORDER BY m.mb_name ASC ";
+$dt_result = sql_query($dt_sql);
 while($row = sql_fetch_array($dt_result)) {
     $distributors[] = $row;
 }
@@ -224,15 +240,19 @@ while($row = sql_fetch_array($dt_result)) {
             <span class="frm_info">상세주소를 입력하십시오.</span>
         </td>
     </tr>
+    <?php if ($auth['is_super'] || $ag_id != $auth['ag_id']) { ?>
     <tr>
-        <th scope="row"><label for="ag_status">상태</label></th>
+        <th scope="row"><label for="ag_status">대리점 상태</label></th>
         <td>
-            <input type="radio" name="ag_status" value="1" id="ag_status_1" <?php echo $agency['ag_status'] ? 'checked' : '' ?>>
-            <label for="ag_status_1">활성</label>
-            <input type="radio" name="ag_status" value="0" id="ag_status_0" <?php echo !$agency['ag_status'] ? 'checked' : '' ?>>
-            <label for="ag_status_0">비활성</label>
+            <select name="ag_status" id="ag_status">
+                <option value="1" <?php echo (($agency['ag_status'] ?? 1) == 1) ? 'selected' : ''; ?>>활성</option>
+                <option value="0" <?php echo (($agency['ag_status'] ?? 1) == 0) ? 'selected' : ''; ?>>비활성</option>
+            </select>
         </td>
     </tr>
+    <?php } else { ?>
+    <input type="hidden" name="ag_status" value="<?php echo ($agency['ag_status'] ?? 1); ?>">
+    <?php } ?>
     </tbody>
     </table>
 </div>

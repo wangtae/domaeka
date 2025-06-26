@@ -92,8 +92,8 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <div class="local_desc01 local_desc">
     <p>
         <strong>총판 관리</strong><br>
-        • 계층 구조: <span style="color: #e74c3c; font-weight: bold;">admin(영카트 최고관리자)</span> → <span style="color: #3498db; font-weight: bold;">distributor(총판)</span> → <span style="color: #2ecc71; font-weight: bold;">agency(대리점)</span> → <span style="color: #f39c12; font-weight: bold;">branch(지점)</span><br>
-        • 총판은 영카트 최고관리자 하위의 관리자로서 여러 대리점을 관리합니다.<br>
+        • 계층 구조: <span style="color: #e74c3c; font-weight: bold;">HEAD(본사)</span> → <span style="color: #3498db; font-weight: bold;">DISTRUBUTOR(총판)</span> → <span style="color: #2ecc71; font-weight: bold;">AGENCY(대리점)</span> → <span style="color: #f39c12; font-weight: bold;">BRANCH(지점)</span><br>
+        • 총판은 본사 하위의 관리자로서 여러 대리점을 관리합니다.<br>
         • 각 총판별 관리 대리점 수와 산하 지점 수를 확인할 수 있습니다.
     </p>
 </div>
