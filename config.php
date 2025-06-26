@@ -241,5 +241,4 @@ define('G5_IP_DISPLAY', '\\1.♡.\\3.\\4');
 // KAKAO 우편번호 서비스 CDN
 define('G5_POSTCODE_JS', '<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js" async></script>');
 
-// 개발자 IP 목록 (콤마로 구분, 예: '127.0.0.1,192.168.0.1')
-define('G5_DEVELOPER_IPS', '124.62.66.233,183.96.115.92');
+

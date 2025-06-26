@@ -162,9 +162,35 @@ if (!empty($_COOKIE['g5_admin_btn_gnb'])) {
                 <?php } ?>
                 <!--<li class="tnb_li"><a href="<?php echo G5_URL ?>/" class="tnb_community" target="_blank" title="커뮤니티 바로가기">커뮤니티 바로가기</a></li>-->
                 <!--<li class="tnb_li"><a href="<?php echo G5_ADMIN_URL ?>/service.php" class="tnb_service">부가서비스</a></li>-->
-                <li class="tnb_li"><button type="button" class="tnb_mb_btn">관리자<span class="./img/btn_gnb.png">메뉴열기</span></button>
+                <li class="tnb_li"><button type="button" class="tnb_mb_btn">
+                    <?php
+                    $dmk_auth = dmk_get_admin_auth();
+                    $admin_type_text = '';
+                    if ($dmk_auth) {
+                        if ($dmk_auth['is_super']) {
+                            $admin_type_text = '본사';
+                        } else {
+                            switch ($dmk_auth['mb_type']) {
+                                case DMK_MB_TYPE_DISTRIBUTOR:
+                                    $admin_type_text = '총판';
+                                    break;
+                                case DMK_MB_TYPE_AGENCY:
+                                    $admin_type_text = '대리점';
+                                    break;
+                                case DMK_MB_TYPE_BRANCH:
+                                    $admin_type_text = '지점';
+                                    break;
+                                default:
+                                    $admin_type_text = '일반';
+                                    break;
+                            }
+                        }
+                    }
+                    echo $admin_type_text ? '<i class="fa fa-gear"></i> ' . $admin_type_text . '' : '';
+                    ?>
+                    <span class="./img/btn_gnb.png">메뉴열기</span></button>
                     <ul class="tnb_mb_area">
-                        <li><a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&amp;mb_id=<?php echo $member['mb_id'] ?>">관리자정보</a></li>
+                        <?php /*<li><a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&amp;mb_id=<?php echo $member['mb_id'] ?>">관리자정보</a></li>*/?>
                         <li id="tnb_logout"><a href="<?php echo G5_BBS_URL ?>/logout.php">로그아웃</a></li>
                     </ul>
                 </li>

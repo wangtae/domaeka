@@ -2,6 +2,8 @@
 /*******************************************************************************
 ** 공통 변수, 상수, 코드
 *******************************************************************************/
+// 개발자 IP 목록 (콤마로 구분, 예: '127.0.0.1,192.168.0.1')
+define('G5_DEVELOPER_IPS', '124.62.66.233,183.96.115.92,127.0.0.1');
 
 // 개발자 IP에서만 상세 오류 보고 활성화
 if (defined('G5_DEVELOPER_IPS') && G5_DEVELOPER_IPS) {
@@ -30,6 +32,7 @@ if (!defined('G5_SET_TIME_LIMIT')) define('G5_SET_TIME_LIMIT', 0);
 if( version_compare( PHP_VERSION, '5.2.17' , '<' ) ){
     die(sprintf('PHP 5.2.17 or higher required. Your PHP version is %s', PHP_VERSION));
 }
+
 
 //==========================================================================================================================
 // extract($_GET); 명령으로 인해 page.php?_POST[var1]=data1&_POST[var2]=data2 와 같은 코드가 _POST 변수로 사용되는 것을 막음
@@ -113,7 +116,7 @@ function sql_escape_string($str)
             $str = preg_replace($pattern, $replace, $str);
     }
 
-    $str = call_user_func('addslashes', $str);
+    $str = call_user_func('addslashes', (string) $str);
 
     return $str;
 }

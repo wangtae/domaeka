@@ -22,7 +22,8 @@ include_once (G5_ADMIN_PATH.'/admin.head.php');
 
 // 총판은 최고관리자 하위의 계층이므로, dmk_mb_type이 총판(1)인 회원들을 조회
 // 계층 구조: admin(영카트 최고관리자) > distributor(총판) > agency(대리점) > branch(지점)
-$sql_common = " FROM {$g5['member_table']} m ";
+$sql_common = " FROM {$g5['member_table']} m 
+                LEFT JOIN dmk_distributor d ON m.mb_id = d.dt_id";
 $sql_search = " WHERE m.dmk_mb_type = 1 "; // 총판 관리자만 조회
 
 // 권한에 따른 데이터 필터링
@@ -69,7 +70,7 @@ $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
 if ($page < 1) $page = 1; // 페이지가 없으면 첫 페이지 (1 페이지)
 $from_record = ($page - 1) * $rows; // 시작 열을 구함
 
-$sql = " SELECT m.*,
+$sql = " SELECT m.*, d.dt_status,
             (SELECT COUNT(*) FROM dmk_agency a JOIN dmk_distributor d ON a.dt_id COLLATE utf8_general_ci = d.dt_id COLLATE utf8_general_ci WHERE d.dt_id COLLATE utf8_general_ci = m.mb_id COLLATE utf8_general_ci) as agency_count,
             (SELECT COUNT(*) FROM dmk_branch b JOIN dmk_agency a ON b.ag_id COLLATE utf8_general_ci = a.ag_id COLLATE utf8_general_ci JOIN dmk_distributor d ON a.dt_id COLLATE utf8_general_ci = d.dt_id COLLATE utf8_general_ci WHERE d.dt_id COLLATE utf8_general_ci = m.mb_id COLLATE utf8_general_ci) as branch_count
          " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
@@ -111,16 +112,16 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <caption><?php echo $g5['title']; ?> 목록</caption>
     <thead>
     <tr>
-        <th scope="col"><?php echo subject_sort_link('m.mb_id') ?>회원ID</a></th>
-        <th scope="col"><?php echo subject_sort_link('m.mb_name') ?>이름</a></th>
-        <th scope="col">닉네임</th>
+        <th scope="col"><?php echo subject_sort_link('m.mb_id') ?>총판ID</a></th>
+        <th scope="col"><?php echo subject_sort_link('m.mb_name') ?>총판이름</a></th>
+        <th scope="col">회사명명</th>
         <th scope="col">이메일</th>
         <th scope="col">전화번호</th>
-        <th scope="col">관리 대리점 수</th>
-        <th scope="col">관리 지점 수</th>
-        <th scope="col"><?php echo subject_sort_link('m.mb_datetime') ?>가입일</a></th>
-        <th scope="col"><?php echo subject_sort_link('m.mb_level') ?>권한</a></th>
-        <th scope="col">관리</th>
+        <th scope="col" style="width: 90px;">관리 대리점 수</th>
+        <th scope="col" style="width: 80px;">관리 지점 수</th>
+        <th scope="col"><?php echo subject_sort_link('m.mb_datetime') ?>생성일</a></th>
+        <th scope="col"><?php echo subject_sort_link('d.dt_status') ?>상태</a></th>
+        <th scope="col" style="width: 90px;">관리</th>
     </tr>
     </thead>
     <tbody>
@@ -138,12 +139,12 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     ?>
 
     <tr class="<?php echo $bg; ?>">
-        <td class="td_left">
+        <td>
             <a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&mb_id=<?php echo $row['mb_id'] ?>" target="_blank">
                 <?php echo $row['mb_id'] ?>
             </a>
         </td>
-        <td class="td_left"><?php echo get_text($row['mb_name']) ?></td>
+        <td><?php echo get_text($row['mb_name']) ?></td>
         <td><?php echo get_text($row['mb_nick']) ?></td>
         <td><?php echo $row['mb_email'] ?></td>
         <td><?php echo $row['mb_hp'] ?></td>
@@ -158,7 +159,9 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             </a>
         </td>
         <td class="td_datetime"><?php echo substr($row['mb_datetime'], 0, 10) ?></td>
-        <td class="td_mng"><?php echo $level_str ?></td>
+        <td class="td_mng">
+            <?php echo $row['dt_status'] ? '<span class="txt_true">활성</span>' : '<span class="txt_false">비활성</span>' ?>
+        </td>
         <td class="td_mng td_mng_s">
             <a href="./distributor_form.php?w=u&mb_id=<?php echo $row['mb_id'] ?>" class="btn btn_03">수정</a>
             <a href="../agency_admin/agency_list.php?distributor_id=<?php echo $row['mb_id'] ?>" class="btn btn_02">대리점관리</a>

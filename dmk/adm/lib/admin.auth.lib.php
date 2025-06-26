@@ -71,6 +71,7 @@ function dmk_get_admin_auth() {
         'mb_level' => (int)$admin_info['mb_level'],
         'mb_type' => (int)$admin_info['dmk_mb_type'],
         'admin_type' => $admin_info['dmk_admin_type'] ?: 'main', // 기본값 main
+        'dt_id' => $admin_info['dmk_dt_id'],
         'ag_id' => $admin_info['dmk_ag_id'],
         'br_id' => $admin_info['dmk_br_id'],
         'ag_name' => $admin_info['ag_name'],
@@ -408,6 +409,40 @@ function dmk_can_modify_distributor($distributor_mb_id) {
 
     // 2. 총판 관리자는 자신의 총판 정보만 수정 가능
     if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && $auth['mb_id'] === $distributor_mb_id) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * 현재 로그인한 관리자가 특정 대리점을 수정할 권한이 있는지 확인합니다.
+ * 
+ * @param string $agency_id 대리점 ID
+ * @return bool 수정 권한 여부
+ */
+function dmk_can_modify_agency($agency_id) {
+    global $g5;
+
+    $auth = dmk_get_admin_auth();
+
+    if (!$auth) {
+        return false;
+    }
+
+    // 1. 최고 관리자는 모든 대리점 정보 수정 가능
+    if ($auth['is_super']) {
+        return true;
+    }
+
+    // 2. 총판 관리자는 자신의 총판에 속한 대리점 수정 가능
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        $agency_dt_id = dmk_get_agency_distributor_id($agency_id);
+        return $auth['mb_id'] === $agency_dt_id;
+    }
+
+    // 3. 대리점 관리자는 자신의 대리점 정보만 수정 가능
+    if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY && $auth['ag_id'] === $agency_id) {
         return true;
     }
 
