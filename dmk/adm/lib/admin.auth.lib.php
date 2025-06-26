@@ -285,41 +285,31 @@ function dmk_get_item_owner_info() {
 
 /**
  * 관리자 메뉴 접근 권한을 확인합니다.
- * 
+ *
  * @param string $menu_code 메뉴 코드
  * @return bool 접근 권한 여부
  */
 function dmk_can_access_menu($menu_code) {
     $auth = dmk_get_admin_auth();
-    
+
     if (!$auth) {
         return false;
     }
-    
+
     // 최고 관리자는 모든 메뉴 접근 가능 (영카트 최고 관리자)
     if ($auth['is_super']) {
         return true;
     }
     
-    $menu_permissions = array(
-        'distributor_list' => DMK_MB_LEVEL_DISTRIBUTOR,
-        'agency_list' => DMK_MB_LEVEL_DISTRIBUTOR,
-        'agency_form' => DMK_MB_LEVEL_DISTRIBUTOR,
-        'branch_list' => DMK_MB_LEVEL_AGENCY,
-        'branch_form' => DMK_MB_LEVEL_AGENCY,
-        'item_list' => DMK_MB_LEVEL_BRANCH,
-        'item_form' => DMK_MB_LEVEL_BRANCH,
-        'order_list' => DMK_MB_LEVEL_BRANCH,
-        'stock_list' => DMK_MB_LEVEL_BRANCH,
-        'dmk_url' => DMK_MB_LEVEL_DISTRIBUTOR // URL 관리는 총판 이상만 접근 가능
-    );
-    
-    if (!isset($menu_permissions[$menu_code])) {
-        return false;
+    // 현재 사용자의 계층 타입 가져오기
+    $user_type = dmk_get_current_user_type();
+
+    // dmk_global_settings.php 에 정의된 dmk_is_menu_allowed 함수를 사용하여 권한 확인
+    if (function_exists('dmk_is_menu_allowed') && dmk_is_menu_allowed($menu_code, $user_type)) {
+        return true;
     }
-    
-    // 사용자의 레벨이 메뉴에 필요한 최소 레벨보다 높거나 같으면 접근 허용
-    return $auth['mb_level'] >= $menu_permissions[$menu_code];
+
+    return false;
 }
 
 /**
@@ -403,22 +393,24 @@ function dmk_is_distributor($mb_id = null) {
  * @return bool 수정 권한 여부
  */
 function dmk_can_modify_distributor($distributor_mb_id) {
+    global $g5;
+
     $auth = dmk_get_admin_auth();
-    
+
     if (!$auth) {
         return false;
     }
-    
-    // 최고 관리자는 모든 총판 수정 가능
+
+    // 1. 최고 관리자는 모든 총판 정보 수정 가능
     if ($auth['is_super']) {
         return true;
     }
-    
-    // 총판 관리자는 자신만 수정 가능
-    if ($auth['mb_type'] === DMK_MB_TYPE_DISTRIBUTOR) {
-        return $auth['mb_id'] === $distributor_mb_id;
+
+    // 2. 총판 관리자는 자신의 총판 정보만 수정 가능
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && $auth['mb_id'] === $distributor_mb_id) {
+        return true;
     }
-    
+
     return false;
 }
 
@@ -589,25 +581,16 @@ function dmk_auth_check_menu_display($menu_code, $menu_key) {
 
     // 3. 현재 사용자의 계층 타입 가져오기
     $user_type = dmk_get_current_user_type();
-    if ($user_type === 'none') {
-        return false;
-    }
 
     // 4. Main 관리자와 Sub 관리자 구분 처리
     if ($dmk_auth['admin_type'] === 'main') {
         // Main 관리자는 전역 설정을 사용한 메뉴 권한 체크
-    if (function_exists('dmk_is_menu_allowed')) {
-        $is_allowed = dmk_is_menu_allowed($menu_code, $user_type);
-        
-        // 디버그 로그 추가
-            error_log("[DMK MENU DEBUG] MAIN admin - menu_code: $menu_code, user_type: $user_type, allowed: " . ($is_allowed ? 'true' : 'false'));
-        
-        return $is_allowed;
+        if (function_exists('dmk_is_menu_allowed')) {
+            $is_allowed = dmk_is_menu_allowed($menu_code, $user_type);
+            return $is_allowed;
         }
     } else {
         // Sub 관리자는 개별 권한 설정 확인
-        error_log("[DMK MENU DEBUG] SUB admin - menu_code: $menu_code, checking individual permissions");
-        
         // 도매까 메뉴 (190xxx)에 대해서는 개별 권한 확인
         if (substr($menu_code, 0, 3) == '190') {
             return dmk_check_individual_menu_permission($dmk_auth['mb_id'], $menu_code);
@@ -1107,24 +1090,19 @@ function dmk_get_distributors() {
 function dmk_get_agencies($dt_id = null) {
     global $g5;
 
-    $where = "";
+    $where = '';
     if ($dt_id) {
-        $where = " WHERE dt_id = '" . sql_escape_string($dt_id) . "' ";
+        $where = ' WHERE dt_id = ' . sql_escape_string($dt_id) . ' ';
     }
-    $sql = " SELECT ag_id, ag_name FROM dmk_agency {$where} ORDER BY ag_name ";
-    
-    // 디버깅 로그 추가
-    error_log("[DMK DEBUG] dmk_get_agencies SQL: " . $sql);
-    
+
+    $sql = ' SELECT ag_id, ag_name FROM dmk_agency ' . $where . ' ORDER BY ag_name ';
     $result = sql_query($sql);
 
-    $agencies = [];
+    $agencies = array();
     while ($row = sql_fetch_array($result)) {
         $agencies[] = $row;
     }
-    
-    error_log("[DMK DEBUG] dmk_get_agencies found " . count($agencies) . " agencies for dt_id: " . ($dt_id ?: 'ALL'));
-    
+
     return $agencies;
 }
 
@@ -1336,6 +1314,50 @@ function dmk_get_branch_name($br_id) {
     $row = sql_fetch($sql);
     
     return $row ? $row['br_name'] : '';
+}
+
+/**
+ * 관리자 폼 페이지(등록/수정) 접근 권한을 확인하고, 권한이 없는 경우 접근을 차단합니다.
+ * 이 함수는 특정 엔티티(총판, 대리점, 지점 등)의 등록 및 수정 폼 페이지에 대한 권한을 통합 관리합니다.
+ *
+ * @param string $menu_code 해당 폼 페이지의 메뉴 코드 (예: 'distributor_form', 'agency_form', 'branch_form')
+ * @param string $w 'u' (수정) 또는 'c' (등록/생성) 또는 빈 문자열 (등록/생성으로 간주)
+ * @param string $target_id 수정 대상 엔티티의 ID (수정 모드일 경우 필수)
+ */
+function dmk_authenticate_form_access($menu_code, $w = '', $target_id = '') {
+    global $g5;
+
+    $auth = dmk_get_admin_auth();
+
+    // 1. 관리자 로그인 여부 확인 및 권한 정보 가져오기
+    if (!$auth || empty($auth['mb_id'])) {
+        alert("관리자 권한이 필요합니다.", G5_ADMIN_URL);
+        exit;
+    }
+
+    // 2. 최고 관리자 (영카트 최고 관리자)는 모든 관리자 폼에 접근 가능
+    if ($auth['is_super']) {
+        return; // 접근 허용, 함수 종료
+    }
+
+    // 3. 수정 모드일 경우 특정 엔티티 수정 권한 확인
+    if ($w === 'u' && !empty($target_id)) {
+        // 특정 엔티티(총판, 대리점, 지점) 수정 권한 함수 호출
+        // 이 부분은 menu_code에 따라 동적으로 호출되어야 함 (예: dmk_can_modify_distributor, dmk_can_modify_agency 등)
+        $can_modify_func = 'dmk_can_modify_' . str_replace('_form', '', $menu_code);
+
+        if (function_exists($can_modify_func) && $can_modify_func($target_id)) {
+            return; // 접근 허용
+        }
+    } else { // 등록 모드일 경우 메뉴 접근 권한 확인
+        // 메뉴 접근 권한 확인
+        if (dmk_can_access_menu($menu_code)) {
+            return; // 접근 허용
+        }
+    }
+
+    // 모든 검사를 통과하지 못하면 접근 차단
+    alert('접근 권한이 없습니다.');
 }
 
 ?> 

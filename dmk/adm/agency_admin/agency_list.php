@@ -5,8 +5,15 @@ include_once './_common.php';
 // 도매까 권한 라이브러리 포함
 include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 
+global $member;
+error_log("[DMK DEBUG] agency_list.php - Current member mb_id: " . ($member['mb_id'] ?? 'N/A') . ", mb_level: " . ($member['mb_level'] ?? 'N/A'));
+
+$dmk_auth_debug = dmk_get_admin_auth();
+error_log("[DMK DEBUG] agency_list.php - dmk_auth: " . json_encode($dmk_auth_debug));
+error_log("[DMK DEBUG] agency_list.php - dmk_can_access_menu('agency_list') result: " . (dmk_can_access_menu('agency_list') ? 'true' : 'false'));
+
 // 메뉴 접근 권한 확인
-if (!dmk_can_access_menu('agency_list')) {
+if (!dmk_can_access_menu($sub_menu)) {
     alert('접근 권한이 없습니다.');
 }
 

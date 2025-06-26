@@ -2,8 +2,12 @@
 $sub_menu = "190100";
 include_once './_common.php';
 
+// 도매까 권한 라이브러리 포함
+include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
+
 // 메뉴 접근 권한 확인
-if (!dmk_can_access_menu('distributor_list')) {
+// $sub_menu 값을 사용하여 권한 확인
+if (!dmk_can_access_menu($sub_menu)) {
     alert('접근 권한이 없습니다.');
 }
 
@@ -23,9 +27,25 @@ $sql_search = " WHERE m.dmk_mb_type = 1 "; // 총판 관리자만 조회
 
 // 권한에 따른 데이터 필터링
 $dmk_auth = dmk_get_admin_auth();
-if (!$dmk_auth['is_super']) {
-    // 최고관리자가 아니면 접근 제한
-    alert('최고관리자만 접근 가능합니다.');
+
+// 디버그 로그 추가
+error_log("[DMK DEBUG] distributor_list.php - dmk_auth: " . print_r($dmk_auth, true));
+error_log("[DMK DEBUG] distributor_list.php - DMK_MB_TYPE_DISTRIBUTOR: " . DMK_MB_TYPE_DISTRIBUTOR);
+
+// NOTE: dmk_can_access_menu 함수에서 이미 권한을 체크하므로, 여기서는 최고관리자 여부를 별도로 체크할 필요 없음.
+//       총판 관리자는 자신의 하위 대리점 및 지점 데이터를 조회할 수 있어야 함.
+//       dmk_get_admin_auth() 결과의 is_super만으로 체크하면 총판 계정은 해당 페이지에 접근할 수 없음.
+if (!$dmk_auth['is_super']) { // 최고 관리자가 아닌 경우
+    error_log("[DMK DEBUG] distributor_list.php - Not super admin, mb_type: " . $dmk_auth['mb_type']);
+    if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { // 총판 관리자인 경우
+        // 자신의 mb_id와 일치하는 총판 정보만 조회
+        $sql_search .= " AND m.mb_id = '".sql_escape_string($dmk_auth['mb_id'])."' ";
+        error_log("[DMK DEBUG] distributor_list.php - Distributor access granted for: " . $dmk_auth['mb_id']);
+    } else {
+        // 그 외의 경우 (대리점, 지점 관리자 등)에는 총판 목록에 접근 불가
+        error_log("[DMK DEBUG] distributor_list.php - Access denied for mb_type: " . $dmk_auth['mb_type']);
+        alert('접근 권한이 없습니다.');
+    }
 }
 
 // 검색 조건

@@ -68,6 +68,13 @@ Desktop.ini
 *.backup
 *.orig 
 
+# doc
+docs/old/
 
 #PMA
 _tools/
+
+# temp
+theme/
+skin/
+mobile/

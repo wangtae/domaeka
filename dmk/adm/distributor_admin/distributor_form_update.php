@@ -1,16 +1,14 @@
 <?php
 include_once './_common.php';
 require_once G5_LIB_PATH . "/register.lib.php";
-require_once G5_DMK_PATH . "/adm/lib/admin.log.lib.php";
+require_once G5_PATH . "/dmk/adm/lib/admin.log.lib.php";
 
 // 도매까 권한 라이브러리 포함
 include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 
 // 메뉴 접근 권한 확인
-if (!dmk_can_access_menu('distributor_form')) {
-    alert('접근 권한이 없습니다.');
-    exit; // 권한 없을 시 즉시 종료
-}
+// dmk_authenticate_form_access 함수를 사용하여 통합 권한 체크
+dmk_authenticate_form_access('distributor_form', $w, $mb_id);
 
 check_token();
 

@@ -2,10 +2,18 @@
 $sub_menu = "190100";
 include_once './_common.php';
 
+// 도매까 권한 라이브러리 포함 (이미 _common.php에 포함되어 있을 수 있지만, 명시적으로 다시 포함하여 문제 방지)
+include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
+
+// 현재 관리자 권한 정보 가져오기
+$auth = dmk_get_admin_auth();
+
 // 메뉴 접근 권한 확인
-if (!dmk_can_access_menu('distributor_form')) {
-    alert('접근 권한이 없습니다.');
-}
+// dmk_authenticate_form_access 함수를 사용하여 통합 권한 체크
+$w = isset($_GET['w']) ? $_GET['w'] : '';
+$mb_id = isset($_GET['mb_id']) ? sql_escape_string(trim($_GET['mb_id'])) : '';
+
+dmk_authenticate_form_access('distributor_form', $w, $mb_id);
 
 $g5['title'] = '총판 등록/수정 <i class="fa fa-star dmk-new-icon" title="NEW"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
@@ -13,7 +21,6 @@ include_once (G5_ADMIN_PATH.'/admin.head.php');
 add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
 
 $is_add = false;
-$mb_id = isset($_GET['mb_id']) ? sql_escape_string(trim($_GET['mb_id'])) : '';
 
 if ($mb_id) {
     $distributor = sql_fetch(" SELECT m.*, d.dt_id, d.dt_status FROM {$g5['member_table']} m JOIN dmk_distributor d ON m.mb_id = d.dt_id WHERE m.mb_id = '$mb_id' AND m.dmk_mb_type = 1 AND m.dmk_admin_type = 'main' ");
@@ -109,15 +116,25 @@ if ($mb_id) {
                     <input type="hidden" name="mb_addr_jibeon" value="<?php echo get_text($distributor['mb_addr_jibeon'] ?? ''); ?>">
                 </td>
             </tr>
+            <?php if ($auth['is_super'] || $mb_id != $auth['mb_id']) { ?>
             <tr>
                 <th scope="row"><label for="dt_status">총판 상태</label></th>
                 <td>
                     <select name="dt_status" id="dt_status">
                         <option value="1" <?php echo (($distributor['dt_status'] ?? 1) == 1) ? 'selected' : ''; ?>>활성</option>
                         <option value="0" <?php echo (($distributor['dt_status'] ?? 1) == 0) ? 'selected' : ''; ?>>비활성</option>
-                    </select>
+                    </select>                    
                 </td>
             </tr>
+            <?php } else { ?>
+            <tr style="display: none;">
+                <th scope="row"><label for="dt_status">총판 상태</label></th>
+                <td>
+                    <input type="hidden" name="dt_status" value="<?php echo ($distributor['dt_status'] ?? 1); ?>">
+                    <span class="frm_info">자신의 상태는 변경할 수 없습니다. (현재: <?php echo (($distributor['dt_status'] ?? 1) == 1) ? '활성' : '비활성'; ?>)</span>
+                </td>
+            </tr>
+            <?php } ?>            
         </tbody>
     </table>
 </div>
