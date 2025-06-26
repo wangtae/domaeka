@@ -139,7 +139,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <div class="local_desc01 local_desc">
     <p>
         <strong>대리점 관리</strong><br>
-        • 계층 구조: <span style="color: #e74c3c; font-weight: bold;">HEAD(본사)</span> → <span style="color: #3498db; font-weight: bold;">DISTRUBUTOR(총판)</span> → <span style="color: #2ecc71; font-weight: bold;">AGENCY(대리점)</span> → <span style="color: #f39c12; font-weight: bold;">BRANCH(지점)</span><br>
         • 대리점은 총판 하위의 관리자로서 여러 지점을 관리합니다.<br>
         • 각 대리점별 관리 지점 수를 확인할 수 있습니다.
     </p>

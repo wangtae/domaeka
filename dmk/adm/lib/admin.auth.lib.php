@@ -450,6 +450,55 @@ function dmk_can_modify_agency($agency_id) {
 }
 
 /**
+ * 현재 로그인한 관리자가 특정 지점을 수정할 권한이 있는지 확인합니다.
+ * 
+ * @param string $br_id 지점 ID
+ * @return bool 수정 권한 여부
+ */
+function dmk_can_modify_branch($br_id) {
+    global $g5;
+    
+    $auth = dmk_get_admin_auth();
+    
+    if (!$auth) {
+        return false;
+    }
+    
+    // 최고 관리자는 모든 지점 수정 가능
+    if ($auth['is_super']) {
+        return true;
+    }
+    
+    // 지점 정보 조회
+    $sql = " SELECT b.br_id, b.ag_id, a.dt_id 
+             FROM dmk_branch b 
+             LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
+             WHERE b.br_id = '" . sql_escape_string($br_id) . "' ";
+    $branch = sql_fetch($sql);
+    
+    if (!$branch) {
+        return false;
+    }
+    
+    switch ($auth['mb_type']) {
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            // 총판 관리자는 자신의 총판에 속한 지점만 수정 가능
+            return $branch['dt_id'] === $auth['mb_id'];
+            
+        case DMK_MB_TYPE_AGENCY:
+            // 대리점 관리자는 자신의 대리점에 속한 지점만 수정 가능
+            return $branch['ag_id'] === $auth['ag_id'];
+            
+        case DMK_MB_TYPE_BRANCH:
+            // 지점 관리자는 자신의 지점만 수정 가능
+            return $branch['br_id'] === $auth['br_id'];
+            
+        default:
+            return false;
+    }
+}
+
+/**
  * 회원 목록 조회를 위한 WHERE 조건을 생성합니다.
  * 
  * @return string SQL WHERE 조건

@@ -24,10 +24,16 @@ if (!$url_code) {
 
 // dmk_branch 테이블에서 br_shortcut_code 또는 br_id로 지점 정보 조회
 $url_code_safe = sql_real_escape_string($url_code);
-$branch_sql = " SELECT b.*, a.ag_name, d.dt_name
+$branch_sql = " SELECT b.*, 
+                    COALESCE(br_m.mb_name, '') AS br_name, 
+                    COALESCE(br_m.mb_nick, '') AS br_nick_from_member, 
+                    COALESCE(br_m.mb_tel, '') AS br_phone, 
+                    COALESCE(br_m.mb_addr1, '') AS br_address, 
+                    COALESCE(ag_m.mb_nick, '') AS ag_name 
                 FROM dmk_branch b 
+                JOIN {$g5['member_table']} br_m ON b.br_id = br_m.mb_id 
                 LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
-                LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id
+                LEFT JOIN {$g5['member_table']} ag_m ON a.ag_id = ag_m.mb_id
                 WHERE (b.br_shortcut_code = '$url_code_safe' OR b.br_id = '$url_code_safe') 
                 AND b.br_status = 1 
                 ORDER BY 
@@ -238,8 +244,8 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             <header class="z-40 flex px-6 gap-4 w-full flex-row relative flex-nowrap items-center justify-between h-16 max-w-4xl">
                 <div class="flex gap-4 h-full flex-row flex-nowrap items-center flex-grow">
                     <div class="flex flex-row flex-grow flex-nowrap justify-start bg-transparent items-center">
-                        <p class="font-bold text-inherit"><?php echo htmlspecialchars($branch['br_name']) ?></p>
-                        <span class="ml-2 text-sm text-gray-500"><?php echo htmlspecialchars($branch['ag_name'] ?: '직영') ?></span>
+                        <?php /*<img src="<?php echo G5_URL; ?>/theme/bootstrap5-basic/img/logo.png" alt="Logo" class="h-[30px] mr-2" />*/ ?>
+                        <p class="font-bold text-inherit"><i class="fa-solid fa-store"></i> <?php echo htmlspecialchars($branch['br_name']) ?></p>
                     </div>
                 </div>
                 <div class="flex gap-4 h-full flex-row flex-nowrap items-center">
