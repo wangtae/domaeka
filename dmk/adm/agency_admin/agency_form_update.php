@@ -42,12 +42,12 @@ if (!$ag_id) {
     alert('대리점 ID를 입력하세요.');
 }
 
-if (!$mb_nick) {
-    alert('회사명/대리점명을 입력하세요.');
+if (!$mb_name) {
+    alert('대리점 이름을 입력하세요.');
 }
 
-if (!$mb_name) {
-    alert('대표자명을 입력하세요.');
+if (!$mb_nick) {
+    alert('회사명을 입력하세요.');
 }
 
 if (!$mb_email) {
