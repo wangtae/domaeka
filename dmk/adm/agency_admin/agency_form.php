@@ -4,44 +4,73 @@ include_once './_common.php';
 
 // 도매까 권한 라이브러리 포함
 include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
+// 관리자 액션 로깅 라이브러리 포함 (필요할 경우)
+include_once(G5_DMK_PATH . "/adm/lib/admin.log.lib.php"); 
 
 // 메뉴 접근 권한 확인
-if (!dmk_can_access_menu('agency_form')) {
-    alert('접근 권한이 없습니다.');
-}
-
-dmk_auth_check_menu($auth, $sub_menu, 'w');
+// 총판 관리자 이상만 접근 가능하도록 설정
+dmk_authenticate_admin(DMK_MB_LEVEL_DISTRIBUTOR);
 
 $ag_id = isset($_GET['ag_id']) ? clean_xss_tags($_GET['ag_id']) : '';
 $w = isset($_GET['w']) ? clean_xss_tags($_GET['w']) : '';
 
 $html_title = '대리점 ';
+$agency = array();
+$member_info = array(); // g5_member 정보를 담을 배열 초기화
+
 if ($w == 'u') {
     $html_title .= '수정';
     
+    // dmk_agency 테이블에서 기본 정보 조회
     $sql = " SELECT * FROM dmk_agency WHERE ag_id = '" . sql_escape_string($ag_id) . "' ";
     $agency = sql_fetch($sql);
     
     if (!$agency) {
         alert('존재하지 않는 대리점입니다.');
+        exit;
+    }
+
+    // g5_member 테이블에서 대리점 관리자 상세 정보 조회
+    $sql = " SELECT * FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($ag_id) . "' ";
+    $member_info = sql_fetch($sql);
+
+    if (!$member_info) {
+        alert('대리점 관리자 회원 정보를 찾을 수 없습니다. 회원 정보를 먼저 확인해주세요.');
+        exit;
     }
     
 } else {
     $html_title .= '등록';
     $w = '';
     
+    // 신규 등록 시 기본값 설정
     $agency = array(
         'ag_id' => '',
-        'ag_name' => '',
-        'ag_ceo_name' => '',
-        'ag_phone' => '',
-        'ag_address' => '',
+        'dt_id' => '', // 총판 ID
         'ag_status' => 1
+    );
+
+    $member_info = array(
+        'mb_id' => '',
+        'mb_name' => '',
+        'mb_nick' => '',
+        'mb_tel' => '',
+        'mb_hp' => '',
+        'mb_email' => '',
+        'mb_zip1' => '',
+        'mb_zip2' => '',
+        'mb_addr1' => '',
+        'mb_addr2' => '',
+        'mb_addr3' => '',
+        'mb_addr_jibeon' => ''
     );
 }
 
 $g5['title'] = $html_title;
 include_once (G5_ADMIN_PATH.'/admin.head.php');
+
+// 카카오 우편번호 서비스 로드
+add_javascript(G5_POSTCODE_JS, 0);
 
 // 기존 get_query_string()의 역할을 대체합니다.
 // 현재 쿼리 스트링에서 'w'와 'ag_id'를 제외한 새로운 쿼리 스트링을 생성합니다.
@@ -55,6 +84,14 @@ foreach ($exclude_params as $param) {
 }
 
 $qstr = http_build_query($params, '', '&amp;');
+
+// 총판 목록 조회 (드롭다운에 사용)
+$distributors = array();
+$sql = " SELECT dt.dt_id, m.mb_name, m.mb_nick FROM dmk_distributor dt JOIN {$g5['member_table']} m ON dt.dt_id = m.mb_id WHERE dt.dt_status = 1 ORDER BY m.mb_name ASC ";
+$dt_result = sql_query($sql);
+while($row = sql_fetch_array($dt_result)) {
+    $distributors[] = $row;
+}
 ?>
 
 <form name="fagency" id="fagency" action="./agency_form_update.php" onsubmit="return fagency_submit(this);" method="post" enctype="multipart/form-data">
@@ -78,6 +115,20 @@ $qstr = http_build_query($params, '', '&amp;');
     </colgroup>
     <tbody>
     <tr>
+        <th scope="row"><label for="dt_id">소속 총판</label></th>
+        <td>
+            <select name="dt_id" id="dt_id" class="frm_input">
+                <option value="">총판 선택</option>
+                <?php foreach ($distributors as $distributor) { ?>
+                    <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($agency['dt_id'] == $distributor['dt_id']) ? 'selected' : '' ?>>
+                        <?php echo get_text($distributor['mb_nick'] ?: $distributor['mb_name']) ?> (<?php echo $distributor['dt_id'] ?>)
+                    </option>
+                <?php } ?>
+            </select>
+            <span class="frm_info">해당 대리점이 소속될 총판을 선택합니다.</span>
+        </td>
+    </tr>
+    <tr>
         <th scope="row"><label for="ag_id">대리점 ID<strong class="sound_only">필수</strong></label></th>
         <td>
             <?php if ($w == 'u') { ?>
@@ -86,6 +137,7 @@ $qstr = http_build_query($params, '', '&amp;');
             <?php } else { ?>
                 <input type="text" name="ag_id" value="<?php echo $agency['ag_id'] ?>" id="ag_id" required class="frm_input required" size="20" maxlength="20">
                 <span class="frm_info">대리점을 구분하는 고유 ID입니다. (예: AG001)</span>
+                <span class="frm_info">이 ID는 대리점 관리자의 회원 ID로도 사용됩니다.</span>
             <?php } ?>
         </td>
     </tr>
@@ -94,7 +146,7 @@ $qstr = http_build_query($params, '', '&amp;');
         <th scope="row"><label for="mb_password">비밀번호<strong class="sound_only">필수</strong></label></th>
         <td>
             <input type="password" name="mb_password" id="mb_password" required class="frm_input required" size="20" maxlength="20">
-            <span class="frm_info">영문, 숫자, 특수문자 조합 (6~20자)</span>
+            <span class="frm_info">영문, 숫자, 특수문자 조합 (8~20자)</span>
         </td>
     </tr>
     <tr>
@@ -103,33 +155,75 @@ $qstr = http_build_query($params, '', '&amp;');
             <input type="password" name="mb_password_confirm" id="mb_password_confirm" required class="frm_input required" size="20" maxlength="20">
         </td>
     </tr>
+    <?php } else { // 수정 시 비밀번호 변경 선택 ?>
+    <tr>
+        <th scope="row"><label for="mb_password">비밀번호 변경</label></th>
+        <td>
+            <input type="password" name="mb_password" id="mb_password" class="frm_input" size="20" maxlength="20">
+            <span class="frm_info">변경하려면 입력하세요. 영문, 숫자, 특수문자 조합 (8~20자)</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_password_confirm">비밀번호 확인</label></th>
+        <td>
+            <input type="password" name="mb_password_confirm" id="mb_password_confirm" class="frm_input" size="20" maxlength="20">
+            <span class="frm_info">비밀번호 변경 시에만 입력하세요.</span>
+        </td>
+    </tr>
     <?php } ?>
     <tr>
-        <th scope="row"><label for="ag_name">대리점명<strong class="sound_only">필수</strong></label></th>
+        <th scope="row"><label for="mb_nick">회사명<strong class="sound_only">필수</strong></label></th>
         <td>
-            <input type="text" name="ag_name" value="<?php echo get_text($agency['ag_name']) ?>" id="ag_name" required class="frm_input required" size="50" maxlength="100">
+            <input type="text" name="mb_nick" value="<?php echo get_text($member_info['mb_nick']) ?>" id="mb_nick" required class="frm_input required" size="50" maxlength="100">
+            <span class="frm_info">대리점의 공식 명칭 (UI 표시에 주로 사용)</span>
         </td>
     </tr>
     <tr>
-        <th scope="row"><label for="ag_ceo_name">대표자명</label></th>
+        <th scope="row"><label for="mb_name">대표자명<strong class="sound_only">필수</strong></label></th>
         <td>
-            <input type="text" name="ag_ceo_name" value="<?php echo get_text($agency['ag_ceo_name']) ?>" id="ag_ceo_name" class="frm_input" size="30" maxlength="50">
+            <input type="text" name="mb_name" value="<?php echo get_text($member_info['mb_name']) ?>" id="mb_name" required class="frm_input required" size="30" maxlength="50">
         </td>
     </tr>
     <tr>
-        <th scope="row"><label for="ag_phone">대표 전화번호</label></th>
+        <th scope="row"><label for="mb_email">이메일<strong class="sound_only">필수</strong></label></th>
         <td>
-            <input type="text" name="ag_phone" value="<?php echo $agency['ag_phone'] ?>" id="ag_phone" class="frm_input" size="20" maxlength="20">
+            <input type="text" name="mb_email" value="<?php echo get_text($member_info['mb_email']) ?>" id="mb_email" required class="frm_input email required" size="50" maxlength="100">
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_tel">전화번호</label></th>
+        <td>
+            <input type="text" name="mb_tel" value="<?php echo get_text($member_info['mb_tel']) ?>" id="mb_tel" class="frm_input" size="20" maxlength="20">
             <span class="frm_info">예: 02-1234-5678</span>
         </td>
     </tr>
     <tr>
-        <th scope="row"><label for="ag_address">주소</label></th>
+        <th scope="row"><label for="mb_hp">휴대폰번호</label></th>
         <td>
-            <input type="text" name="ag_address" value="<?php echo get_text($agency['ag_address']) ?>" id="ag_address" class="frm_input" size="80" maxlength="255">
+            <input type="text" name="mb_hp" value="<?php echo get_text($member_info['mb_hp']) ?>" id="mb_hp" class="frm_input" size="20" maxlength="20">
+            <span class="frm_info">예: 010-1234-5678</span>
         </td>
     </tr>
-    
+    <tr>
+        <th scope="row">주소</th>
+        <td>
+            <label for="mb_zip1" class="sound_only">우편번호 앞자리<strong class="sound_only"> 필수</strong></label>
+            <input type="text" name="mb_zip1" value="<?php echo get_text($member_info['mb_zip1']) ?>" id="mb_zip1" required class="frm_input required" size="3" maxlength="3" readonly>
+            -
+            <label for="mb_zip2" class="sound_only">우편번호 뒷자리<strong class="sound_only"> 필수</strong></label>
+            <input type="text" name="mb_zip2" value="<?php echo get_text($member_info['mb_zip2']) ?>" id="mb_zip2" required class="frm_input required" size="3" maxlength="3" readonly>
+            <input type="hidden" name="mb_zip" value="<?php echo get_text($member_info['mb_zip1'].$member_info['mb_zip2']) ?>">
+            <button type="button" class="btn_frmline" onclick="win_zip('fagency', 'mb_zip', 'mb_addr1', 'mb_addr2', 'mb_addr3', 'mb_addr_jibeon');">주소 검색</button><br>
+            <label for="mb_addr1" class="sound_only">기본주소<strong class="sound_only"> 필수</strong></label>
+            <input type="text" name="mb_addr1" value="<?php echo get_text($member_info['mb_addr1']) ?>" id="mb_addr1" required class="frm_input required" size="60" readonly><br>
+            <label for="mb_addr2" class="sound_only">상세주소</label>
+            <input type="text" name="mb_addr2" value="<?php echo get_text($member_info['mb_addr2']) ?>" id="mb_addr2" class="frm_input" size="60"><br>
+            <label for="mb_addr3" class="sound_only">참고항목</label>
+            <input type="text" name="mb_addr3" value="<?php echo get_text($member_info['mb_addr3']) ?>" id="mb_addr3" class="frm_input" size="60" readonly>
+            <input type="hidden" name="mb_addr_jibeon" value="<?php echo get_text($member_info['mb_addr_jibeon']) ?>">
+            <span class="frm_info">상세주소를 입력하십시오.</span>
+        </td>
+    </tr>
     <tr>
         <th scope="row"><label for="ag_status">상태</label></th>
         <td>
@@ -153,40 +247,66 @@ $qstr = http_build_query($params, '', '&amp;');
 <script>
 function fagency_submit(f)
 {
+    // 대리점 ID는 신규 등록시에만 필수
+    <?php if ($w == '') { ?>
     if (!f.ag_id.value) {
         alert("대리점 ID를 입력하세요.");
         f.ag_id.focus();
         return false;
     }
-    
-    if (!f.ag_name.value) {
-        alert("대리점명을 입력하세요.");
-        f.ag_name.focus();
+    <?php } ?>
+
+    // 회사명/대리점명 (mb_nick) 필수
+    if (!f.mb_nick.value) {
+        alert("회사명/대리점명을 입력하세요.");
+        f.mb_nick.focus();
         return false;
     }
     
-    // 신규 등록시 비밀번호 확인
-    <?php if ($w != 'u') { ?>
+    // 대표자명 (mb_name) 필수
+    if (!f.mb_name.value) {
+        alert("대표자명을 입력하세요.");
+        f.mb_name.focus();
+        return false;
+    }
+    
+    // 이메일 (mb_email) 필수
+    if (!f.mb_email.value) {
+        alert("이메일을 입력하세요.");
+        f.mb_email.focus();
+        return false;
+    }
+    
+    // 비밀번호는 신규 등록시 필수, 수정시 입력된 경우에만 유효성 검사
+    <?php if ($w == '') { ?>
     if (!f.mb_password.value) {
         alert("비밀번호를 입력하세요.");
         f.mb_password.focus();
         return false;
     }
-    
-    if (f.mb_password.value !== f.mb_password_confirm.value) {
-        alert("비밀번호가 일치하지 않습니다.");
-        f.mb_password_confirm.focus();
-        return false;
-    }
-    
-    // 비밀번호 강도 체크
-    var password = f.mb_password.value;
-    if (password.length < 6) {
-        alert("비밀번호는 6자 이상이어야 합니다.");
-        f.mb_password.focus();
-        return false;
-    }
     <?php } ?>
+    
+    if (f.mb_password.value) { // 비밀번호가 입력된 경우에만 검사
+        if (f.mb_password.value !== f.mb_password_confirm.value) {
+            alert("비밀번호가 일치하지 않습니다.");
+            f.mb_password_confirm.focus();
+            return false;
+        }
+        
+        var password = f.mb_password.value;
+        if (password.length < 8) { // 비밀번호 최소 길이 8자로 변경
+            alert("비밀번호는 8자 이상이어야 합니다.");
+            f.mb_password.focus();
+            return false;
+        }
+    }
+    
+    // 주소 필수 입력 확인
+    if (!f.mb_zip1.value || !f.mb_zip2.value || !f.mb_addr1.value) {
+        alert("주소를 입력하세요.");
+        f.mb_zip1.focus();
+        return false;
+    }
     
     return true;
 }

@@ -2,6 +2,9 @@
 $sub_menu = "190200";
 include_once './_common.php';
 
+// 도매까 권한 라이브러리 포함
+include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
+
 // 메뉴 접근 권한 확인
 if (!dmk_can_access_menu('agency_list')) {
     alert('접근 권한이 없습니다.');
@@ -16,19 +19,31 @@ if ($is_admin != 'super') {
 $g5['title'] = '대리점 관리 <i class="fa fa-building-o dmk-updated-icon" title="개조"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
-$sql_common = " FROM dmk_agency a LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id ";
+// SQL common 조인 수정: dmk_agency와 g5_member (대리점 관리자, 총판 관리자) 조인
+$sql_common = " FROM dmk_agency a
+                LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id
+                LEFT JOIN {$g5['member_table']} ag_m ON a.ag_id = ag_m.mb_id
+                LEFT JOIN {$g5['member_table']} dt_m ON a.dt_id = dt_m.mb_id ";
 $sql_search = " WHERE 1=1 ";
 
 // 권한에 따른 데이터 필터링
 $dmk_auth = dmk_get_admin_auth();
-if ($dmk_auth['mb_type'] == 2) {
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
     // 대리점 관리자는 자신의 대리점 정보만 조회
     $sql_search .= " AND a.ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' ";
+} else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+    // 총판 관리자는 자신의 총판에 소속된 대리점 정보만 조회
+    $sql_search .= " AND a.dt_id = '".sql_escape_string($dmk_auth['dt_id'])."' ";
 }
 
 // 검색 조건
 if ($stx) {
-    $sql_search .= " AND (a.ag_id LIKE '%".sql_escape_string($stx)."%' OR a.ag_name LIKE '%".sql_escape_string($stx)."%' OR a.ag_ceo_name LIKE '%".sql_escape_string($stx)."%') ";
+    // mb_name과 mb_nick을 함께 검색
+    $sql_search .= " AND (
+                        ag_m.mb_id LIKE '%".sql_escape_string($stx)."%' OR
+                        ag_m.mb_name LIKE '%".sql_escape_string($stx)."%' OR
+                        ag_m.mb_nick LIKE '%".sql_escape_string($stx)."%'
+                    ) ";
 }
 
 if (!$sst) {
@@ -47,7 +62,13 @@ $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
 if ($page < 1) $page = 1; // 페이지가 없으면 첫 페이지 (1 페이지)
 $from_record = ($page - 1) * $rows; // 시작 열을 구함
 
-$sql = " SELECT a.*, d.dt_id as distributor_name " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
+// SELECT 문 수정: g5_member 테이블에서 상세 정보 가져오기
+$sql = " SELECT a.*, dt_m.mb_name AS distributor_name,
+                    ag_m.mb_name AS ag_name,
+                    ag_m.mb_nick AS ag_nick,
+                    ag_m.mb_tel AS ag_tel,
+                    ag_m.mb_hp AS ag_hp
+          " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
@@ -66,7 +87,7 @@ $g5['title'] = '대리점 관리';
 <input type="submit" class="btn_submit" value="검색">
 </form>
 
-<?php if ($dmk_auth['mb_type'] == 1 || $dmk_auth['is_super']) { ?>
+<?php if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR || $dmk_auth['is_super']) { ?>
 <div class="btn_add01 btn_add">
     <a href="./agency_form.php" id="agency_add">대리점 등록</a>
 </div>
@@ -89,15 +110,15 @@ $g5['title'] = '대리점 관리';
             <label for="chkall" class="sound_only">전체</label>
             <input type="checkbox" name="chkall" value="1" id="chkall" onclick="check_all(this.form)">
         </th>
-        <th scope="col"><?php echo subject_sort_link('ag_id') ?>대리점ID</a></th>
-        <th scope="col"><?php echo subject_sort_link('ag_name') ?>대리점명</a></th>
+        <th scope="col"><?php echo subject_sort_link('a.ag_id') ?>대리점ID</a></th>
+        <th scope="col"><?php echo subject_sort_link('ag_m.mb_nick') ?>대리점명</a></th>
         <th scope="col">소속 총판</th>
-        <th scope="col">대표자명</th>
+        <th scope="col"><?php echo subject_sort_link('ag_m.mb_name') ?>대표자명</a></th>
         <th scope="col">전화번호</th>
         <th scope="col">관리자ID</th>
         <th scope="col">관리 지점수</th>
-        <th scope="col"><?php echo subject_sort_link('ag_datetime') ?>등록일</a></th>
-        <th scope="col"><?php echo subject_sort_link('ag_status') ?>상태</a></th>
+        <th scope="col"><?php echo subject_sort_link('a.ag_datetime') ?>등록일</a></th>
+        <th scope="col"><?php echo subject_sort_link('a.ag_status') ?>상태</a></th>
         <th scope="col">관리</th>
     </tr>
     </thead>
@@ -106,12 +127,7 @@ $g5['title'] = '대리점 관리';
     for ($i=0; $row=sql_fetch_array($result); $i++) {
         $bg = 'bg'.($i%2);
         
-        // 관리자 정보 조회 (ag_id가 곧 관리자 ID)
-        $admin_sql = " SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '{$row['ag_id']}' ";
-        $admin_row = sql_fetch($admin_sql);
-        $admin_name = $admin_row ? $admin_row['mb_name'] : '미지정';
-        
-        // 소속 지점 수 조회
+        // 소속 지점 수 조회는 기존 로직 유지 (dmk_branch의 ag_id 사용)
         $branch_sql = " SELECT COUNT(*) as cnt FROM dmk_branch WHERE ag_id = '{$row['ag_id']}' ";
         $branch_row = sql_fetch($branch_sql);
         $branch_count = $branch_row['cnt'];
@@ -119,22 +135,24 @@ $g5['title'] = '대리점 관리';
 
     <tr class="<?php echo $bg; ?>">
         <td class="td_chk">
-            <label for="chk_<?php echo $i; ?>" class="sound_only"><?php echo $row['ag_name'] ?> 선택</label>
+            <label for="chk_<?php echo $i; ?>" class="sound_only"><?php echo $row['ag_nick'] ?: $row['ag_name'] ?> 선택</label>
             <input type="checkbox" name="chk[]" value="<?php echo $i ?>" id="chk_<?php echo $i ?>">
             <input type="hidden" name="ag_id[<?php echo $i ?>]" value="<?php echo $row['ag_id'] ?>">
         </td>
         <td class="td_left"><?php echo $row['ag_id'] ?></td>
         <td class="td_left">
-            <a href="./agency_form.php?w=u&ag_id=<?php echo $row['ag_id'] ?>"><?php echo get_text($row['ag_name']) ?></a>
+            <a href="./agency_form.php?w=u&ag_id=<?php echo $row['ag_id'] ?>">
+                <?php echo get_text($row['ag_nick'] ?: $row['ag_name']) ?>
+            </a>
         </td>
         <td class="td_left">
-            <?php echo $row['distributor_name'] ? '총판ID: ' . $row['distributor_name'] : '<span style="color:#999;">미배정</span>' ?>
+            <?php echo $row['distributor_name'] ? '총판ID: ' . $row['dt_id'] . ' (' . $row['distributor_name'] . ')' : '<span style="color:#999;">미배정</span>' ?>
         </td>
-        <td><?php echo get_text($row['ag_ceo_name']) ?></td>
-        <td><?php echo $row['ag_phone'] ?></td>
+        <td><?php echo get_text($row['ag_name']) ?></td>
+        <td><?php echo $row['ag_tel'] ?: $row['ag_hp'] ?></td>
         <td>
             <a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&mb_id=<?php echo $row['ag_id'] ?>" target="_blank">
-                <?php echo $row['ag_id'] ?> (<?php echo $admin_name ?>)
+                <?php echo $row['ag_id'] ?> (<?php echo $row['ag_name'] ?>)
             </a>
         </td>
         <td class="td_num"> <?php echo number_format($branch_count) ?> </td>
