@@ -58,12 +58,7 @@ function dmk_get_admin_auth() {
     }
     
     // 도매까 관리자 정보 조회 (admin_type 포함)
-    $sql = " SELECT mb_id, mb_name, mb_level, dmk_mb_type, dmk_ag_id, dmk_br_id, dmk_admin_type,
-                    a.ag_name, b.br_name
-             FROM {$g5['member_table']} m
-             LEFT JOIN dmk_agency a ON m.dmk_ag_id = a.ag_id
-             LEFT JOIN dmk_branch b ON m.dmk_br_id = b.br_id
-             WHERE m.mb_id = '" . sql_escape_string($member['mb_id']) . "' ";
+    $sql = " SELECT m.mb_id, m.mb_name, m.mb_level, m.dmk_mb_type, m.dmk_dt_id, m.dmk_ag_id, m.dmk_br_id, m.dmk_admin_type,\n                    ag_m.mb_name AS ag_name, br_m.mb_name AS br_name\n             FROM {$g5['member_table']} m\n             LEFT JOIN {$g5['member_table']} ag_m ON m.dmk_ag_id = ag_m.mb_id AND ag_m.dmk_mb_type = 2 AND ag_m.dmk_admin_type = 'main'\n             LEFT JOIN {$g5['member_table']} br_m ON m.dmk_br_id = br_m.mb_id AND br_m.dmk_mb_type = 3 AND br_m.dmk_admin_type = 'main'\n             WHERE m.mb_id = '" . sql_escape_string($member['mb_id']) . "' ";
     $admin_info = sql_fetch($sql);
     
     if (!$admin_info) {
