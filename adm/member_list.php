@@ -7,12 +7,15 @@ dmk_auth_check_menu($auth, $sub_menu, 'r');
 
 $sql_common = " from {$g5['member_table']} m 
                 LEFT JOIN dmk_branch b ON m.dmk_br_id = b.br_id 
-                LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id ";
+                LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
+                LEFT JOIN {$g5['member_table']} mb_br ON b.br_id = mb_br.mb_id -- 지점 관리자 정보 조인
+                LEFT JOIN {$g5['member_table']} mb_ag ON a.ag_id = mb_ag.mb_id -- 대리점 관리자 정보 조인
+                ";
 
 $sql_search = " where (1) ";
 
 // 관리자 계정 제외 (mb_level 4 이상은 관리자)
-$sql_search .= " AND m.mb_level < 4 ";
+$sql_search .= " AND m.dmk_mb_type = 0 AND m.mb_level < 4 "; // dmk_mb_type이 0인 일반 회원만 표시
 
 // 도매까 관리자 권한 정보 조회
 $dmk_auth = dmk_get_admin_auth();
@@ -72,7 +75,7 @@ if ($is_admin != 'super') {
 }
 
 if (!$sst) {
-    $sst = "mb_datetime";
+    $sst = "m.mb_datetime";
     $sod = "desc";
 }
 
@@ -90,12 +93,12 @@ if ($page < 1) {
 $from_record = ($page - 1) * $rows; // 시작 열을 구함
 
 // 탈퇴회원수
-$sql = " select count(*) as cnt {$sql_common} {$sql_search} and mb_leave_date <> '' {$sql_order} ";
+$sql = " select count(*) as cnt {$sql_common} {$sql_search} and m.mb_leave_date <> '' {$sql_order} ";
 $row = sql_fetch($sql);
 $leave_count = $row['cnt'];
 
 // 차단회원수
-$sql = " select count(*) as cnt {$sql_common} {$sql_search} and mb_intercept_date <> '' {$sql_order} ";
+$sql = " select count(*) as cnt {$sql_common} {$sql_search} and m.mb_intercept_date <> '' {$sql_order} ";
 $row = sql_fetch($sql);
 $intercept_count = $row['cnt'];
 
@@ -114,7 +117,7 @@ if ($filter_br_id) {
 
 require_once './admin.head.php';
 
-$sql = " select m.*, b.br_name, a.ag_name {$sql_common} {$sql_search} {$sql_order} limit {$from_record}, {$rows} ";
+$sql = " select m.*, mb_br.mb_nick as br_name, mb_ag.mb_nick as ag_name {$sql_common} {$sql_search} {$sql_order} limit {$from_record}, {$rows} ";
 $result = sql_query($sql);
 
 $colspan = 17;
@@ -142,14 +145,14 @@ $colspan = 17;
     if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
         // 최고관리자 또는 총판: 모든 대리점 조회
         if ($dmk_auth['is_super']) {
-            $agency_sql = "SELECT ag_id, ag_name FROM dmk_agency WHERE ag_status = 1 ORDER BY ag_name";
+            $agency_sql = "SELECT ag_id, ag_id as ag_name FROM dmk_agency WHERE ag_status = 1 ORDER BY ag_id";
         } else {
             // 총판: 자신이 관리하는 대리점들만 조회
-            $agency_sql = "SELECT a.ag_id, a.ag_name 
+            $agency_sql = "SELECT a.ag_id, a.ag_id as ag_name 
                           FROM dmk_agency a 
                           JOIN dmk_distributor d ON a.dt_id = d.dt_id 
                           WHERE d.dt_mb_id = '".sql_escape_string($dmk_auth['mb_id'])."' AND a.ag_status = 1 
-                          ORDER BY a.ag_name";
+                          ORDER BY a.ag_id";
         }
         $agency_result = sql_query($agency_sql);
         while ($agency_row = sql_fetch_array($agency_result)) {
@@ -162,26 +165,26 @@ $colspan = 17;
         if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
             // 최고관리자 또는 총판: 모든 지점 조회
             if ($dmk_auth['is_super']) {
-                $branch_sql = "SELECT b.br_id, b.br_name, b.ag_id, a.ag_name 
+                $branch_sql = "SELECT b.br_id, b.br_id as br_name, b.ag_id, a.ag_id as ag_name 
                               FROM dmk_branch b 
                               LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
                               WHERE b.br_status = 1 
-                              ORDER BY a.ag_name, b.br_name";
+                              ORDER BY a.ag_id, b.br_id";
             } else {
                 // 총판: 자신이 관리하는 대리점의 지점들만 조회
-                $branch_sql = "SELECT b.br_id, b.br_name, b.ag_id, a.ag_name 
+                $branch_sql = "SELECT b.br_id, b.br_id as br_name, b.ag_id, a.ag_id as ag_name 
                               FROM dmk_branch b 
                               JOIN dmk_agency a ON b.ag_id = a.ag_id 
                               JOIN dmk_distributor d ON a.dt_id = d.dt_id 
                               WHERE d.dt_mb_id = '".sql_escape_string($dmk_auth['mb_id'])."' AND b.br_status = 1 
-                              ORDER BY a.ag_name, b.br_name";
+                              ORDER BY a.ag_id, b.br_id";
             }
         } else {
             // 대리점 관리자: 자신의 대리점 지점들만 조회
-            $branch_sql = "SELECT br_id, br_name, ag_id, ag_id as ag_name 
+            $branch_sql = "SELECT br_id, br_id as br_name, ag_id 
                           FROM dmk_branch 
                           WHERE ag_id = '".sql_escape_string($current_ag_id)."' AND br_status = 1 
-                          ORDER BY br_name";
+                          ORDER BY br_id";
         }
         $branch_result = sql_query($branch_sql);
         while ($branch_row = sql_fetch_array($branch_result)) {
@@ -422,12 +425,15 @@ $colspan = 17;
                         <td headers="mb_list_mobile" class="td_tel"><?php echo get_text($row['mb_hp']); ?></td>
                         <td headers="mb_list_lastcall" class="td_date"><?php echo substr($row['mb_today_login'], 2, 8); ?></td>
                         <td headers="mb_list_grp" class="td_numsmall"><?php echo $group ?></td>
-                        <td headers="mb_list_branch" rowspan="2" class="td_branch">
+                        <td headers="mb_list_branch" rowspan="2" class="td_left">
                             <?php 
                             if ($row['br_name']) {
-                                echo $row['ag_name'] . '<br>' . $row['br_name'] . '<br>(' . $row['dmk_br_id'] . ')';
+                                echo '지점명: ' . $row['br_name'] . '<br/>(ID: ' . $row['dmk_br_id'] . ')';
                             } else {
-                                echo '<span style="color: #999;">미배정</span>';
+                                echo '-';
+                            }
+                            if ($row['ag_name']) {
+                                echo '<br/>대리점명: ' . $row['ag_name'] . '<br/>(ID: ' . $row['ag_id'] . ')';
                             }
                             ?>
                         </td>

@@ -47,7 +47,7 @@ $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
 if ($page < 1) $page = 1; // 페이지가 없으면 첫 페이지 (1 페이지)
 $from_record = ($page - 1) * $rows; // 시작 열을 구함
 
-$sql = " SELECT a.*, d.dt_name as distributor_name " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
+$sql = " SELECT a.*, d.dt_id as distributor_name " . $sql_common . $sql_search . $sql_order . " LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
@@ -128,7 +128,7 @@ $g5['title'] = '대리점 관리';
             <a href="./agency_form.php?w=u&ag_id=<?php echo $row['ag_id'] ?>"><?php echo get_text($row['ag_name']) ?></a>
         </td>
         <td class="td_left">
-            <?php echo $row['distributor_name'] ? $row['distributor_name'] : '<span style="color:#999;">미배정</span>' ?>
+            <?php echo $row['distributor_name'] ? '총판ID: ' . $row['distributor_name'] : '<span style="color:#999;">미배정</span>' ?>
         </td>
         <td><?php echo get_text($row['ag_ceo_name']) ?></td>
         <td><?php echo $row['ag_phone'] ?></td>

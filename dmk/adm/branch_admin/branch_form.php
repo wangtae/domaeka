@@ -28,7 +28,7 @@ if ($w == 'u') {
     }
     
     // 기존 관리자 정보 조회 (br_id가 곧 관리자 ID)
-    $admin_sql = " SELECT mb_id, mb_name, mb_email, mb_phone FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($branch['br_id']) . "' ";
+    $admin_sql = " SELECT mb_id, mb_name, mb_nick, mb_email, mb_tel, mb_hp, mb_zip, mb_addr1, mb_addr2, mb_addr3, mb_addr_jibeon FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($branch['br_id']) . "' ";
     $admin_info = sql_fetch($admin_sql);
 
     // 관리자 정보가 없을 경우 기본값으로 초기화
@@ -36,8 +36,15 @@ if ($w == 'u') {
         $admin_info = array(
             'mb_id' => $branch['br_id'], // br_id를 관리자 ID로 사용
             'mb_name' => '',
+            'mb_nick' => '',
             'mb_email' => '',
-            'mb_phone' => ''
+            'mb_tel' => '',
+            'mb_hp' => '',
+            'mb_zip' => '',
+            'mb_addr1' => '',
+            'mb_addr2' => '',
+            'mb_addr3' => '',
+            'mb_addr_jibeon' => ''
         );
     }
     
@@ -66,12 +73,23 @@ if ($w == 'u') {
     $branch = array(
         'br_id' => '',
         'ag_id' => $ag_id,
-        'br_name' => '',
-        'br_ceo_name' => '',
-        'br_phone' => '',
-        'br_address' => '',
         'br_shortcut_code' => $shortcut_code,
         'br_status' => 1
+    );
+    
+    // For new entries, also initialize admin_info
+    $admin_info = array(
+        'mb_id' => '',
+        'mb_name' => '',
+        'mb_nick' => '',
+        'mb_email' => '',
+        'mb_tel' => '',
+        'mb_hp' => '',
+        'mb_zip' => '',
+        'mb_addr1' => '',
+        'mb_addr2' => '',
+        'mb_addr3' => '',
+        'mb_addr_jibeon' => ''
     );
 }
 
@@ -123,6 +141,9 @@ $qstr = http_build_query($params, '', '&amp;');
 <input type="hidden" name="token" value="">
 <?php if ($w == 'u') { ?>
 <input type="hidden" name="br_id" value="<?php echo $branch['br_id'] ?>">
+<input type="hidden" name="mb_id" value="<?php echo $branch['br_id'] ?>">
+<?php } else { ?>
+<input type="hidden" name="mb_id" value="<?php echo $branch['br_id'] ?>">
 <?php } ?>
 
 <div class="tbl_frm01 tbl_wrap">
@@ -145,6 +166,35 @@ $qstr = http_build_query($params, '', '&amp;');
             <?php } ?>
         </td>
     </tr>
+    <?php if ($w != 'u') { // 신규 등록 시에만 비밀번호 입력 ?>
+    <tr>
+        <th scope="row"><label for="mb_password">비밀번호<strong class="sound_only">필수</strong></label></th>
+        <td>
+            <input type="password" name="mb_password" id="mb_password" required class="frm_input required" size="20" maxlength="20">
+            <span class="frm_info">영문, 숫자, 특수문자 조합 (6~20자)</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_password_confirm">비밀번호 확인<strong class="sound_only">필수</strong></label></th>
+        <td>
+            <input type="password" name="mb_password_confirm" id="mb_password_confirm" required class="frm_input required" size="20" maxlength="20">
+        </td>
+    </tr>
+    <?php } else { // 수정 시 비밀번호는 선택 사항 ?>
+    <tr>
+        <th scope="row"><label for="mb_password">비밀번호</label></th>
+        <td>
+            <input type="password" name="mb_password" id="mb_password" class="frm_input" size="20" maxlength="20">
+            <p class="frm_info">수정하지 않으려면 공란으로 두세요.</p>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_password_confirm">비밀번호 확인</label></th>
+        <td>
+            <input type="password" name="mb_password_confirm" id="mb_password_confirm" class="frm_input" size="20" maxlength="20">
+        </td>
+    </tr>
+    <?php } ?>
     <tr>
         <th scope="row"><label for="br_shortcut_code">단축 URL 코드</label></th>
         <td>
@@ -162,36 +212,55 @@ $qstr = http_build_query($params, '', '&amp;');
         </td>
     </tr>
     <tr>
-        <th scope="row"><label for="br_name">지점명<strong class="sound_only">필수</strong></label></th>
+        <th scope="row"><label for="mb_nick">지점명<strong class="sound_only">필수</strong></label></th>
         <td>
-            <input type="text" name="br_name" value="<?php echo get_text($branch['br_name']) ?>" id="br_name" required class="frm_input required" size="50" maxlength="100">
+            <input type="text" name="mb_nick" value="<?php echo get_text($admin_info['mb_nick'] ?? '') ?>" id="mb_nick" required class="frm_input required" size="50" maxlength="100">
+            <input type="hidden" name="br_name" value="<?php echo get_text($admin_info['mb_nick'] ?? '') ?>"> <!-- 기존 필드 호환성을 위한 hidden -->
         </td>
     </tr>
     <tr>
-        <th scope="row"><label for="br_ceo_name">지점 대표자명</label></th>
+        <th scope="row"><label for="mb_name">지점 대표자명</label></th>
         <td>
-            <input type="text" name="br_ceo_name" value="<?php echo get_text($branch['br_ceo_name']) ?>" id="br_ceo_name" class="frm_input" size="30" maxlength="50">
+            <input type="text" name="mb_name" value="<?php echo get_text($admin_info['mb_name'] ?? '') ?>" id="mb_name" class="frm_input" size="30" maxlength="50">
+            <input type="hidden" name="br_ceo_name" value="<?php echo get_text($admin_info['mb_name'] ?? '') ?>"> <!-- 기존 필드 호환성을 위한 hidden -->
         </td>
     </tr>
     <tr>
-        <th scope="row"><label for="br_phone">지점 전화번호</label></th>
+        <th scope="row"><label for="mb_email">이메일</label></th>
         <td>
-            <input type="text" name="br_phone" value="<?php echo $branch['br_phone'] ?>" id="br_phone" class="frm_input" size="20" maxlength="20">
-            <span class="frm_info">예: 02-1234-5678</span>
+            <input type="text" name="mb_email" value="<?php echo get_text($admin_info['mb_email'] ?? '') ?>" id="mb_email" class="frm_input" size="30">
         </td>
     </tr>
     <tr>
-        <th scope="row"><label for="br_address">지점 주소</label></th>
+        <th scope="row"><label for="mb_tel">전화번호</label></th>
         <td>
-            <input type="text" name="br_address" value="<?php echo get_text($branch['br_address']) ?>" id="br_address" class="frm_input" size="80" maxlength="255">
+            <input type="text" name="mb_tel" value="<?php echo get_text($admin_info['mb_tel'] ?? '') ?>" id="mb_tel" class="frm_input" size="20">
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_hp">휴대폰 번호</label></th>
+        <td>
+            <input type="text" name="mb_hp" value="<?php echo get_text($admin_info['mb_hp'] ?? '') ?>" id="mb_hp" class="frm_input" size="20">
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_zip">주소</label></th>
+        <td>
+            <input type="text" name="mb_zip" value="<?php echo get_text($admin_info['mb_zip'] ?? '') ?>" id="mb_zip" class="frm_input" size="5">
+            <button type="button" class="btn_frmline" onclick="win_zip('fbranch', 'mb_zip', 'mb_addr1', 'mb_addr2', 'mb_addr3');">주소 검색</button><br>
+            <input type="text" name="mb_addr1" value="<?php echo get_text($admin_info['mb_addr1'] ?? '') ?>" id="mb_addr1" class="frm_input" size="60">
+            <input type="text" name="mb_addr2" value="<?php echo get_text($admin_info['mb_addr2'] ?? '') ?>" id="mb_addr2" class="frm_input" size="60">
+            <input type="text" name="mb_addr3" value="<?php echo get_text($admin_info['mb_addr3'] ?? '') ?>" id="mb_addr3" class="frm_input" size="60">
+            <input type="text" name="mb_addr_jibeon" value="<?php echo get_text($admin_info['mb_addr_jibeon'] ?? '') ?>" id="mb_addr_jibeon" class="frm_input" size="60" readonly="readonly">
+            <input type="hidden" name="br_address" value="<?php echo get_text($admin_info['mb_addr1'] ?? '') . ' ' . get_text($admin_info['mb_addr2'] ?? '') . ' ' . get_text($admin_info['mb_addr3'] ?? '') ?>"> <!-- 기존 필드 호환성을 위한 hidden -->
         </td>
     </tr>
     <tr>
         <th scope="row"><label for="br_status">상태</label></th>
         <td>
-            <input type="radio" name="br_status" value="1" id="br_status_1" <?php echo $branch['br_status'] ? 'checked' : '' ?>>
+            <input type="radio" name="br_status" value="1" id="br_status_1" <?php echo ($branch['br_status'] ?? 1) ? 'checked' : '' ?>>
             <label for="br_status_1">활성</label>
-            <input type="radio" name="br_status" value="0" id="br_status_0" <?php echo !$branch['br_status'] ? 'checked' : '' ?>>
+            <input type="radio" name="br_status" value="0" id="br_status_0" <?php echo !($branch['br_status'] ?? 1) ? 'checked' : '' ?>>
             <label for="br_status_0">비활성</label>
         </td>
     </tr>
@@ -219,31 +288,29 @@ function fbranch_submit(f)
         f.ag_id.focus();
         return false;
     }
-    if (!f.br_name.value) {
+    // Change check to mb_nick for branch name
+    if (!f.mb_nick.value) {
         alert("지점명을 입력하세요.");
-        f.br_name.focus();
+        f.mb_nick.focus();
         return false;
     }
-    // 신규 등록시 비밀번호 확인
-    <?php if ($w != 'u') { ?>
-    if (!f.mb_password.value) {
-        alert("비밀번호를 입력하세요.");
-        f.mb_password.focus();
-        return false;
+
+    var mb_password_field = f.mb_password;
+    var mb_password_confirm_field = f.mb_password_confirm;
+
+    // Password validation logic for both new and update (if password provided)
+    if (mb_password_field && mb_password_field.value) {
+        if (!mb_password_confirm_field || mb_password_field.value !== mb_password_confirm_field.value) {
+            alert("비밀번호가 일치하지 않습니다.");
+            if (mb_password_confirm_field) mb_password_confirm_field.focus();
+            return false;
+        }
+        if (mb_password_field.value.length < 6) {
+            alert("비밀번호는 6자 이상이어야 합니다.");
+            mb_password_field.focus();
+            return false;
+        }
     }
-    if (f.mb_password.value !== f.mb_password_confirm.value) {
-        alert("비밀번호가 일치하지 않습니다.");
-        f.mb_password_confirm.focus();
-        return false;
-    }
-    // 비밀번호 강도 체크
-    var password = f.mb_password.value;
-    if (password.length < 6) {
-        alert("비밀번호는 6자 이상이어야 합니다.");
-        f.mb_password.focus();
-        return false;
-    }
-    <?php } ?>
     return true;
 }
 </script>

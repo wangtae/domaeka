@@ -2,7 +2,24 @@
 /*******************************************************************************
 ** 공통 변수, 상수, 코드
 *******************************************************************************/
-error_reporting( E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING );
+
+// 개발자 IP에서만 상세 오류 보고 활성화
+if (defined('G5_DEVELOPER_IPS') && G5_DEVELOPER_IPS) {
+    $developer_ips = explode(',', G5_DEVELOPER_IPS);
+    $current_ip = $_SERVER['REMOTE_ADDR'];
+
+    if (in_array($current_ip, $developer_ips)) {
+        error_reporting(E_ALL);
+        ini_set('display_errors', 1);
+    } else {
+        error_reporting(E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING);
+        ini_set('display_errors', 0);
+    }
+} else {
+    // G5_DEVELOPER_IPS 가 정의되지 않았거나 비어있으면 기본 설정 따름
+    error_reporting( E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING );
+    ini_set('display_errors', 0); // 기본적으로 운영 환경에서는 오류 표시 끄기
+}
 
 // 보안설정이나 프레임이 달라도 쿠키가 통하도록 설정
 header('P3P: CP="ALL CURa ADMa DEVa TAIa OUR BUS IND PHY ONL UNI PUR FIN COM NAV INT DEM CNT STA POL HEA PRE LOC OTC"');

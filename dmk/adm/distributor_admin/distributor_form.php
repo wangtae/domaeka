@@ -10,11 +10,13 @@ if (!dmk_can_access_menu('distributor_form')) {
 $g5['title'] = '총판 등록/수정 <i class="fa fa-star dmk-new-icon" title="NEW"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
+add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
+
 $is_add = false;
 $mb_id = isset($_GET['mb_id']) ? sql_escape_string(trim($_GET['mb_id'])) : '';
 
 if ($mb_id) {
-    $distributor = sql_fetch(" SELECT m.*, d.dt_id FROM {$g5['member_table']} m JOIN dmk_distributor d ON m.mb_id = d.dt_id WHERE m.mb_id = '$mb_id' AND m.dmk_mb_type = 1 AND m.dmk_admin_type = 'main' ");
+    $distributor = sql_fetch(" SELECT m.*, d.dt_id, d.dt_status FROM {$g5['member_table']} m JOIN dmk_distributor d ON m.mb_id = d.dt_id WHERE m.mb_id = '$mb_id' AND m.dmk_mb_type = 1 AND m.dmk_admin_type = 'main' ");
 
     if (!$distributor) {
         alert('해당 총판 정보를 찾을 수 없습니다.', G5_ADMIN_URL.'/dmk/adm/distributor_admin/distributor_list.php');
@@ -55,6 +57,12 @@ if ($mb_id) {
                 </td>
             </tr>
             <tr>
+                <th scope="row"><label for="mb_nick">회사명</label></th>
+                <td>
+                    <input type="text" name="mb_nick" value="<?php echo get_text($distributor['mb_nick']); ?>" id="mb_nick" class="frm_input" size="30">
+                </td>
+            </tr>
+            <tr>
                 <th scope="row"><label for="mb_password">비밀번호</label></th>
                 <td>
                     <input type="password" name="mb_password" id="mb_password" <?php echo $is_add ? 'required' : ''; ?> class="frm_input <?php echo $is_add ? 'required' : ''; ?>" size="20" maxlength="20">
@@ -74,28 +82,39 @@ if ($mb_id) {
                 </td>
             </tr>
             <tr>
+                <th scope="row"><label for="mb_tel">전화번호</label></th>
+                <td>
+                    <input type="text" name="mb_tel" value="<?php echo get_text($distributor['mb_tel']); ?>" id="mb_tel" class="frm_input" size="20">
+                </td>
+            </tr>
+            <tr>
                 <th scope="row"><label for="mb_email">이메일</label></th>
                 <td>
                     <input type="text" name="mb_email" value="<?php echo get_text($distributor['mb_email']); ?>" id="mb_email" class="frm_input" size="30">
                 </td>
             </tr>
             <tr>
-                <th scope="row"><label for="mb_zip">주소</label></th>
-                <td>
-                    <input type="text" name="mb_zip" value="<?php echo get_text($distributor['mb_zip']); ?>" id="mb_zip" class="frm_input" size="5">
-                    <button type="button" class="btn_frmline" onclick="win_zip('fdistributorform', 'mb_zip', 'mb_addr1', 'mb_addr2', 'mb_addr3');">주소 검색</button><br>
-                    <input type="text" name="mb_addr1" value="<?php echo get_text($distributor['mb_addr1']); ?>" id="mb_addr1" class="frm_input" size="60">
-                    <input type="text" name="mb_addr2" value="<?php echo get_text($distributor['mb_addr2']); ?>" id="mb_addr2" class="frm_input" size="60">
-                    <input type="text" name="mb_addr3" value="<?php echo get_text($distributor['mb_addr3']); ?>" id="mb_addr3" class="frm_input" size="60">
-                    <input type="text" name="mb_addr_jibeon" value="<?php echo get_text($distributor['mb_addr_jibeon']); ?>" id="mb_addr_jibeon" class="frm_input" size="60" readonly="readonly">
+                <th scope="row">주소</th>
+                <td colspan="3" class="td_addr_line">
+                    <label for="mb_zip" class="sound_only">우편번호</label>
+                    <input type="text" name="mb_zip" value="<?php echo get_text($distributor['mb_zip1']).get_text($distributor['mb_zip2']); ?>" id="mb_zip" class="frm_input readonly" size="5" maxlength="6">
+                    <button type="button" class="btn_frmline" onclick="win_zip('fdistributorform', 'mb_zip', 'mb_addr1', 'mb_addr2', 'mb_addr3', 'mb_addr_jibeon');">주소 검색</button><br>
+                    <input type="text" name="mb_addr1" value="<?php echo get_text($distributor['mb_addr1'] ?? ''); ?>" id="mb_addr1" class="frm_input readonly" size="60">
+                    <label for="mb_addr1">기본주소</label><br>
+                    <input type="text" name="mb_addr2" value="<?php echo get_text($distributor['mb_addr2'] ?? ''); ?>" id="mb_addr2" class="frm_input" size="60">
+                    <label for="mb_addr2">상세주소</label>
+                    <br>
+                    <input type="text" name="mb_addr3" value="<?php echo get_text($distributor['mb_addr3'] ?? ''); ?>" id="mb_addr3" class="frm_input" size="60">
+                    <label for="mb_addr3">참고항목</label>
+                    <input type="hidden" name="mb_addr_jibeon" value="<?php echo get_text($distributor['mb_addr_jibeon'] ?? ''); ?>">
                 </td>
             </tr>
             <tr>
                 <th scope="row"><label for="dt_status">총판 상태</label></th>
                 <td>
                     <select name="dt_status" id="dt_status">
-                        <option value="1" <?php echo ($distributor['dt_status'] == 1) ? 'selected' : ''; ?>>활성</option>
-                        <option value="0" <?php echo ($distributor['dt_status'] == 0) ? 'selected' : ''; ?>>비활성</option>
+                        <option value="1" <?php echo (($distributor['dt_status'] ?? 1) == 1) ? 'selected' : ''; ?>>활성</option>
+                        <option value="0" <?php echo (($distributor['dt_status'] ?? 1) == 0) ? 'selected' : ''; ?>>비활성</option>
                     </select>
                 </td>
             </tr>
@@ -103,9 +122,9 @@ if ($mb_id) {
     </table>
 </div>
 
-<div class="btn_confirm">
-    <input type="submit" value="<?php echo $is_add ? '총판 등록' : '총판 정보 수정'; ?>" class="btn_submit" accesskey="s">
-    <a href="./distributor_list.php" class="btn_cancel">목록</a>
+<div class="btn_fixed_top">
+    <a href="./distributor_list.php" class="btn btn_02">목록</a>
+    <input type="submit" value="<?php echo $is_add ? '총판 등록' : '총판 정보 수정'; ?>" class="btn_submit btn" accesskey="s">
 </div>
 
 </form>
@@ -114,8 +133,8 @@ if ($mb_id) {
 function fdistributorform_submit(f)
 {
     if (f.mb_password.value) {
-        if (f.mb_password.value.length < 3) {
-            alert("비밀번호를 3글자 이상 입력하십시오.");
+        if (f.mb_password.value.length < 8) {
+            alert("비밀번호를 8글자 이상 입력하십시오.");
             f.mb_password.focus();
             return false;
         }

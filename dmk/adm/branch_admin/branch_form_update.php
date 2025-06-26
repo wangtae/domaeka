@@ -17,19 +17,23 @@ check_demo();
 $w = $_POST['w'];
 $br_id = isset($_POST['br_id']) ? clean_xss_tags($_POST['br_id']) : '';
 $ag_id = isset($_POST['ag_id']) ? clean_xss_tags($_POST['ag_id']) : '';
-$br_name = isset($_POST['br_name']) ? clean_xss_tags($_POST['br_name']) : '';
-$br_ceo_name = isset($_POST['br_ceo_name']) ? clean_xss_tags($_POST['br_ceo_name']) : '';
-$br_phone = isset($_POST['br_phone']) ? clean_xss_tags($_POST['br_phone']) : '';
-$br_address = isset($_POST['br_address']) ? clean_xss_tags($_POST['br_address']) : '';
 $br_shortcut_code = isset($_POST['br_shortcut_code']) ? clean_xss_tags($_POST['br_shortcut_code']) : '';
 $br_status = isset($_POST['br_status']) ? (int)$_POST['br_status'] : 1;
 
-// 관리자 계정 정보
+// 관리자 계정 정보 (g5_member 테이블에 저장될 필드)
 $mb_id = isset($_POST['mb_id']) ? clean_xss_tags($_POST['mb_id']) : '';
 $mb_password = isset($_POST['mb_password']) ? $_POST['mb_password'] : '';
+$mb_password_confirm = isset($_POST['mb_password_confirm']) ? $_POST['mb_password_confirm'] : '';
 $mb_name = isset($_POST['mb_name']) ? clean_xss_tags($_POST['mb_name']) : '';
+$mb_nick = isset($_POST['mb_nick']) ? clean_xss_tags($_POST['mb_nick']) : ''; // 지점명으로 사용
 $mb_email = isset($_POST['mb_email']) ? clean_xss_tags($_POST['mb_email']) : '';
-$mb_phone = isset($_POST['mb_phone']) ? clean_xss_tags($_POST['mb_phone']) : '';
+$mb_tel = isset($_POST['mb_tel']) ? clean_xss_tags($_POST['mb_tel']) : '';
+$mb_hp = isset($_POST['mb_hp']) ? clean_xss_tags($_POST['mb_hp']) : '';
+$mb_zip = isset($_POST['mb_zip']) ? clean_xss_tags($_POST['mb_zip']) : '';
+$mb_addr1 = isset($_POST['mb_addr1']) ? clean_xss_tags($_POST['mb_addr1']) : '';
+$mb_addr2 = isset($_POST['mb_addr2']) ? clean_xss_tags($_POST['mb_addr2']) : '';
+$mb_addr3 = isset($_POST['mb_addr3']) ? clean_xss_tags($_POST['mb_addr3']) : '';
+$mb_addr_jibeon = isset($_POST['mb_addr_jibeon']) ? clean_xss_tags($_POST['mb_addr_jibeon']) : '';
 
 // 현재 로그인한 관리자 정보
 $current_admin = dmk_get_admin_auth();
@@ -42,16 +46,12 @@ if (!$ag_id) {
     alert('소속 대리점을 선택하세요.');
 }
 
-if (!$br_name) {
+if (!$mb_nick) {
     alert('지점명을 입력하세요.');
 }
 
 if (!$mb_id) {
     alert('관리자 아이디를 입력하세요.');
-}
-
-if (!$mb_name) {
-    alert('관리자 이름을 입력하세요.');
 }
 
 if (!$mb_email) {
@@ -103,20 +103,35 @@ if ($w == 'u') {
     // 지점 정보 업데이트
     $sql = " UPDATE dmk_branch SET 
                 ag_id = '" . sql_escape_string($ag_id) . "',
-                br_name = '" . sql_escape_string($br_name) . "',
-                br_ceo_name = '" . sql_escape_string($br_ceo_name) . "',
-                br_phone = '" . sql_escape_string($br_phone) . "',
-                br_address = '" . sql_escape_string($br_address) . "',
                 br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
                 br_status = $br_status
              WHERE br_id = '" . sql_escape_string($br_id) . "' ";
     sql_query($sql);
     
-    // 관리자 정보 업데이트 (비밀번호 제외)
+    // g5_member 테이블의 관리자 정보 업데이트 (br_id를 mb_id로 사용)
+    $mb_password_update = '';
+    if ($mb_password) {
+        if ($mb_password != $mb_password_confirm) {
+            alert('비밀번호가 일치하지 않습니다.');
+        }
+        if (strlen($mb_password) < 6) {
+            alert('비밀번호는 6자 이상이어야 합니다.');
+        }
+        $mb_password_update = ", mb_password = '" . get_encrypt_string($mb_password) . "'";
+    }
+
     $sql = " UPDATE {$g5['member_table']} SET 
                 mb_name = '" . sql_escape_string($mb_name) . "',
+                mb_nick = '" . sql_escape_string($mb_nick) . "',
                 mb_email = '" . sql_escape_string($mb_email) . "',
-                mb_phone = '" . sql_escape_string($mb_phone) . "'
+                mb_tel = '" . sql_escape_string($mb_tel) . "',
+                mb_hp = '" . sql_escape_string($mb_hp) . "',
+                mb_zip = '" . sql_escape_string($mb_zip) . "',
+                mb_addr1 = '" . sql_escape_string($mb_addr1) . "',
+                mb_addr2 = '" . sql_escape_string($mb_addr2) . "',
+                mb_addr3 = '" . sql_escape_string($mb_addr3) . "',
+                mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "'
+                $mb_password_update
              WHERE mb_id = '" . sql_escape_string($mb_id) . "' ";
     sql_query($sql);
     
@@ -128,7 +143,9 @@ if ($w == 'u') {
     if (!$mb_password) {
         alert('비밀번호를 입력하세요.');
     }
-    
+    if ($mb_password != $mb_password_confirm) {
+        alert('비밀번호가 일치하지 않습니다.');
+    }
     // 비밀번호 강도 체크
     if (strlen($mb_password) < 6) {
         alert('비밀번호는 6자 이상이어야 합니다.');
@@ -176,9 +193,15 @@ if ($w == 'u') {
                 mb_id = '" . sql_escape_string($mb_id) . "',
                 mb_password = '" . sql_escape_string($mb_password_encrypted) . "',
                 mb_name = '" . sql_escape_string($mb_name) . "',
-                mb_nick = '" . sql_escape_string($mb_name) . "',
+                mb_nick = '" . sql_escape_string($mb_nick) . "',
                 mb_email = '" . sql_escape_string($mb_email) . "',
-                mb_phone = '" . sql_escape_string($mb_phone) . "',
+                mb_tel = '" . sql_escape_string($mb_tel) . "',
+                mb_hp = '" . sql_escape_string($mb_hp) . "',
+                mb_zip = '" . sql_escape_string($mb_zip) . "',
+                mb_addr1 = '" . sql_escape_string($mb_addr1) . "',
+                mb_addr2 = '" . sql_escape_string($mb_addr2) . "',
+                mb_addr3 = '" . sql_escape_string($mb_addr3) . "',
+                mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "',
                 mb_level = 4,
                 mb_datetime = NOW(),
                 mb_ip = '" . $_SERVER['REMOTE_ADDR'] . "',
@@ -191,14 +214,10 @@ if ($w == 'u') {
                 mb_open = 1 ";
     sql_query($sql);
     
-    // 지점 등록
+    // 지점 등록 (dmk_branch 테이블에 존재하는 필드만)
     $sql = " INSERT INTO dmk_branch SET 
                 br_id = '" . sql_escape_string($br_id) . "',
                 ag_id = '" . sql_escape_string($ag_id) . "',
-                br_name = '" . sql_escape_string($br_name) . "',
-                br_ceo_name = '" . sql_escape_string($br_ceo_name) . "',
-                br_phone = '" . sql_escape_string($br_phone) . "',
-                br_address = '" . sql_escape_string($br_address) . "',
                 br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
                 br_datetime = NOW(),
                 br_status = $br_status ";

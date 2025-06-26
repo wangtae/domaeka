@@ -104,7 +104,6 @@ graph TD
 CREATE TABLE `dmk_distributor` (
   `id` int AUTO_INCREMENT PRIMARY KEY,
   `dt_id` varchar(20) UNIQUE NOT NULL,
-  `dt_datetime` datetime DEFAULT CURRENT_TIMESTAMP,
   `dt_status` tinyint(1) DEFAULT 1,
   `dt_created_by` varchar(20),
   `dt_admin_type` varchar(10) DEFAULT 'main'
@@ -117,7 +116,6 @@ CREATE TABLE `dmk_agency` (
   `id` int AUTO_INCREMENT PRIMARY KEY,
   `ag_id` varchar(20) UNIQUE NOT NULL,
   `dt_id` varchar(20) NOT NULL COMMENT 'FK to dmk_distributor',
-  `ag_datetime` datetime DEFAULT CURRENT_TIMESTAMP,
   `ag_status` tinyint(1) DEFAULT 1,
   `ag_created_by` varchar(20),
   `ag_admin_type` varchar(10) DEFAULT 'main'
@@ -130,7 +128,6 @@ CREATE TABLE `dmk_branch` (
   `id` int AUTO_INCREMENT PRIMARY KEY,
   `br_id` varchar(20) UNIQUE NOT NULL,
   `ag_id` varchar(20) NOT NULL COMMENT 'FK to dmk_agency',
-  `br_datetime` datetime DEFAULT CURRENT_TIMESTAMP,
   `br_status` tinyint(1) DEFAULT 1,
   `br_created_by` varchar(20),
   `br_admin_type` varchar(10) DEFAULT 'main',
@@ -186,6 +183,11 @@ graph LR
 - **기본 상태**: `sub` 관리자는 아무런 권한 없음
 - **권한 배정**: `main` 관리자가 명시적으로 권한 부여
 - **권한 관리**: 기존 영카트의 `auth.php` 시스템 확장 활용 (완료)
+
+#### ⚠️ 계층 활성화 상태 검증
+
+- **로그인 제한**: `dmk_distributor`, `dmk_agency`, `dmk_branch` 테이블의 `dt_status`, `ag_status`, `br_status` 필드 값이 `0` (비활성)인 경우, 해당 총판, 대리점, 지점에 소속된 `main` 및 `sub` 관리자 모두 로그인을 제한해야 합니다.
+- **안내 메시지**: 로그인 실패 시, 사용자에게 "현재 계층이 비활성화되어 로그인할 수 없습니다. 관리자에게 문의하세요."와 같은 명확한 안내 메시지를 제공해야 합니다.
 
 ---
 

@@ -198,7 +198,7 @@ define('G5_MYSQL_PASSWORD_LENGTH', 41);         // mysql password length 41, old
 
 // SQL 에러를 표시할 것인지 지정
 // 에러를 표시하려면 true 로 변경
-define('G5_DISPLAY_SQL_ERROR', true);
+define('G5_DISPLAY_SQL_ERROR', false);
 
 // escape string 처리 함수 지정
 // addslashes 로 변경 가능
@@ -240,3 +240,6 @@ define('G5_IP_DISPLAY', '\\1.♡.\\3.\\4');
 
 // KAKAO 우편번호 서비스 CDN
 define('G5_POSTCODE_JS', '<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js" async></script>');
+
+// 개발자 IP 목록 (콤마로 구분, 예: '127.0.0.1,192.168.0.1')
+define('G5_DEVELOPER_IPS', '124.62.66.233,183.96.115.92');
