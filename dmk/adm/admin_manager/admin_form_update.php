@@ -84,6 +84,13 @@ if ($w == '') {
 // 권한 체크 (신규 등록 시에만)
 if ($w == '') {
     $can_create_level = false;
+
+    // Debugging: 권한 체크 전 주요 변수 값 확인
+    error_log("DMK_AUTH_UPDATE: 로그인 사용자 mb_level: " . ($dmk_auth['mb_level'] ?? 'N/A'));
+    error_log("DMK_AUTH_UPDATE: 생성하려는 관리자 mb_level: " . ($mb_level ?? 'N/A'));
+    error_log("DMK_AUTH_UPDATE: 생성하려는 관리자 dmk_mb_type: " . ($dmk_mb_type ?? 'N/A'));
+    error_log("DMK_AUTH_UPDATE: 로그인 사용자 is_super: " . ($dmk_auth['is_super'] ? 'true' : 'false'));
+
     if ($dmk_auth['is_super']) {
         $can_create_level = true;
     } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && $mb_level <= DMK_MB_LEVEL_DISTRIBUTOR) {

@@ -33,32 +33,11 @@ if ($w == 'u') {
         exit;
     }
 
-    // 권한 확인: 본사 관리자가 아니면 자신의 하위 관리자만 수정 가능
-    if (!$auth['is_super']) {
-        $can_edit = false;
-        
-        if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-            // 총판 관리자는 자신의 총판에 속한 대리점/지점 관리자만 수정 가능
-            if ($member_info['dmk_mb_type'] == DMK_MB_TYPE_AGENCY) {
-                $ag_sql = " SELECT dt_id FROM dmk_agency WHERE ag_id = '" . sql_escape_string($member_info['dmk_ag_id']) . "' ";
-                $ag_result = sql_fetch($ag_sql);
-                $can_edit = ($ag_result['dt_id'] == $auth['mb_id']);
-            } else if ($member_info['dmk_mb_type'] == DMK_MB_TYPE_BRANCH) {
-                $br_sql = " SELECT a.dt_id FROM dmk_branch b LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id WHERE b.br_id = '" . sql_escape_string($member_info['dmk_br_id']) . "' ";
-                $br_result = sql_fetch($br_sql);
-                $can_edit = ($br_result['dt_id'] == $auth['mb_id']);
-            }
-        } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
-            // 대리점 관리자는 자신의 대리점에 속한 지점 관리자만 수정 가능
-            if ($member_info['dmk_mb_type'] == DMK_MB_TYPE_BRANCH) {
-                $can_edit = ($member_info['dmk_ag_id'] == $auth['ag_id']);
-            }
-        }
-        
-        if (!$can_edit) {
-            alert('수정 권한이 없습니다.');
-            exit;
-        }
+    // 권한 확인: dmk_can_modify_member 함수를 사용하여 수정 권한 체크
+    // 최고관리자는 이미 dmk_can_modify_member 내부에서 처리됨
+    if (!dmk_can_modify_member($mb_id)) {
+        alert('수정 권한이 없습니다.');
+        exit;
     }
     
     // 소속 정보 설정 (수정 모드에서 기존 정보 불러오기)
@@ -115,11 +94,13 @@ if ($auth['is_super']) {
     );
 } elseif ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
     $admin_type_options = array(
+        DMK_MB_TYPE_DISTRIBUTOR => '총판 관리자',
         DMK_MB_TYPE_AGENCY => '대리점 관리자', 
         DMK_MB_TYPE_BRANCH => '지점 관리자'
     );
 } elseif ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
     $admin_type_options = array(
+        DMK_MB_TYPE_AGENCY => '대리점 관리자',
         DMK_MB_TYPE_BRANCH => '지점 관리자'
     );
 }

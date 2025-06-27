@@ -15,6 +15,9 @@ require_once G5_DMK_PATH . '/adm/lib/admin.auth.lib.php';
 // 현재 로그인한 관리자의 권한을 확인합니다.
 $auth = dmk_get_admin_auth();
 
+// Debugging: Dump the $auth array to browser console
+//echo "<script>console.log('DMK Auth from _common.php:', " . json_encode($auth) . ");</script>";
+
 // 서브관리자 등록/수정 권한 확인
 if (!$auth['is_super'] && $auth['mb_type'] != DMK_MB_TYPE_DISTRIBUTOR && $auth['mb_type'] != DMK_MB_TYPE_AGENCY) {
     alert('서브관리자 등록/수정 권한이 없습니다.');

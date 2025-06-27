@@ -55,16 +55,23 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
     else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
         switch ($page_type) {
             case DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY:
-                // 총판 관리자는 총판만 선택하는 페이지에서는 선택박스 표시 안함
+                // 총판 관리자는 총판만 선택하는 페이지에서는 총판 선택박스를 읽기 전용으로 표시
+                $config['show_distributor'] = true;
+                $config['distributor_readonly'] = true;
+                $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
                 break;
             case DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY:
                 // 총판 관리자는 대리점만 선택 가능 (총판은 고정)
+                $config['show_distributor'] = true; // 총판 선택박스 노출
+                $config['distributor_readonly'] = true; // 총판 선택박스를 읽기 전용으로 설정
                 $config['show_agency'] = true;
                 $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
                 break;
             case DMK_CHAIN_SELECT_FULL:
             default:
                 // 총판 관리자는 대리점-지점 선택 가능 (총판은 고정)
+                $config['show_distributor'] = true; // 총판 선택박스 노출
+                $config['distributor_readonly'] = true; // 총판 선택박스를 읽기 전용으로 설정
                 $config['show_agency'] = true;
                 $config['show_branch'] = true;
                 $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
@@ -80,7 +87,9 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
                 break;
             case DMK_CHAIN_SELECT_FULL:
             default:
-                // 대리점 관리자는 지점만 선택 가능 (총판/대리점은 고정)
+                // 대리점 관리자는 자신의 대리점 선택박스를 보고, 지점 선택 가능 (총판은 고정)
+                $config['show_agency'] = true; // 대리점 선택박스 노출
+                $config['agency_readonly'] = true; // 대리점 선택박스를 읽기 전용으로 설정
                 $config['show_branch'] = true;
                 $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
                 $config['initial_agency'] = $dmk_auth['ag_id'] ?? '';
@@ -206,7 +215,11 @@ function dmk_render_chain_select($options = []) {
         $selected_dt_id = $config['initial_distributor'] ?: $options['current_values']['sdt_id'];
         $readonly = $config['distributor_readonly'] ? 'readonly' : '';
         $field_name = $options['field_names']['distributor'] ?? 'sdt_id';
-        
+
+        // 디버깅: $distributors와 $selected_dt_id 값 확인
+        error_log("DMK_CHAIN_SELECT: Distributors Data: " . print_r($distributors, true));
+        error_log("DMK_CHAIN_SELECT: Selected Distributor ID: " . $selected_dt_id);
+
         $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['distributor'] . '</label>';
         $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
         $html .= '<option value="">' . $options['placeholders']['distributor'] . '</option>';
@@ -230,6 +243,16 @@ function dmk_render_chain_select($options = []) {
         $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['agency'] . '</label>';
         $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
         $html .= '<option value="">' . $options['placeholders']['agency'] . '</option>';
+        
+        // 대리점 관리자인 경우, 자신의 대리점만 옵션으로 추가
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && !empty($dmk_auth['ag_id'])) {
+            $ag_name = dmk_get_member_name($dmk_auth['ag_id']); // mb_id로 mb_name (mb_nick) 가져오는 함수 활용
+            $selected = ($selected_ag_id == $dmk_auth['ag_id']) ? 'selected' : '';
+            $html .= '<option value="' . htmlspecialchars($dmk_auth['ag_id']) . '" ' . $selected . '>' . htmlspecialchars($ag_name) . ' (' . htmlspecialchars($dmk_auth['ag_id']) . ')</option>';
+        } else {
+             // 그 외의 경우 (예: 최고관리자, 총판관리자), AJAX로 동적 로드를 위해 빈 상태 유지 또는 초기값만 설정
+             // (이미 chain-select.js에서 AJAX로 로드하므로 여기서는 별도 처리 없음)
+        }
         $html .= '</select>';
     }
     
