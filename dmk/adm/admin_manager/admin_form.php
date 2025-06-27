@@ -75,6 +75,11 @@ $qstr = 'sfl='.$sfl.'&amp;stx='.$stx.'&amp;page='.$page;
 require_once G5_ADMIN_PATH.'/admin.head.php';
 ?>
 
+<script>
+    var g5_admin_csrf_token_key = "<?php echo (function_exists('admin_csrf_token_key')) ? admin_csrf_token_key() : ''; ?>";
+</script>
+<script src="<?php echo G5_ADMIN_URL ?>/admin.js?ver=<?php echo G5_JS_VER; ?>"></script>
+
 <form name="fmember" id="fmember" action="./admin_form_update.php" onsubmit="return fmember_submit(this);" method="post" enctype="multipart/form-data">
 <input type="hidden" name="w" value="<?php echo $w ?>">
 <input type="hidden" name="sfl" value="<?php echo $sfl ?>">
@@ -82,7 +87,7 @@ require_once G5_ADMIN_PATH.'/admin.head.php';
 <input type="hidden" name="sst" value="<?php echo $sst ?>">
 <input type="hidden" name="sod" value="<?php echo $sod ?>">
 <input type="hidden" name="page" value="<?php echo $page ?>">
-<input type="hidden" name="token" value="<?php echo get_admin_token() ?>">
+<input type="hidden" name="token" value="">
 
 <div class="tbl_frm01 tbl_wrap">
     <table>
