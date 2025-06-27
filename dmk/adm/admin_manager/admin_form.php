@@ -39,33 +39,33 @@ if ($w == 'u' && $mb_id) {
         alert('수정 권한이 없습니다.');
     }
     
-    $g5['title'] = '관리자 수정';
+    $g5['title'] = '서브 관리자 수정';
 } else {
-    $g5['title'] = '관리자 등록';
+    $g5['title'] = '서브 관리자 등록';
 }
 
 // 생성 가능한 관리자 유형 옵션
 $admin_type_options = array();
 if ($dmk_auth['is_super']) {
     $admin_type_options = array(
-        '1' => '총판 관리자 (레벨 8)',
-        '2' => '대리점 관리자 (레벨 6)', 
-        '3' => '지점 관리자 (레벨 4)'
+        '1' => '총판 관리자',
+        '2' => '대리점 관리자', 
+        '3' => '지점 관리자'
     );
 } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
     $admin_type_options = array(
-        '1' => '총판 관리자 (레벨 8)',
-        '2' => '대리점 관리자 (레벨 6)', 
-        '3' => '지점 관리자 (레벨 4)'
+        '1' => '총판 관리자',
+        '2' => '대리점 관리자', 
+        '3' => '지점 관리자'
     );
 } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY) {
     $admin_type_options = array(
-        '2' => '대리점 관리자 (레벨 6)', 
-        '3' => '지점 관리자 (레벨 4)'
+        '2' => '대리점 관리자', 
+        '3' => '지점 관리자'
     );
 } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH) {
     $admin_type_options = array(
-        '3' => '지점 관리자 (레벨 4)'
+        '3' => '지점 관리자'
     );
 }
 
@@ -136,7 +136,7 @@ require_once G5_ADMIN_PATH.'/admin.head.php';
     <tr>
         <th scope="row"><label for="dmk_mb_type">관리자 유형<strong class="sound_only">필수</strong></label></th>
         <td>
-            <select name="dmk_mb_type" id="dmk_mb_type" required class="required">
+            <select name="dmk_mb_type" id="dmk_mb_type" required class="required" <?php echo ($w == 'u') ? 'disabled' : ''; ?> >
                 <option value="">선택하세요</option>
                 <?php foreach ($admin_type_options as $value => $text) { ?>
                 <option value="<?php echo $value ?>"<?php echo get_selected($member['dmk_mb_type'], $value); ?>><?php echo $text ?></option>

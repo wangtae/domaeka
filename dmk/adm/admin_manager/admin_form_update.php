@@ -157,6 +157,15 @@ if ($w == '') {
         alert('수정 권한이 없습니다.');
     }
     
+    // 관리자 유형 변경 방지
+    // 기존 관리자의 dmk_mb_type을 조회
+    $sql_type = " SELECT dmk_mb_type FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($mb_id)."' ";
+    $existing_type_row = sql_fetch($sql_type);
+
+    if ($existing_type_row && $existing_type_row['dmk_mb_type'] != $dmk_mb_type) {
+        alert('관리자 유형은 수정할 수 없습니다.');
+    }
+
     // 닉네임 중복 체크 (자신 제외)
     $sql = " SELECT COUNT(*) as cnt FROM {$g5['member_table']} WHERE mb_nick = '".sql_escape_string($mb_nick)."' AND mb_id != '".sql_escape_string($mb_id)."' ";
     $row = sql_fetch($sql);
