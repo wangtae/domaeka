@@ -122,7 +122,8 @@ echo dmk_include_chain_select_assets();
     // 공통 체인 선택박스 렌더링 (간소화된 버전)
     echo dmk_render_chain_select([
         'page_type' => DMK_CHAIN_SELECT_FULL,
-        'auto_submit' => false // 관리자 목록에서는 수동 제출
+        'auto_submit' => false, // 관리자 목록에서는 수동 제출
+        'debug' => true // 디버그 모드 활성화
     ]);
     ?>
 
@@ -158,7 +159,7 @@ echo dmk_include_chain_select_assets();
 
         if ($can_create_sub_admin) {
     ?>
-    <a href="admin_form.php?w=f<?php echo $target_type ? '&amp;target_type=' . $target_type : ''; ?>" class="btn_01 btn">서브관리자 등록</a>
+    <a href="admin_form.php?w=<?php echo $target_type ? '&amp;target_type=' . $target_type : ''; ?>" class="btn_01 btn">서브관리자 등록</a>
     <?php
         }
     }

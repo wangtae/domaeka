@@ -213,8 +213,22 @@ class DmkChainSelect {
                 // 기존 옵션 제거 (첫 번째 옵션 제외)
                 this.clearSelect(this.options.agencySelectId);
                 
+                // 응답 구조 확인 및 데이터 추출
+                let agencies = [];
+                if (data && typeof data === 'object') {
+                    if (data.success && Array.isArray(data.data)) {
+                        // 새로운 응답 구조: {success: true, data: [...]}
+                        agencies = data.data;
+                    } else if (Array.isArray(data)) {
+                        // 기존 응답 구조: [...]
+                        agencies = data;
+                    }
+                }
+                
+                this.log('처리할 대리점 데이터:', agencies);
+                
                 // 새 옵션 추가
-                data.forEach(agency => {
+                agencies.forEach(agency => {
                     const option = document.createElement('option');
                     option.value = agency.id;
                     option.textContent = `${agency.name} (${agency.id})`;
@@ -266,7 +280,22 @@ class DmkChainSelect {
                 .then(data => {
                     this.log('지점 목록 로드 완료:', data);
                     this.clearSelect(this.options.branchSelectId, this.options.placeholders.branch);
-                    data.forEach(branch => {
+                    
+                    // 응답 구조 확인 및 데이터 추출
+                    let branches = [];
+                    if (data && typeof data === 'object') {
+                        if (data.success && Array.isArray(data.data)) {
+                            // 새로운 응답 구조: {success: true, data: [...]}
+                            branches = data.data;
+                        } else if (Array.isArray(data)) {
+                            // 기존 응답 구조: [...]
+                            branches = data;
+                        }
+                    }
+                    
+                    this.log('처리할 지점 데이터:', branches);
+                    
+                    branches.forEach(branch => {
                         const option = document.createElement('option');
                         option.value = branch.id;
                         option.textContent = branch.name;

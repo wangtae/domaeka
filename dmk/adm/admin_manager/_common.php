@@ -1,14 +1,23 @@
 <?php
-if (!defined('_GNUBOARD_')) exit; // 개별 페이지 접근 불가
+/**
+ * Admin Manager 공통 파일
+ *
+ * 이 파일은 서브관리자 관리 모듈에서 사용되는 공통 설정을 포함합니다.
+ * 그누보드 관리자 페이지의 기본 환경 설정을 로드하고, 도매까 시스템의 권한 라이브러리를 포함합니다.
+ */
 
-// 도매까 관리자 권한 체크
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+// 그누보드 관리자 공통 파일을 포함하여 필요한 상수 및 함수를 로드합니다.
+require_once '../../../adm/_common.php';
 
-// 관리자관리는 총판 이상만 접근 가능
-$dmk_auth = dmk_get_admin_auth();
-// 임시로 권한 체크 비활성화 - 디버깅용
-/*
-if (!$dmk_auth['is_super'] && $dmk_auth['mb_level'] < DMK_MB_LEVEL_DISTRIBUTOR) {
-    alert('접근 권한이 없습니다.', G5_ADMIN_URL);
+// 도매까 권한 라이브러리를 포함합니다.
+require_once G5_DMK_PATH . '/adm/lib/admin.auth.lib.php';
+
+// 현재 로그인한 관리자의 권한을 확인합니다.
+$auth = dmk_get_admin_auth();
+
+// 서브관리자 등록/수정 권한 확인
+if (!$auth['is_super'] && $auth['mb_type'] != DMK_MB_TYPE_DISTRIBUTOR && $auth['mb_type'] != DMK_MB_TYPE_AGENCY) {
+    alert('서브관리자 등록/수정 권한이 없습니다.');
+    exit;
 }
-*/ 
+?> 

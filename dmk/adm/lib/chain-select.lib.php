@@ -167,8 +167,8 @@ function dmk_render_chain_select($options = []) {
         'form_id' => 'fsearch', // 표준 폼 ID
         'auto_submit' => true, // 기본적으로 자동 제출
         'ajax_endpoints' => [
-            'agencies' => G5_DMK_URL . '/adm/_ajax/get_agencies.php',
-            'branches' => G5_DMK_URL . '/adm/_ajax/get_branches.php'
+            'agencies' => G5_URL . '/dmk/adm/_ajax/get_agencies.php',
+            'branches' => G5_URL . '/dmk/adm/_ajax/get_branches.php'
         ],
         'css_classes' => [
             'select' => 'frm_input', // 표준 CSS 클래스
@@ -283,10 +283,10 @@ function dmk_include_chain_select_assets() {
     $html = '';
     
     // CSS 파일 포함
-    $html .= '<link rel="stylesheet" href="' . G5_DMK_URL . '/adm/css/chain-select.css' . $cache_buster . '">';
+    $html .= '<link rel="stylesheet" href="' . G5_URL . '/dmk/adm/css/chain-select.css' . $cache_buster . '">';
     
     // JavaScript 파일 포함
-    $html .= '<script src="' . G5_DMK_URL . '/adm/js/chain-select.js' . $cache_buster . '"></script>';
+    $html .= '<script src="' . G5_URL . '/dmk/adm/js/chain-select.js' . $cache_buster . '"></script>';
     
     return $html;
 }
