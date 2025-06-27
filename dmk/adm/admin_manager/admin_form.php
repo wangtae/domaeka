@@ -75,11 +75,6 @@ $qstr = 'sfl='.$sfl.'&amp;stx='.$stx.'&amp;page='.$page;
 require_once G5_ADMIN_PATH.'/admin.head.php';
 ?>
 
-<script>
-    var g5_admin_csrf_token_key = "<?php echo (function_exists('admin_csrf_token_key')) ? admin_csrf_token_key() : ''; ?>";
-</script>
-<script src="<?php echo G5_ADMIN_URL ?>/admin.js?ver=<?php echo G5_JS_VER; ?>"></script>
-
 <form name="fmember" id="fmember" action="./admin_form_update.php" onsubmit="return fmember_submit(this);" method="post" enctype="multipart/form-data">
 <input type="hidden" name="w" value="<?php echo $w ?>">
 <input type="hidden" name="sfl" value="<?php echo $sfl ?>">
@@ -238,14 +233,6 @@ function fmember_submit(f) {
         f.dmk_mb_type.focus();
         return false;
     }
-
-    // 토큰 설정
-    var token = get_ajax_token();
-    if (!token) {
-        alert("토큰 정보가 올바르지 않습니다.");
-        return false;
-    }
-    f.token.value = token;
 
     return true;
 }

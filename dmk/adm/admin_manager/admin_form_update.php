@@ -3,7 +3,7 @@ $sub_menu = "190600";
 require_once '../../../adm/_common.php';
 include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
 
-check_admin_token();
+check_token();
 
 $w = isset($_POST['w']) ? clean_xss_tags($_POST['w']) : '';
 $mb_id = isset($_POST['mb_id']) ? clean_xss_tags($_POST['mb_id']) : '';
