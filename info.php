@@ -1,1 +1,5 @@
-<?php phpinfo(); ?>
+<?php 
+
+
+echo 'ip : '.$_SERVER['REMOTE_ADDR'];;
+phpinfo(); ?>

@@ -123,10 +123,12 @@ if ($auth['is_super']) {
 
 // 대리점 목록 조회 (드롭다운에 사용) - 권한 및 선택된 총판에 따라 필터링
 $agencies = array();
-$ag_sql = " SELECT a.ag_id, m.mb_nick AS ag_name FROM dmk_agency a JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id WHERE a.ag_status = 1 ";
 
-// 권한에 따른 대리점 목록 필터링
+// 본사 관리자가 아닌 경우에만 PHP에서 대리점 목록을 미리 조회
+// 본사 관리자의 경우 JavaScript에서 총판 선택에 따라 동적으로 로드
 if (!$auth['is_super']) {
+    $ag_sql = " SELECT a.ag_id, m.mb_nick AS ag_name FROM dmk_agency a JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id WHERE a.ag_status = 1 ";
+
     if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
         // 총판 관리자는 자신의 총판에 속한 대리점만 선택 가능
         $ag_sql .= " AND a.dt_id = '".sql_escape_string($auth['mb_id'])."' ";
@@ -134,16 +136,12 @@ if (!$auth['is_super']) {
         // 대리점 관리자는 자신의 대리점만 선택 가능
         $ag_sql .= " AND a.ag_id = '".sql_escape_string($auth['ag_id'])."' ";
     }
-} else { // 최고관리자일 경우 총판 선택에 따라 필터링
-    if ($dt_id) {
-        $ag_sql .= " AND a.dt_id = '".sql_escape_string($dt_id)."' ";
-    }
-}
 
-$ag_sql .= " ORDER BY m.mb_nick ASC ";
-$ag_result = sql_query($ag_sql);
-while($row = sql_fetch_array($ag_result)) {
-    $agencies[] = $row;
+    $ag_sql .= " ORDER BY m.mb_nick ASC ";
+    $ag_result = sql_query($ag_sql);
+    while($row = sql_fetch_array($ag_result)) {
+        $agencies[] = $row;
+    }
 }
 ?>
 
@@ -213,11 +211,15 @@ while($row = sql_fetch_array($ag_result)) {
         <th scope="row"><label for="ag_id">소속 대리점<strong class="sound_only">필수</strong></label></th>
         <td>
             <select name="ag_id" id="ag_id" required class="frm_input required">
-                <option value="">대리점 선택</option>
-                <?php foreach ($agencies as $agency) { ?>
-                    <option value="<?php echo $agency['ag_id'] ?>" <?php echo ($branch['ag_id'] == $agency['ag_id']) ? 'selected' : '' ?>>
-                        <?php echo get_text($agency['ag_name']) ?> (<?php echo $agency['ag_id'] ?>)
-                    </option>
+                <?php if ($auth['is_super']) { ?>
+                    <option value="">먼저 총판을 선택하세요</option>
+                <?php } else { ?>
+                    <option value="">대리점 선택</option>
+                    <?php foreach ($agencies as $agency) { ?>
+                        <option value="<?php echo $agency['ag_id'] ?>" <?php echo ($branch['ag_id'] == $agency['ag_id']) ? 'selected' : '' ?>>
+                            <?php echo get_text($agency['ag_name']) ?> (<?php echo $agency['ag_id'] ?>)
+                        </option>
+                    <?php } ?>
                 <?php } ?>
             </select>
             <span class="frm_info">해당 지점이 소속될 대리점을 선택합니다.</span>
@@ -463,59 +465,124 @@ function fbranch_submit(f)
     return true;
 }
 
-// 대리점 옵션을 업데이트하는 함수
-function updateAgencyOptions(dt_id) {
-    console.log("updateAgencyOptions called with dt_id:", dt_id);
-    var agencySelect = document.getElementById('ag_id');
-    agencySelect.innerHTML = '<option value="">대리점 선택</option>'; // 기존 옵션 초기화
+// jQuery를 사용하여 AJAX 요청을 처리하는 함수
+function updateAgencyOptions(dt_id, selected_ag_id = '') {
+    console.log("=== updateAgencyOptions 시작 ===");
+    console.log("dt_id:", dt_id, "selected_ag_id:", selected_ag_id);
+    
+    var agencySelect = jQuery('#ag_id');
+    if (agencySelect.length === 0) {
+        console.error("ag_id 선택박스를 찾을 수 없습니다.");
+        return;
+    }
+    
+    // 기존 옵션 완전히 제거하고 기본 옵션 추가
+    agencySelect.empty().append('<option value="">대리점 선택</option>');
 
     if (dt_id) {
-        // AJAX 요청으로 해당 총판에 속한 대리점 목록 가져오기
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '../shop_admin/ajax_get_dmk_owner_ids.php?owner_type=agency&parent_id=' + dt_id, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState == 4 && xhr.status == 200) {
-                console.log("AJAX Response Text:", xhr.responseText);
-                var agencies = JSON.parse(xhr.responseText);
-                console.log("Parsed Agencies:", agencies);
-                agencies.forEach(function(agency) {
-                    var option = document.createElement('option');
-                    option.value = agency.id;
-                    option.textContent = agency.name + ' (' + agency.id + ')';
-                    agencySelect.appendChild(option);
-                    console.log("Appended option:", option);
-                });
-                // 현재 선택된 대리점 값을 설정 (수정 모드일 경우)
-                var currentAgId = '<?php echo $branch['ag_id'] ?? $ag_id ?>';
-                if (currentAgId) {
-                    agencySelect.value = currentAgId;
-                    console.log("Set agencySelect.value to:", agencySelect.value);
+        var ajaxUrl = '<?php echo G5_ADMIN_URL; ?>/ajax_get_owners.php';
+        console.log("AJAX URL:", ajaxUrl);
+        
+        jQuery.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                owner_type: 2, // 2는 대리점을 의미
+                parent_id: dt_id
+            },
+            beforeSend: function() {
+                console.log("AJAX 요청 전송 중...");
+                // 로딩 중 표시를 위해 기본 옵션 텍스트만 변경
+                agencySelect.find('option[value=""]').text('로딩 중...');
+            },
+            success: function(response) {
+                console.log("=== AJAX 성공 응답 ===");
+                console.log("전체 응답:", response);
+                
+                // 다시 기본 옵션으로 초기화
+                agencySelect.empty().append('<option value="">대리점 선택</option>');
+                
+                if (response.success) {
+                    console.log("응답 데이터:", response.data);
+                    console.log("데이터 개수:", response.data.length);
+                    
+                    if (response.data.length === 0) {
+                        agencySelect.find('option[value=""]').text('해당 총판에 속한 대리점이 없습니다');
+                        console.log("대리점 데이터가 없습니다.");
+                    } else {
+                        jQuery.each(response.data, function(index, agency) {
+                            console.log("대리점 추가:", agency.id, agency.name);
+                            var option = jQuery('<option></option>')
+                                .attr('value', agency.id)
+                                .text(agency.name + ' (' + agency.id + ')');
+                            agencySelect.append(option);
+                        });
+                        
+                        // 현재 선택된 대리점 값을 설정 (수정 모드 또는 초기 로드 시)
+                        if (selected_ag_id) {
+                            agencySelect.val(selected_ag_id);
+                            console.log("선택된 대리점 설정:", selected_ag_id, "실제 값:", agencySelect.val());
+                        } else if ('<?php echo $branch['ag_id'] ?? ''; ?>') {
+                            // 등록 모드에서 GET으로 ag_id가 넘어온 경우
+                            var phpAgId = '<?php echo $branch['ag_id'] ?? ''; ?>';
+                            agencySelect.val(phpAgId);
+                            console.log("PHP에서 가져온 대리점 설정:", phpAgId, "실제 값:", agencySelect.val());
+                        }
+                    }
+                } else {
+                    console.error("AJAX 요청 실패:", response.message);
+                    agencySelect.find('option[value=""]').text('대리점 로드 실패');
                 }
+                
+                if (response.debug) {
+                    console.log("디버그 정보:", response.debug);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log("=== AJAX 오류 ===");
+                console.error("Status:", status);
+                console.error("Error:", error);
+                console.error("Response Text:", xhr.responseText);
+                console.error("Status Code:", xhr.status);
+                
+                agencySelect.empty().append('<option value="">네트워크 오류</option>');
             }
-        };
-        xhr.send();
+        });
+    } else {
+        console.log("dt_id가 비어있어 AJAX 요청을 하지 않습니다.");
+        // 총판을 선택하지 않은 경우 초기 메시지로 되돌리기
+        agencySelect.empty().append('<option value="">먼저 총판을 선택하세요</option>');
     }
+    console.log("=== updateAgencyOptions 끝 ===");
 }
 
-// 페이지 로드 시 또는 총판 선택 시 대리점 목록을 초기화하고 현재 선택된 총판에 따라 업데이트
-document.addEventListener('DOMContentLoaded', function() {
-    // 신규 등록 모드이고 dt_id가 설정되어 있지 않다면, 대리점 선택 박스를 비활성화
-    <?php if ($w != 'u' && !$dt_id && $auth['is_super']) { ?>
-        document.getElementById('ag_id').disabled = true;
-        console.log("ag_id disabled.");
-    <?php } ?>
-});
+jQuery(document).ready(function() {
+    <?php if ($auth['is_super']) { ?>
+    // 본사 관리자의 경우: 페이지 로드 시 총판이 선택되어 있다면 대리점 목록 초기화
+    var initialDtId = jQuery('#dt_id').val();
+    var initialAgId = '<?php echo $branch['ag_id'] ?? ($ag_id ?? ''); ?>'; // 등록/수정 모드 모두 고려
 
-// 총판 선택 박스가 변경될 때마다 대리점 선택 박스 활성화
-document.getElementById('dt_id')?.addEventListener('change', function() {
-    var selectedDtId = this.value;
-    if (selectedDtId) {
-        document.getElementById('ag_id').disabled = false;
-        updateAgencyOptions(selectedDtId);
+    console.log("페이지 로드 시 - initialDtId:", initialDtId, "initialAgId:", initialAgId);
+
+    // 페이지 로드 시 초기화 (한 번만 실행)
+    if (initialDtId) {
+        console.log("초기 대리점 목록 로드 시작");
+        updateAgencyOptions(initialDtId, initialAgId);
     } else {
-        document.getElementById('ag_id').innerHTML = '<option value="">대리점 선택</option>';
-        document.getElementById('ag_id').disabled = true;
+        console.log("총판이 선택되지 않아 초기화 생략");
     }
+
+    // 소속 총판 변경 시 대리점 목록 업데이트
+    jQuery('#dt_id').off('change.agencyUpdate').on('change.agencyUpdate', function() {
+        var selectedDtId = jQuery(this).val();
+        console.log("총판 변경됨:", selectedDtId);
+        updateAgencyOptions(selectedDtId);
+    });
+    <?php } else { ?>
+    // 총판 관리자나 대리점 관리자의 경우: 별도 초기화 불필요 (PHP에서 이미 처리됨)
+    console.log("총판/대리점 관리자 - JavaScript 초기화 생략");
+    <?php } ?>
 });
 
 </script>
