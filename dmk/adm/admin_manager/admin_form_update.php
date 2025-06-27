@@ -36,8 +36,8 @@ if (!$mb_email) {
     alert('이메일을 입력하세요.');
 }
 
-if (!$dmk_mb_type) {
-    alert('관리자 유형을 선택하세요1.');
+if ($w == '' && !$dmk_mb_type) { // 신규 등록일 때만 관리자 유형 검사
+    alert('관리자 유형을 선택하세요.');
 }
 
 // dmk_mb_type에 따른 mb_level 설정

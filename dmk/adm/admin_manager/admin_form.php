@@ -3,46 +3,49 @@ $sub_menu = "190600";
 require_once '../../../adm/_common.php';
 include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
 
-$w = isset($_GET['w']) ? clean_xss_tags($_GET['w']) : '';
+// 최고관리자가 아니면 서브관리자 등록/수정 페이지 접근 불가
+$dmk_auth = dmk_get_admin_auth();
+if (!$dmk_auth['is_super'] && dmk_get_current_user_type() === 'sub') {
+    alert('접근 권한이 없습니다.', G5_ADMIN_URL);
+}
+
 $mb_id = isset($_GET['mb_id']) ? clean_xss_tags($_GET['mb_id']) : '';
+$w = isset($_GET['w']) ? clean_xss_tags($_GET['w']) : '';
 
 // 검색 파라미터
 $sfl = isset($_GET['sfl']) ? clean_xss_tags($_GET['sfl']) : '';
 $stx = isset($_GET['stx']) ? clean_xss_tags($_GET['stx']) : '';
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 
-$dmk_auth = dmk_get_admin_auth();
+// 폼에 표시될 회원 정보를 담을 변수
+$form_member = [];
 
-// 수정 모드일 때 기존 데이터 조회
-$member = array();
-if ($w == 'u' && $mb_id) {
-    $sql = " SELECT * FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($mb_id)."' AND mb_level >= 4 ";
-    $member = sql_fetch($sql);
-    
-    if (!$member) {
-        alert('존재하지 않는 관리자입니다.');
+if ($w == 'u') {
+    $sql = " SELECT * FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($mb_id)."' ";
+    $form_member = sql_fetch($sql);
+    if (!$form_member['mb_id']) {
+        alert('존재하지 않는 회원자료입니다.');
     }
-    
-    // 수정 권한 체크
-    $can_modify = false;
-    if ($dmk_auth['is_super']) {
-        $can_modify = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && $member['mb_level'] <= 8) {
-        $can_modify = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && $member['mb_level'] <= 6) {
-        $can_modify = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH && $member['mb_level'] == 4) {
-        $can_modify = true;
-    }
-    
-    if (!$can_modify) {
-        alert('수정 권한이 없습니다.');
-    }
-    
-    $g5['title'] = '서브 관리자 수정';
 } else {
-    $g5['title'] = '서브 관리자 등록';
+    // 신규 등록 시 Undefined array key 경고 방지를 위해 $form_member 배열 초기화
+    $form_member = [
+        'mb_id' => '',
+        'mb_name' => '',
+        'mb_nick' => '',
+        'mb_email' => '',
+        'mb_hp' => '',
+        'mb_level' => '',
+        'mb_memo' => '',
+        'dmk_mb_type' => '',
+        'dmk_dt_id' => '',
+        'dmk_ag_id' => '',
+        'dmk_br_id' => '',
+    ];
+    // 신규 등록 시에는 $w를 빈 값으로 설정 (폼 전송 시 혼동 방지)
+    $w = '';
 }
+
+$g5['title'] = '서브 관리자 수정';
 
 // 생성 가능한 관리자 유형 옵션
 $admin_type_options = array();
@@ -96,8 +99,8 @@ require_once G5_ADMIN_PATH.'/admin.head.php';
         <th scope="row"><label for="mb_id">관리자아이디<strong class="sound_only">필수</strong></label></th>
         <td>
             <?php if ($w == 'u') { ?>
-                <input type="hidden" name="mb_id" value="<?php echo $member['mb_id'] ?>">
-                <strong><?php echo $member['mb_id'] ?></strong>
+                <input type="hidden" name="mb_id" value="<?php echo $form_member['mb_id'] ?>">
+                <strong><?php echo $form_member['mb_id'] ?></strong>
             <?php } else { ?>
                 <input type="text" name="mb_id" value="" id="mb_id" required class="required frm_input" size="15" maxlength="20">
                 <span class="frm_info">영문자, 숫자, _ 만 입력 가능. 최소 3자이상 입력하세요.</span>
@@ -119,19 +122,19 @@ require_once G5_ADMIN_PATH.'/admin.head.php';
     </tr>
     <tr>
         <th scope="row"><label for="mb_name">이름<strong class="sound_only">필수</strong></label></th>
-        <td><input type="text" name="mb_name" value="<?php echo get_text($member['mb_name']) ?>" id="mb_name" required class="required frm_input" size="15" maxlength="20"></td>
+        <td><input type="text" name="mb_name" value="<?php echo get_text($form_member['mb_name']) ?>" id="mb_name" required class="required frm_input" size="15" maxlength="20"></td>
     </tr>
     <tr>
         <th scope="row"><label for="mb_nick">닉네임<strong class="sound_only">필수</strong></label></th>
-        <td><input type="text" name="mb_nick" value="<?php echo get_text($member['mb_nick']) ?>" id="mb_nick" required class="required frm_input" size="15" maxlength="20"></td>
+        <td><input type="text" name="mb_nick" value="<?php echo get_text($form_member['mb_nick']) ?>" id="mb_nick" required class="required frm_input" size="15" maxlength="20"></td>
     </tr>
     <tr>
         <th scope="row"><label for="mb_email">E-mail<strong class="sound_only">필수</strong></label></th>
-        <td><input type="email" name="mb_email" value="<?php echo $member['mb_email'] ?>" id="mb_email" required class="required frm_input" size="30" maxlength="100"></td>
+        <td><input type="email" name="mb_email" value="<?php echo $form_member['mb_email'] ?>" id="mb_email" required class="required frm_input" size="30" maxlength="100"></td>
     </tr>
     <tr>
         <th scope="row"><label for="mb_hp">휴대폰번호</label></th>
-        <td><input type="text" name="mb_hp" value="<?php echo get_text($member['mb_hp']) ?>" id="mb_hp" class="frm_input" size="20" maxlength="20"></td>
+        <td><input type="text" name="mb_hp" value="<?php echo get_text($form_member['mb_hp']) ?>" id="mb_hp" class="frm_input" size="20" maxlength="20"></td>
     </tr>
     <tr>
         <th scope="row"><label for="dmk_mb_type">관리자 유형<strong class="sound_only">필수</strong></label></th>
@@ -139,19 +142,19 @@ require_once G5_ADMIN_PATH.'/admin.head.php';
             <select name="dmk_mb_type" id="dmk_mb_type" required class="required" <?php echo ($w == 'u') ? 'disabled' : ''; ?> >
                 <option value="">선택하세요</option>
                 <?php foreach ($admin_type_options as $value => $text) { ?>
-                <option value="<?php echo $value ?>"<?php echo get_selected($member['dmk_mb_type'], $value); ?>><?php echo $text ?></option>
+                <option value="<?php echo $value ?>"<?php echo get_selected($form_member['dmk_mb_type'], $value); ?>><?php echo $text ?></option>
                 <?php } ?>
             </select>
             <?php if ($w == 'u') { // 수정 모드일 경우 숨겨진 필드로 dmk_mb_type 값을 전달 ?>
-            <?php error_log("admin_form.php - dmk_mb_type value for hidden input: " . ($member['dmk_mb_type'] ?? 'NULL')); // DEBUG LOG ?>
-            <input type="hidden" name="dmk_mb_type" value="<?php echo $member['dmk_mb_type']; ?>">
+            <?php error_log("admin_form.php - dmk_mb_type value for hidden input: " . ($form_member['dmk_mb_type'] ?? 'NULL')); // DEBUG LOG ?>
+            <input type="hidden" name="dmk_mb_type" value="<?php echo $form_member['dmk_mb_type']; ?>">
             <?php } ?>
-            <input type="hidden" name="mb_level" id="mb_level" value="<?php echo $member['mb_level'] ?>">
+            <input type="hidden" name="mb_level" id="mb_level" value="<?php echo $form_member['mb_level'] ?>">
         </td>
     </tr>
     <tr>
         <th scope="row"><label for="mb_memo">메모</label></th>
-        <td><textarea name="mb_memo" id="mb_memo" rows="5" class="frm_textbox"><?php echo $member['mb_memo'] ?></textarea></td>
+        <td><textarea name="mb_memo" id="mb_memo" rows="5" class="frm_textbox"><?php echo $form_member['mb_memo'] ?></textarea></td>
     </tr>
     </tbody>
     </table>

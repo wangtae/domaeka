@@ -613,13 +613,28 @@ function admin_menu_find_by($call, $search_key)
 // 접근 권한 검사
 if (!$member['mb_id']) {
     alert('로그인 하십시오.', G5_BBS_URL . '/login.php?url=' . urlencode(correct_goto_url(G5_ADMIN_URL)));
-} else if ($is_admin != 'super' && $is_admin != 'dmk_admin') {
+} else if ($is_admin != 'super') { // dmk_admin 계층 포함, 최고관리자가 아닌 모든 관리자는 권한 로드
+    global $auth; // global 선언 추가
     $auth = array();
+    
+    // 디버그: 권한 로드 시작
+    $debug_log = "[" . date('Y-m-d H:i:s') . "] admin.lib.php DEBUG - Loading auth for member: " . $member['mb_id'] . " | is_admin: " . ($is_admin ?: 'NULL') . "\n";
+    file_put_contents('/tmp/debug_auth.log', $debug_log, FILE_APPEND);
+    
     $sql = " select au_menu, au_auth from {$g5['auth_table']} where mb_id = '{$member['mb_id']}' ";
     $result = sql_query($sql);
+    
+    $debug_log = "[" . date('Y-m-d H:i:s') . "] admin.lib.php DEBUG - Auth query: " . $sql . "\n";
+    file_put_contents('/tmp/debug_auth.log', $debug_log, FILE_APPEND);
+    
     for ($i = 0; $row = sql_fetch_array($result); $i++) {
         $auth[$row['au_menu']] = $row['au_auth'];
+        $debug_log = "[" . date('Y-m-d H:i:s') . "] admin.lib.php DEBUG - Loaded auth: " . $row['au_menu'] . " = " . $row['au_auth'] . "\n";
+        file_put_contents('/tmp/debug_auth.log', $debug_log, FILE_APPEND);
     }
+    
+    $debug_log = "[" . date('Y-m-d H:i:s') . "] admin.lib.php DEBUG - Total auth entries loaded: " . count($auth) . "\n";
+    file_put_contents('/tmp/debug_auth.log', $debug_log, FILE_APPEND);
 }
 
 // 관리자의 클라이언트를 검증하여 일치하지 않으면 세션을 끊고 관리자에게 메일을 보낸다.

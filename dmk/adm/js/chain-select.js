@@ -1,0 +1,348 @@
+/**
+ * 도매까 계층별 선택박스 공통 라이브러리
+ * 총판-대리점-지점 체인 선택박스 구현
+ */
+
+class DmkChainSelect {
+    constructor(options) {
+        this.options = {
+            // 선택박스 ID
+            distributorSelectId: 'sdt_id',
+            agencySelectId: 'sag_id',
+            branchSelectId: 'sbr_id',
+            
+            // AJAX 엔드포인트
+            agencyEndpoint: './get_agencies.php',
+            branchEndpoint: './get_branches.php',
+            
+            // 초기 선택값
+            initialDistributor: '',
+            initialAgency: '',
+            initialBranch: '',
+            
+            // 폼 제출 여부
+            autoSubmit: true,
+            formId: 'fsearch',
+            
+            // 콜백 함수
+            onDistributorChange: null,
+            onAgencyChange: null,
+            onBranchChange: null,
+            
+            // 디버그 모드
+            debug: false,
+            
+            ...options
+        };
+        
+        this.currentValues = {
+            distributor: this.options.initialDistributor,
+            agency: this.options.initialAgency,
+            branch: this.options.initialBranch
+        };
+        
+        this.init();
+    }
+    
+    init() {
+        this.log('DmkChainSelect 초기화 시작');
+        
+        // DOM 로드 완료 후 실행
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.setupEventListeners());
+        } else {
+            this.setupEventListeners();
+        }
+    }
+    
+    setupEventListeners() {
+        const distributorSelect = document.getElementById(this.options.distributorSelectId);
+        const agencySelect = document.getElementById(this.options.agencySelectId);
+        const branchSelect = document.getElementById(this.options.branchSelectId);
+        
+        if (distributorSelect) {
+            distributorSelect.addEventListener('change', () => this.onDistributorChange());
+        }
+        
+        if (agencySelect) {
+            agencySelect.addEventListener('change', () => this.onAgencyChange());
+        }
+        
+        if (branchSelect) {
+            branchSelect.addEventListener('change', () => this.onBranchChange());
+        }
+        
+        // 초기 로드
+        this.loadInitialData();
+    }
+    
+    loadInitialData() {
+        this.log('초기 데이터 로드 시작');
+        
+        // 총판이 선택되어 있으면 대리점 로드
+        if (this.currentValues.distributor) {
+            this.loadAgencies(this.currentValues.distributor, () => {
+                // 대리점이 선택되어 있으면 지점 로드
+                if (this.currentValues.agency) {
+                    this.loadBranches(this.currentValues.agency);
+                }
+            });
+        }
+    }
+    
+    onDistributorChange() {
+        const distributorSelect = document.getElementById(this.options.distributorSelectId);
+        const distributorId = distributorSelect ? distributorSelect.value : '';
+        
+        this.log('총판 변경:', distributorId);
+        
+        // 하위 선택박스 초기화
+        this.clearSelect(this.options.agencySelectId);
+        this.clearSelect(this.options.branchSelectId);
+        
+        this.currentValues.distributor = distributorId;
+        this.currentValues.agency = '';
+        this.currentValues.branch = '';
+        
+        if (distributorId) {
+            this.loadAgencies(distributorId);
+        }
+        
+        // 콜백 실행
+        if (this.options.onDistributorChange) {
+            this.options.onDistributorChange(distributorId);
+        }
+        
+        // 자동 폼 제출
+        if (this.options.autoSubmit) {
+            this.submitForm();
+        }
+    }
+    
+    onAgencyChange() {
+        const agencySelect = document.getElementById(this.options.agencySelectId);
+        const agencyId = agencySelect ? agencySelect.value : '';
+        
+        this.log('대리점 변경:', agencyId);
+        
+        // 하위 선택박스 초기화
+        this.clearSelect(this.options.branchSelectId);
+        
+        this.currentValues.agency = agencyId;
+        this.currentValues.branch = '';
+        
+        if (agencyId) {
+            this.loadBranches(agencyId);
+        }
+        
+        // 콜백 실행
+        if (this.options.onAgencyChange) {
+            this.options.onAgencyChange(agencyId);
+        }
+        
+        // 자동 폼 제출
+        if (this.options.autoSubmit) {
+            this.submitForm();
+        }
+    }
+    
+    onBranchChange() {
+        const branchSelect = document.getElementById(this.options.branchSelectId);
+        const branchId = branchSelect ? branchSelect.value : '';
+        
+        this.log('지점 변경:', branchId);
+        
+        this.currentValues.branch = branchId;
+        
+        // 콜백 실행
+        if (this.options.onBranchChange) {
+            this.options.onBranchChange(branchId);
+        }
+        
+        // 자동 폼 제출
+        if (this.options.autoSubmit) {
+            this.submitForm();
+        }
+    }
+    
+    loadAgencies(distributorId, callback) {
+        this.log('대리점 목록 로드 시작:', distributorId);
+        
+        const agencySelect = document.getElementById(this.options.agencySelectId);
+        if (!agencySelect) {
+            this.log('대리점 선택박스를 찾을 수 없음');
+            return;
+        }
+        
+        // 로딩 표시
+        this.setLoadingState(agencySelect, true);
+        
+        // 총판 ID가 없으면 초기값 사용 (총판 관리자의 경우)
+        const dtId = distributorId || this.currentValues.distributor;
+        
+        fetch(`${this.options.agencyEndpoint}?dt_id=${encodeURIComponent(dtId)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.log('대리점 목록 로드 완료:', data);
+                
+                // 기존 옵션 제거 (첫 번째 옵션 제외)
+                this.clearSelect(this.options.agencySelectId);
+                
+                // 새 옵션 추가
+                data.forEach(agency => {
+                    const option = document.createElement('option');
+                    option.value = agency.id;
+                    option.textContent = `${agency.name} (${agency.id})`;
+                    agencySelect.appendChild(option);
+                });
+                
+                // 이전 선택값 복원
+                if (this.currentValues.agency && this.hasOption(agencySelect, this.currentValues.agency)) {
+                    agencySelect.value = this.currentValues.agency;
+                } else {
+                    this.currentValues.agency = '';
+                }
+                
+                // 로딩 상태 해제
+                this.setLoadingState(agencySelect, false);
+                
+                // 콜백 실행
+                if (callback) {
+                    callback();
+                }
+            })
+            .catch(error => {
+                this.log('대리점 목록 로드 실패:', error);
+                this.setLoadingState(agencySelect, false);
+            });
+    }
+    
+    loadBranches(agencyId, callback) {
+        this.log('지점 목록 로드 시작:', agencyId);
+        
+        const branchSelect = document.getElementById(this.options.branchSelectId);
+        if (!branchSelect) {
+            this.log('지점 선택박스를 찾을 수 없음');
+            return;
+        }
+        
+        // 로딩 표시
+        this.setLoadingState(branchSelect, true);
+        
+        fetch(`${this.options.branchEndpoint}?ag_id=${encodeURIComponent(agencyId)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.log('지점 목록 로드 완료:', data);
+                
+                // 기존 옵션 제거 (첫 번째 옵션 제외)
+                this.clearSelect(this.options.branchSelectId);
+                
+                // 새 옵션 추가
+                data.forEach(branch => {
+                    const option = document.createElement('option');
+                    option.value = branch.id;
+                    option.textContent = `${branch.name} (${branch.id})`;
+                    branchSelect.appendChild(option);
+                });
+                
+                // 이전 선택값 복원
+                if (this.currentValues.branch && this.hasOption(branchSelect, this.currentValues.branch)) {
+                    branchSelect.value = this.currentValues.branch;
+                } else {
+                    this.currentValues.branch = '';
+                }
+                
+                // 로딩 상태 해제
+                this.setLoadingState(branchSelect, false);
+                
+                // 콜백 실행
+                if (callback) {
+                    callback();
+                }
+            })
+            .catch(error => {
+                this.log('지점 목록 로드 실패:', error);
+                this.setLoadingState(branchSelect, false);
+            });
+    }
+    
+    clearSelect(selectId) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        
+        // 첫 번째 옵션(전체) 제외하고 모든 옵션 제거
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+        
+        select.value = '';
+    }
+    
+    hasOption(select, value) {
+        return Array.from(select.options).some(option => option.value === value);
+    }
+    
+    setLoadingState(select, isLoading) {
+        if (isLoading) {
+            select.style.opacity = '0.6';
+            select.disabled = true;
+        } else {
+            select.style.opacity = '1';
+            select.disabled = false;
+        }
+    }
+    
+    submitForm() {
+        const form = document.getElementById(this.options.formId);
+        if (form) {
+            this.log('폼 제출');
+            form.submit();
+        }
+    }
+    
+    log(...args) {
+        if (this.options.debug) {
+            console.log('[DmkChainSelect]', ...args);
+        }
+    }
+    
+    // 현재 선택값 반환
+    getValues() {
+        return { ...this.currentValues };
+    }
+    
+    // 선택값 설정
+    setValues(values) {
+        if (values.distributor !== undefined) {
+            this.currentValues.distributor = values.distributor;
+            const distributorSelect = document.getElementById(this.options.distributorSelectId);
+            if (distributorSelect) {
+                distributorSelect.value = values.distributor;
+            }
+        }
+        
+        if (values.agency !== undefined) {
+            this.currentValues.agency = values.agency;
+        }
+        
+        if (values.branch !== undefined) {
+            this.currentValues.branch = values.branch;
+        }
+        
+        // 데이터 재로드
+        this.loadInitialData();
+    }
+}
+
+// 전역 함수로 노출
+window.DmkChainSelect = DmkChainSelect; 

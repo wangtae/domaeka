@@ -5,6 +5,9 @@ include_once './_common.php';
 // 도매까 권한 라이브러리 포함
 include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 
+// 공통 체인 선택박스 라이브러리 포함
+include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+
 // 메뉴 접근 권한 확인
 if (!dmk_can_access_menu($sub_menu)) {
     alert('접근 권한이 없습니다.');
@@ -12,6 +15,9 @@ if (!dmk_can_access_menu($sub_menu)) {
 
 $g5['title'] = '지점 관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
+
+// 체인 선택박스 에셋 포함
+echo dmk_include_chain_select_assets();
 
 // 현재 관리자의 권한 정보 가져오기
 $dmk_auth = dmk_get_admin_auth();
@@ -93,40 +99,19 @@ $result = sql_query($sql);
 
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
 
-// 총판 목록 조회 (필터링용)
-$distributors = [];
-if ($dmk_auth['is_super']) {
-    $distributor_sql = " SELECT d.dt_id, m.mb_nick AS dt_name 
-                         FROM dmk_distributor d
-                         JOIN {$g5['member_table']} m ON d.dt_id = m.mb_id
-                         WHERE d.dt_status = 1 
-                         ORDER BY m.mb_nick ASC ";
-    $distributor_result = sql_query($distributor_sql);
-    while($row = sql_fetch_array($distributor_result)) {
-        $distributors[] = $row;
-    }
-}
+// 공통 체인 선택박스 렌더링
+$page_type = DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY; // 기본값
 
-// 대리점 목록 조회 (필터링용)
-$agencies = [];
-if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-    $agency_sql = " SELECT a.ag_id, m.mb_nick AS ag_name 
-                    FROM dmk_agency a
-                    JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
-                    WHERE a.ag_status = 1 ";
-    
-    // 총판 관리자는 자신의 총판에 속한 대리점만 선택 가능
-    if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-        $agency_sql .= " AND a.dt_id = '".sql_escape_string($dmk_auth['mb_id'])."' ";
-    } else if ($dmk_auth['is_super'] && $dt_id) { // 본사 관리자가 총판을 선택한 경우
-        $agency_sql .= " AND a.dt_id = '".sql_escape_string($dt_id)."' ";
-    }
-    
-    $agency_sql .= " ORDER BY m.mb_nick ASC ";
-    $agency_result = sql_query($agency_sql);
-    while($row = sql_fetch_array($agency_result)) {
-        $agencies[] = $row;
-    }
+// 관리자 권한에 따라 페이지 유형 동적 결정
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+    // 총판 관리자는 대리점만 선택 가능
+    $page_type = DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY;
+} else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+    // 대리점 관리자는 선택박스 표시 안함
+    $page_type = DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY;
+} else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+    // 지점 관리자는 선택박스 표시 안함
+    $page_type = DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY;
 }
 ?>
 
@@ -136,26 +121,47 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
 </div>
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
-<?php if ($dmk_auth['is_super']) { // 본사 관리자만 총판 선택 박스 노출 ?>
-<select name="dt_id" id="dt_id" class="frm_input" onchange="this.form.ag_id.value=''; this.form.submit();">
-    <option value="">전체 총판</option>
-    <?php foreach ($distributors as $distributor) { ?>
-    <option value="<?php echo $distributor['dt_id']; ?>" <?php echo ($dt_id == $distributor['dt_id']) ? 'selected' : ''; ?>><?php echo $distributor['dt_name']; ?> (<?php echo $distributor['dt_id']; ?>)</option>
-    <?php } ?>
-</select>
-<?php } ?>
-<?php if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { ?>
-<select name="ag_id" id="ag_id" class="frm_input" onchange="this.form.submit();">
-    <option value="">전체 대리점</option>
-    <?php foreach ($agencies as $agency) { ?>
-    <option value="<?php echo $agency['ag_id']; ?>" <?php echo ($ag_id == $agency['ag_id']) ? 'selected' : ''; ?>><?php echo $agency['ag_name']; ?> (<?php echo $agency['ag_id']; ?>)</option>
-    <?php } ?>
-</select>
-<?php } ?>
+
+<?php
+echo dmk_render_chain_select([
+    'dmk_auth' => $dmk_auth,
+    'page_type' => $page_type,
+    'current_values' => [
+        'sdt_id' => $dt_id,
+        'sag_id' => $ag_id,
+        'sbr_id' => ''
+    ],
+    'form_id' => 'fsearch',
+    'auto_submit' => true,
+    'ajax_endpoints' => [
+        'agencies' => './get_agencies.php',
+        'branches' => './get_branches.php'
+    ]
+]);
+?>
+
 <label for="stx" class="sound_only">검색어<strong class="sound_only"> 필수</strong></label>
 <input type="text" name="stx" value="<?php echo $stx ?>" id="stx" class="frm_input" placeholder="지점ID, 지점명, 대표자명">
 <input type="submit" class="btn_submit" value="검색">
 </form>
+
+<div class="btn_fixed_top">
+    <?php
+    if (dmk_can_create_admin('branch')) { // 지점 등록 권한 확인
+        $form_params = [];
+        if (!empty($dt_id)) {
+            $form_params[] = 'dt_id=' . urlencode($dt_id);
+        }
+        if (!empty($ag_id)) {
+            $form_params[] = 'ag_id=' . urlencode($ag_id);
+        }
+        $form_qstr = !empty($form_params) ? '?' . implode('&amp;', $form_params) : '';
+    ?>
+    <a href="./branch_form.php<?php echo $form_qstr; ?>" class="btn_01 btn">지점 등록</a>
+    <?php
+    }
+    ?>
+</div>
 
 <div class="local_desc01 local_desc">
     <p>
@@ -165,12 +171,6 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
     </p>
 </div>
 
-<?php if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR || $dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY || $dmk_auth['is_super']) { ?>
-<div class="btn_add01 btn_add">
-    <a href="./branch_form.php<?php echo $ag_id ? '?ag_id='.$ag_id : '' ?><?php echo ($ag_id && $dt_id) ? '&dt_id='.$dt_id : ($dt_id ? '?dt_id='.$dt_id : '') ?>" id="branch_add">지점 등록</a>
-</div>
-<?php } ?>
-
 <form name="fbranchlist" id="fbranchlist" action="./branch_list_update.php" onsubmit="return fbranchlist_submit(this);" method="post">
 <input type="hidden" name="sst" value="<?php echo $sst ?>">
 <input type="hidden" name="sod" value="<?php echo $sod ?>">
@@ -178,99 +178,75 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
 <input type="hidden" name="stx" value="<?php echo $stx ?>">
 <input type="hidden" name="page" value="<?php echo $page ?>">
 <input type="hidden" name="token" value="">
-<?php if ($dmk_auth['is_super']) { // 본사 관리자가 총판을 선택한 경우만 dt_id 전달 ?>
 <input type="hidden" name="dt_id" value="<?php echo $dt_id ?>">
-<?php } ?>
+<input type="hidden" name="ag_id" value="<?php echo $ag_id ?>">
+
 <div class="tbl_head01 tbl_wrap">
     <table>
     <caption><?php echo $g5['title']; ?> 목록</caption>
     <thead>
     <tr>
         <th scope="col">
-            <label for="chkall" class="sound_only">전체</label>
+            <label for="chkall" class="sound_only">지점 전체</label>
             <input type="checkbox" name="chkall" value="1" id="chkall" onclick="check_all(this.form)">
         </th>
-        <th scope="col">소속 총판</th>
-        <th scope="col">소속 대리점</th>
-        <th scope="col"><?php echo subject_sort_link('b.br_id') ?>지점ID</a></th>
-        <th scope="col"><?php echo subject_sort_link('br_m.mb_nick') ?>지점명</a></th>
-        
-        <th scope="col"><?php echo subject_sort_link('br_m.mb_name') ?>회사명</a></th>
+        <th scope="col">번호</th>
+        <th scope="col"><?php echo subject_sort_link('br_id')?>지점ID</a></th>
+        <th scope="col"><?php echo subject_sort_link('br_name')?>지점명</a></th>
+        <th scope="col">대표자</th>
+        <th scope="col">대리점</th>
+        <th scope="col">총판</th>
         <th scope="col">연락처</th>
-        <th scope="col"><?php echo subject_sort_link('br_m.mb_datetime') ?>등록일</a></th>
-        <th scope="col"><?php echo subject_sort_link('b.br_status') ?>상태</a></th>
-        <th scope="col" style="width: 120px;">관리</th>
+        <th scope="col"><?php echo subject_sort_link('br_datetime_from_member')?>가입일</a></th>
+        <th scope="col">상태</th>
+        <th scope="col">관리</th>
     </tr>
     </thead>
     <tbody>
     <?php
     for ($i=0; $row=sql_fetch_array($result); $i++) {
         $bg = 'bg'.($i%2);
-
-        // dt_id와 dt_name 키가 항상 존재하도록 초기화 (Undefined array key 경고 방지)
-        $dt_id_val = array_key_exists('dt_id', $row) ? $row['dt_id'] : '';
-        $dt_name_val = array_key_exists('dt_name', $row) ? $row['dt_name'] : '';
-
-        // ag_id와 ag_name 키가 항상 존재하도록 초기화 (Undefined array key 경고 방지)
-        $ag_id_val = array_key_exists('ag_id', $row) ? $row['ag_id'] : '';
-        $ag_name_val = array_key_exists('ag_name', $row) ? $row['ag_name'] : '';
     ?>
-
     <tr class="<?php echo $bg; ?>">
-        <td>
-            <label for="chk_<?php echo $i; ?>" class="sound_only"><?php echo $row['br_nick'] ?: $row['br_name'] ?> 선택</label>
+        <td class="td_chk">
+            <label for="chk_<?php echo $i; ?>" class="sound_only"><?php echo $row['br_id'] ?> 선택</label>
             <input type="checkbox" name="chk[]" value="<?php echo $i ?>" id="chk_<?php echo $i ?>">
             <input type="hidden" name="br_id[<?php echo $i ?>]" value="<?php echo $row['br_id'] ?>">
         </td>
-        <td>
-            <?php 
-            if ($dt_id_val && $dt_name_val) {
-                echo $dt_id_val . ' (' . $dt_name_val . ')';
-            } else {
-                echo '<span style="color:#999;">미배정</span>';
-            }
-            ?>
-        </td>
-        <td>
-            <?php 
-            if ($ag_id_val && $ag_name_val) {
-                echo $ag_id_val . ' (' . $ag_name_val . ')';
-            } else {
-                echo '<span style="color:#999;">미배정</span>';
-            }
-            ?>
-        </td>
-        <td><?php echo $row['br_id'] ?></td>
-        <td>
-            <a href="./branch_form.php?w=u&br_id=<?php echo $row['br_id'] ?>">
-                <?php echo get_text($row['br_nick'] ?: $row['br_name']) ?>
-            </a>
-        </td>
-        
-        <td><?php echo get_text($row['br_name']) ?></td>
-        <td><?php echo $row['br_tel'] ?: $row['br_hp'] ?></td>
-
+        <td class="td_num"><?php echo $total_count - ($page - 1) * $rows - $i; ?></td>
+        <td class="td_left"><?php echo $row['br_id'] ?></td>
+        <td class="td_left"><?php echo $row['br_nick'] ?></td>
+        <td class="td_left"><?php echo $row['br_name'] ?></td>
+        <td class="td_left"><?php echo $row['ag_name'] ?> (<?php echo $row['ag_id'] ?>)</td>
+        <td class="td_left"><?php echo $row['dt_name'] ?> (<?php echo $row['dt_id'] ?>)</td>
+        <td class="td_left"><?php echo $row['br_tel'] ? $row['br_tel'] : $row['br_hp'] ?></td>
         <td class="td_datetime"><?php echo substr($row['br_datetime_from_member'], 0, 10) ?></td>
         <td class="td_mng">
-            <?php echo $row['br_status'] ? '<span class="txt_true">활성</span>' : '<span class="txt_false">비활성</span>' ?>
+            <?php if ($row['br_status'] == 1) { ?>
+                <span class="txt_true">활성</span>
+            <?php } else { ?>
+                <span class="txt_false">비활성</span>
+            <?php } ?>
         </td>
         <td class="td_mng td_mng_s">
-            <a href="./branch_form.php?w=u&br_id=<?php echo $row['br_id'] ?>" class="btn btn_03">수정</a>
-            <?php if (!empty($row['br_shortcut_code'])) { ?>
-                <a href="<?php echo G5_URL; ?>/go/<?php echo $row['br_shortcut_code']; ?>" target="_blank" class="btn btn_02">주문 페이지지</a>
-            <?php } else { ?>
-                <span style="color:#999;">미등록</span>
+            <a href="./branch_form.php?w=u&amp;br_id=<?php echo $row['br_id'] ?>&amp;<?php echo $qstr ?>" class="btn btn_03">수정</a>
+            <?php if ($row['br_shortcut_code']) { ?>
+            <a href="<?php echo G5_DMK_URL ?>/order/<?php echo $row['br_shortcut_code'] ?>" target="_blank" class="btn btn_02">주문페이지</a>
             <?php } ?>
         </td>
     </tr>
-
     <?php
     }
-    if ($i == 0)
-        echo '<tr><td colspan="10" class="empty_table">자료가 없습니다.</td></tr>';
+    if ($i == 0) {
+        echo '<tr><td colspan="11" class="empty_table">자료가 없습니다.</td></tr>';
+    }
     ?>
     </tbody>
     </table>
+</div>
+
+<div class="btn_list01 btn_list">
+    <input type="submit" name="act_button" value="선택삭제" onclick="document.pressed=this.value" class="btn_02 btn">
 </div>
 
 </form>
@@ -278,16 +254,9 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
 <?php echo get_paging(G5_IS_MOBILE ? $config['cf_mobile_pages'] : $config['cf_write_pages'], $page, $total_page, $_SERVER['SCRIPT_NAME'].'?'.$qstr.'&amp;page='); ?>
 
 <script>
-function fbranchlist_submit(f)
-{
-    var chk_count = 0;
-    for (var i=0; i<f.length; i++) {
-        if (f.elements[i].name == "chk[]" && f.elements[i].checked)
-            chk_count++;
-    }
-
-    if (!chk_count) {
-        alert(document.pressed + "할 항목을 하나 이상 선택하세요.");
+function fbranchlist_submit(f) {
+    if (!is_checked("chk[]")) {
+        alert("선택된 자료가 없습니다.\n\n선택하신 후 이용해 주십시오.");
         return false;
     }
 

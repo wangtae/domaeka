@@ -3,6 +3,9 @@ $sub_menu = "190600";
 require_once '../../../adm/_common.php';
 include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
 
+// 공통 체인 선택박스 라이브러리 포함
+include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+
 $g5['title'] = '서브 관리자 관리';
 
 // 현재 관리자 권한 확인
@@ -15,145 +18,26 @@ $sdt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : ''; // 총�
 $sag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : ''; // 대리점 ID 검색
 $sbr_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : ''; // 지점 ID 검색
 
-// 총판, 대리점, 지점 목록 조회 (현재 로그인한 관리자의 권한에 따라)
-$distributors = array();
-$agencies = array();
-$branches = array();
+// 총판 목록 조회 (페이지 로드 시 초기값 설정용)
+$distributors = [];
+if ($dmk_auth['is_super']) {
+    $dt_sql = "SELECT dt_id, dt_name FROM dmk_distributor WHERE dt_status = 1 ORDER BY dt_name ASC";
+    $dt_res = sql_query($dt_sql);
+    while($dt_row = sql_fetch_array($dt_res)) {
+        $distributors[$dt_row['dt_id']] = $dt_row['dt_name'];
+    }
+} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($dmk_auth['dt_id'])) {
+    $distributors[$dmk_auth['dt_id']] = $dmk_auth['dt_name'] ?? $dmk_auth['dt_id'];
+}
+
+// 대리점 및 지점 목록은 AJAX로 동적 로드 예정이므로 여기서는 초기화만
+$agencies = [];
+$branches = [];
 
 // 현재 로그인한 관리자의 dt_id, ag_id, br_id 가져오기
 $current_dt_id = $dmk_auth['dt_id'] ?? '';
 $current_ag_id = $dmk_auth['ag_id'] ?? '';
 $current_br_id = $dmk_auth['br_id'] ?? '';
-
-// 총판 목록 조회
-if ($dmk_auth['is_super']) {
-    // 최고관리자: 모든 총판 조회
-    $dt_sql = "SELECT dt_id, dt_name FROM dmk_distributor ORDER BY dt_name ASC";
-    $dt_res = sql_query($dt_sql);
-    while($dt_row = sql_fetch_array($dt_res)) {
-        $distributors[$dt_row['dt_id']] = $dt_row['dt_name'];
-    }
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($current_dt_id)) {
-    // 총판 관리자: 자신의 총판만
-    $distributors[$current_dt_id] = $dmk_auth['dt_name'] ?? $current_dt_id;
-}
-
-// 대리점 목록 조회
-if ($dmk_auth['is_super']) {
-    // 최고관리자: 모든 대리점 조회 (선택된 총판에 따라 필터링)
-    $ag_sql_where = '';
-    if (!empty($sdt_id)) {
-        $ag_sql_where = " WHERE dt_id = '".sql_escape_string($sdt_id)."' ";
-    }
-    $ag_sql = "SELECT ag_id, ag_name, dt_id FROM dmk_agency ". $ag_sql_where ." ORDER BY ag_name ASC";
-    $ag_res = sql_query($ag_sql);
-    while($ag_row = sql_fetch_array($ag_res)) {
-        $agencies[$ag_row['ag_id']] = array(
-            'name' => $ag_row['ag_name'],
-            'dt_id' => $ag_row['dt_id']
-        );
-    }
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($current_dt_id)) {
-    // 총판 관리자: 산하 대리점만 조회
-    $ag_sql_where = " WHERE dt_id = '".sql_escape_string($current_dt_id)."' ";
-    if (!empty($sdt_id) && $sdt_id == $current_dt_id) {
-        $ag_sql_where = " WHERE dt_id = '".sql_escape_string($sdt_id)."' ";
-    } elseif (!empty($sdt_id) && $sdt_id != $current_dt_id) {
-        $ag_sql_where = " WHERE 1=0 "; // 다른 총판 선택 시 빈 결과
-    }
-    $ag_sql = "SELECT ag_id, ag_name, dt_id FROM dmk_agency ". $ag_sql_where ." ORDER BY ag_name ASC";
-    $ag_res = sql_query($ag_sql);
-    while($ag_row = sql_fetch_array($ag_res)) {
-        $agencies[$ag_row['ag_id']] = array(
-            'name' => $ag_row['ag_name'],
-            'dt_id' => $ag_row['dt_id']
-        );
-    }
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && !empty($current_ag_id)) {
-    // 대리점 관리자: 자신의 대리점만
-    $agencies[$current_ag_id] = array(
-        'name' => $dmk_auth['ag_name'] ?? $current_ag_id,
-        'dt_id' => $current_dt_id
-    );
-}
-
-// 지점 목록 조회 (전체 또는 선택된 대리점에 따라)
-if ($dmk_auth['is_super']) {
-    // 최고관리자: 모든 지점 조회 (선택된 대리점에 따라 필터링)
-    $br_sql_where = '';
-    if (!empty($sag_id)) {
-        $br_sql_where = " WHERE ag_id = '".sql_escape_string($sag_id)."' ";
-    } elseif (!empty($sdt_id)) {
-        // 총판이 선택된 경우 해당 총판의 대리점들의 지점 조회
-        $temp_ag_ids = array();
-        $temp_ag_res = sql_query("SELECT ag_id FROM dmk_agency WHERE dt_id = '".sql_escape_string($sdt_id)."'");
-        while($temp_ag_row = sql_fetch_array($temp_ag_res)) {
-            $temp_ag_ids[] = $temp_ag_row['ag_id'];
-        }
-        if (!empty($temp_ag_ids)) {
-            $br_sql_where = " WHERE ag_id IN ('".implode("','", array_map('sql_escape_string', $temp_ag_ids))."') ";
-        } else {
-            $br_sql_where = " WHERE 1=0 ";
-        }
-    }
-    $br_sql = "SELECT br_id, br_name, ag_id FROM dmk_branch ". $br_sql_where ." ORDER BY br_name ASC";
-    $br_res = sql_query($br_sql);
-    while($br_row = sql_fetch_array($br_res)) {
-        $branches[$br_row['br_id']] = array(
-            'name' => $br_row['br_name'],
-            'ag_id' => $br_row['ag_id']
-        );
-    }
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($current_dt_id)) {
-    // 총판 관리자: 산하 대리점들의 지점 조회
-    $br_sql_where = '';
-    if (!empty($sag_id)) {
-        // 대리점이 선택된 경우 해당 대리점의 지점만
-        $br_sql_where = " WHERE ag_id = '".sql_escape_string($sag_id)."' ";
-    } else {
-        // 총판의 모든 산하 지점 조회
-        $temp_ag_ids = array();
-        $temp_ag_res = sql_query("SELECT ag_id FROM dmk_agency WHERE dt_id = '".sql_escape_string($current_dt_id)."'");
-        while($temp_ag_row = sql_fetch_array($temp_ag_res)) {
-            $temp_ag_ids[] = $temp_ag_row['ag_id'];
-        }
-        if (!empty($temp_ag_ids)) {
-            $br_sql_where = " WHERE ag_id IN ('".implode("','", array_map('sql_escape_string', $temp_ag_ids))."') ";
-        } else {
-            $br_sql_where = " WHERE 1=0 ";
-        }
-    }
-    $br_sql = "SELECT br_id, br_name, ag_id FROM dmk_branch ". $br_sql_where ." ORDER BY br_name ASC";
-    $br_res = sql_query($br_sql);
-    while($br_row = sql_fetch_array($br_res)) {
-        $branches[$br_row['br_id']] = array(
-            'name' => $br_row['br_name'],
-            'ag_id' => $br_row['ag_id']
-        );
-    }
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && !empty($current_ag_id)) {
-    // 대리점 관리자: 자신의 산하 지점만
-    $br_sql_where = " WHERE ag_id = '".sql_escape_string($current_ag_id)."' ";
-    if (!empty($sag_id) && $sag_id == $current_ag_id) {
-        $br_sql_where = " WHERE ag_id = '".sql_escape_string($sag_id)."' ";
-    } elseif (!empty($sag_id) && $sag_id != $current_ag_id) {
-        $br_sql_where = " WHERE 1=0 "; // 다른 대리점 선택 시 빈 결과
-    }
-    $br_sql = "SELECT br_id, br_name, ag_id FROM dmk_branch ". $br_sql_where ." ORDER BY br_name ASC";
-    $br_res = sql_query($br_sql);
-    while($br_row = sql_fetch_array($br_res)) {
-        $branches[$br_row['br_id']] = array(
-            'name' => $br_row['br_name'],
-            'ag_id' => $br_row['ag_id']
-        );
-    }
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH && !empty($current_br_id)) {
-    // 지점 관리자: 자신의 지점만
-    $branches[$current_br_id] = array(
-        'name' => $dmk_auth['br_name'] ?? $current_br_id,
-        'ag_id' => $current_ag_id
-    );
-}
 
 // 검색 조건 설정
 $sql_search = " WHERE m.mb_level >= 4 AND m.mb_level < 10 AND m.mb_id != 'admin' AND m.dmk_admin_type = 'sub' "; // 서브 관리자만 조회
@@ -223,6 +107,9 @@ $result = sql_query($sql);
 $qstr = 'sfl='.$sfl.'&amp;stx='.$stx.'&amp;sdt_id='.$sdt_id.'&amp;sag_id='.$sag_id.'&amp;sbr_id='.$sbr_id;
 
 require_once '../../../adm/admin.head.php';
+
+// 체인 선택박스 에셋 포함
+echo dmk_include_chain_select_assets();
 ?>
 
 <div class="local_ov01 local_ov">
@@ -232,55 +119,23 @@ require_once '../../../adm/admin.head.php';
 <form id="fsearch" name="fsearch" class="local_sch01 local_sch" method="get">
 
     <?php
-    // 최고관리자 또는 총판인 경우 총판 선택박스 노출
-    if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
+    // 공통 체인 선택박스 렌더링
+    echo dmk_render_chain_select([
+        'dmk_auth' => $dmk_auth,
+        'page_type' => DMK_CHAIN_SELECT_FULL,
+        'current_values' => [
+            'sdt_id' => $sdt_id,
+            'sag_id' => $sag_id,
+            'sbr_id' => $sbr_id
+        ],
+        'form_id' => 'fsearch',
+        'auto_submit' => true,
+        'ajax_endpoints' => [
+            'agencies' => './get_agencies.php',
+            'branches' => './get_branches.php'
+        ]
+    ]);
     ?>
-    <label for="sdt_id" class="sound_only">총판 선택</label>
-    <select name="sdt_id" id="sdt_id" onchange="updateAgencyOptionsAndSubmit();">
-        <option value="">전체 총판</option>
-        <?php foreach ($distributors as $dt_id => $dt_name) { ?>
-            <option value="<?php echo $dt_id ?>" <?php echo ($sdt_id == $dt_id) ? 'selected' : '' ?>><?php echo $dt_name ?> (<?php echo $dt_id ?>)</option>
-        <?php } ?>
-    </select>
-    <?php } ?>
-
-    <?php
-    // 대리점 이상의 관리자인 경우 대리점 선택박스 노출
-    if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR || $dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY) {
-    ?>
-    <label for="sag_id" class="sound_only">대리점 선택</label>
-    <select name="sag_id" id="sag_id" onchange="updateBranchOptionsAndSubmit();">
-        <option value="">전체 대리점</option>
-        <?php 
-        foreach ($agencies as $ag_id => $ag_info) {
-            // 총판이 선택된 경우 해당 총판의 대리점만 표시
-            if (empty($sdt_id) || $ag_info['dt_id'] == $sdt_id) {
-                $selected = ($sag_id == $ag_id) ? 'selected' : '';
-                echo '<option value="' . $ag_id . '" data-dt-id="' . $ag_info['dt_id'] . '" ' . $selected . '>' . $ag_info['name'] . ' (' . $ag_id . ')</option>';
-            }
-        }
-        ?>
-    </select>
-    <?php } ?>
-
-    <?php
-    // 대리점 관리자 이상인 경우 지점 선택박스 노출 (지점 관리자는 선택박스 불필요)
-    if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR || $dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY) {
-    ?>
-    <label for="sbr_id" class="sound_only">지점 선택</label>
-    <select name="sbr_id" id="sbr_id" onchange="this.form.submit();">
-        <option value="">전체 지점</option>
-        <?php 
-        foreach ($branches as $br_id => $br_info) {
-            // 대리점이 선택된 경우 해당 대리점의 지점만 표시
-            if (empty($sag_id) || $br_info['ag_id'] == $sag_id) {
-                $selected = ($sbr_id == $br_id) ? 'selected' : '';
-                echo '<option value="' . $br_id . '" data-ag-id="' . $br_info['ag_id'] . '" ' . $selected . '>' . $br_info['name'] . ' (' . $br_id . ')</option>';
-            }
-        }
-        ?>
-    </select>
-    <?php } ?>
 
     <label for="sfl" class="sound_only">검색대상</label>
     <select name="sfl" id="sfl">
@@ -295,85 +150,31 @@ require_once '../../../adm/admin.head.php';
 
 </form>
 
-<script>
-// 총판 선택 시 대리점 선택박스 업데이트
-function updateAgencyOptions() {
-    var sdtId = document.getElementById('sdt_id') ? document.getElementById('sdt_id').value : '';
-    var sagSelect = document.getElementById('sag_id');
-    
-    if (!sagSelect) return; // 대리점 선택박스가 없는 경우
-    
-    // 모든 대리점 옵션을 숨기고 다시 표시
-    var options = sagSelect.querySelectorAll('option');
-    
-    // 첫 번째 옵션(전체 대리점)은 항상 표시
-    for (var i = 1; i < options.length; i++) {
-        var option = options[i];
-        var optionDtId = option.getAttribute('data-dt-id');
-        
-        if (sdtId === '' || optionDtId === sdtId) {
-            option.style.display = '';
-        } else {
-            option.style.display = 'none';
+<div class="btn_fixed_top">
+    <?php
+    if ($dmk_auth && $dmk_auth['admin_type'] === 'main') { // main 관리자만 등록 버튼 노출
+        $can_create_sub_admin = false;
+        $target_type = '';
+
+        // 현재 관리자 계층에 따라 생성 가능한 서브 관리자 유형 결정
+        if ($dmk_auth['is_super']) {
+            $can_create_sub_admin = true; // 본사는 모든 서브 관리자 생성 가능
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            $can_create_sub_admin = true; // 총판은 대리점/지점 서브 관리자 생성 가능
+            $target_type = 'agency'; // 기본적으로 대리점 생성으로 연결 (선택 가능하게 할 경우 로직 변경 필요)
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            $can_create_sub_admin = true; // 대리점은 지점 서브 관리자 생성 가능
+            $target_type = 'branch'; // 지점 생성으로 연결
+        }
+
+        if ($can_create_sub_admin) {
+    ?>
+    <a href="admin_form.php?w=f<?php echo $target_type ? '&amp;target_type=' . $target_type : ''; ?>" class="btn_01 btn">서브관리자 등록</a>
+    <?php
         }
     }
-    
-    // 현재 선택된 대리점이 숨겨진 경우 초기화
-    var currentSelected = sagSelect.value;
-    var currentOption = sagSelect.querySelector('option[value="' + currentSelected + '"]');
-    if (currentOption && currentOption.style.display === 'none') {
-        sagSelect.value = '';
-        updateBranchOptions(); // 지점도 초기화
-    }
-}
-
-// 대리점 선택 시 지점 선택박스 업데이트
-function updateBranchOptions() {
-    var sagId = document.getElementById('sag_id') ? document.getElementById('sag_id').value : '';
-    var sbrSelect = document.getElementById('sbr_id');
-    
-    if (!sbrSelect) return; // 지점 선택박스가 없는 경우 (지점 관리자)
-    
-    // 모든 지점 옵션을 숨기고 다시 표시
-    var options = sbrSelect.querySelectorAll('option');
-    
-    // 첫 번째 옵션(전체 지점)은 항상 표시
-    for (var i = 1; i < options.length; i++) {
-        var option = options[i];
-        var optionAgId = option.getAttribute('data-ag-id');
-        
-        if (sagId === '' || optionAgId === sagId) {
-            option.style.display = '';
-        } else {
-            option.style.display = 'none';
-        }
-    }
-    
-    // 현재 선택된 지점이 숨겨진 경우 초기화
-    var currentSelected = sbrSelect.value;
-    var currentOption = sbrSelect.querySelector('option[value="' + currentSelected + '"]');
-    if (currentOption && currentOption.style.display === 'none') {
-        sbrSelect.value = '';
-    }
-}
-
-// 페이지 로드 시 초기화
-document.addEventListener('DOMContentLoaded', function() {
-    updateAgencyOptions();
-    updateBranchOptions();
-});
-
-function updateAgencyOptionsAndSubmit() {
-    updateAgencyOptions();
-    updateBranchOptions();
-    document.getElementById('fsearch').submit();
-}
-
-function updateBranchOptionsAndSubmit() {
-    updateBranchOptions();
-    document.getElementById('fsearch').submit();
-}
-</script>
+    ?>
+</div>
 
 <div class="local_desc01 local_desc">
     <p>

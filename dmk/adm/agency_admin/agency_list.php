@@ -136,6 +136,16 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <input type="submit" class="btn_submit" value="검색">
 </form>
 
+<div class="btn_fixed_top">
+    <?php
+    if (dmk_can_create_admin('agency')) { // 대리점 등록 권한 확인
+    ?>
+    <a href="./agency_form.php" class="btn_01 btn">대리점 등록</a>
+    <?php
+    }
+    ?>
+</div>
+
 <div class="local_desc01 local_desc">
     <p>
         <strong>대리점 관리</strong><br>
@@ -143,12 +153,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         • 각 대리점별 관리 지점 수를 확인할 수 있습니다.
     </p>
 </div>
-
-<?php if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR || $dmk_auth['is_super']) { ?>
-<div class="btn_add01 btn_add">
-    <a href="./agency_form.php" id="agency_add">대리점 등록</a>
-</div>
-<?php } ?>
 
 <form name="fagencylist" id="fagencylist" action="./agency_list_update.php" onsubmit="return fagencylist_submit(this);" method="post">
 <input type="hidden" name="sst" value="<?php echo $sst ?>">
