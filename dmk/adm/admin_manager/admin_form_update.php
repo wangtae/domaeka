@@ -45,7 +45,7 @@ if ($w == '' && !$dmk_mb_type) { // 신규 등록일 때만 관리자 유형 검
     alert('관리자 유형을 선택하세요.');
 }
 
-// 체인 선택박스의 소속 기관 정보에 따른 관리자 유형 자동 결정 (신규 등록 시)
+// 체인 선택박스의 소속 기관 정보에 따른 관리자 유형 자동 결정 (신규 등록 시에만)
 if ($w == '' && !$dmk_mb_type) {
     if ($br_id) {
         // 지점이 선택된 경우: 지점 관리자
@@ -64,35 +64,39 @@ if ($w == '' && !$dmk_mb_type) {
     }
 }
 
-// dmk_mb_type에 따른 mb_level 설정
-switch ($dmk_mb_type) {
-    case DMK_MB_TYPE_DISTRIBUTOR: // 총판
-        $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
-        break;
-    case DMK_MB_TYPE_AGENCY: // 대리점
-        $mb_level = DMK_MB_LEVEL_AGENCY;
-        break;
-    case DMK_MB_TYPE_BRANCH: // 지점
-        $mb_level = DMK_MB_LEVEL_BRANCH;
-        break;
-    default:
-        alert('올바른 관리자 유형을 선택하세요.');
+// dmk_mb_type에 따른 mb_level 설정 (신규 등록 시에만)
+if ($w == '') {
+    switch ($dmk_mb_type) {
+        case DMK_MB_TYPE_DISTRIBUTOR: // 총판
+            $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
+            break;
+        case DMK_MB_TYPE_AGENCY: // 대리점
+            $mb_level = DMK_MB_LEVEL_AGENCY;
+            break;
+        case DMK_MB_TYPE_BRANCH: // 지점
+            $mb_level = DMK_MB_LEVEL_BRANCH;
+            break;
+        default:
+            alert('올바른 관리자 유형을 선택하세요.');
+    }
 }
 
-// 권한 체크
-$can_create_level = false;
-if ($dmk_auth['is_super']) {
-    $can_create_level = true;
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && $mb_level <= DMK_MB_LEVEL_DISTRIBUTOR) {
-    $can_create_level = true;
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && $mb_level <= DMK_MB_LEVEL_AGENCY) {
-    $can_create_level = true;
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH && $mb_level == DMK_MB_LEVEL_BRANCH) {
-    $can_create_level = true;
-}
+// 권한 체크 (신규 등록 시에만)
+if ($w == '') {
+    $can_create_level = false;
+    if ($dmk_auth['is_super']) {
+        $can_create_level = true;
+    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && $mb_level <= DMK_MB_LEVEL_DISTRIBUTOR) {
+        $can_create_level = true;
+    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && $mb_level <= DMK_MB_LEVEL_AGENCY) {
+        $can_create_level = true;
+    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH && $mb_level == DMK_MB_LEVEL_BRANCH) {
+        $can_create_level = true;
+    }
 
-if (!$can_create_level) {
-    alert('해당 레벨의 관리자를 생성할 권한이 없습니다.');
+    if (!$can_create_level) {
+        alert('해당 레벨의 관리자를 생성할 권한이 없습니다.');
+    }
 }
 
 if ($w == '') {
@@ -169,6 +173,13 @@ if ($w == '') {
         alert('존재하지 않는 관리자입니다.');
     }
     
+    // 수정 모드에서는 기존 데이터 사용
+    $dmk_mb_type = $member['dmk_mb_type'];
+    $mb_level = $member['mb_level'];
+    $dt_id = $member['dmk_dt_id'];
+    $ag_id = $member['dmk_ag_id'];
+    $br_id = $member['dmk_br_id'];
+    
     // 수정 권한 체크
     $can_modify = false;
     if ($dmk_auth['is_super']) {
@@ -185,29 +196,6 @@ if ($w == '') {
         alert('수정 권한이 없습니다.');
     }
     
-    // 관리자 유형 변경 방지
-    // 기존 관리자의 dmk_mb_type을 조회
-    $sql_type = " SELECT dmk_mb_type, dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($mb_id)."' ";
-    $existing_type_row = sql_fetch($sql_type);
-
-    if ($existing_type_row && $existing_type_row['dmk_mb_type'] != $dmk_mb_type) {
-        alert('관리자 유형은 수정할 수 없습니다.');
-    }
-
-    // 소속 기관 정보 변경 방지 (수정 모드에서)
-    if ($existing_type_row) {
-        if ($existing_type_row['dmk_dt_id'] != $dt_id || 
-            $existing_type_row['dmk_ag_id'] != $ag_id || 
-            $existing_type_row['dmk_br_id'] != $br_id) {
-            alert('소속 기관 정보는 수정할 수 없습니다.');
-        }
-        
-        // 기존 소속 기관 정보 사용
-        $dt_id = $existing_type_row['dmk_dt_id'];
-        $ag_id = $existing_type_row['dmk_ag_id'];
-        $br_id = $existing_type_row['dmk_br_id'];
-    }
-
     // 닉네임 중복 체크 (자신 제외)
     $sql = " SELECT COUNT(*) as cnt FROM {$g5['member_table']} WHERE mb_nick = '".sql_escape_string($mb_nick)."' AND mb_id != '".sql_escape_string($mb_id)."' ";
     $row = sql_fetch($sql);
@@ -243,11 +231,6 @@ if ($w == '') {
                 mb_nick = '".sql_escape_string($mb_nick)."',
                 mb_email = '".sql_escape_string($mb_email)."',
                 mb_hp = '".sql_escape_string($mb_hp)."',
-                mb_level = '".sql_escape_string($mb_level)."',
-                dmk_mb_type = '".sql_escape_string($dmk_mb_type)."',
-                dmk_dt_id = '".sql_escape_string($dt_id)."',
-                dmk_ag_id = '".sql_escape_string($ag_id)."',
-                dmk_br_id = '".sql_escape_string($br_id)."',
                 mb_memo = '".sql_escape_string($mb_memo)."'
                 {$sql_password}
              WHERE mb_id = '".sql_escape_string($mb_id)."' ";

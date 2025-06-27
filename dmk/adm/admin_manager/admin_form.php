@@ -433,20 +433,25 @@ jQuery(document).ready(function() {
 
 // 폼 제출 전 유효성 검사
 function fmember_submit(f) {
+    <?php if ($w != 'u') { // 신규 등록시에만 관리자 유형 검증 ?>
     // 관리자 유형이 설정되었는지 확인
     var dmk_mb_type = jQuery('#dmk_mb_type').val();
     if (!dmk_mb_type) {
         alert("소속 기관을 선택하세요.");
         return false;
     }
+    <?php } ?>
     
     // 기존 유효성 검사 로직...
+    <?php if ($w != 'u') { // 신규 등록시에만 ID 검증 ?>
     if (f.mb_id.value.length < 3) {
         alert("관리자 ID를 3글자 이상 입력하세요.");
         f.mb_id.focus();
         return false;
     }
+    <?php } ?>
     
+    <?php if ($w != 'u') { // 신규 등록시에만 비밀번호 검증 ?>
     if (f.mb_password.value.length < 8) {
         alert("비밀번호를 8글자 이상 입력하세요.");
         f.mb_password.focus();
@@ -458,6 +463,19 @@ function fmember_submit(f) {
         f.mb_password_confirm.focus();
         return false;
     }
+    <?php } else { // 수정시 비밀번호 변경시에만 검증 ?>
+    if (f.mb_password.value && f.mb_password.value.length < 8) {
+        alert("비밀번호를 8글자 이상 입력하세요.");
+        f.mb_password.focus();
+        return false;
+    }
+    
+    if (f.mb_password.value && f.mb_password.value != f.mb_password_confirm.value) {
+        alert("비밀번호가 일치하지 않습니다.");
+        f.mb_password_confirm.focus();
+        return false;
+    }
+    <?php } ?>
     
     if (f.mb_name.value.length < 2) {
         alert("이름을 2글자 이상 입력하세요.");
