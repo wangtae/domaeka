@@ -239,6 +239,14 @@ function fmember_submit(f) {
         return false;
     }
 
+    // 토큰 설정
+    var token = get_ajax_token();
+    if (!token) {
+        alert("토큰 정보가 올바르지 않습니다.");
+        return false;
+    }
+    f.token.value = token;
+
     return true;
 }
 </script>
