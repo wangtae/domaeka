@@ -65,6 +65,10 @@ if (!$dmk_auth['is_super']) {
     } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH) {
         $sql_search .= " AND m.mb_level = 4 ";
     }
+    // 대리점 관리자는 자신의 대리점에 속한 관리자만 조회
+    if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+        $sql_search .= " AND m.dmk_ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' ";
+    }
 } else {
     // 최고관리자는 모든 서브 관리자 조회
     $sql_search .= " AND m.mb_level < 10 ";

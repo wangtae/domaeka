@@ -30,7 +30,7 @@ class DmkChainSelect {
             onBranchChange: null,
             
             // 디버그 모드
-            debug: false,
+            debug: true,
             
             ...options
         };
@@ -81,12 +81,18 @@ class DmkChainSelect {
         
         // 총판이 선택되어 있으면 대리점 로드
         if (this.currentValues.distributor) {
+            this.log('초기 총판이 있어 대리점 로드 시도:', this.currentValues.distributor);
             this.loadAgencies(this.currentValues.distributor, () => {
-                // 대리점이 선택되어 있으면 지점 로드
+                // 대리점이 선택되어 있으면 지점 로드 (총판 하위에서)
                 if (this.currentValues.agency) {
+                    this.log('초기 대리점이 있어 지점 로드 시도:', this.currentValues.agency);
                     this.loadBranches(this.currentValues.agency);
                 }
             });
+        } else if (this.currentValues.agency) { // 추가된 로직
+            // 총판이 없고 대리점만 설정된 경우 (예: 대리점 관리자 로그인 시)
+            this.log('총판 초기값 없이 대리점 초기값으로 지점 목록 로드 시도:', this.currentValues.agency);
+            this.loadBranches(this.currentValues.agency);
         }
     }
     
