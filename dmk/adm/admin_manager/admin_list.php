@@ -11,42 +11,109 @@ $dmk_auth = dmk_get_admin_auth();
 // 검색 파라미터 가져오기
 $sfl = isset($_GET['sfl']) ? clean_xss_tags($_GET['sfl']) : '';
 $stx = isset($_GET['stx']) ? clean_xss_tags($_GET['stx']) : '';
+$sdt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : ''; // 총판 ID 검색
 $sag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : ''; // 대리점 ID 검색
 $sbr_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : ''; // 지점 ID 검색
 
-// 대리점, 지점 목록 조회 (현재 로그인한 관리자의 권한에 따라)
+// 총판, 대리점, 지점 목록 조회 (현재 로그인한 관리자의 권한에 따라)
+$distributors = array();
 $agencies = array();
 $branches = array();
 
-// 현재 로그인한 관리자의 ag_id, br_id 가져오기
+// 현재 로그인한 관리자의 dt_id, ag_id, br_id 가져오기
+$current_dt_id = $dmk_auth['dt_id'] ?? '';
 $current_ag_id = $dmk_auth['ag_id'] ?? '';
 $current_br_id = $dmk_auth['br_id'] ?? '';
 
-// 대리점 목록 조회
-if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
-    // 최고관리자 또는 총판: 모든 대리점 또는 산하 대리점 조회
-    $ag_sql_where = '';
-    if ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($dmk_auth['dt_id'])) {
-        $ag_sql_where = " WHERE dt_id = '".sql_escape_string($dmk_auth['dt_id'])."' ";
+// 총판 목록 조회
+if ($dmk_auth['is_super']) {
+    // 최고관리자: 모든 총판 조회
+    $dt_sql = "SELECT dt_id, dt_name FROM dmk_distributor ORDER BY dt_name ASC";
+    $dt_res = sql_query($dt_sql);
+    while($dt_row = sql_fetch_array($dt_res)) {
+        $distributors[$dt_row['dt_id']] = $dt_row['dt_name'];
     }
-    $ag_sql = "SELECT ag_id, ag_name FROM dmk_agency ". $ag_sql_where ." ORDER BY ag_name ASC";
+} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($current_dt_id)) {
+    // 총판 관리자: 자신의 총판만
+    $distributors[$current_dt_id] = $dmk_auth['dt_name'] ?? $current_dt_id;
+}
+
+// 대리점 목록 조회
+if ($dmk_auth['is_super']) {
+    // 최고관리자: 모든 대리점 조회 (선택된 총판에 따라 필터링)
+    $ag_sql_where = '';
+    if (!empty($sdt_id)) {
+        $ag_sql_where = " WHERE dt_id = '".sql_escape_string($sdt_id)."' ";
+    }
+    $ag_sql = "SELECT ag_id, ag_name, dt_id FROM dmk_agency ". $ag_sql_where ." ORDER BY ag_name ASC";
     $ag_res = sql_query($ag_sql);
     while($ag_row = sql_fetch_array($ag_res)) {
-        $agencies[$ag_row['ag_id']] = $ag_row['ag_name'];
+        $agencies[$ag_row['ag_id']] = array(
+            'name' => $ag_row['ag_name'],
+            'dt_id' => $ag_row['dt_id']
+        );
+    }
+} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($current_dt_id)) {
+    // 총판 관리자: 산하 대리점만 조회
+    $ag_sql_where = " WHERE dt_id = '".sql_escape_string($current_dt_id)."' ";
+    if (!empty($sdt_id) && $sdt_id == $current_dt_id) {
+        $ag_sql_where = " WHERE dt_id = '".sql_escape_string($sdt_id)."' ";
+    } elseif (!empty($sdt_id) && $sdt_id != $current_dt_id) {
+        $ag_sql_where = " WHERE 1=0 "; // 다른 총판 선택 시 빈 결과
+    }
+    $ag_sql = "SELECT ag_id, ag_name, dt_id FROM dmk_agency ". $ag_sql_where ." ORDER BY ag_name ASC";
+    $ag_res = sql_query($ag_sql);
+    while($ag_row = sql_fetch_array($ag_res)) {
+        $agencies[$ag_row['ag_id']] = array(
+            'name' => $ag_row['ag_name'],
+            'dt_id' => $ag_row['dt_id']
+        );
     }
 } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && !empty($current_ag_id)) {
     // 대리점 관리자: 자신의 대리점만
-    $agencies[$current_ag_id] = $dmk_auth['ag_name'] ?? $current_ag_id;
+    $agencies[$current_ag_id] = array(
+        'name' => $dmk_auth['ag_name'] ?? $current_ag_id,
+        'dt_id' => $current_dt_id
+    );
 }
 
 // 지점 목록 조회 (전체 또는 선택된 대리점에 따라)
-if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
-    // 최고관리자 또는 총판: 모든 지점 또는 산하 지점 조회
+if ($dmk_auth['is_super']) {
+    // 최고관리자: 모든 지점 조회 (선택된 대리점에 따라 필터링)
     $br_sql_where = '';
-    if ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($dmk_auth['dt_id'])) {
-        // 총판은 산하 대리점들의 지점을 조회 가능
+    if (!empty($sag_id)) {
+        $br_sql_where = " WHERE ag_id = '".sql_escape_string($sag_id)."' ";
+    } elseif (!empty($sdt_id)) {
+        // 총판이 선택된 경우 해당 총판의 대리점들의 지점 조회
         $temp_ag_ids = array();
-        $temp_ag_res = sql_query("SELECT ag_id FROM dmk_agency WHERE dt_id = '".sql_escape_string($dmk_auth['dt_id'])."'");
+        $temp_ag_res = sql_query("SELECT ag_id FROM dmk_agency WHERE dt_id = '".sql_escape_string($sdt_id)."'");
+        while($temp_ag_row = sql_fetch_array($temp_ag_res)) {
+            $temp_ag_ids[] = $temp_ag_row['ag_id'];
+        }
+        if (!empty($temp_ag_ids)) {
+            $br_sql_where = " WHERE ag_id IN ('".implode("','", array_map('sql_escape_string', $temp_ag_ids))."') ";
+        } else {
+            $br_sql_where = " WHERE 1=0 ";
+        }
+    }
+    $br_sql = "SELECT br_id, br_name, ag_id FROM dmk_branch ". $br_sql_where ." ORDER BY br_name ASC";
+    $br_res = sql_query($br_sql);
+    while($br_row = sql_fetch_array($br_res)) {
+        $branches[$br_row['br_id']] = array(
+            'name' => $br_row['br_name'],
+            'ag_id' => $br_row['ag_id']
+        );
+    }
+} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($current_dt_id)) {
+    // 총판 관리자: 산하 대리점들의 지점 조회
+    $br_sql_where = '';
+    if (!empty($sag_id)) {
+        // 대리점이 선택된 경우 해당 대리점의 지점만
+        $br_sql_where = " WHERE ag_id = '".sql_escape_string($sag_id)."' ";
+    } else {
+        // 총판의 모든 산하 지점 조회
+        $temp_ag_ids = array();
+        $temp_ag_res = sql_query("SELECT ag_id FROM dmk_agency WHERE dt_id = '".sql_escape_string($current_dt_id)."'");
         while($temp_ag_row = sql_fetch_array($temp_ag_res)) {
             $temp_ag_ids[] = $temp_ag_row['ag_id'];
         }
@@ -66,12 +133,18 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) 
     }
 } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && !empty($current_ag_id)) {
     // 대리점 관리자: 자신의 산하 지점만
-    $br_sql = "SELECT br_id, br_name FROM dmk_branch WHERE ag_id = '".sql_escape_string($current_ag_id)."' ORDER BY br_name ASC";
+    $br_sql_where = " WHERE ag_id = '".sql_escape_string($current_ag_id)."' ";
+    if (!empty($sag_id) && $sag_id == $current_ag_id) {
+        $br_sql_where = " WHERE ag_id = '".sql_escape_string($sag_id)."' ";
+    } elseif (!empty($sag_id) && $sag_id != $current_ag_id) {
+        $br_sql_where = " WHERE 1=0 "; // 다른 대리점 선택 시 빈 결과
+    }
+    $br_sql = "SELECT br_id, br_name, ag_id FROM dmk_branch ". $br_sql_where ." ORDER BY br_name ASC";
     $br_res = sql_query($br_sql);
     while($br_row = sql_fetch_array($br_res)) {
         $branches[$br_row['br_id']] = array(
             'name' => $br_row['br_name'],
-            'ag_id' => $current_ag_id
+            'ag_id' => $br_row['ag_id']
         );
     }
 } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH && !empty($current_br_id)) {
@@ -83,44 +156,21 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) 
 }
 
 // 검색 조건 설정
-$sql_search = " WHERE m.mb_level >= 4 AND m.mb_level < 10 "; // 관리자 레벨만 조회 (총판, 최고관리자 제외)
+$sql_search = " WHERE m.mb_level >= 4 AND m.mb_level < 10 AND m.mb_id != 'admin' AND m.dmk_admin_type = 'sub' "; // 서브 관리자만 조회
 
 // 조인할 테이블 변수 초기화
 $sql_join = "";
 
-// 대리점 ID (sag_id)로 검색 시 조인 및 필터링
-if (!empty($sag_id)) {
-    $sql_join .= " LEFT JOIN dmk_agency ag ON m.mb_id = ag.ag_mb_id ";
-    $sql_join .= " LEFT JOIN dmk_branch br ON m.mb_id = br.br_mb_id ";
-    $sql_search .= " AND (ag.ag_id = '".sql_escape_string($sag_id)."' OR br.ag_id = '".sql_escape_string($sag_id)."') ";
-} elseif (!empty($current_ag_id) && ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY || $dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH)) {
-    // 현재 로그인한 대리점/지점이 대리점 ID를 선택하지 않았을 경우 자신의 산하 관리자만 조회
-    $sql_join .= " LEFT JOIN dmk_agency ag ON m.mb_id = ag.ag_mb_id ";
-    $sql_join .= " LEFT JOIN dmk_branch br ON m.mb_id = br.br_mb_id ";
-    $sql_search .= " AND (ag.ag_id = '".sql_escape_string($current_ag_id)."' OR br.ag_id = '".sql_escape_string($current_ag_id)."') ";
-} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && !empty($dmk_auth['dt_id'])) {
-    // 총판: 산하 대리점 및 지점 관리자만 조회
-    $sql_join .= " LEFT JOIN dmk_distributor d ON m.mb_id = d.dt_mb_id ";
-    $sql_join .= " LEFT JOIN dmk_agency ag ON m.mb_id = ag.ag_mb_id ";
-    $sql_join .= " LEFT JOIN dmk_branch br ON m.mb_id = br.br_mb_id ";
-    $sql_search .= " AND (d.dt_id = '".sql_escape_string($dmk_auth['dt_id'])."' OR ag.dt_id = '".sql_escape_string($dmk_auth['dt_id'])."' OR br.dt_id = '".sql_escape_string($dmk_auth['dt_id'])."') ";
+// 검색 파라미터에 따른 SQL 조건 추가
+if (!empty($sdt_id)) {
+    $sql_search .= " AND m.dmk_dt_id = '".sql_escape_string($sdt_id)."' ";
+} elseif (!empty($sag_id)) {
+    $sql_search .= " AND m.dmk_ag_id = '".sql_escape_string($sag_id)."' ";
+} elseif (!empty($sbr_id)) {
+    $sql_search .= " AND m.dmk_br_id = '".sql_escape_string($sbr_id)."' ";
 }
 
-// 지점 ID (sbr_id)로 검색 시 조인 및 필터링
-if (!empty($sbr_id)) {
-    if (strpos($sql_join, 'dmk_branch br') === false) {
-        $sql_join .= " LEFT JOIN dmk_branch br ON m.mb_id = br.br_mb_id ";
-    }
-    $sql_search .= " AND br.br_id = '".sql_escape_string($sbr_id)."' ";
-} elseif (!empty($current_br_id) && $dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH) {
-    // 현재 로그인한 지점이 지점 ID를 선택하지 않았을 경우 자신의 관리자만 조회
-    if (strpos($sql_join, 'dmk_branch br') === false) {
-        $sql_join .= " LEFT JOIN dmk_branch br ON m.mb_id = br.br_mb_id ";
-    }
-    $sql_search .= " AND br.br_id = '".sql_escape_string($current_br_id)."' ";
-}
-
-// 최종 권한별 관리자 레벨 필터링 (mb_level 기준)
+// 최종 권한별 관리자 레벨 필터링
 if (!$dmk_auth['is_super']) {
     if ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
         $sql_search .= " AND m.mb_level >= 4 AND m.mb_level <= 8 ";
@@ -130,7 +180,7 @@ if (!$dmk_auth['is_super']) {
         $sql_search .= " AND m.mb_level = 4 ";
     }
 } else {
-    // 최고관리자도 총판과 최고관리자는 목록에서 제외
+    // 최고관리자는 모든 서브 관리자 조회
     $sql_search .= " AND m.mb_level < 10 ";
 }
 
@@ -153,11 +203,11 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $rows = 20;
 
 $sql_common = " FROM {$g5['member_table']} m ";
-// $sql_join은 위의 조건문들에서 이미 추가됨
+// $sql_join은 위의 조건문들에서 이미 추가됨 (이번에는 필요 없음)
 $sql_order = " ORDER BY m.mb_level DESC, m.mb_datetime DESC ";
 
 // 전체 개수 (DISTINCT mb_id 사용하여 중복 방지)
-$sql = " SELECT COUNT(DISTINCT m.mb_id) as cnt {$sql_common} {$sql_join} {$sql_search} ";
+$sql = " SELECT COUNT(DISTINCT m.mb_id) as cnt {$sql_common} {$sql_search} "; // 조인 제거
 $row = sql_fetch($sql);
 $total_count = $row['cnt'];
 
@@ -166,11 +216,11 @@ if ($page < 1) $page = 1;
 $from_record = ($page - 1) * $rows;
 
 // 목록 조회 (DISTINCT mb_id 사용하여 중복 방지 및 m.*로 모든 컬럼 선택)
-$sql = " SELECT DISTINCT m.* {$sql_common} {$sql_join} {$sql_search} {$sql_order} LIMIT {$from_record}, {$rows} ";
+$sql = " SELECT DISTINCT m.* {$sql_common} {$sql_search} {$sql_order} LIMIT {$from_record}, {$rows} "; // 조인 제거
 $result = sql_query($sql);
 
 // URL 쿼리 스트링 생성
-$qstr = 'sfl='.$sfl.'&amp;stx='.$stx.'&amp;sag_id='.$sag_id.'&amp;sbr_id='.$sbr_id;
+$qstr = 'sfl='.$sfl.'&amp;stx='.$stx.'&amp;sdt_id='.$sdt_id.'&amp;sag_id='.$sag_id.'&amp;sbr_id='.$sbr_id;
 
 require_once '../../../adm/admin.head.php';
 ?>
@@ -182,15 +232,34 @@ require_once '../../../adm/admin.head.php';
 <form id="fsearch" name="fsearch" class="local_sch01 local_sch" method="get">
 
     <?php
-    // 대리점 이상의 관리자인 경우 대리점 선택박스 노출
+    // 최고관리자 또는 총판인 경우 총판 선택박스 노출
     if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
+    ?>
+    <label for="sdt_id" class="sound_only">총판 선택</label>
+    <select name="sdt_id" id="sdt_id" onchange="updateAgencyOptionsAndSubmit();">
+        <option value="">전체 총판</option>
+        <?php foreach ($distributors as $dt_id => $dt_name) { ?>
+            <option value="<?php echo $dt_id ?>" <?php echo ($sdt_id == $dt_id) ? 'selected' : '' ?>><?php echo $dt_name ?> (<?php echo $dt_id ?>)</option>
+        <?php } ?>
+    </select>
+    <?php } ?>
+
+    <?php
+    // 대리점 이상의 관리자인 경우 대리점 선택박스 노출
+    if ($dmk_auth['is_super'] || $dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR || $dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY) {
     ?>
     <label for="sag_id" class="sound_only">대리점 선택</label>
     <select name="sag_id" id="sag_id" onchange="updateBranchOptionsAndSubmit();">
         <option value="">전체 대리점</option>
-        <?php foreach ($agencies as $ag_id => $ag_name) { ?>
-            <option value="<?php echo $ag_id ?>" <?php echo ($sag_id == $ag_id) ? 'selected' : '' ?>><?php echo $ag_name ?> (<?php echo $ag_id ?>)</option>
-        <?php } ?>
+        <?php 
+        foreach ($agencies as $ag_id => $ag_info) {
+            // 총판이 선택된 경우 해당 총판의 대리점만 표시
+            if (empty($sdt_id) || $ag_info['dt_id'] == $sdt_id) {
+                $selected = ($sag_id == $ag_id) ? 'selected' : '';
+                echo '<option value="' . $ag_id . '" data-dt-id="' . $ag_info['dt_id'] . '" ' . $selected . '>' . $ag_info['name'] . ' (' . $ag_id . ')</option>';
+            }
+        }
+        ?>
     </select>
     <?php } ?>
 
@@ -227,9 +296,40 @@ require_once '../../../adm/admin.head.php';
 </form>
 
 <script>
+// 총판 선택 시 대리점 선택박스 업데이트
+function updateAgencyOptions() {
+    var sdtId = document.getElementById('sdt_id') ? document.getElementById('sdt_id').value : '';
+    var sagSelect = document.getElementById('sag_id');
+    
+    if (!sagSelect) return; // 대리점 선택박스가 없는 경우
+    
+    // 모든 대리점 옵션을 숨기고 다시 표시
+    var options = sagSelect.querySelectorAll('option');
+    
+    // 첫 번째 옵션(전체 대리점)은 항상 표시
+    for (var i = 1; i < options.length; i++) {
+        var option = options[i];
+        var optionDtId = option.getAttribute('data-dt-id');
+        
+        if (sdtId === '' || optionDtId === sdtId) {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+        }
+    }
+    
+    // 현재 선택된 대리점이 숨겨진 경우 초기화
+    var currentSelected = sagSelect.value;
+    var currentOption = sagSelect.querySelector('option[value="' + currentSelected + '"]');
+    if (currentOption && currentOption.style.display === 'none') {
+        sagSelect.value = '';
+        updateBranchOptions(); // 지점도 초기화
+    }
+}
+
 // 대리점 선택 시 지점 선택박스 업데이트
 function updateBranchOptions() {
-    var sagId = document.getElementById('sag_id').value;
+    var sagId = document.getElementById('sag_id') ? document.getElementById('sag_id').value : '';
     var sbrSelect = document.getElementById('sbr_id');
     
     if (!sbrSelect) return; // 지점 선택박스가 없는 경우 (지점 관리자)
@@ -259,8 +359,15 @@ function updateBranchOptions() {
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
+    updateAgencyOptions();
     updateBranchOptions();
 });
+
+function updateAgencyOptionsAndSubmit() {
+    updateAgencyOptions();
+    updateBranchOptions();
+    document.getElementById('fsearch').submit();
+}
 
 function updateBranchOptionsAndSubmit() {
     updateBranchOptions();
@@ -280,6 +387,7 @@ function updateBranchOptionsAndSubmit() {
 <form name="fadminlist" id="fadminlist" method="post">
     <input type="hidden" name="sfl" value="<?php echo $sfl ?>">
     <input type="hidden" name="stx" value="<?php echo $stx ?>">
+    <input type="hidden" name="sdt_id" value="<?php echo $sdt_id ?>">
     <input type="hidden" name="sag_id" value="<?php echo $sag_id ?>">
     <input type="hidden" name="sbr_id" value="<?php echo $sbr_id ?>">
     <input type="hidden" name="page" value="<?php echo $page ?>">
@@ -308,21 +416,37 @@ function updateBranchOptionsAndSubmit() {
                 $num = $total_count - ($page - 1) * $rows - $i + 1;
                 
                 // 관리자 소속 정보 조회
-                $admin_org = '';
-                if ($row['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR) {
-                    $org_sql = "SELECT dt_name FROM dmk_distributor WHERE dt_mb_id = '".sql_escape_string($row['mb_id'])."'";
+                $admin_org_name = '';
+                $admin_org_id = '';
+                
+                if ($row['dmk_dt_id']) {
+                    $org_sql = "SELECT dt_name FROM dmk_distributor WHERE dt_id = '".sql_escape_string($row['dmk_dt_id'])."'";
                     $org_row = sql_fetch($org_sql);
-                    $admin_org = $org_row ? '총판: ' . $org_row['dt_name'] : '총판';
-                } elseif ($row['mb_level'] == DMK_MB_LEVEL_AGENCY) {
-                    $org_sql = "SELECT ag_name FROM dmk_agency WHERE ag_mb_id = '".sql_escape_string($row['mb_id'])."'";
+                    if ($org_row) {
+                        $admin_org_name = '총판: ' . $org_row['dt_name'];
+                        $admin_org_id = $row['dmk_dt_id'];
+                    }
+                } elseif ($row['dmk_ag_id']) {
+                    $org_sql = "SELECT ag_name FROM dmk_agency WHERE ag_id = '".sql_escape_string($row['dmk_ag_id'])."'";
                     $org_row = sql_fetch($org_sql);
-                    $admin_org = $org_row ? '대리점: ' . $org_row['ag_name'] : '대리점';
-                } elseif ($row['mb_level'] == DMK_MB_LEVEL_BRANCH) {
-                    $org_sql = "SELECT br_name FROM dmk_branch WHERE br_mb_id = '".sql_escape_string($row['mb_id'])."'";
+                    if ($org_row) {
+                        $admin_org_name = '대리점: ' . $org_row['ag_name'];
+                        $admin_org_id = $row['dmk_ag_id'];
+                    }
+                } elseif ($row['dmk_br_id']) {
+                    $org_sql = "SELECT br_name FROM dmk_branch WHERE br_id = '".sql_escape_string($row['dmk_br_id'])."'";
                     $org_row = sql_fetch($org_sql);
-                    $admin_org = $org_row ? '지점: ' . $org_row['br_name'] : '지점';
+                    if ($org_row) {
+                        $admin_org_name = '지점: ' . $org_row['br_name'];
+                        $admin_org_id = $row['dmk_br_id'];
+                    }
                 } else {
-                    $admin_org = '기타';
+                    $admin_org_name = '미분류';
+                }
+                
+                $admin_org_display = $admin_org_name;
+                if (!empty($admin_org_id)) {
+                    $admin_org_display .= ' (' . $admin_org_id . ')';
                 }
                 
                 $mb_nick = get_sideview($row['mb_id'], $row['mb_nick'], $row['mb_email'], $row['mb_homepage']);
@@ -339,7 +463,7 @@ function updateBranchOptionsAndSubmit() {
                 <td class="td_left"><?php echo $row['mb_name'] ?></td>
                 <td class="td_left"><?php echo $mb_nick ?></td>
                 <td class="td_num"><?php echo $row['mb_level'] ?></td>
-                <td class="td_left"><?php echo $admin_org ?></td>
+                <td class="td_left"><?php echo $admin_org_display ?></td>
                 <td class="td_datetime"><?php echo substr($row['mb_datetime'], 0, 10) ?></td>
                 <td class="td_datetime"><?php echo $row['mb_today_login'] ? substr($row['mb_today_login'], 0, 10) : '-' ?></td>
                 <td class="td_mng">
