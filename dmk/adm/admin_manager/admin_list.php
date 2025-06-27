@@ -21,7 +21,7 @@ $sbr_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : ''; // 지�
 // 총판 목록 조회 (페이지 로드 시 초기값 설정용)
 $distributors = [];
 if ($dmk_auth['is_super']) {
-    $dt_sql = "SELECT dt_id, dt_name FROM dmk_distributor WHERE dt_status = 1 ORDER BY dt_name ASC";
+    $dt_sql = "SELECT d.dt_id, m.mb_nick as dt_name FROM dmk_distributor d JOIN {$g5['member_table']} m ON d.dt_id = m.mb_id WHERE d.dt_status = 1 ORDER BY m.mb_nick ASC";
     $dt_res = sql_query($dt_sql);
     while($dt_row = sql_fetch_array($dt_res)) {
         $distributors[$dt_row['dt_id']] = $dt_row['dt_name'];
@@ -70,17 +70,10 @@ if (!$dmk_auth['is_super']) {
     $sql_search .= " AND m.mb_level < 10 ";
 }
 
-// 검색 기능 (mb_id, mb_name, mb_nick, mb_level)
+// 검색 기능 (mb_id, mb_name, mb_nick)
 if ($stx) {
     $sql_search .= " AND ( ";
-    switch ($sfl) {
-        case 'mb_level':
-            $sql_search .= " m.mb_level = '".sql_escape_string($stx)."' ";
-            break;
-        default:
-            $sql_search .= " m.".sql_escape_string($sfl)." LIKE '".sql_escape_string($stx)."%' ";
-            break;
-    }
+    $sql_search .= " m.".sql_escape_string($sfl)." LIKE '".sql_escape_string($stx)."%' ";
     $sql_search .= " ) ";
 }
 
@@ -116,6 +109,19 @@ require_once '../../../adm/admin.head.php';
 
 // 체인 선택박스 에셋 포함
 echo dmk_include_chain_select_assets();
+
+function get_agency_name($ag_id) {
+    global $g5;
+    $sql = "SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($ag_id)."'";
+    $row = sql_fetch($sql);
+    return $row ? $row['mb_nick'] : '미등록대리점';
+}
+function get_branch_name($br_id) {
+    global $g5;
+    $sql = "SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($br_id)."'";
+    $row = sql_fetch($sql);
+    return $row ? $row['mb_nick'] : '미등록지점';
+}
 ?>
 
 <div class="local_ov01 local_ov">
@@ -138,7 +144,6 @@ echo dmk_include_chain_select_assets();
         <option value="mb_id" <?php echo get_selected($sfl, "mb_id"); ?>>관리자아이디</option>
         <option value="mb_name" <?php echo get_selected($sfl, "mb_name"); ?>>이름</option>
         <option value="mb_nick" <?php echo get_selected($sfl, "mb_nick"); ?>>닉네임</option>
-        <option value="mb_level" <?php echo get_selected($sfl, "mb_level"); ?>>권한레벨</option>
     </select>
     <label for="stx" class="sound_only">검색어</label>
     <input type="text" name="stx" value="<?php echo $stx ?>" id="stx" class="frm_input">
@@ -198,7 +203,7 @@ echo dmk_include_chain_select_assets();
                 <th scope="col">관리자ID</th>
                 <th scope="col">이름</th>
                 <th scope="col">닉네임</th>
-                <th scope="col">권한레벨</th>
+                <th scope="col">관리자계층</th>
                 <th scope="col">소속기관</th>
                 <th scope="col">가입일</th>
                 <th scope="col">최종접속</th>
@@ -212,31 +217,71 @@ echo dmk_include_chain_select_assets();
                 $i++;
                 $num = $total_count - ($page - 1) * $rows - $i + 1;
                 
-                // 관리자 소속 정보 조회
+                // 관리자 계층 정보
+                $admin_level_name = '';
+                switch ($row['dmk_mb_type']) {
+                    case DMK_MB_TYPE_DISTRIBUTOR:
+                        $admin_level_name = '총판 관리자';
+                        break;
+                    case DMK_MB_TYPE_AGENCY:
+                        $admin_level_name = '대리점 관리자';
+                        break;
+                    case DMK_MB_TYPE_BRANCH:
+                        $admin_level_name = '지점 관리자';
+                        break;
+                    default:
+                        $admin_level_name = '미지정';
+                        break;
+                }
+                
+                // 관리자 소속 기관 정보 조회 (계층별, 누락시 미등록 표시)
                 $admin_org_name = '';
                 $admin_org_id = '';
-                
-                if ($row['dmk_dt_id']) {
-                    $org_sql = "SELECT dt_name FROM dmk_distributor WHERE dt_id = '".sql_escape_string($row['dmk_dt_id'])."'";
-                    $org_row = sql_fetch($org_sql);
-                    if ($org_row) {
-                        $admin_org_name = '총판: ' . $org_row['dt_name'];
-                        $admin_org_id = $row['dmk_dt_id'];
-                    }
-                } elseif ($row['dmk_ag_id']) {
-                    $org_sql = "SELECT ag_name FROM dmk_agency WHERE ag_id = '".sql_escape_string($row['dmk_ag_id'])."'";
-                    $org_row = sql_fetch($org_sql);
-                    if ($org_row) {
-                        $admin_org_name = '대리점: ' . $org_row['ag_name'];
-                        $admin_org_id = $row['dmk_ag_id'];
-                    }
-                } elseif ($row['dmk_br_id']) {
-                    $org_sql = "SELECT br_name FROM dmk_branch WHERE br_id = '".sql_escape_string($row['dmk_br_id'])."'";
-                    $org_row = sql_fetch($org_sql);
-                    if ($org_row) {
-                        $admin_org_name = '지점: ' . $org_row['br_name'];
+
+                // 1. 지점 관리자
+                if ($row['dmk_br_id']) {
+                    $br_name = get_branch_name($row['dmk_br_id']);
+                    $br_sql = "SELECT ag_id FROM dmk_branch WHERE br_id = '".sql_escape_string($row['dmk_br_id'])."'";
+                    $br_row = sql_fetch($br_sql);
+                    if ($br_row) {
+                        $ag_name = get_agency_name($br_row['ag_id']);
+                        $ag_sql = "SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($br_row['ag_id'])."'";
+                        $ag_row = sql_fetch($ag_sql);
+                        if ($ag_row) {
+                            $dt_sql = "SELECT mb_nick as dt_name FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($ag_row['dt_id'])."'";
+                            $dt_row = sql_fetch($dt_sql);
+                            $admin_org_name = ($dt_row ? $dt_row['dt_name'] : '미등록총판') . ' > ' . $ag_name . ' > ' . $br_name;
+                            $admin_org_id = $row['dmk_br_id'];
+                        } else {
+                            $admin_org_name = '미등록대리점 > ' . $br_name;
+                            $admin_org_id = $row['dmk_br_id'];
+                        }
+                    } else {
+                        $admin_org_name = '미등록지점';
                         $admin_org_id = $row['dmk_br_id'];
                     }
+                }
+                // 2. 대리점 관리자
+                elseif ($row['dmk_ag_id']) {
+                    $ag_name = get_agency_name($row['dmk_ag_id']);
+                    $ag_sql = "SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($row['dmk_ag_id'])."'";
+                    $ag_row = sql_fetch($ag_sql);
+                    if ($ag_row) {
+                        $dt_sql = "SELECT mb_nick as dt_name FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($ag_row['dt_id'])."'";
+                        $dt_row = sql_fetch($dt_sql);
+                        $admin_org_name = ($dt_row ? $dt_row['dt_name'] : '미등록총판') . ' > ' . $ag_name;
+                        $admin_org_id = $row['dmk_ag_id'];
+                    } else {
+                        $admin_org_name = '미등록대리점';
+                        $admin_org_id = $row['dmk_ag_id'];
+                    }
+                }
+                // 3. 총판 관리자
+                elseif ($row['dmk_dt_id']) {
+                    $dt_sql = "SELECT mb_nick as dt_name FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($row['dmk_dt_id'])."'";
+                    $dt_row = sql_fetch($dt_sql);
+                    $admin_org_name = $dt_row ? $dt_row['dt_name'] : '미등록총판';
+                    $admin_org_id = $row['dmk_dt_id'];
                 } else {
                     $admin_org_name = '미분류';
                 }
@@ -259,7 +304,7 @@ echo dmk_include_chain_select_assets();
                 <td class="td_left"><?php echo $row['mb_id'] ?></td>
                 <td class="td_left"><?php echo $row['mb_name'] ?></td>
                 <td class="td_left"><?php echo $mb_nick ?></td>
-                <td class="td_num"><?php echo $row['mb_level'] ?></td>
+                <td class="td_left"><?php echo $admin_level_name ?></td>
                 <td class="td_left"><?php echo $admin_org_display ?></td>
                 <td class="td_datetime"><?php echo substr($row['mb_datetime'], 0, 10) ?></td>
                 <td class="td_datetime"><?php echo $row['mb_today_login'] ? substr($row['mb_today_login'], 0, 10) : '-' ?></td>

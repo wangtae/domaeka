@@ -148,15 +148,7 @@ function imageview(id, w, h)
                     ?>
                     <span class="./img/btn_gnb.png">메뉴열기</span></button>
                     <ul class="tnb_mb_area">
-                        <li><a href="<?php echo G5_ADMIN_URL ?>/member_form.php?w=u&amp;mb_id=<?php echo $member['mb_id'] ?>">
-                            <?php
-                            $display_text = $admin_type_text;
-                            if ($dmk_auth && isset($dmk_auth['admin_type']) && $dmk_auth['admin_type'] === 'sub') {
-                                $display_text .= '(S)';
-                            }
-                            echo $display_text;
-                            ?>
-                        </a></li>
+   
                         <li id="tnb_logout"><a href="<?php echo G5_BBS_URL ?>/logout.php">로그아웃</a></li>
                     </ul>
                 </li>
