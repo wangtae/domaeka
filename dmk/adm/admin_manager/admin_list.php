@@ -3,7 +3,7 @@ $sub_menu = "190600";
 require_once '../../../adm/_common.php';
 include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
 
-$g5['title'] = '관리자 관리';
+$g5['title'] = '서브 관리자 관리';
 
 // 현재 관리자 권한 확인
 $dmk_auth = dmk_get_admin_auth();

@@ -295,14 +295,15 @@ if (!$auth['is_super']) {
     <tr>
         <th scope="row"><label for="mb_nick">지점명<strong class="sound_only">필수</strong></label></th>
         <td>
-            <input type="text" name="mb_nick" value="<?php echo get_text($member_info['mb_nick']) ?>" id="mb_nick" required class="frm_input required" size="50" maxlength="100" placeholder="예: 강남지점">
+            <input type="text" name="mb_nick" value="<?php echo get_text($member_info['mb_nick']) ?>" id="mb_nick" required class="frm_input required" size="50" maxlength="100" placeholder="예: 강남지점" <?php echo ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) ? 'readonly' : ''; ?>>
             <span class="frm_info">지점의 공식 명칭 (UI 표시에 주로 사용)</span>
         </td>
     </tr>
     <tr>
         <th scope="row"><label for="mb_name">회사명<strong class="sound_only">필수</strong></label></th>
         <td>
-            <input type="text" name="mb_name" value="<?php echo get_text($member_info['mb_name']) ?>" id="mb_name" required class="frm_input required" size="30" maxlength="50" placeholder="(주)스도">
+            <input type="text" name="mb_name" value="<?php echo get_text($member_info['mb_name']) ?>" id="mb_name" required class="frm_input required" size="50" maxlength="100">
+            <span class="frm_info">회사명을 입력합니다.</span>
         </td>
     </tr>
     <tr>
@@ -342,7 +343,7 @@ if (!$auth['is_super']) {
     <tr>
         <th scope="row"><label for="br_shortcut_code">단축 URL 코드</label></th>
         <td>
-            <input type="text" name="br_shortcut_code" value="<?php echo get_text($branch['br_shortcut_code']) ?>" id="br_shortcut_code" class="frm_input" size="20" maxlength="20" placeholder="자동생성">
+            <input type="text" name="br_shortcut_code" value="<?php echo get_text($branch['br_shortcut_code']) ?>" id="br_shortcut_code" class="frm_input" size="20" maxlength="20" placeholder="자동생성" <?php echo ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) ? 'readonly' : ''; ?>>
             <span class="frm_info">주문 페이지 단축 URL에 사용됩니다. 비워두면 자동 생성됩니다.</span>
         </td>
     </tr>

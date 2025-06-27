@@ -49,6 +49,9 @@ $mb_email = isset($_POST['mb_email']) ? clean_xss_tags($_POST['mb_email']) : '';
 $mb_tel = isset($_POST['mb_tel']) ? clean_xss_tags($_POST['mb_tel']) : '';
 $mb_hp = isset($_POST['mb_hp']) ? clean_xss_tags($_POST['mb_hp']) : '';
 
+// DEBUG: Post 데이터에서 mb_name 값 확인
+var_dump("POST mb_name: ", $_POST['mb_name'] ?? 'N/A');
+
 // 우편번호 처리 (앞자리, 뒷자리 분리)
 $mb_zip = isset($_POST['mb_zip']) ? clean_xss_tags($_POST['mb_zip']) : '';
 
@@ -128,9 +131,13 @@ if (!$current_admin['is_super']) {
             exit;
         }
     } else if ($current_admin['mb_type'] == DMK_MB_TYPE_BRANCH) {
-        // 지점은 등록/수정 불가
-        alert('지점 관리자는 지점을 등록/수정할 권한이 없습니다.');
-        exit;
+        // 지점 관리자는 자신의 지점 정보만 수정할 수 있습니다.
+        // 등록 모드이거나, 자신의 지점이 아닌 경우 접근 거부
+        if ($w != 'u' || $br_id != $current_admin['mb_id']) {
+            alert('지점 관리자는 자신의 지점 정보만 수정할 수 있습니다.');
+            exit;
+        }
+        // 자신의 지점 수정인 경우, 이 지점에서 exit 하지 않고 다음 로직으로 진행
     }
 }
 
@@ -188,31 +195,63 @@ if ($w == 'u') {
     }
 
     // 지점 정보 업데이트
-    $sql = " UPDATE dmk_branch SET 
-                ag_id = '" . sql_escape_string($ag_id_for_update) . "',
-                br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
-                br_status = $br_status
-             WHERE br_id = '" . sql_escape_string($br_id) . "' ";
-    sql_query($sql);
+    // 지점 관리자는 dmk_branch 테이블의 정보를 수정할 수 없습니다.
+    if ($current_admin['mb_type'] != DMK_MB_TYPE_BRANCH) {
+        $sql = " UPDATE dmk_branch SET 
+                    ag_id = '" . sql_escape_string($ag_id_for_update) . "',
+                    br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
+                    br_status = $br_status
+                 WHERE br_id = '" . sql_escape_string($br_id) . "' ";
+        sql_query($sql);
+    }
     
     // g5_member 테이블의 관리자 정보 업데이트 (br_id를 mb_id로 사용)
-    $sql = " UPDATE {$g5['member_table']} SET 
-                mb_name = '" . sql_escape_string($mb_name) . "',
-                mb_nick = '" . sql_escape_string($mb_nick) . "',
-                mb_email = '" . sql_escape_string($mb_email) . "',
-                mb_tel = '" . sql_escape_string($mb_tel) . "',
-                mb_hp = '" . sql_escape_string($mb_hp) . "',
-                mb_zip1 = '" . sql_escape_string($mb_zip1) . "',
-                mb_zip2 = '" . sql_escape_string($mb_zip2) . "',
-                mb_addr1 = '" . sql_escape_string($mb_addr1) . "',
-                mb_addr2 = '" . sql_escape_string($mb_addr2) . "',
-                mb_addr3 = '" . sql_escape_string($mb_addr3) . "',
-                mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "',
-                dmk_ag_id = '" . sql_escape_string($ag_id_for_update) . "',
-                dmk_dt_id = '" . sql_escape_string($dt_id_for_update) . "'
-                $mb_password_update
-             WHERE mb_id = '" . sql_escape_string($br_id) . "' ";
-    sql_query($sql);
+    $member_update_fields = array();
+
+    // 비밀번호는 변경 요청이 있을 때만 업데이트
+    if ($mb_password_update) {
+        $member_update_fields[] = substr($mb_password_update, 2); // ", " 제거
+    }
+
+    // 지점 관리자는 특정 필드만 수정 가능
+    if ($current_admin['mb_type'] == DMK_MB_TYPE_BRANCH) {
+        // 사용자 요청: 비밀번호, 회사명, 전화번호, 휴대폰 번호, 주소, 이메일
+        $member_update_fields[] = "mb_name = '" . sql_escape_string($mb_name) . "'";
+        $member_update_fields[] = "mb_email = '" . sql_escape_string($mb_email) . "'";
+        $member_update_fields[] = "mb_tel = '" . sql_escape_string($mb_tel) . "'";
+        $member_update_fields[] = "mb_hp = '" . sql_escape_string($mb_hp) . "'";
+        $member_update_fields[] = "mb_zip1 = '" . sql_escape_string($mb_zip1) . "'";
+        $member_update_fields[] = "mb_zip2 = '" . sql_escape_string($mb_zip2) . "'";
+        $member_update_fields[] = "mb_addr1 = '" . sql_escape_string($mb_addr1) . "'";
+        $member_update_fields[] = "mb_addr2 = '" . sql_escape_string($mb_addr2) . "'";
+        $member_update_fields[] = "mb_addr3 = '" . sql_escape_string($mb_addr3) . "'";
+        $member_update_fields[] = "mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "'";
+    } else {
+        // 그 외 관리자는 모든 필드 업데이트 가능
+        $member_update_fields[] = "mb_name = '" . sql_escape_string($mb_name) . "'";
+        $member_update_fields[] = "mb_nick = '" . sql_escape_string($mb_nick) . "'";
+        $member_update_fields[] = "mb_email = '" . sql_escape_string($mb_email) . "'";
+        $member_update_fields[] = "mb_tel = '" . sql_escape_string($mb_tel) . "'";
+        $member_update_fields[] = "mb_hp = '" . sql_escape_string($mb_hp) . "'";
+        $member_update_fields[] = "mb_zip1 = '" . sql_escape_string($mb_zip1) . "'";
+        $member_update_fields[] = "mb_zip2 = '" . sql_escape_string($mb_zip2) . "'";
+        $member_update_fields[] = "mb_addr1 = '" . sql_escape_string($mb_addr1) . "'";
+        $member_update_fields[] = "mb_addr2 = '" . sql_escape_string($mb_addr2) . "'";
+        $member_update_fields[] = "mb_addr3 = '" . sql_escape_string($mb_addr3) . "'";
+        $member_update_fields[] = "mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "'";
+        $member_update_fields[] = "dmk_ag_id = '" . sql_escape_string($ag_id_for_update) . "'";
+        $member_update_fields[] = "dmk_dt_id = '" . sql_escape_string($dt_id_for_update) . "'";
+    }
+
+    // 업데이트할 필드가 하나라도 있는 경우에만 쿼리 실행
+    if (!empty($member_update_fields)) {
+        $sql = " UPDATE {$g5['member_table']} SET "
+             . implode(', ', $member_update_fields)
+             . " WHERE mb_id = '" . sql_escape_string($br_id) . "' ";
+        // DEBUG: g5_member 업데이트 쿼리 확인
+        var_dump("g5_member Update SQL: ", $sql);
+        sql_query($sql);
+    }
     
     // 관리자 액션 로깅
     dmk_log_admin_action('branch_modify', $br_id, '지점 정보 수정: ' . $mb_nick, $sub_menu);

@@ -8,13 +8,18 @@ $sub_menu = '190400';
 include_once('../../../adm/_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
+// 지점 관리자 mb_type 상수 정의
+define('DMK_BRANCH_MB_TYPE', 4);
+
 // 도매까 권한 확인
 $dmk_auth = dmk_get_admin_auth();
-if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > 2) {
-    alert('통계 조회는 총판 및 대리점 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+// 지점 관리자 (mb_type 3)도 자신의 통계를 볼 수 있도록 권한 수정
+// 최고 관리자가 아니면서 mb_type이 DMK_BRANCH_MB_TYPE (3)보다 큰 경우에만 접근 제한
+if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > DMK_BRANCH_MB_TYPE) {
+    alert('통계 조회는 총판, 대리점 및 지점 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
 }
 
-$g5['title'] = '도매까 통계 대시보드';
+$g5['title'] = '통계 대시보드 (프로토타입으로 실제 내용 구현해야 함)';
 include_once(G5_ADMIN_PATH.'/admin.head.php');
 
 // 날짜 범위 설정
