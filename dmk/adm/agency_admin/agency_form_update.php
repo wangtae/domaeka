@@ -6,6 +6,7 @@ require_once G5_PATH . "/dmk/adm/lib/admin.log.lib.php";
 // 도매까 권한 라이브러리 포함
 include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 
+
 $w = isset($_POST['w']) ? sql_escape_string(trim($_POST['w'])) : '';
 $ag_id = isset($_POST['ag_id']) ? sql_escape_string(trim($_POST['ag_id'])) : '';
 
