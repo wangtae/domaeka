@@ -200,6 +200,8 @@ class DmkChainSelect {
         // 총판 ID가 없으면 초기값 사용 (총판 관리자의 경우)
         const dtId = distributorId || this.currentValues.distributor;
         
+        this.log('대리점 AJAX 요청 URL:', `${this.options.agencyEndpoint}?dt_id=${encodeURIComponent(dtId)}`);
+        
         fetch(`${this.options.agencyEndpoint}?dt_id=${encodeURIComponent(dtId)}`)
             .then(response => {
                 if (!response.ok) {
@@ -275,11 +277,18 @@ class DmkChainSelect {
             
             this.setLoadingState(branchSelect, true);
             
+            this.log('지점 AJAX 요청 URL:', `${this.options.branchEndpoint}?ag_id=${agencyId}`);
+            
             fetch(`${this.options.branchEndpoint}?ag_id=${agencyId}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     this.log('지점 목록 로드 완료:', data);
-                    this.clearSelect(this.options.branchSelectId, this.options.placeholders.branch);
+                    this.clearSelect(this.options.branchSelectId);
                     
                     // 응답 구조 확인 및 데이터 추출
                     let branches = [];
@@ -309,7 +318,7 @@ class DmkChainSelect {
                 })
                 .catch(error => {
                     console.error('[DmkChainSelect] 지점 목록 로드 오류:', error);
-                    this.clearSelect(this.options.branchSelectId, this.options.placeholders.branch);
+                    this.clearSelect(this.options.branchSelectId);
                     reject(error);
                 })
                 .finally(() => {

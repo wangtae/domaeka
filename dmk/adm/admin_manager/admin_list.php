@@ -48,9 +48,11 @@ $sql_join = "";
 // 검색 파라미터에 따른 SQL 조건 추가
 if (!empty($sdt_id)) {
     $sql_search .= " AND m.dmk_dt_id = '".sql_escape_string($sdt_id)."' ";
-} elseif (!empty($sag_id)) {
+}
+if (!empty($sag_id)) {
     $sql_search .= " AND m.dmk_ag_id = '".sql_escape_string($sag_id)."' ";
-} elseif (!empty($sbr_id)) {
+}
+if (!empty($sbr_id)) {
     $sql_search .= " AND m.dmk_br_id = '".sql_escape_string($sbr_id)."' ";
 }
 
@@ -103,6 +105,10 @@ $from_record = ($page - 1) * $rows;
 $sql = " SELECT DISTINCT m.* {$sql_common} {$sql_search} {$sql_order} LIMIT {$from_record}, {$rows} "; // 조인 제거
 $result = sql_query($sql);
 
+// 디버깅용 SQL 쿼리 출력
+echo "<!-- DEBUG SQL: " . htmlspecialchars($sql) . " -->";
+echo "<!-- DEBUG SEARCH PARAMS: sdt_id={$sdt_id}, sag_id={$sag_id}, sbr_id={$sbr_id} -->";
+
 // URL 쿼리 스트링 생성
 $qstr = 'sfl='.$sfl.'&amp;stx='.$stx.'&amp;sdt_id='.$sdt_id.'&amp;sag_id='.$sag_id.'&amp;sbr_id='.$sbr_id;
 
@@ -122,7 +128,7 @@ echo dmk_include_chain_select_assets();
     // 공통 체인 선택박스 렌더링 (간소화된 버전)
     echo dmk_render_chain_select([
         'page_type' => DMK_CHAIN_SELECT_FULL,
-        'auto_submit' => false, // 관리자 목록에서는 수동 제출
+        'auto_submit' => true, // 관리자 목록에서도 자동 제출 활성화
         'debug' => true // 디버그 모드 활성화
     ]);
     ?>
