@@ -23,7 +23,7 @@ if (!dmk_can_access_menu($sub_menu)) {
 dmk_auth_check_menu($auth, $sub_menu, 'w');
 
 check_demo();
-check_token();
+check_admin_token();
 
 // 지점 관련 상수 정의
 define('DMK_BRANCH_MB_LEVEL', 4); // 적절한 레벨로 설정 (예: 대리점보다 낮은 레벨)

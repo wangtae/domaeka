@@ -17,7 +17,7 @@ $current_admin = dmk_get_admin_auth();
 // dmk_authenticate_form_access 함수를 사용하여 통합 권한 체크
 dmk_authenticate_form_access('agency_form', $w, $ag_id);
 
-check_token();
+check_admin_token();
 
 // POST 데이터 처리
 $dt_id = isset($_POST['dt_id']) ? sql_escape_string(trim($_POST['dt_id'])) : '';
