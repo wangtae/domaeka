@@ -52,6 +52,11 @@ if ($w == 'u') {
         'dt_id' => '', // 총판 ID
         'ag_status' => 1
     );
+    
+    // 총판 관리자의 경우 자신의 총판 ID를 기본값으로 설정
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && !$auth['is_super']) {
+        $agency['dt_id'] = $auth['dt_id'];
+    }
 
     $member_info = array(
         'mb_id' => '',
@@ -134,18 +139,68 @@ while($row = sql_fetch_array($dt_result)) {
     <tr>
         <th scope="row"><label for="dt_id">소속 총판</label></th>
         <td>
-            <select name="dt_id" id="dt_id" class="frm_input">
-                <option value="">총판 선택</option>
-                <?php foreach ($distributors as $distributor) { ?>
-                    <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($agency['dt_id'] == $distributor['dt_id']) ? 'selected' : '' ?>>
-                        <?php echo get_text($distributor['mb_nick'] ?: $distributor['mb_name']) ?> (<?php echo $distributor['dt_id'] ?>)
-                    </option>
-                <?php } ?>
-            </select>
-            <span class="frm_info">해당 대리점이 소속될 총판을 선택합니다.</span>
+            <?php if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && !$auth['is_super']) { ?>
+                <!-- 총판 관리자는 자신의 총판만 선택 가능하므로 읽기 전용으로 표시 -->
+                <?php 
+                    $current_dt_name = dmk_get_member_name($auth['dt_id']);
+                ?>
+                <input type="text" value="<?php echo get_text($auth['dt_id']) ?> (<?php echo get_text($current_dt_name) ?>)" class="frm_input" readonly>
+                <input type="hidden" name="dt_id" value="<?php echo get_text($auth['dt_id']) ?>">
+                <span class="frm_info">총판 관리자는 자신의 총판에만 대리점을 등록할 수 있습니다.</span>
+            <?php } else { ?>
+                <!-- 최고 관리자는 모든 총판 선택 가능 -->
+                <select name="dt_id" id="dt_id" class="frm_input" required>
+                    <option value="">총판 선택</option>
+                    <?php foreach ($distributors as $distributor) { ?>
+                        <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($agency['dt_id'] == $distributor['dt_id']) ? 'selected' : '' ?>>
+                            <?php echo get_text($distributor['mb_nick'] ?: $distributor['mb_name']) ?> (<?php echo $distributor['dt_id'] ?>)
+                        </option>
+                    <?php } ?>
+                </select>
+                <span class="frm_info">해당 대리점이 소속될 총판을 선택합니다.</span>
+            <?php } ?>
         </td>
     </tr>
     <?php } // 등록 모드일 때만 끝 ?>
+    <?php if ($w == 'u') { // 수정 모드일 때 총판 정보 처리 ?>
+    <tr>
+        <th scope="row"><label for="dt_id">소속 총판</label></th>
+        <td>
+            <?php
+            // 수정 시 $agency['dt_id']가 비어있을 경우 처리
+            // 현재 로그인한 관리자의 권한을 확인하여 적절한 총판 ID를 설정하거나 선택 UI 제공
+            if (empty($agency['dt_id'])) {
+                if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && !$auth['is_super']) {
+                    // 총판 관리자가 자신의 총판에 속하지 않은 대리점을 수정할 때, 자신의 총판 ID를 기본으로 설정
+                    $agency['dt_id'] = $auth['mb_id'];
+                }
+            }
+
+            if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && !$auth['is_super']) { ?>
+                <!-- 총판 관리자는 자신의 총판만 선택 가능하므로 읽기 전용으로 표시 -->
+                <?php
+                    $display_dt_id = get_text($agency['dt_id']);
+                    $display_dt_name = dmk_get_member_name($agency['dt_id']);
+                ?>
+                <input type="text" value="<?php echo $display_dt_id ?> (<?php echo $display_dt_name ?>)" class="frm_input" readonly>
+                <input type="hidden" name="dt_id" value="<?php echo $display_dt_id ?>">
+
+                <span class="frm_info">총판 관리자는 자신의 총판에만 대리점을 수정할 수 있습니다.</span>
+            <?php } else { // 최고 관리자 또는 다른 유형의 관리자 ?>
+                <!-- 최고 관리자는 모든 총판 선택 가능 -->
+                <select name="dt_id" id="dt_id" class="frm_input" required>
+                    <option value="">총판 선택</option>
+                    <?php foreach ($distributors as $distributor) { ?>
+                        <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($agency['dt_id'] == $distributor['dt_id']) ? 'selected' : '' ?>>
+                            <?php echo get_text($distributor['mb_nick'] ?: $distributor['mb_name']) ?> (<?php echo $distributor['dt_id'] ?>)
+                        </option>
+                    <?php } ?>
+                </select>
+                <span class="frm_info">해당 대리점이 소속될 총판을 선택합니다.</span>
+            <?php } ?>
+        </td>
+    </tr>
+    <?php } // 수정 모드일 때 총판 정보 처리 끝 ?>
     <tr>
         <th scope="row"><label for="ag_id">대리점 ID<strong class="sound_only">필수</strong></label></th>
         <td>
@@ -272,6 +327,15 @@ function fagency_submit(f)
         f.ag_id.focus();
         return false;
     }
+    
+    // 총판 선택 필수 (최고 관리자의 경우에만)
+    <?php if ($auth['is_super']) { ?>
+    if (!f.dt_id.value) {
+        alert("소속 총판을 선택하세요.");
+        f.dt_id.focus();
+        return false;
+    }
+    <?php } ?>
     <?php } ?>
 
     // 대리점 이름 (mb_name) 필수

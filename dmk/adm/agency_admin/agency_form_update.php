@@ -45,10 +45,16 @@ define('DMK_AGENCY_MB_TYPE', 2);
 define('DMK_AGENCY_ADMIN_TYPE', 'main');
 
 // 필수 필드 검사
+if (!$dt_id) {
+    alert('소속 총판이 누락되었습니다.');
+    exit;
+}
+
 if (!$ag_id) {
     alert('대리점 ID가 누락되었습니다.');
     exit;
 }
+
 if (!$mb_name) {
     alert('대리점 이름이 누락되었습니다.');
     exit;
@@ -56,6 +62,14 @@ if (!$mb_name) {
 if (!$mb_nick) {
     alert('회사명이 누락되었습니다.');
     exit;
+}
+
+// 권한 검사: 총판 관리자는 자신의 총판에만 대리점 등록 가능
+if (!$current_admin['is_super'] && $current_admin['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+    if ($dt_id != $current_admin['dt_id']) {
+        alert('자신의 총판에만 대리점을 등록할 수 있습니다.');
+        exit;
+    }
 }
 
 if ($w == '') { // 등록
@@ -147,15 +161,13 @@ if ($w == '') { // 등록
                 mb_addr1 = '$mb_addr1',
                 mb_addr2 = '$mb_addr2',
                 mb_addr3 = '$mb_addr3',
-                mb_addr_jibeon = '$mb_addr_jibeon',
-                dmk_dt_id = '$dt_id'
+                mb_addr_jibeon = '$mb_addr_jibeon'
                 $mb_password_hash
               WHERE mb_id = '$ag_id' ";
     sql_query($sql);
 
     // dmk_agency 테이블 상태 업데이트
     $sql = " UPDATE dmk_agency SET
-                dt_id = '$dt_id',
                 ag_status = '$ag_status'
               WHERE ag_id = '$ag_id' ";
     sql_query($sql);

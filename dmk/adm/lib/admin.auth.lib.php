@@ -1360,7 +1360,7 @@ function dmk_get_member_name($mb_id) {
     
     if (!$mb_id) return '';
     
-    $sql = " SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($mb_id) . "' ";
+    $sql = " SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($mb_id) . "' ORDER BY mb_name ASC";
     $row = sql_fetch($sql);
     
     return $row ? $row['mb_name'] : '';
@@ -1377,7 +1377,7 @@ function dmk_get_agency_name($ag_id) {
     
     if (!$ag_id) return '';
     
-    $sql = " SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($ag_id) . "' ";
+    $sql = " SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($ag_id) . "' ORDER BY ag_name ASC";
     $row = sql_fetch($sql);
     
     return $row ? $row['ag_name'] : '';
@@ -1430,12 +1430,16 @@ function dmk_authenticate_form_access($menu_code, $w = '', $target_id = '') {
         // 이 부분은 menu_code에 따라 동적으로 호출되어야 함 (예: dmk_can_modify_distributor, dmk_can_modify_agency 등)
         $can_modify_func = 'dmk_can_modify_' . str_replace('_form', '', $menu_code);
 
-        if (function_exists($can_modify_func) && $can_modify_func($target_id)) {
-            return; // 접근 허용
+        if (function_exists($can_modify_func)) {
+            $can_modify = $can_modify_func($target_id);
+            if ($can_modify) {
+                return; // 접근 허용
+            }
         }
     } else { // 등록 모드일 경우 메뉴 접근 권한 확인
         // 메뉴 접근 권한 확인
-        if (dmk_can_access_menu($menu_code)) {
+        $can_access = dmk_can_access_menu($menu_code);
+        if ($can_access) {
             return; // 접근 허용
         }
     }

@@ -303,9 +303,23 @@ function dmk_is_menu_allowed($menu_code, $user_type) {
     if (!isset($DMK_MENU_CONFIG[$user_type])) {
         return false;
     }
-    
-    // 허용된 메뉴 목록에 있는지 확인
-    return in_array($menu_code, $DMK_MENU_CONFIG[$user_type]['allowed_menus']);
+
+    $allowed_menus = $DMK_MENU_CONFIG[$user_type]['allowed_menus'];
+
+    // 폼 페이지와 메뉴 코드 매핑 (예: 'agency_form' -> '190200')
+    $form_menu_mapping = array(
+        'distributor_form' => '190100',
+        'agency_form'      => '190200',
+        'branch_form'      => '190300',
+        // 다른 폼 페이지가 있다면 여기에 추가
+    );
+
+    // 폼 메뉴 코드인 경우 숫자 메뉴 코드로 변환
+    if (isset($form_menu_mapping[$menu_code])) {
+        $menu_code = $form_menu_mapping[$menu_code];
+    }
+
+    return in_array($menu_code, $allowed_menus);
 }
 
 /**
@@ -348,30 +362,26 @@ function dmk_get_sub_menus($parent_menu_code, $user_type) {
  * @return string 사용자 계층 타입
  */
 function dmk_get_current_user_type() {
-    global $is_admin, $member;
-    
-    // 최고 관리자는 super
-    if ($is_admin === 'super') {
+    $auth = dmk_get_admin_auth(); // admin.auth.lib.php에 정의된 함수
+
+    if (!$auth) {
+        return null;
+    }
+
+    // 최고 관리자는 'super'로 간주
+    if ($auth['is_super']) {
         return 'super';
     }
-    
-    // DMK 관리자 권한 확인 (is_admin 조건 제거)
-    if (function_exists('dmk_get_admin_auth')) {
-        $dmk_auth = dmk_get_admin_auth();
-        if ($dmk_auth && isset($dmk_auth['mb_type'])) {
-            // mb_type을 문자열로 변환
-            switch ((int)$dmk_auth['mb_type']) {
-                case 1: // DMK_MB_TYPE_DISTRIBUTOR
-                    return 'distributor';
-                case 2: // DMK_MB_TYPE_AGENCY
-                    return 'agency';
-                case 3: // DMK_MB_TYPE_BRANCH
-                    return 'branch';
-                default:
-                    return 'none'; // 기본값을 none으로 변경
-            }
-        }
+
+    // 도매까 타입에 따라 문자열 반환
+    switch ($auth['mb_type']) {
+        case DMK_MB_TYPE_DISTRIBUTOR:
+            return 'distributor';
+        case DMK_MB_TYPE_AGENCY:
+            return 'agency';
+        case DMK_MB_TYPE_BRANCH:
+            return 'branch';
+        default:
+            return null; // 일반 회원 또는 정의되지 않은 타입
     }
-    
-    return 'none'; // 권한 없음
-} 
+}
