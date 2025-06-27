@@ -129,7 +129,7 @@ echo dmk_include_chain_select_assets();
             'sbr_id' => $sbr_id
         ],
         'form_id' => 'fsearch',
-        'auto_submit' => true,
+        'auto_submit' => false,
         'ajax_endpoints' => [
             'agencies' => './get_agencies.php',
             'branches' => './get_branches.php'

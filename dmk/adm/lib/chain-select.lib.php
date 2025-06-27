@@ -241,11 +241,12 @@ function dmk_render_chain_select($options = []) {
             'initialBranch' => $config['initial_branch'] ?: $options['current_values']['sbr_id'],
             'autoSubmit' => $options['auto_submit'],
             'formId' => $options['form_id'],
-            'debug' => $options['debug']
+            'debug' => true
         ];
         
         $html .= '<script>';
         $html .= 'document.addEventListener("DOMContentLoaded", function() {';
+        $html .= 'console.log("체인 선택박스 초기화 설정:", ' . json_encode($js_config) . ');';
         $html .= 'if (typeof DmkChainSelect !== "undefined") {';
         $html .= 'new DmkChainSelect(' . json_encode($js_config) . ');';
         $html .= '} else {';

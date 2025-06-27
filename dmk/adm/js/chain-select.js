@@ -105,17 +105,29 @@ class DmkChainSelect {
         this.currentValues.branch = '';
         
         if (distributorId) {
-            this.loadAgencies(distributorId);
-        }
-        
-        // 콜백 실행
-        if (this.options.onDistributorChange) {
-            this.options.onDistributorChange(distributorId);
-        }
-        
-        // 자동 폼 제출
-        if (this.options.autoSubmit) {
-            this.submitForm();
+            // AJAX 요청 완료 후 폼 제출
+            this.loadAgencies(distributorId, () => {
+                // 콜백 실행
+                if (this.options.onDistributorChange) {
+                    this.options.onDistributorChange(distributorId);
+                }
+                
+                // 자동 폼 제출
+                if (this.options.autoSubmit) {
+                    this.submitForm();
+                }
+            });
+        } else {
+            // 총판이 선택되지 않은 경우 바로 폼 제출
+            // 콜백 실행
+            if (this.options.onDistributorChange) {
+                this.options.onDistributorChange(distributorId);
+            }
+            
+            // 자동 폼 제출
+            if (this.options.autoSubmit) {
+                this.submitForm();
+            }
         }
     }
     
@@ -132,17 +144,29 @@ class DmkChainSelect {
         this.currentValues.branch = '';
         
         if (agencyId) {
-            this.loadBranches(agencyId);
-        }
-        
-        // 콜백 실행
-        if (this.options.onAgencyChange) {
-            this.options.onAgencyChange(agencyId);
-        }
-        
-        // 자동 폼 제출
-        if (this.options.autoSubmit) {
-            this.submitForm();
+            // AJAX 요청 완료 후 폼 제출
+            this.loadBranches(agencyId, () => {
+                // 콜백 실행
+                if (this.options.onAgencyChange) {
+                    this.options.onAgencyChange(agencyId);
+                }
+                
+                // 자동 폼 제출
+                if (this.options.autoSubmit) {
+                    this.submitForm();
+                }
+            });
+        } else {
+            // 대리점이 선택되지 않은 경우 바로 폼 제출
+            // 콜백 실행
+            if (this.options.onAgencyChange) {
+                this.options.onAgencyChange(agencyId);
+            }
+            
+            // 자동 폼 제출
+            if (this.options.autoSubmit) {
+                this.submitForm();
+            }
         }
     }
     
@@ -201,11 +225,15 @@ class DmkChainSelect {
                     agencySelect.appendChild(option);
                 });
                 
-                // 이전 선택값 복원
-                if (this.currentValues.agency && this.hasOption(agencySelect, this.currentValues.agency)) {
-                    agencySelect.value = this.currentValues.agency;
-                } else {
-                    this.currentValues.agency = '';
+                // 선택값 복원 (currentValues에 저장된 값 사용)
+                if (this.currentValues.agency) {
+                    if (this.hasOption(agencySelect, this.currentValues.agency)) {
+                        agencySelect.value = this.currentValues.agency;
+                        this.log('대리점 선택값 복원:', this.currentValues.agency);
+                    } else {
+                        this.log('대리점 선택값 복원 실패 - 옵션 없음:', this.currentValues.agency);
+                        this.currentValues.agency = '';
+                    }
                 }
                 
                 // 로딩 상태 해제
@@ -255,11 +283,15 @@ class DmkChainSelect {
                     branchSelect.appendChild(option);
                 });
                 
-                // 이전 선택값 복원
-                if (this.currentValues.branch && this.hasOption(branchSelect, this.currentValues.branch)) {
-                    branchSelect.value = this.currentValues.branch;
-                } else {
-                    this.currentValues.branch = '';
+                // 선택값 복원 (currentValues에 저장된 값 사용)
+                if (this.currentValues.branch) {
+                    if (this.hasOption(branchSelect, this.currentValues.branch)) {
+                        branchSelect.value = this.currentValues.branch;
+                        this.log('지점 선택값 복원:', this.currentValues.branch);
+                    } else {
+                        this.log('지점 선택값 복원 실패 - 옵션 없음:', this.currentValues.branch);
+                        this.currentValues.branch = '';
+                    }
                 }
                 
                 // 로딩 상태 해제
