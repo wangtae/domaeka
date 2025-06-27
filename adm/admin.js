@@ -1,3 +1,6 @@
+// admin.js 파일 로드 확인
+console.log("admin.js loaded successfully");
+
 function check_all(f)
 {
     var chk = document.getElementsByName("chk[]");
