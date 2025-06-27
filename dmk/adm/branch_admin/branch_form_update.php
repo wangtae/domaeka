@@ -25,6 +25,11 @@ dmk_auth_check_menu($auth, $sub_menu, 'w');
 check_demo();
 check_token();
 
+// 지점 관련 상수 정의
+define('DMK_BRANCH_MB_LEVEL', 4); // 적절한 레벨로 설정 (예: 대리점보다 낮은 레벨)
+define('DMK_BRANCH_MB_TYPE', 3); // 3은 지점을 의미
+define('DMK_BRANCH_ADMIN_TYPE', 'main');
+
 $w = $_POST['w'];
 $br_id = isset($_POST['br_id']) ? clean_xss_tags($_POST['br_id']) : '';
 
@@ -58,37 +63,45 @@ $current_admin = dmk_get_admin_auth();
 // 기본 유효성 검사
 if (!$br_id) {
     alert('지점 ID를 입력하세요.');
+    exit;
 }
 
 if (!$ag_id) {
     alert('소속 대리점을 선택하세요.');
+    exit;
 }
 
 if (!$mb_nick) {
     alert('지점명을 입력하세요.');
+    exit;
 }
 
 if (!$mb_name) {
     alert('대표자명을 입력하세요.');
+    exit;
 }
 
 if (!$mb_email) {
     alert('이메일을 입력하세요.');
+    exit;
 }
 
 // 지점 ID 유효성 검사 (관리자 ID로도 사용)
 if (!preg_match('/^[a-zA-Z0-9_]{3,20}$/', $br_id)) {
     alert('지점 ID는 영문, 숫자, 언더스코어만 사용 가능하며 3~20자여야 합니다.');
+    exit;
 }
 
 // 이메일 유효성 검사
 if (!filter_var($mb_email, FILTER_VALIDATE_EMAIL)) {
     alert('올바른 이메일 형식이 아닙니다.');
+    exit;
 }
 
 // 단축 URL 코드 유효성 검사 (입력된 경우)
 if ($br_shortcut_code && !preg_match('/^[a-zA-Z0-9_-]+$/', $br_shortcut_code)) {
     alert('단축 URL 코드는 영문, 숫자, 하이픈, 언더스코어만 사용 가능합니다.');
+    exit;
 }
 
 // 대리점 존재 여부 및 권한 확인
@@ -97,6 +110,7 @@ $agency = sql_fetch($agency_sql);
 
 if (!$agency) {
     alert('선택한 대리점이 존재하지 않거나 비활성 상태입니다.');
+    exit;
 }
 
 // 권한 확인: 해당 대리점에 지점을 등록/수정할 권한이 있는지 체크
@@ -105,15 +119,18 @@ if (!$current_admin['is_super']) {
         // 총판은 자신의 대리점에만 지점 등록/수정 가능
         if ($agency['dt_id'] != $current_admin['mb_id']) {
             alert('해당 대리점에 지점을 등록/수정할 권한이 없습니다.');
+            exit;
         }
     } else if ($current_admin['mb_type'] == DMK_MB_TYPE_AGENCY) {
         // 대리점은 자신의 대리점에만 지점 등록/수정 가능
         if ($ag_id != $current_admin['ag_id']) {
             alert('해당 대리점에 지점을 등록/수정할 권한이 없습니다.');
+            exit;
         }
     } else if ($current_admin['mb_type'] == DMK_MB_TYPE_BRANCH) {
         // 지점은 등록/수정 불가
         alert('지점 관리자는 지점을 등록/수정할 권한이 없습니다.');
+        exit;
     }
 }
 
@@ -206,23 +223,34 @@ if ($w == 'u') {
 } else {
     // 등록
     
+    // g5_member 테이블에 이미 존재하는 ID인지 확인 (지점 ID 사용)
+    $row = sql_fetch(" SELECT mb_id FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($br_id) . "' ");
+    if ($row && isset($row['mb_id'])) {
+        alert('이미 존재하는 회원 아이디입니다. 다른 지점 ID를 사용해주세요.');
+        exit;
+    }
+
     if (!$mb_password) {
         alert('비밀번호를 입력하세요.');
+        exit;
     }
     if ($mb_password != $mb_password_confirm) {
         alert('비밀번호가 일치하지 않습니다.');
+        exit;
     }
     // 비밀번호 강도 체크
     if (strlen($mb_password) < 8) {
         alert('비밀번호는 8자 이상이어야 합니다.');
+        exit;
     }
     
-    // 지점 ID 중복 확인
+    // 지점 ID 중복 확인 (dmk_branch 테이블)
     $sql = " SELECT br_id FROM dmk_branch WHERE br_id = '" . sql_escape_string($br_id) . "' ";
     $row = sql_fetch($sql);
     
     if ($row) {
-        alert('이미 사용중인 지점 ID입니다.');
+        alert('이미 사용중인 지점 ID입니다. 다른 지점 ID를 사용해주세요.');
+        exit;
     }
     
     // 단축 URL 코드 자동 생성 또는 사용자가 입력한 값 사용
@@ -239,6 +267,7 @@ if ($w == 'u') {
         $row = sql_fetch($sql);
         if ($row) {
             alert('이미 사용중인 단축 URL 코드입니다.');
+            exit;
         }
     }
 
@@ -249,7 +278,7 @@ if ($w == 'u') {
     // 새로운 회원 정보 삽입
     $sql = " INSERT INTO {$g5['member_table']} SET 
                 mb_id = '" . sql_escape_string($br_id) . "',
-                mb_password = '" . sql_escape_string($sql_password) . "',
+                mb_password = '$sql_password',
                 mb_name = '" . sql_escape_string($mb_name) . "',
                 mb_nick = '" . sql_escape_string($mb_nick) . "',
                 mb_email = '" . sql_escape_string($mb_email) . "',
@@ -261,31 +290,30 @@ if ($w == 'u') {
                 mb_addr2 = '" . sql_escape_string($mb_addr2) . "',
                 mb_addr3 = '" . sql_escape_string($mb_addr3) . "',
                 mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "',
-                mb_level = 2, // 지점 기본 레벨 (예: 2)
-                mb_datetime = G5_TIME_YMDHIS,
-                mb_ip = '" . $_SERVER['REMOTE_ADDR'] . "',
-                dmk_mb_type = '" . DMK_MB_TYPE_BRANCH . "',
-                dmk_admin_type = 'main',
+                mb_datetime = now(),
+                mb_ip = '" . sql_escape_string($REMOTE_ADDR) . "',
+                mb_level = " . DMK_BRANCH_MB_LEVEL . ",
+                dmk_mb_type = " . DMK_BRANCH_MB_TYPE . ",
+                dmk_dt_id = '" . sql_escape_string($agency['dt_id']) . "',
                 dmk_ag_id = '" . sql_escape_string($ag_id) . "',
-                dmk_dt_id = '" . sql_escape_string($agency['dt_id']) . "' "; // 선택된 대리점의 총판 ID를 가져와 저장
+                dmk_admin_type = '" . DMK_BRANCH_ADMIN_TYPE . "';";
     sql_query($sql);
-    
-    // dmk_branch 테이블에 지점 정보 추가
+
+    // dmk_branch 테이블에 지점 정보 등록
     $sql = " INSERT INTO dmk_branch SET 
                 br_id = '" . sql_escape_string($br_id) . "',
                 ag_id = '" . sql_escape_string($ag_id) . "',
-                dt_id = '" . sql_escape_string($agency['dt_id']) . "',
-                br_status = $br_status,
+                br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
+                br_status = '" . sql_escape_string($br_status) . "',
                 br_created_by = '" . sql_escape_string($current_admin['mb_id']) . "',
-                br_admin_type = 'main',
-                br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "' ";
+                br_admin_type = '" . DMK_BRANCH_ADMIN_TYPE . "';";
     sql_query($sql);
-    
-    // 관리자 액션 로깅
-    dmk_log_admin_action('branch_add', $br_id, '새 지점 등록: ' . $mb_nick, $sub_menu);
 
-    $msg = '새 지점이 등록되었습니다.';
-    goto_url('./branch_list.php');
+    // 관리자 액션 로깅
+    dmk_log_admin_action('insert', '지점 등록', '지점ID: '.$br_id, json_encode($_POST), null, 'branch_form', 'g5_member,dmk_branch');
+    
+    goto_url('./branch_list.php', '지점이 성공적으로 등록되었습니다.');
+    exit;
 }
 
 // 고유 코드 생성 함수 (짧은 URL 등에 사용)
