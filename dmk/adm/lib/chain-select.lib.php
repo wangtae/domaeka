@@ -184,6 +184,11 @@ function dmk_render_chain_select($options = []) {
             'agency' => '전체 대리점',
             'branch' => '전체 지점'
         ],
+        'field_names' => [
+            'distributor' => 'sdt_id',
+            'agency' => 'sag_id',
+            'branch' => 'sbr_id'
+        ],
         'debug' => false // 기본적으로 디버그 모드 OFF
     ];
     
@@ -200,9 +205,10 @@ function dmk_render_chain_select($options = []) {
         $distributors = dmk_get_distributors_for_select($options['dmk_auth']);
         $selected_dt_id = $config['initial_distributor'] ?: $options['current_values']['sdt_id'];
         $readonly = $config['distributor_readonly'] ? 'readonly' : '';
+        $field_name = $options['field_names']['distributor'] ?? 'sdt_id';
         
-        $html .= '<label for="sdt_id" class="' . $options['css_classes']['label'] . '">' . $options['labels']['distributor'] . '</label>';
-        $html .= '<select name="sdt_id" id="sdt_id" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
+        $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['distributor'] . '</label>';
+        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
         $html .= '<option value="">' . $options['placeholders']['distributor'] . '</option>';
         
         foreach ($distributors as $distributor) {
@@ -219,9 +225,10 @@ function dmk_render_chain_select($options = []) {
     if ($config['show_agency']) {
         $selected_ag_id = $config['initial_agency'] ?: $options['current_values']['sag_id'];
         $readonly = $config['agency_readonly'] ? 'readonly' : '';
+        $field_name = $options['field_names']['agency'] ?? 'sag_id';
         
-        $html .= '<label for="sag_id" class="' . $options['css_classes']['label'] . '">' . $options['labels']['agency'] . '</label>';
-        $html .= '<select name="sag_id" id="sag_id" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
+        $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['agency'] . '</label>';
+        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
         $html .= '<option value="">' . $options['placeholders']['agency'] . '</option>';
         $html .= '</select>';
     }
@@ -230,9 +237,10 @@ function dmk_render_chain_select($options = []) {
     if ($config['show_branch']) {
         $selected_br_id = $config['initial_branch'] ?: $options['current_values']['sbr_id'];
         $readonly = $config['branch_readonly'] ? 'readonly' : '';
+        $field_name = $options['field_names']['branch'] ?? 'sbr_id';
         
-        $html .= '<label for="sbr_id" class="' . $options['css_classes']['label'] . '">' . $options['labels']['branch'] . '</label>';
-        $html .= '<select name="sbr_id" id="sbr_id" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
+        $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['branch'] . '</label>';
+        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
         $html .= '<option value="">' . $options['placeholders']['branch'] . '</option>';
         $html .= '</select>';
     }
@@ -240,11 +248,14 @@ function dmk_render_chain_select($options = []) {
     // JavaScript 초기화 코드
     if ($config['show_distributor'] || $config['show_agency'] || $config['show_branch']) {
         $js_config = [
+            'distributorSelectId' => $options['field_names']['distributor'] ?? 'sdt_id',
+            'agencySelectId' => $options['field_names']['agency'] ?? 'sag_id',
+            'branchSelectId' => $options['field_names']['branch'] ?? 'sbr_id',
             'agencyEndpoint' => $options['ajax_endpoints']['agencies'],
             'branchEndpoint' => $options['ajax_endpoints']['branches'],
-            'initialDistributor' => $config['initial_distributor'] ?: $options['current_values']['sdt_id'],
-            'initialAgency' => $config['initial_agency'] ?: $options['current_values']['sag_id'],
-            'initialBranch' => $config['initial_branch'] ?: $options['current_values']['sbr_id'],
+            'initialDistributor' => $config['initial_distributor'] ?: $options['current_values'][$options['field_names']['distributor'] ?? 'sdt_id'],
+            'initialAgency' => $config['initial_agency'] ?: $options['current_values'][$options['field_names']['agency'] ?? 'sag_id'],
+            'initialBranch' => $config['initial_branch'] ?: $options['current_values'][$options['field_names']['branch'] ?? 'sbr_id'],
             'autoSubmit' => $options['auto_submit'],
             'formId' => $options['form_id'],
             'debug' => $options['debug']

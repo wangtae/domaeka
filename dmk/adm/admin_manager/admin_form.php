@@ -2,6 +2,9 @@
 $sub_menu = "190600";
 include_once './_common.php';
 
+// 공통 체인 선택박스 라이브러리 포함
+include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+
 // 현재 관리자 권한 정보 가져오기 (이미 _common.php에서 가져왔으므로 재사용)
 // $auth = dmk_get_admin_auth(); // 이미 _common.php에서 처리됨
 
@@ -199,82 +202,29 @@ if (!$auth['is_super']) {
     </colgroup>
     <tbody>
     <?php if ($w != 'u') { // 등록 모드일 때만 ?>
-    <?php if ($auth['is_super']) { // 본사 관리자만 총판 선택 박스 노출 ?>
     <tr>
-        <th scope="row"><label for="dt_id">소속 총판</label></th>
-        <td>
-            <select name="dt_id" id="dt_id" class="frm_input" onchange="updateAgencyOptions(this.value);">
-                <option value="">총판 선택</option>
-                <?php foreach ($distributors as $distributor) { ?>
-                    <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($member_info['dmk_dt_id'] == $distributor['dt_id']) ? 'selected' : '' ?>>
-                        <?php echo get_text($distributor['dt_name']) ?> (<?php echo $distributor['dt_id'] ?>)
-                    </option>
-                <?php } ?>
-            </select>
-            <span class="frm_info">해당 관리자가 소속될 총판을 선택합니다. (대리점 선택에 영향)</span>
-        </td>
-    </tr>
-    <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { // 총판 관리자는 자신의 총판 ID를 hidden 필드로 전달 ?>
-    <tr>
-        <th scope="row">소속 총판</th>
-        <td>
-            <input type="text" value="<?php echo get_text($auth['mb_id']) ?> (<?php echo get_text($auth['mb_name']) ?>)" class="frm_input" readonly>
-            <input type="hidden" name="dt_id" value="<?php echo get_text($auth['mb_id']) ?>">
-            <span class="frm_info">총판 관리자는 소속 총판을 변경할 수 없습니다.</span>
-        </td>
-    </tr>
-    <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) { // 대리점 관리자는 총판 정보만 표시 ?>
-    <tr>
-        <th scope="row">소속 총판</th>
+        <th scope="row">소속 기관</th>
         <td>
             <?php
-                $parent_dt_id = dmk_get_agency_distributor_id($auth['ag_id']);
-                $parent_dt_name = $parent_dt_id ? dmk_get_member_name($parent_dt_id) : '미지정';
+            // 공통 체인 선택박스 렌더링
+            echo dmk_render_chain_select([
+                'page_type' => DMK_CHAIN_SELECT_FULL,
+                'auto_submit' => false, // 등록 페이지에서는 자동 제출 비활성화
+                'debug' => true, // 디버그 모드 활성화
+                'form_id' => 'fmember', // 폼 ID 변경
+                'field_names' => [
+                    'distributor' => 'dt_id',
+                    'agency' => 'ag_id',
+                    'branch' => 'br_id'
+                ],
+                'current_values' => [
+                    'dt_id' => $member_info['dmk_dt_id'] ?? '',
+                    'ag_id' => $member_info['dmk_ag_id'] ?? '',
+                    'br_id' => $member_info['dmk_br_id'] ?? ''
+                ]
+            ]);
             ?>
-            <input type="text" value="<?php echo get_text($parent_dt_id) ?> (<?php echo get_text($parent_dt_name) ?>)" class="frm_input" readonly>
-            <input type="hidden" name="dt_id" value="<?php echo get_text($parent_dt_id) ?>">
-            <span class="frm_info">대리점 관리자는 소속 총판을 변경할 수 없습니다.</span>
-        </td>
-    </tr>
-    <?php } else { // 그 외 (지점 관리자 등)는 총판 필드 숨김 ?>
-    <input type="hidden" name="dt_id" value="">
-    <?php } ?>
-
-    <tr>
-        <th scope="row"><label for="ag_id">소속 대리점</label></th>
-        <td>
-            <select name="ag_id" id="ag_id" class="frm_input">
-                <?php if ($auth['is_super']) { ?>
-                    <option value="">먼저 총판을 선택하세요</option>
-                <?php } else { ?>
-                    <option value="">대리점 선택</option>
-                    <?php foreach ($agencies as $agency) { ?>
-                        <option value="<?php echo $agency['ag_id'] ?>" <?php echo ($member_info['dmk_ag_id'] == $agency['ag_id']) ? 'selected' : '' ?>>
-                            <?php echo get_text($agency['ag_name']) ?> (<?php echo $agency['ag_id'] ?>)
-                        </option>
-                    <?php } ?>
-                <?php } ?>
-            </select>
-            <span class="frm_info">해당 관리자가 소속될 대리점을 선택합니다. (지점 관리자 등록 시 필요)</span>
-        </td>
-    </tr>
-
-    <tr>
-        <th scope="row"><label for="br_id">소속 지점</label></th>
-        <td>
-            <select name="br_id" id="br_id" class="frm_input">
-                <?php if ($auth['is_super']) { ?>
-                    <option value="">먼저 대리점을 선택하세요</option>
-                <?php } else { ?>
-                    <option value="">지점 선택</option>
-                    <?php foreach ($branches as $branch) { ?>
-                        <option value="<?php echo $branch['br_id'] ?>" <?php echo ($member_info['dmk_br_id'] == $branch['br_id']) ? 'selected' : '' ?>>
-                            <?php echo get_text($branch['br_name']) ?> (<?php echo $branch['br_id'] ?>)
-                        </option>
-                    <?php } ?>
-                <?php } ?>
-            </select>
-            <span class="frm_info">해당 관리자가 소속될 지점을 선택합니다. (지점 관리자 등록 시 필요)</span>
+            <span class="frm_info">소속 기관을 선택하면 자동으로 관리자 유형이 결정됩니다.</span>
         </td>
     </tr>
     <?php } // 등록 모드일 때만 끝 ?>
@@ -383,7 +333,7 @@ if (!$auth['is_super']) {
         </td>
     </tr>
     <tr>
-        <th scope="row"><label for="dmk_mb_type">관리자 유형<strong class="sound_only">필수</strong></label></th>
+        <th scope="row"><label for="dmk_mb_type">관리자 유형</label></th>
         <td>
             <?php if ($w == 'u') { ?>
                 <input type="text" name="dmk_mb_type_display" value="<?php 
@@ -397,15 +347,9 @@ if (!$auth['is_super']) {
                 <input type="hidden" name="dmk_mb_type" value="<?php echo $member_info['dmk_mb_type'] ?>">
                 <span class="frm_info">관리자 유형은 수정할 수 없습니다.</span>
             <?php } else { ?>
-                <select name="dmk_mb_type" id="dmk_mb_type" required class="frm_input required">
-                    <option value="">관리자 유형 선택</option>
-                    <?php foreach ($admin_type_options as $value => $text) { ?>
-                        <option value="<?php echo $value ?>" <?php echo ($member_info['dmk_mb_type'] == $value) ? 'selected' : '' ?>>
-                            <?php echo $text ?>
-                        </option>
-                    <?php } ?>
-                </select>
-                <span class="frm_info">등록할 관리자의 유형을 선택합니다.</span>
+                <input type="text" name="dmk_mb_type_display" id="dmk_mb_type_display" class="frm_input" readonly placeholder="소속 기관을 선택하면 자동으로 결정됩니다">
+                <input type="hidden" name="dmk_mb_type" id="dmk_mb_type" value="">
+                <span class="frm_info">소속 기관 선택에 따라 자동으로 관리자 유형이 결정됩니다.</span>
             <?php } ?>
             <input type="hidden" name="mb_level" id="mb_level" value="<?php echo $member_info['mb_level'] ?>">
         </td>
@@ -429,340 +373,117 @@ if (!$auth['is_super']) {
 </form>
 
 <script>
-// 관리자 유형에 따른 mb_level 자동 설정
+// 체인 선택박스의 선택 상태에 따라 관리자 유형 자동 결정
 jQuery(document).ready(function() {
-    jQuery('#dmk_mb_type').on('change', function() {
-        var dmkType = jQuery(this).val();
-        var mbLevel = jQuery('#mb_level');
+    // 체인 선택박스 변경 이벤트 리스너
+    jQuery('#dt_id, #ag_id, #br_id').on('change', function() {
+        updateAdminType();
+    });
+    
+    // 초기 로드 시에도 실행
+    updateAdminType();
+    
+    function updateAdminType() {
+        var dt_id = jQuery('#dt_id').val();
+        var ag_id = jQuery('#ag_id').val();
+        var br_id = jQuery('#br_id').val();
         
-        switch(dmkType) {
-            case '<?php echo DMK_MB_TYPE_DISTRIBUTOR; ?>': // 총판
-                mbLevel.val('8');
-                break;
-            case '<?php echo DMK_MB_TYPE_AGENCY; ?>': // 대리점
-                mbLevel.val('6');
-                break;
-            case '<?php echo DMK_MB_TYPE_BRANCH; ?>': // 지점
-                mbLevel.val('4');
-                break;
-            default:
-                mbLevel.val('');
+        var dmk_mb_type = '';
+        var mb_level = '';
+        var display_text = '';
+        
+        // 체인 선택 상태에 따른 관리자 유형 결정
+        if (br_id) {
+            // 지점이 선택된 경우: 지점 관리자
+            dmk_mb_type = '<?php echo DMK_MB_TYPE_BRANCH; ?>';
+            mb_level = '4';
+            display_text = '지점 관리자';
+        } else if (ag_id) {
+            // 대리점이 선택된 경우: 대리점 관리자
+            dmk_mb_type = '<?php echo DMK_MB_TYPE_AGENCY; ?>';
+            mb_level = '6';
+            display_text = '대리점 관리자';
+        } else if (dt_id) {
+            // 총판만 선택된 경우: 총판 관리자
+            dmk_mb_type = '<?php echo DMK_MB_TYPE_DISTRIBUTOR; ?>';
+            mb_level = '8';
+            display_text = '총판 관리자';
+        } else {
+            // 아무것도 선택되지 않은 경우
+            dmk_mb_type = '';
+            mb_level = '';
+            display_text = '';
         }
-    });
+        
+        // 관리자 유형 필드 업데이트
+        jQuery('#dmk_mb_type').val(dmk_mb_type);
+        jQuery('#mb_level').val(mb_level);
+        jQuery('#dmk_mb_type_display').val(display_text);
+        
+        console.log('관리자 유형 업데이트:', {
+            dt_id: dt_id,
+            ag_id: ag_id,
+            br_id: br_id,
+            dmk_mb_type: dmk_mb_type,
+            mb_level: mb_level,
+            display_text: display_text
+        });
+    }
 });
 
-// jQuery를 사용하여 AJAX 요청을 처리하는 함수
-function updateAgencyOptions(dt_id, selected_ag_id = '') {
-    console.log("=== updateAgencyOptions 시작 ===");
-    console.log("dt_id:", dt_id, "selected_ag_id:", selected_ag_id);
-    
-    var agencySelect = jQuery('#ag_id');
-    var branchSelect = jQuery('#br_id');
-    
-    if (agencySelect.length === 0) {
-        console.error("ag_id 선택박스를 찾을 수 없습니다.");
-        return;
-    }
-    
-    // 기존 옵션 완전히 제거하고 기본 옵션 추가
-    agencySelect.empty().append('<option value="">대리점 선택</option>');
-    branchSelect.empty().append('<option value="">먼저 대리점을 선택하세요</option>');
-
-    if (dt_id) {
-        var ajaxUrl = '<?php echo G5_URL; ?>/dmk/adm/_ajax/get_agencies.php';
-        console.log("AJAX URL:", ajaxUrl);
-        
-        jQuery.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                dt_id: dt_id
-            },
-            beforeSend: function() {
-                console.log("AJAX 요청 전송 중...");
-                agencySelect.find('option[value=""]').text('로딩 중...');
-            },
-            success: function(response) {
-                console.log("=== AJAX 성공 응답 ===");
-                console.log("전체 응답:", response);
-                
-                agencySelect.empty().append('<option value="">대리점 선택</option>');
-                
-                if (response.success && response.data) {
-                    console.log("응답 데이터:", response.data);
-                    console.log("데이터 개수:", response.data.length);
-                    
-                    if (response.data.length === 0) {
-                        agencySelect.find('option[value=""]').text('해당 총판에 속한 대리점이 없습니다');
-                        console.log("대리점 데이터가 없습니다.");
-                    } else {
-                        jQuery.each(response.data, function(index, agency) {
-                            console.log("대리점 추가:", agency.id, agency.name);
-                            var option = jQuery('<option></option>')
-                                .attr('value', agency.id)
-                                .text(agency.name + ' (' + agency.id + ')');
-                            agencySelect.append(option);
-                        });
-                        
-                        // 현재 선택된 대리점 값을 설정
-                        if (selected_ag_id) {
-                            agencySelect.val(selected_ag_id);
-                            console.log("선택된 대리점 설정:", selected_ag_id);
-                        }
-                    }
-                } else {
-                    console.error("AJAX 요청 실패:", response.message);
-                    agencySelect.find('option[value=""]').text('대리점 로드 실패');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.log("=== AJAX 오류 ===");
-                console.error("Status:", status);
-                console.error("Error:", error);
-                console.error("Response Text:", xhr.responseText);
-                
-                agencySelect.empty().append('<option value="">네트워크 오류</option>');
-            }
-        });
-    } else {
-        console.log("dt_id가 비어있어 AJAX 요청을 하지 않습니다.");
-        agencySelect.empty().append('<option value="">먼저 총판을 선택하세요</option>');
-    }
-}
-
-// 대리점 선택 시 지점 목록 업데이트
-function updateBranchOptions(ag_id, selected_br_id = '') {
-    console.log("=== updateBranchOptions 시작 ===");
-    console.log("ag_id:", ag_id, "selected_br_id:", selected_br_id);
-    
-    var branchSelect = jQuery('#br_id');
-    
-    if (branchSelect.length === 0) {
-        console.error("br_id 선택박스를 찾을 수 없습니다.");
-        return;
-    }
-    
-    // 기존 옵션 완전히 제거하고 기본 옵션 추가
-    branchSelect.empty().append('<option value="">지점 선택</option>');
-
-    if (ag_id) {
-        var ajaxUrl = '<?php echo G5_URL; ?>/dmk/adm/_ajax/get_branches.php';
-        console.log("AJAX URL:", ajaxUrl);
-        
-        jQuery.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                ag_id: ag_id
-            },
-            beforeSend: function() {
-                console.log("AJAX 요청 전송 중...");
-                branchSelect.find('option[value=""]').text('로딩 중...');
-            },
-            success: function(response) {
-                console.log("=== AJAX 성공 응답 ===");
-                console.log("전체 응답:", response);
-                
-                branchSelect.empty().append('<option value="">지점 선택</option>');
-                
-                if (response.success && response.data) {
-                    console.log("응답 데이터:", response.data);
-                    console.log("데이터 개수:", response.data.length);
-                    
-                    if (response.data.length === 0) {
-                        branchSelect.find('option[value=""]').text('해당 대리점에 속한 지점이 없습니다');
-                        console.log("지점 데이터가 없습니다.");
-                    } else {
-                        jQuery.each(response.data, function(index, branch) {
-                            console.log("지점 추가:", branch.id, branch.name);
-                            var option = jQuery('<option></option>')
-                                .attr('value', branch.id)
-                                .text(branch.name + ' (' + branch.id + ')');
-                            branchSelect.append(option);
-                        });
-                        
-                        // 현재 선택된 지점 값을 설정
-                        if (selected_br_id) {
-                            branchSelect.val(selected_br_id);
-                            console.log("선택된 지점 설정:", selected_br_id);
-                        }
-                    }
-                } else {
-                    console.error("AJAX 요청 실패:", response.message);
-                    branchSelect.find('option[value=""]').text('지점 로드 실패');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.log("=== AJAX 오류 ===");
-                console.error("Status:", status);
-                console.error("Error:", error);
-                console.error("Response Text:", xhr.responseText);
-                
-                branchSelect.empty().append('<option value="">네트워크 오류</option>');
-            }
-        });
-    } else {
-        console.log("ag_id가 비어있어 AJAX 요청을 하지 않습니다.");
-        branchSelect.empty().append('<option value="">먼저 대리점을 선택하세요</option>');
-    }
-}
-
-jQuery(document).ready(function() {
-    <?php if ($auth['is_super']) { ?>
-    // 본사 관리자의 경우: 페이지 로드 시 총판이 선택되어 있다면 대리점 목록 초기화
-    var initialDtId = jQuery('#dt_id').val();
-    var initialAgId = '<?php echo $member_info['dmk_ag_id'] ?? ($ag_id ?? ''); ?>';
-    var initialBrId = '<?php echo $member_info['dmk_br_id'] ?? ($br_id ?? ''); ?>';
-
-    console.log("페이지 로드 시 - initialDtId:", initialDtId, "initialAgId:", initialAgId, "initialBrId:", initialBrId);
-
-    // 페이지 로드 시 초기화 (한 번만 실행)
-    if (initialDtId) {
-        console.log("초기 대리점 목록 로드 시작");
-        updateAgencyOptions(initialDtId, initialAgId);
-    }
-
-    // 총판 변경 시 대리점 목록 업데이트
-    jQuery('#dt_id').off('change.agencyUpdate').on('change.agencyUpdate', function() {
-        var selectedDtId = jQuery(this).val();
-        console.log("총판 변경됨:", selectedDtId);
-        updateAgencyOptions(selectedDtId);
-    });
-
-    // 대리점 변경 시 지점 목록 업데이트
-    jQuery('#ag_id').off('change.branchUpdate').on('change.branchUpdate', function() {
-        var selectedAgId = jQuery(this).val();
-        console.log("대리점 변경됨:", selectedAgId);
-        updateBranchOptions(selectedAgId);
-    });
-    <?php } else { ?>
-    // 총판/대리점 관리자의 경우: 대리점 변경 시 지점 목록 업데이트만 처리
-    jQuery('#ag_id').off('change.branchUpdate').on('change.branchUpdate', function() {
-        var selectedAgId = jQuery(this).val();
-        console.log("대리점 변경됨:", selectedAgId);
-        updateBranchOptions(selectedAgId);
-    });
-    <?php } ?>
-});
-
+// 폼 제출 전 유효성 검사
 function fmember_submit(f) {
-    // 본사 관리자가 총판을 선택하지 않았을 경우 경고
-    <?php if ($auth['is_super']) { ?>
-    if (!f.dt_id.value) {
-        alert("소속 총판을 선택하세요.");
-        f.dt_id.focus();
+    // 관리자 유형이 설정되었는지 확인
+    var dmk_mb_type = jQuery('#dmk_mb_type').val();
+    if (!dmk_mb_type) {
+        alert("소속 기관을 선택하세요.");
         return false;
     }
-    <?php } ?>
-
-    <?php if ($w != 'u') { // 신규 등록시에만 유효성 검사 ?>
-    if (!f.mb_id.value) {
-        alert("관리자 ID를 입력하세요.");
+    
+    // 기존 유효성 검사 로직...
+    if (f.mb_id.value.length < 3) {
+        alert("관리자 ID를 3글자 이상 입력하세요.");
         f.mb_id.focus();
         return false;
     }
-
-    // 관리자 ID 형식 검사 (영문, 숫자, 언더스코어만 허용)
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(f.mb_id.value)) {
-        alert("관리자 ID는 영문, 숫자, 언더스코어만 사용 가능하며 3~20자여야 합니다.");
-        f.mb_id.focus();
-        return false;
-    }
-
-    if (!f.dmk_mb_type.value) {
-        alert("관리자 유형을 선택하세요.");
-        f.dmk_mb_type.focus();
-        return false;
-    }
-
-    // 관리자 유형에 따른 소속 정보 검증
-    var mbType = f.dmk_mb_type.value;
-    if (mbType == '<?php echo DMK_MB_TYPE_AGENCY; ?>') {
-        if (!f.ag_id.value) {
-            alert("소속 대리점을 선택하세요.");
-            f.ag_id.focus();
-            return false;
-        }
-    } else if (mbType == '<?php echo DMK_MB_TYPE_BRANCH; ?>') {
-        if (!f.ag_id.value) {
-            alert("소속 대리점을 선택하세요.");
-            f.ag_id.focus();
-            return false;
-        }
-        if (!f.br_id.value) {
-            alert("소속 지점을 선택하세요.");
-            f.br_id.focus();
-            return false;
-        }
-    }
-    <?php } ?>
-
-    // 신규 등록시 비밀번호 체크
-    <?php if ($w != 'u') { ?>
-    if (!f.mb_password.value) {
-        alert("비밀번호를 입력하세요.");
-        f.mb_password.focus();
-        return false;
-    }
-
+    
     if (f.mb_password.value.length < 8) {
-        alert("비밀번호는 8자 이상이어야 합니다.");
+        alert("비밀번호를 8글자 이상 입력하세요.");
         f.mb_password.focus();
         return false;
     }
-
+    
     if (f.mb_password.value != f.mb_password_confirm.value) {
         alert("비밀번호가 일치하지 않습니다.");
         f.mb_password_confirm.focus();
         return false;
     }
-    <?php } else { ?>
-    // 수정시 비밀번호 변경 체크
-    if (f.mb_password.value && f.mb_password.value.length < 8) {
-        alert("비밀번호는 8자 이상이어야 합니다.");
-        f.mb_password.focus();
-        return false;
-    }
-
-    if (f.mb_password.value && f.mb_password.value != f.mb_password_confirm.value) {
-        alert("비밀번호가 일치하지 않습니다.");
-        f.mb_password_confirm.focus();
-        return false;
-    }
-    <?php } ?>
-
-    if (!f.mb_name.value) {
-        alert("이름을 입력하세요.");
+    
+    if (f.mb_name.value.length < 2) {
+        alert("이름을 2글자 이상 입력하세요.");
         f.mb_name.focus();
         return false;
     }
-
-    if (!f.mb_nick.value) {
-        alert("닉네임을 입력하세요.");
+    
+    if (f.mb_nick.value.length < 2) {
+        alert("닉네임을 2글자 이상 입력하세요.");
         f.mb_nick.focus();
         return false;
     }
-
-    if (!f.mb_email.value) {
-        alert("이메일을 입력하세요.");
+    
+    if (f.mb_email.value.length < 5) {
+        alert("이메일을 올바르게 입력하세요.");
         f.mb_email.focus();
         return false;
     }
-
-    // 이메일 형식 검사
-    var email_pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!email_pattern.test(f.mb_email.value)) {
-        alert("올바른 이메일 형식이 아닙니다.");
-        f.mb_email.focus();
-        return false;
-    }
-
+    
     return true;
 }
 </script>
 
 <?php
+// 체인 선택박스 에셋 포함 (body 끝 부분에 추가)
+echo dmk_include_chain_select_assets();
+
 include_once (G5_ADMIN_PATH.'/admin.tail.php');
 ?> 
