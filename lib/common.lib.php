@@ -2869,14 +2869,11 @@ class html_process {
         $tmp_row = sql_fetch($tmp_sql);
         $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : $_SERVER['SERVER_NAME']; 
 
-        // $member['mb_id'] 값의 Undefined array key 경고 방지
-        $mb_id_val = isset($member['mb_id']) ? $member['mb_id'] : '';
-
         if ($tmp_row['cnt']) {
-            $tmp_sql = " update {$g5['login_table']} set mb_id = '".sql_escape_string($mb_id_val)."' , lo_datetime = '".G5_TIME_YMDHIS."', lo_location = '{$g5['lo_location']}', lo_url = '{$g5['lo_url']}' where lo_ip = '{$_SERVER['REMOTE_ADDR']}' ";
+            $tmp_sql = " update {$g5['login_table']} set mb_id = '{$member['mb_id']}', lo_datetime = '".G5_TIME_YMDHIS."', lo_location = '{$g5['lo_location']}', lo_url = '{$g5['lo_url']}' where lo_ip = '{$_SERVER['REMOTE_ADDR']}' ";
             sql_query($tmp_sql, FALSE);
         } else {
-            $tmp_sql = " insert into {$g5['login_table']} ( lo_ip, mb_id, lo_datetime, lo_location, lo_url ) values ( '{$_SERVER['REMOTE_ADDR']}', '".sql_escape_string($mb_id_val)."' , '".G5_TIME_YMDHIS."', '{$g5['lo_location']}',  '{$g5['lo_url']}' ) ";
+            $tmp_sql = " insert into {$g5['login_table']} ( lo_ip, mb_id, lo_datetime, lo_location, lo_url ) values ( '{$_SERVER['REMOTE_ADDR']}', '{$member['mb_id']}', '".G5_TIME_YMDHIS."', '{$g5['lo_location']}',  '{$g5['lo_url']}' ) ";
             sql_query($tmp_sql, FALSE);
 
             // 시간이 지난 접속은 삭제한다

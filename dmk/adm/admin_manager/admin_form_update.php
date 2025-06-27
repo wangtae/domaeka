@@ -8,7 +8,7 @@ check_admin_token();
 $w = isset($_POST['w']) ? clean_xss_tags($_POST['w']) : '';
 $mb_id = isset($_POST['mb_id']) ? clean_xss_tags($_POST['mb_id']) : '';
 $mb_password = isset($_POST['mb_password']) ? $_POST['mb_password'] : '';
-$mb_password_re = isset($_POST['mb_password_re']) ? $_POST['mb_password_re'] : '';
+$mb_password_confirm = isset($_POST['mb_password_confirm']) ? $_POST['mb_password_confirm'] : '';
 $mb_name = isset($_POST['mb_name']) ? clean_xss_tags($_POST['mb_name']) : '';
 $mb_nick = isset($_POST['mb_nick']) ? clean_xss_tags($_POST['mb_nick']) : '';
 $mb_email = isset($_POST['mb_email']) ? clean_xss_tags($_POST['mb_email']) : '';
@@ -16,6 +16,11 @@ $mb_hp = isset($_POST['mb_hp']) ? clean_xss_tags($_POST['mb_hp']) : '';
 $dmk_mb_type = isset($_POST['dmk_mb_type']) ? (int)$_POST['dmk_mb_type'] : 0;
 $mb_level = isset($_POST['mb_level']) ? (int)$_POST['mb_level'] : 0;
 $mb_memo = isset($_POST['mb_memo']) ? clean_xss_tags($_POST['mb_memo']) : '';
+
+// 체인 선택박스에서 전송되는 소속 기관 정보
+$dt_id = isset($_POST['dt_id']) ? clean_xss_tags($_POST['dt_id']) : '';
+$ag_id = isset($_POST['ag_id']) ? clean_xss_tags($_POST['ag_id']) : '';
+$br_id = isset($_POST['br_id']) ? clean_xss_tags($_POST['br_id']) : '';
 
 $dmk_auth = dmk_get_admin_auth();
 
@@ -40,15 +45,34 @@ if ($w == '' && !$dmk_mb_type) { // 신규 등록일 때만 관리자 유형 검
     alert('관리자 유형을 선택하세요.');
 }
 
+// 체인 선택박스의 소속 기관 정보에 따른 관리자 유형 자동 결정 (신규 등록 시)
+if ($w == '' && !$dmk_mb_type) {
+    if ($br_id) {
+        // 지점이 선택된 경우: 지점 관리자
+        $dmk_mb_type = DMK_MB_TYPE_BRANCH;
+        $mb_level = DMK_MB_LEVEL_BRANCH;
+    } elseif ($ag_id) {
+        // 대리점이 선택된 경우: 대리점 관리자
+        $dmk_mb_type = DMK_MB_TYPE_AGENCY;
+        $mb_level = DMK_MB_LEVEL_AGENCY;
+    } elseif ($dt_id) {
+        // 총판만 선택된 경우: 총판 관리자
+        $dmk_mb_type = DMK_MB_TYPE_DISTRIBUTOR;
+        $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
+    } else {
+        alert('소속 기관을 선택하세요.');
+    }
+}
+
 // dmk_mb_type에 따른 mb_level 설정
 switch ($dmk_mb_type) {
-    case 1: // 총판
+    case DMK_MB_TYPE_DISTRIBUTOR: // 총판
         $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
         break;
-    case 2: // 대리점
+    case DMK_MB_TYPE_AGENCY: // 대리점
         $mb_level = DMK_MB_LEVEL_AGENCY;
         break;
-    case 3: // 지점
+    case DMK_MB_TYPE_BRANCH: // 지점
         $mb_level = DMK_MB_LEVEL_BRANCH;
         break;
     default:
@@ -79,7 +103,7 @@ if ($w == '') {
         alert('비밀번호를 입력하세요.');
     }
     
-    if ($mb_password != $mb_password_re) {
+    if ($mb_password != $mb_password_confirm) {
         alert('비밀번호가 일치하지 않습니다.');
     }
     
@@ -121,6 +145,10 @@ if ($w == '') {
                 mb_hp = '".sql_escape_string($mb_hp)."',
                 mb_level = '".sql_escape_string($mb_level)."',
                 dmk_mb_type = '".sql_escape_string($dmk_mb_type)."',
+                dmk_dt_id = '".sql_escape_string($dt_id)."',
+                dmk_ag_id = '".sql_escape_string($ag_id)."',
+                dmk_br_id = '".sql_escape_string($br_id)."',
+                dmk_admin_type = 'sub',
                 mb_memo = '".sql_escape_string($mb_memo)."',
                 mb_datetime = '".G5_TIME_YMDHIS."',
                 mb_ip = '".sql_escape_string($_SERVER['REMOTE_ADDR'])."',
@@ -159,11 +187,25 @@ if ($w == '') {
     
     // 관리자 유형 변경 방지
     // 기존 관리자의 dmk_mb_type을 조회
-    $sql_type = " SELECT dmk_mb_type FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($mb_id)."' ";
+    $sql_type = " SELECT dmk_mb_type, dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($mb_id)."' ";
     $existing_type_row = sql_fetch($sql_type);
 
     if ($existing_type_row && $existing_type_row['dmk_mb_type'] != $dmk_mb_type) {
         alert('관리자 유형은 수정할 수 없습니다.');
+    }
+
+    // 소속 기관 정보 변경 방지 (수정 모드에서)
+    if ($existing_type_row) {
+        if ($existing_type_row['dmk_dt_id'] != $dt_id || 
+            $existing_type_row['dmk_ag_id'] != $ag_id || 
+            $existing_type_row['dmk_br_id'] != $br_id) {
+            alert('소속 기관 정보는 수정할 수 없습니다.');
+        }
+        
+        // 기존 소속 기관 정보 사용
+        $dt_id = $existing_type_row['dmk_dt_id'];
+        $ag_id = $existing_type_row['dmk_ag_id'];
+        $br_id = $existing_type_row['dmk_br_id'];
     }
 
     // 닉네임 중복 체크 (자신 제외)
@@ -183,7 +225,7 @@ if ($w == '') {
     // 업데이트 쿼리 구성
     $sql_password = '';
     if ($mb_password) {
-        if ($mb_password != $mb_password_re) {
+        if ($mb_password != $mb_password_confirm) {
             alert('비밀번호가 일치하지 않습니다.');
         }
         
@@ -203,6 +245,9 @@ if ($w == '') {
                 mb_hp = '".sql_escape_string($mb_hp)."',
                 mb_level = '".sql_escape_string($mb_level)."',
                 dmk_mb_type = '".sql_escape_string($dmk_mb_type)."',
+                dmk_dt_id = '".sql_escape_string($dt_id)."',
+                dmk_ag_id = '".sql_escape_string($ag_id)."',
+                dmk_br_id = '".sql_escape_string($br_id)."',
                 mb_memo = '".sql_escape_string($mb_memo)."'
                 {$sql_password}
              WHERE mb_id = '".sql_escape_string($mb_id)."' ";

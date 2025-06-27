@@ -11,24 +11,7 @@ install/
 data/db_config-domaeka.php
 
 
-# 특정 플러그인의 과도한 파일 또는 불필요한 파일 (AI 분석 효율 증대)
-plugin/debugbar/
-plugin/jqplot/
-js/font-awesome/
-js/owlcarousel/
-js/remodal/
-js/swiper/
-js/tooltipster/
-lib/PHPExcel/ # 대규모 외부 라이브러리
-lib/Excel/php_writeexcel/ # 대규모 외부 라이브러리
-plugin/PHPMailer/ # 대규모 외부 라이브러리
-plugin/editor/cheditor5/
-plugin/editor/smarteditor2/
-plugin/htmlpurifier/
-plugin/kcaptcha/mp3/
-plugin/PHPMailer/docs/
-plugin/PHPMailer/examples/
-plugin/PHPMailer/language/
+
 
 # VCS 관련 (git 이외) 및 OS 관련
 .vscode/ # 사용자 IDE 설정
