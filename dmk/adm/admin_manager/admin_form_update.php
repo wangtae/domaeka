@@ -37,7 +37,7 @@ if (!$mb_email) {
 }
 
 if (!$dmk_mb_type) {
-    alert('관리자 유형을 선택하세요.');
+    alert('관리자 유형을 선택하세요1.');
 }
 
 // dmk_mb_type에 따른 mb_level 설정
@@ -209,6 +209,7 @@ if ($w == '') {
     
     sql_query($sql);
     
-    alert('관리자 정보가 수정되었습니다.', './admin_list.php');
+    // 메시지 없이 현재 폼으로 돌아가기 (목록 정보 유지)
+    goto_url('./admin_form.php?w=u&mb_id='.urlencode($mb_id).'&sfl='.urlencode($sfl).'&stx='.urlencode($stx).'&sst='.urlencode($sst).'&sod='.urlencode($sod).'&page='.urlencode($page));
 }
 ?> 

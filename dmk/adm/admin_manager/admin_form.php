@@ -142,6 +142,10 @@ require_once G5_ADMIN_PATH.'/admin.head.php';
                 <option value="<?php echo $value ?>"<?php echo get_selected($member['dmk_mb_type'], $value); ?>><?php echo $text ?></option>
                 <?php } ?>
             </select>
+            <?php if ($w == 'u') { // 수정 모드일 경우 숨겨진 필드로 dmk_mb_type 값을 전달 ?>
+            <?php error_log("admin_form.php - dmk_mb_type value for hidden input: " . ($member['dmk_mb_type'] ?? 'NULL')); // DEBUG LOG ?>
+            <input type="hidden" name="dmk_mb_type" value="<?php echo $member['dmk_mb_type']; ?>">
+            <?php } ?>
             <input type="hidden" name="mb_level" id="mb_level" value="<?php echo $member['mb_level'] ?>">
         </td>
     </tr>
@@ -228,7 +232,7 @@ function fmember_submit(f) {
         return false;
     }
 
-    if (!f.dmk_mb_type.value) {
+    if (f.w.value == '' && !f.dmk_mb_type.value) { // 신규 등록일 때만 검사
         alert("관리자 유형을 선택하세요.");
         f.dmk_mb_type.focus();
         return false;
