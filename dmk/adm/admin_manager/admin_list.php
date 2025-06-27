@@ -119,21 +119,10 @@ echo dmk_include_chain_select_assets();
 <form id="fsearch" name="fsearch" class="local_sch01 local_sch" method="get">
 
     <?php
-    // 공통 체인 선택박스 렌더링
+    // 공통 체인 선택박스 렌더링 (간소화된 버전)
     echo dmk_render_chain_select([
-        'dmk_auth' => $dmk_auth,
         'page_type' => DMK_CHAIN_SELECT_FULL,
-        'current_values' => [
-            'sdt_id' => $sdt_id,
-            'sag_id' => $sag_id,
-            'sbr_id' => $sbr_id
-        ],
-        'form_id' => 'fsearch',
-        'auto_submit' => false,
-        'ajax_endpoints' => [
-            'agencies' => './get_agencies.php',
-            'branches' => './get_branches.php'
-        ]
+        'auto_submit' => false // 관리자 목록에서는 수동 제출
     ]);
     ?>
 

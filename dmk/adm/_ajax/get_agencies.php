@@ -1,5 +1,5 @@
 <?php
-include_once '../../../adm/_common.php';
+include_once './_common.php';
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 header('Content-Type: application/json');

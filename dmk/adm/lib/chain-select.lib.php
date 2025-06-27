@@ -144,31 +144,34 @@ function dmk_get_distributors_for_select($dmk_auth) {
 }
 
 /**
- * 계층별 선택박스 HTML 렌더링
+ * 계층별 선택박스 HTML 렌더링 (간소화된 버전)
  * 
- * @param array $options 렌더링 옵션
+ * @param array $options 렌더링 옵션 (최소한의 필수 옵션만)
  * @return string HTML 코드
  */
 function dmk_render_chain_select($options = []) {
     global $g5;
     
-    // 기본 옵션 설정
+    // 자동으로 관리자 권한 가져오기
+    $dmk_auth = dmk_get_admin_auth();
+    
+    // 기본 옵션 설정 (대부분 자동화)
     $default_options = [
-        'dmk_auth' => dmk_get_admin_auth(),
-        'page_type' => DMK_CHAIN_SELECT_FULL,
+        'dmk_auth' => $dmk_auth,
+        'page_type' => DMK_CHAIN_SELECT_FULL, // 기본값
         'current_values' => [
-            'sdt_id' => '',
-            'sag_id' => '',
-            'sbr_id' => ''
+            'sdt_id' => $_GET['sdt_id'] ?? $_GET['dt_id'] ?? '',
+            'sag_id' => $_GET['sag_id'] ?? $_GET['ag_id'] ?? '',
+            'sbr_id' => $_GET['sbr_id'] ?? $_GET['br_id'] ?? ''
         ],
-        'form_id' => 'fsearch',
-        'auto_submit' => true,
+        'form_id' => 'fsearch', // 표준 폼 ID
+        'auto_submit' => true, // 기본적으로 자동 제출
         'ajax_endpoints' => [
-            'agencies' => './get_agencies.php',
-            'branches' => './get_branches.php'
+            'agencies' => G5_DMK_URL . '/adm/_ajax/get_agencies.php',
+            'branches' => G5_DMK_URL . '/adm/_ajax/get_branches.php'
         ],
         'css_classes' => [
-            'select' => 'frm_input',
+            'select' => 'frm_input', // 표준 CSS 클래스
             'label' => 'sound_only'
         ],
         'labels' => [
@@ -181,10 +184,13 @@ function dmk_render_chain_select($options = []) {
             'agency' => '전체 대리점',
             'branch' => '전체 지점'
         ],
-        'debug' => false
+        'debug' => false // 기본적으로 디버그 모드 OFF
     ];
     
+    // 사용자 옵션과 기본 옵션 병합 (사용자 옵션이 우선)
     $options = array_merge($default_options, $options);
+    
+    // 관리자 권한에 따른 자동 설정
     $config = dmk_get_chain_select_config($options['dmk_auth'], $options['page_type']);
     
     $html = '';
@@ -241,16 +247,23 @@ function dmk_render_chain_select($options = []) {
             'initialBranch' => $config['initial_branch'] ?: $options['current_values']['sbr_id'],
             'autoSubmit' => $options['auto_submit'],
             'formId' => $options['form_id'],
-            'debug' => true
+            'debug' => $options['debug']
         ];
         
+        // 디버깅을 위해 autoSubmit 값 출력
+        $html .= '<!-- DEBUG: autoSubmit value in js_config: ' . json_encode($js_config['autoSubmit']) . ' -->';
+
         $html .= '<script>';
         $html .= 'document.addEventListener("DOMContentLoaded", function() {';
-        $html .= 'console.log("체인 선택박스 초기화 설정:", ' . json_encode($js_config) . ');';
+        if ($options['debug']) {
+            $html .= 'console.log("체인 선택박스 초기화 설정:", ' . json_encode($js_config) . ');';
+        }
         $html .= 'if (typeof DmkChainSelect !== "undefined") {';
         $html .= 'new DmkChainSelect(' . json_encode($js_config) . ');';
         $html .= '} else {';
-        $html .= 'console.error("DmkChainSelect 라이브러리가 로드되지 않았습니다.");';
+        if ($options['debug']) {
+            $html .= 'console.error("DmkChainSelect JavaScript 라이브러리가 로드되지 않았습니다.");';
+        }
         $html .= '}';
         $html .= '});';
         $html .= '</script>';
@@ -260,19 +273,20 @@ function dmk_render_chain_select($options = []) {
 }
 
 /**
- * 계층별 선택박스 JavaScript/CSS 파일 포함
+ * 체인 선택박스 관련 에셋(JS, CSS) 포함
  * 
- * @param string $base_path 기본 경로
  * @return string HTML 코드
  */
-function dmk_include_chain_select_assets($base_path = '') {
-    if (empty($base_path)) {
-        $base_path = G5_DMK_URL . '/adm';
-    }
+function dmk_include_chain_select_assets() {
+    $cache_buster = dmk_get_cache_buster();
     
     $html = '';
-    $html .= '<script src="' . $base_path . '/js/chain-select.js"></script>';
-    $html .= '<link rel="stylesheet" href="' . $base_path . '/css/chain-select.css">';
+    
+    // CSS 파일 포함
+    $html .= '<link rel="stylesheet" href="' . G5_DMK_URL . '/adm/css/chain-select.css' . $cache_buster . '">';
+    
+    // JavaScript 파일 포함
+    $html .= '<script src="' . G5_DMK_URL . '/adm/js/chain-select.js' . $cache_buster . '"></script>';
     
     return $html;
 }
@@ -365,5 +379,59 @@ echo json_encode($branches);
     if (!file_exists($target_dir . '/get_branches.php')) {
         file_put_contents($target_dir . '/get_branches.php', $branches_content);
     }
+}
+
+/**
+ * 개발자 IP인지 확인하는 함수
+ * 
+ * @return bool 개발자 IP 여부
+ */
+function dmk_is_developer_ip() {
+    // 환경 변수로 개발자 모드 설정 확인
+    if (defined('DMK_DEVELOPER_MODE') && DMK_DEVELOPER_MODE) {
+        return true;
+    }
+    
+    // 환경 변수 DMK_DEVELOPER_IPS가 설정된 경우
+    if (defined('DMK_DEVELOPER_IPS')) {
+        $developer_ips = explode(',', DMK_DEVELOPER_IPS);
+        $client_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        
+        if (in_array($client_ip, $developer_ips)) {
+            return true;
+        }
+    }
+    
+    // 기본 개발자 IP 목록
+    $developer_ips = [
+        '127.0.0.1',      // localhost
+        '::1',            // localhost IPv6
+        '192.168.1.100',  // 예시 개발자 IP
+        '192.168.0.100',  // 예시 개발자 IP
+        '124.62.66.233'
+    ];
+    
+    $client_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    
+    // 개발자 IP 목록에 포함되어 있거나 localhost인 경우
+    if (in_array($client_ip, $developer_ips) || 
+        strpos($client_ip, '192.168.') === 0 || 
+        strpos($client_ip, '10.') === 0) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * 개발자 IP인 경우 캐싱 방지를 위한 타임스탬프 파라미터 생성
+ * 
+ * @return string 캐싱 방지 파라미터
+ */
+function dmk_get_cache_buster() {
+    if (dmk_is_developer_ip()) {
+        return '?t=' . time();
+    }
+    return '';
 }
 ?> 

@@ -132,6 +132,7 @@ class DmkChainSelect {
     }
     
     onAgencyChange() {
+        this.log('onAgencyChange 함수 시작');
         const agencySelect = document.getElementById(this.options.agencySelectId);
         const agencyId = agencySelect ? agencySelect.value : '';
         
@@ -143,31 +144,26 @@ class DmkChainSelect {
         this.currentValues.agency = agencyId;
         this.currentValues.branch = '';
         
-        if (agencyId) {
-            // AJAX 요청 완료 후 폼 제출
-            this.loadBranches(agencyId, () => {
-                // 콜백 실행
-                if (this.options.onAgencyChange) {
-                    this.options.onAgencyChange(agencyId);
-                }
-                
-                // 자동 폼 제출
-                if (this.options.autoSubmit) {
-                    this.submitForm();
-                }
-            });
-        } else {
-            // 대리점이 선택되지 않은 경우 바로 폼 제출
-            // 콜백 실행
-            if (this.options.onAgencyChange) {
-                this.options.onAgencyChange(agencyId);
-            }
-            
-            // 자동 폼 제출
-            if (this.options.autoSubmit) {
-                this.submitForm();
-            }
+        // 지점 목록 로드 (비동기)
+        this.log('지점 목록 로드 조건 확인: ', agencyId, document.getElementById(this.options.branchSelectId));
+        if (agencyId && document.getElementById(this.options.branchSelectId)) {
+            this.log('지점 목록 로드 함수 호출');
+            this.loadBranches(agencyId);
         }
+        
+        // 콜백 실행
+        this.log('onAgencyChange 콜백 실행 시도');
+        if (this.options.onAgencyChange) {
+            this.options.onAgencyChange(agencyId);
+        }
+        
+        // 자동 폼 제출
+        this.log('자동 폼 제출 조건 확인: ', this.options.autoSubmit);
+        if (this.options.autoSubmit) {
+            this.log('submitForm 함수 호출 시도');
+            this.submitForm();
+        }
+        this.log('onAgencyChange 함수 종료');
     }
     
     onBranchChange() {
@@ -250,62 +246,47 @@ class DmkChainSelect {
             });
     }
     
-    loadBranches(agencyId, callback) {
+    loadBranches(agencyId) {
         this.log('지점 목록 로드 시작:', agencyId);
         
         const branchSelect = document.getElementById(this.options.branchSelectId);
-        if (!branchSelect) {
-            this.log('지점 선택박스를 찾을 수 없음');
-            return;
-        }
         
-        // 로딩 표시
-        this.setLoadingState(branchSelect, true);
-        
-        fetch(`${this.options.branchEndpoint}?ag_id=${encodeURIComponent(agencyId)}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                this.log('지점 목록 로드 완료:', data);
-                
-                // 기존 옵션 제거 (첫 번째 옵션 제외)
-                this.clearSelect(this.options.branchSelectId);
-                
-                // 새 옵션 추가
-                data.forEach(branch => {
-                    const option = document.createElement('option');
-                    option.value = branch.id;
-                    option.textContent = `${branch.name} (${branch.id})`;
-                    branchSelect.appendChild(option);
-                });
-                
-                // 선택값 복원 (currentValues에 저장된 값 사용)
-                if (this.currentValues.branch) {
-                    if (this.hasOption(branchSelect, this.currentValues.branch)) {
+        // Promise 반환
+        return new Promise((resolve, reject) => {
+            if (!branchSelect) {
+                this.log('지점 선택박스를 찾을 수 없음');
+                resolve(); // 지점 선택박스가 없어도 Promise 해결
+                return;
+            }
+            
+            this.setLoadingState(branchSelect, true);
+            
+            fetch(`${this.options.branchEndpoint}?ag_id=${agencyId}`)
+                .then(response => response.json())
+                .then(data => {
+                    this.log('지점 목록 로드 완료:', data);
+                    this.clearSelect(this.options.branchSelectId, this.options.placeholders.branch);
+                    data.forEach(branch => {
+                        const option = document.createElement('option');
+                        option.value = branch.id;
+                        option.textContent = branch.name;
+                        branchSelect.appendChild(option);
+                    });
+                    
+                    if (this.currentValues.branch && this.hasOption(branchSelect, this.currentValues.branch)) {
                         branchSelect.value = this.currentValues.branch;
-                        this.log('지점 선택값 복원:', this.currentValues.branch);
-                    } else {
-                        this.log('지점 선택값 복원 실패 - 옵션 없음:', this.currentValues.branch);
-                        this.currentValues.branch = '';
                     }
-                }
-                
-                // 로딩 상태 해제
-                this.setLoadingState(branchSelect, false);
-                
-                // 콜백 실행
-                if (callback) {
-                    callback();
-                }
-            })
-            .catch(error => {
-                this.log('지점 목록 로드 실패:', error);
-                this.setLoadingState(branchSelect, false);
-            });
+                    resolve();
+                })
+                .catch(error => {
+                    console.error('[DmkChainSelect] 지점 목록 로드 오류:', error);
+                    this.clearSelect(this.options.branchSelectId, this.options.placeholders.branch);
+                    reject(error);
+                })
+                .finally(() => {
+                    this.setLoadingState(branchSelect, false);
+                });
+        });
     }
     
     clearSelect(selectId) {
@@ -335,10 +316,12 @@ class DmkChainSelect {
     }
     
     submitForm() {
+        this.log('폼 제출 시도', this.options.formId);
         const form = document.getElementById(this.options.formId);
         if (form) {
-            this.log('폼 제출');
             form.submit();
+        } else {
+            this.log('폼을 찾을 수 없음:', this.options.formId);
         }
     }
     

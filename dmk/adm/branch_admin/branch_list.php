@@ -22,9 +22,21 @@ echo dmk_include_chain_select_assets();
 // 현재 관리자의 권한 정보 가져오기
 $dmk_auth = dmk_get_admin_auth();
 
-// 필터링 변수
-$dt_id = isset($_GET['dt_id']) ? clean_xss_tags($_GET['dt_id']) : '';
-$ag_id = isset($_GET['ag_id']) ? clean_xss_tags($_GET['ag_id']) : '';
+// 검색 및 필터링 변수 처리
+$stx = isset($_GET['stx']) ? clean_xss_tags($_GET['stx']) : '';
+$sfl = isset($_GET['sfl']) ? clean_xss_tags($_GET['sfl']) : '';
+$sst = isset($_GET['sst']) ? clean_xss_tags($_GET['sst']) : '';
+$sod = isset($_GET['sod']) ? clean_xss_tags($_GET['sod']) : '';
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+
+// 필터링 변수 (체인 선택박스와 일치하도록 수정)
+$sdt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
+$sag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
+$sbr_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
+
+// 하위 호환성을 위한 별칭 (기존 dt_id, ag_id도 지원)
+$dt_id = $sdt_id ?: (isset($_GET['dt_id']) ? clean_xss_tags($_GET['dt_id']) : '');
+$ag_id = $sag_id ?: (isset($_GET['ag_id']) ? clean_xss_tags($_GET['ag_id']) : '');
 
 // SQL 공통 부분 - g5_member와 dmk_branch 테이블 조인
 $sql_common = " FROM {$g5['member_table']} br_m 
@@ -54,13 +66,13 @@ if (!$dmk_auth['is_super']) {
 }
 
 // 총판 필터링 (선택된 경우)
-if ($dt_id) {
-    $sql_search .= " AND a.dt_id = '" . sql_escape_string($dt_id) . "' ";
+if ($sdt_id) {
+    $sql_search .= " AND a.dt_id = '" . sql_escape_string($sdt_id) . "' ";
 }
 
 // 대리점 필터링 (선택된 경우)
-if ($ag_id) {
-    $sql_search .= " AND b.ag_id = '" . sql_escape_string($ag_id) . "' ";
+if ($sag_id) {
+    $sql_search .= " AND b.ag_id = '" . sql_escape_string($sag_id) . "' ";
 }
 
 // 검색 조건
@@ -124,19 +136,8 @@ if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
 
 <?php
 echo dmk_render_chain_select([
-    'dmk_auth' => $dmk_auth,
-    'page_type' => $page_type,
-    'current_values' => [
-        'sdt_id' => $dt_id,
-        'sag_id' => $ag_id,
-        'sbr_id' => ''
-    ],
-    'form_id' => 'fsearch',
-    'auto_submit' => true,
-    'ajax_endpoints' => [
-        'agencies' => './get_agencies.php',
-        'branches' => './get_branches.php'
-    ]
+    'page_type' => DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY,
+    'debug' => true // 디버깅을 위해 임시로 활성화
 ]);
 ?>
 
@@ -149,11 +150,11 @@ echo dmk_render_chain_select([
     <?php
     if (dmk_can_create_admin('branch')) { // 지점 등록 권한 확인
         $form_params = [];
-        if (!empty($dt_id)) {
-            $form_params[] = 'dt_id=' . urlencode($dt_id);
+        if (!empty($sdt_id)) {
+            $form_params[] = 'dt_id=' . urlencode($sdt_id);
         }
-        if (!empty($ag_id)) {
-            $form_params[] = 'ag_id=' . urlencode($ag_id);
+        if (!empty($sag_id)) {
+            $form_params[] = 'ag_id=' . urlencode($sag_id);
         }
         $form_qstr = !empty($form_params) ? '?' . implode('&amp;', $form_params) : '';
     ?>
@@ -178,8 +179,8 @@ echo dmk_render_chain_select([
 <input type="hidden" name="stx" value="<?php echo $stx ?>">
 <input type="hidden" name="page" value="<?php echo $page ?>">
 <input type="hidden" name="token" value="">
-<input type="hidden" name="dt_id" value="<?php echo $dt_id ?>">
-<input type="hidden" name="ag_id" value="<?php echo $ag_id ?>">
+<input type="hidden" name="sdt_id" value="<?php echo $sdt_id ?>">
+<input type="hidden" name="sag_id" value="<?php echo $sag_id ?>">
 
 <div class="tbl_head01 tbl_wrap">
     <table>
