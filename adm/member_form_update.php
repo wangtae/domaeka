@@ -73,7 +73,8 @@ $check_keys = array(
     'mb_open',
     'mb_profile',
     'mb_level',
-    'dmk_mb_type'
+    'dmk_mb_type',
+    'dmk_admin_type'
 );
 
 for ($i = 1; $i <= 10; $i++) {
@@ -89,6 +90,36 @@ foreach ($check_keys as $key) {
 }
 
 $mb_memo = isset($_POST['mb_memo']) ? $_POST['mb_memo'] : '';
+
+// 계층 선택에 따른 도매까 필드 설정
+$dmk_dt_select = isset($_POST['dmk_dt_select']) ? trim($_POST['dmk_dt_select']) : '';
+$dmk_ag_select = isset($_POST['dmk_ag_select']) ? trim($_POST['dmk_ag_select']) : '';
+$dmk_br_select = isset($_POST['dmk_br_select']) ? trim($_POST['dmk_br_select']) : '';
+
+// 계층 구조에 따라 dmk 필드 설정
+$dmk_dt_id = null;
+$dmk_ag_id = null;
+$dmk_br_id = null;
+
+if ($dmk_br_select) {
+    // 지점 선택 시
+    $dmk_br_id = $dmk_br_select;
+    $dmk_ag_id = $dmk_ag_select;
+    $dmk_dt_id = $dmk_dt_select;
+    $posts['dmk_mb_type'] = 3;
+} elseif ($dmk_ag_select) {
+    // 대리점 선택 시
+    $dmk_ag_id = $dmk_ag_select;
+    $dmk_dt_id = $dmk_dt_select;
+    $posts['dmk_mb_type'] = 2;
+} elseif ($dmk_dt_select) {
+    // 총판 선택 시
+    $dmk_dt_id = $dmk_dt_select;
+    $posts['dmk_mb_type'] = 1;
+} else {
+    // 미지정
+    $posts['dmk_mb_type'] = 99;
+}
 
 // dmk_mb_type 에 따라 mb_level 값 재설정 (서버측 유효성 검사 및 최종 설정)
 $dmk_mb_type_val = $posts['dmk_mb_type'];
@@ -146,9 +177,11 @@ $sql_common = "  mb_name = '{$posts['mb_name']}',
                  mb_8 = '{$posts['mb_8']}',
                  mb_9 = '{$posts['mb_9']}',
                  mb_10 = '{$posts['mb_10']}',
-                 dmk_mb_owner_type = '{$_POST['dmk_mb_owner_type']}',
-                 dmk_mb_owner_id = '{$_POST['dmk_mb_owner_id']}',
-                 dmk_mb_type = '{$posts['dmk_mb_type']}' ";
+                 dmk_mb_type = '{$posts['dmk_mb_type']}',
+                 dmk_dt_id = " . ($dmk_dt_id ? "'{$dmk_dt_id}'" : 'NULL') . ",
+                 dmk_ag_id = " . ($dmk_ag_id ? "'{$dmk_ag_id}'" : 'NULL') . ",
+                 dmk_br_id = " . ($dmk_br_id ? "'{$dmk_br_id}'" : 'NULL') . ",
+                 dmk_admin_type = '{$posts['dmk_admin_type']}' ";
 
 if ($w == '') {
     $mb = get_member($mb_id);

@@ -4,7 +4,8 @@ ob_start();
 error_reporting(0); // AJAX 파일에서는 모든 오류/경고 비활성화
 ini_set('display_errors', 0);
 
-include_once './_common.php';
+include_once('../../../common.php');
+include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 
 // 출력 버퍼 정리 (혹시 _common.php에서 의도치 않은 출력이 있을 경우)
 ob_clean();

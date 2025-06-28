@@ -19,6 +19,17 @@ if (is_array($files)) {
 
 include_once(G5_PATH.'/head.sub.php');
 
+// 도매까 체인 선택박스 에셋 포함 (특정 페이지에서만)
+if (defined('G5_DMK_PATH')) {
+    $current_script = basename($_SERVER['SCRIPT_NAME']);
+    $chain_select_pages = ['member_list.php', 'distributor_list.php', 'agency_list.php', 'branch_list.php'];
+    
+    if (in_array($current_script, $chain_select_pages)) {
+        include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+        echo dmk_include_chain_select_assets();
+    }
+}
+
 function print_menu1($key, $no='')
 {
     global $menu;

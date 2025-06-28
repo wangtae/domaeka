@@ -49,7 +49,12 @@ if (!$au_auth) {
 
 // 권한 문자열 검증 (SET 형식에서 허용되는 값들)
 $valid_auth_values = ['', 'r', 'w', 'd', 'r,w', 'r,d', 'w,d', 'r,w,d'];
+error_log("DMK_AUTH_UPDATE: 검증 대상 au_auth = '" . $au_auth . "'");
+error_log("DMK_AUTH_UPDATE: valid_auth_values = " . implode(', ', $valid_auth_values));
+error_log("DMK_AUTH_UPDATE: in_array 결과 = " . (in_array($au_auth, $valid_auth_values) ? 'true' : 'false'));
+
 if (!in_array($au_auth, $valid_auth_values)) {
+    error_log("DMK_AUTH_UPDATE: 권한 검증 실패 - au_auth = '" . $au_auth . "'");
     alert('권한은 r, w, d 조합으로만 입력 가능합니다.');
 }
 
