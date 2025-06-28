@@ -198,7 +198,7 @@ function dmk_render_chain_select($options = []) {
             'agency' => 'sag_id',
             'branch' => 'sbr_id'
         ],
-        'debug' => false // 기본적으로 디버그 모드 OFF
+        'debug' => true // 기본적으로 디버그 모드 ON (개발 중)
     ];
     
     // 사용자 옵션과 기본 옵션 병합 (사용자 옵션이 우선)
@@ -287,6 +287,8 @@ function dmk_render_chain_select($options = []) {
         // 디버깅을 위해 autoSubmit 값 출력
         $html .= '<!-- DEBUG: autoSubmit value in js_config: ' . json_encode($js_config['autoSubmit']) . ' -->';
         $html .= '<!-- DEBUG: AJAX endpoints: ' . json_encode($js_config['agencyEndpoint']) . ', ' . json_encode($js_config['branchEndpoint']) . ' -->';
+        $html .= '<!-- DEBUG: G5_URL: ' . G5_URL . ' -->';
+        $html .= '<!-- DEBUG: Full js_config: ' . json_encode($js_config, JSON_PRETTY_PRINT) . ' -->';
 
         $html .= '<script>';
         $html .= 'document.addEventListener("DOMContentLoaded", function() {';

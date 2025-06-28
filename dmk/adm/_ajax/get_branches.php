@@ -1,8 +1,17 @@
 <?php
+// 출력 버퍼링 시작 및 오류 설정
+ob_start();
+error_reporting(0); // AJAX 파일에서는 모든 오류/경고 비활성화
+ini_set('display_errors', 0);
+
 include_once './_common.php';
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+
+// 출력 버퍼 정리 (혹시 _common.php에서 의도치 않은 출력이 있을 경우)
+ob_clean();
 
 header('Content-Type: application/json');
+header('Cache-Control: no-cache, must-revalidate');
+header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
 $dmk_auth = dmk_get_admin_auth();
 
@@ -89,5 +98,8 @@ if ($dmk_auth['is_super']) {
     $response['message'] = '지점 목록 조회 중 오류가 발생했습니다: ' . $e->getMessage();
 }
 
+// 출력 버퍼 정리 후 JSON 출력
+ob_clean();
 echo json_encode($response);
+exit;
 ?> 

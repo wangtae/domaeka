@@ -60,16 +60,33 @@ class DmkChainSelect {
         const agencySelect = document.getElementById(this.options.agencySelectId);
         const branchSelect = document.getElementById(this.options.branchSelectId);
         
+        this.log('선택박스 엘리먼트 찾기 결과:');
+        this.log('- 총판 선택박스:', distributorSelect ? '찾음' : '못 찾음', this.options.distributorSelectId);
+        this.log('- 대리점 선택박스:', agencySelect ? '찾음' : '못 찾음', this.options.agencySelectId);
+        this.log('- 지점 선택박스:', branchSelect ? '찾음' : '못 찾음', this.options.branchSelectId);
+        
         if (distributorSelect) {
-            distributorSelect.addEventListener('change', () => this.onDistributorChange());
+            this.log('총판 선택박스 이벤트 리스너 등록');
+            distributorSelect.addEventListener('change', (event) => {
+                this.log('총판 선택박스 change 이벤트 발생! 선택된 값:', event.target.value);
+                this.onDistributorChange();
+            });
         }
         
         if (agencySelect) {
-            agencySelect.addEventListener('change', () => this.onAgencyChange());
+            this.log('대리점 선택박스 이벤트 리스너 등록');
+            agencySelect.addEventListener('change', (event) => {
+                this.log('대리점 선택박스 change 이벤트 발생! 선택된 값:', event.target.value);
+                this.onAgencyChange();
+            });
         }
         
         if (branchSelect) {
-            branchSelect.addEventListener('change', () => this.onBranchChange());
+            this.log('지점 선택박스 이벤트 리스너 등록');
+            branchSelect.addEventListener('change', (event) => {
+                this.log('지점 선택박스 change 이벤트 발생! 선택된 값:', event.target.value);
+                this.onBranchChange();
+            });
         }
         
         // 초기 로드
@@ -210,13 +227,42 @@ class DmkChainSelect {
         
         fetch(`${this.options.agencyEndpoint}?dt_id=${encodeURIComponent(dtId)}`)
             .then(response => {
+                this.log('대리점 AJAX 응답 상태:', response.status, response.statusText);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                return response.json();
+                // 응답 텍스트를 먼저 로그로 확인
+                return response.text().then(text => {
+                    this.log('원본 응답 텍스트:', text);
+                    
+                    // HTML 경고 메시지가 JSON 앞에 있는 경우 제거
+                    let cleanedText = text;
+                    
+                    // <br />나 <b> 태그가 포함된 경고 메시지 제거
+                    if (text.includes('<br />') || text.includes('<b>Warning</b>')) {
+                        // { 문자부터 시작하는 JSON 부분만 추출
+                        const jsonStart = text.indexOf('{');
+                        if (jsonStart !== -1) {
+                            cleanedText = text.substring(jsonStart);
+                            this.log('정리된 JSON 텍스트:', cleanedText);
+                        }
+                    }
+                    
+                    try {
+                        return JSON.parse(cleanedText);
+                    } catch (jsonError) {
+                        this.log('JSON 파싱 오류:', jsonError);
+                        this.log('파싱 실패한 텍스트 전체:', text);
+                        throw new Error('서버 응답이 올바른 JSON 형식이 아닙니다: ' + text.substring(0, 100));
+                    }
+                });
             })
             .then(data => {
-                this.log('대리점 목록 로드 완료:', data);
+                this.log('대리점 목록 로드 완료 (전체 응답):', data);
+                this.log('대리점 데이터 타입:', typeof data);
+                if (data && data.debug) {
+                    this.log('디버깅 정보:', data.debug);
+                }
                 
                 // 기존 옵션 제거 (첫 번째 옵션 제외)
                 this.clearSelect(this.options.agencySelectId);
@@ -264,7 +310,17 @@ class DmkChainSelect {
             })
             .catch(error => {
                 this.log('대리점 목록 로드 실패:', error);
+                this.log('오류 세부 정보:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
                 this.setLoadingState(agencySelect, false);
+                
+                // 사용자에게 오류 메시지 표시 (디버그 모드일 때)
+                if (this.options.debug) {
+                    alert('대리점 목록 로드 실패: ' + error.message);
+                }
             });
     }
     
@@ -290,7 +346,27 @@ class DmkChainSelect {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                return response.json();
+                return response.text().then(text => {
+                    this.log('지점 원본 응답 텍스트:', text);
+                    
+                    // HTML 경고 메시지가 JSON 앞에 있는 경우 제거
+                    let cleanedText = text;
+                    
+                    if (text.includes('<br />') || text.includes('<b>Warning</b>')) {
+                        const jsonStart = text.indexOf('{');
+                        if (jsonStart !== -1) {
+                            cleanedText = text.substring(jsonStart);
+                            this.log('지점 정리된 JSON 텍스트:', cleanedText);
+                        }
+                    }
+                    
+                    try {
+                        return JSON.parse(cleanedText);
+                    } catch (jsonError) {
+                        this.log('지점 JSON 파싱 오류:', jsonError);
+                        throw jsonError;
+                    }
+                });
             })
             .then(data => {
                 this.log('지점 목록 로드 완료:', data);
@@ -351,11 +427,25 @@ class DmkChainSelect {
     
     setLoadingState(select, isLoading) {
         if (isLoading) {
-            select.style.opacity = '0.6';
+            select.classList.add('loading');
             select.disabled = true;
+            // 로딩 중임을 나타내는 옵션 추가
+            const loadingOption = document.createElement('option');
+            loadingOption.value = '';
+            loadingOption.textContent = '로딩 중...';
+            loadingOption.disabled = true;
+            // 기존 옵션들 제거하고 로딩 옵션만 표시
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            select.appendChild(loadingOption);
         } else {
-            select.style.opacity = '1';
+            select.classList.remove('loading');
             select.disabled = false;
+            // 로딩 옵션 제거 (기본 옵션만 남김)
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
         }
     }
     

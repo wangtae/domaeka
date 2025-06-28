@@ -1,8 +1,17 @@
 <?php
+// 출력 버퍼링 시작 및 오류 설정
+ob_start();
+error_reporting(0); // AJAX 파일에서는 모든 오류/경고 비활성화
+ini_set('display_errors', 0);
+
 include_once './_common.php';
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+
+// 출력 버퍼 정리 (혹시 _common.php에서 의도치 않은 출력이 있을 경우)
+ob_clean();
 
 header('Content-Type: application/json');
+header('Cache-Control: no-cache, must-revalidate');
+header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
 $dmk_auth = dmk_get_admin_auth();
 
@@ -17,11 +26,20 @@ $dt_id = isset($_GET['dt_id']) ? clean_xss_tags($_GET['dt_id']) : '';
 $response = array(
     'success' => false,
     'message' => '',
-    'data' => array()
+    'data' => array(),
+    'debug' => array(
+        'dt_id' => $dt_id,
+        'auth' => $dmk_auth,
+        'request_method' => $_SERVER['REQUEST_METHOD']
+    )
 );
 
 try {
 $agencies = [];
+
+// 디버깅: 요청 시작 로그
+error_log('get_agencies.php 시작: dt_id=' . $dt_id . ', REQUEST_METHOD=' . $_SERVER['REQUEST_METHOD']);
+error_log('get_agencies.php dmk_auth: ' . print_r($dmk_auth, true));
 
 // 권한별 데이터 접근 제어
 if ($dmk_auth['is_super']) {
@@ -37,6 +55,11 @@ if ($dmk_auth['is_super']) {
                FROM dmk_agency a
                JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
                ". $ag_sql_where ." ORDER BY m.mb_nick ASC";
+    
+    // 디버깅을 위해 SQL 쿼리 추가
+    $response['debug']['sql'] = $ag_sql;
+    $response['debug']['sql_where'] = $ag_sql_where;
+    
     $ag_res = sql_query($ag_sql);
     while($ag_row = sql_fetch_array($ag_res)) {
         $agencies[] = array(
@@ -70,11 +93,21 @@ if ($dmk_auth['is_super']) {
     $response['success'] = true;
     $response['data'] = $agencies;
     $response['message'] = '대리점 목록을 성공적으로 조회했습니다.';
+    
+    // 성공적인 요청 로그 기록 (디버깅용)
+    error_log('get_agencies.php 성공: dt_id=' . $dt_id . ', 대리점 수=' . count($agencies));
 
 } catch (Exception $e) {
     $response['success'] = false;
     $response['message'] = '대리점 목록 조회 중 오류가 발생했습니다: ' . $e->getMessage();
+    
+    // 오류 로그 기록
+    error_log('get_agencies.php 오류: ' . $e->getMessage());
+    error_log('get_agencies.php 스택 트레이스: ' . $e->getTraceAsString());
 }
 
+// 출력 버퍼 정리 후 JSON 출력
+ob_clean();
 echo json_encode($response);
+exit;
 ?> 

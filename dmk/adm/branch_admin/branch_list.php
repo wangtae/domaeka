@@ -137,6 +137,7 @@ if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
 <?php
 echo dmk_render_chain_select([
     'page_type' => DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY,
+    'auto_submit' => false, // 디버깅을 위해 자동 제출 비활성화
     'debug' => true // 디버깅을 위해 임시로 활성화
 ]);
 ?>
