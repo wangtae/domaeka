@@ -137,8 +137,15 @@ if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
 <?php
 echo dmk_render_chain_select([
     'page_type' => DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY,
-    'auto_submit' => false, // 디버깅을 위해 자동 제출 비활성화
-    'debug' => true // 디버깅을 위해 임시로 활성화
+    'auto_submit' => true,
+    'current_values' => [
+        'sdt_id' => $sdt_id,
+        'sag_id' => $sag_id,
+        'sbr_id' => $sbr_id,
+        'dt_id' => $dt_id,
+        'ag_id' => $ag_id,
+    ],
+    'debug' => false
 ]);
 ?>
 
@@ -146,6 +153,17 @@ echo dmk_render_chain_select([
 <input type="text" name="stx" value="<?php echo $stx ?>" id="stx" class="frm_input" placeholder="지점ID, 지점명, 대표자명">
 <input type="submit" class="btn_submit" value="검색">
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var distributorSelect = document.getElementById('sdt_id');
+    if (distributorSelect) {
+        distributorSelect.addEventListener('change', function() {
+            document.getElementById('fsearch').submit();
+        });
+    }
+});
+</script>
 
 <div class="btn_fixed_top">
     <?php

@@ -167,7 +167,7 @@ if ($w == '') {
     
     sql_query($sql);
     
-    alert('관리자가 등록되었습니다.', './admin_list.php');
+    goto_url('./admin_list.php');
     
 } elseif ($w == 'u') {
     // 수정
