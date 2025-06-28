@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <td class="td_mng td_mng_s">
             <a href="./branch_form.php?w=u&amp;br_id=<?php echo $row['br_id'] ?>&amp;<?php echo $qstr ?>" class="btn btn_03">수정</a>
             <?php if ($row['br_shortcut_code']) { ?>
-            <a href="<?php echo G5_DMK_URL ?>/order/<?php echo $row['br_shortcut_code'] ?>" target="_blank" class="btn btn_02">주문페이지</a>
+            <a href="<?php echo G5_URL ?>/go/<?php echo $row['br_shortcut_code'] ?>" target="_blank" class="btn btn_02">주문페이지</a>
             <?php } ?>
         </td>
     </tr>

@@ -1,0 +1,31 @@
+/*
+ * 도매까 계층형 체인 셀렉트 UI 스타일 (복사본)
+ * 원본: dmk/adm/css/chain-select.css
+ */
+
+.dmk-chain-select-wrap {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.dmk-chain-select-wrap select {
+    min-width: 120px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: #fff;
+    font-size: 14px;
+}
+.dmk-chain-select-wrap label {
+    font-weight: bold;
+    margin-right: 4px;
+    align-self: center;
+}
+.dmk-chain-select-wrap .dmk-chain-select-loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background: url('/img/loading.gif') no-repeat center center;
+    background-size: contain;
+    vertical-align: middle;
+}

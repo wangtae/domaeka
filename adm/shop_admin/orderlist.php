@@ -1,13 +1,24 @@
 <?php
 $sub_menu = '400400';
 include_once('./_common.php');
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 auth_check_menu($auth, $sub_menu, "r");
 
 $g5['title'] = '주문내역';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 include_once(G5_PLUGIN_PATH.'/jquery-ui/datepicker.php');
+
+// --- 계층형(총판-대리점-지점) 체인 셀렉트 자산(JS/CSS) 포함 ---
+include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+echo dmk_include_chain_select_assets();
+
+
+// --- 계층형(총판-대리점-지점) 필터 파라미터 처리 ---
+$sdt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
+$sag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
+$sbr_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
+if (!$sag_id && isset($_GET['ag_id'])) $sag_id = clean_xss_tags($_GET['ag_id']);
+if (!$sbr_id && isset($_GET['br_id'])) $sbr_id = clean_xss_tags($_GET['br_id']);
 
 $where = array();
 
@@ -17,21 +28,17 @@ $sort2 = (isset($_GET['sort2']) && in_array($_GET['sort2'], array('desc', 'asc')
 $sel_field = (isset($_GET['sel_field']) && in_array($_GET['sel_field'], array('od_id', 'mb_id', 'od_name', 'od_tel', 'od_hp', 'od_b_name', 'od_b_tel', 'od_b_hp', 'od_deposit_name', 'od_invoice')) ) ? $_GET['sel_field'] : ''; 
 $od_status = isset($_GET['od_status']) ? get_search_string($_GET['od_status']) : '';
 $search = isset($_GET['search']) ? get_search_string($_GET['search']) : '';
-$save_search = isset($_GET['save_search']) ? get_search_string($_GET['save_search']) : '';
 
 $fr_date = (isset($_GET['fr_date']) && preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $_GET['fr_date'])) ? $_GET['fr_date'] : '';
 $to_date = (isset($_GET['to_date']) && preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $_GET['to_date'])) ? $_GET['to_date'] : '';
 
 $od_misu = isset($_GET['od_misu']) ? preg_replace('/[^0-9a-z]/i', '', $_GET['od_misu']) : '';
-$od_cancel_price = isset($_GET['od_cancel_price']) ? preg_replace('/[^0-9a-z]/i', '', $_GET['od_cancel_price']) : '';
+$od_cancel_price = isset($_GET['od_cancel_price']) ? preg_replace('/[^0-9a-z]/', '', $_GET['od_cancel_price']) : '';
 $od_refund_price = isset($_GET['od_refund_price']) ? preg_replace('/[^0-9a-z]/i', '', $_GET['od_refund_price']) : '';
 $od_receipt_point = isset($_GET['od_receipt_point']) ? preg_replace('/[^0-9a-z]/i', '', $_GET['od_receipt_point']) : '';
 $od_coupon = isset($_GET['od_coupon']) ? preg_replace('/[^0-9a-z]/i', '', $_GET['od_coupon']) : ''; 
 $od_settle_case = isset($_GET['od_settle_case']) ? clean_xss_tags($_GET['od_settle_case'], 1, 1) : ''; 
-$od_escrow = isset($_GET['od_escrow']) ? clean_xss_tags($_GET['od_escrow'], 1, 1) : '';
-
-// 도매까 지점별 필터링 추가
-$filter_br_id = isset($_GET['filter_br_id']) ? clean_xss_tags($_GET['filter_br_id']) : ''; 
+$od_escrow = isset($_GET['od_escrow']) ? clean_xss_tags($_GET['od_escrow'], 1, 1) : ''; 
 
 $tot_itemcount = $tot_orderprice = $tot_receiptprice = $tot_ordercancel = $tot_misu = $tot_couponprice = 0;
 $sql_search = "";
@@ -110,42 +117,26 @@ if ($fr_date && $to_date) {
     $where[] = " od_time between '$fr_date 00:00:00' and '$to_date 23:59:59' ";
 }
 
-// 도매까 지점별 필터링 조건 추가
-if ($filter_br_id) {
-    $where[] = " od_id IN (
-        SELECT DISTINCT od_id FROM {$g5['g5_shop_cart_table']} 
-        WHERE dmk_br_id = '" . sql_escape_string($filter_br_id) . "'
-    ) ";
+// --- 계층형(총판-대리점-지점) 주문 필터링 ---
+if ($sdt_id) {
+    $where[] = "EXISTS (SELECT 1 FROM dmk_branch b2 JOIN dmk_agency a2 ON b2.ag_id = a2.ag_id JOIN dmk_distributor d2 ON a2.dt_id = d2.dt_id WHERE b2.br_id = o.dmk_br_id AND d2.dt_id = '".sql_escape_string($sdt_id)."')";
+}
+if ($sag_id) {
+    $where[] = "o.dmk_ag_id = '".sql_escape_string($sag_id)."'";
+}
+if ($sbr_id) {
+    $where[] = "o.dmk_br_id = '".sql_escape_string($sbr_id)."'";
 }
 
 if ($where) {
     $sql_search = ' where '.implode(' and ', $where);
-} else {
-    $sql_search = '';
-}
-
-$order_filter_condition = dmk_get_order_where_condition();
-if ($order_filter_condition) {
-    if ($sql_search) {
-        $sql_search .= ' AND ' . substr($order_filter_condition, 5); // ' AND ' 제거
-    } else {
-        $sql_search = ' where ' . substr($order_filter_condition, 5); // ' AND ' 제거
-    }
 }
 
 if ($sel_field == "")  $sel_field = "od_id";
 if ($sort1 == "") $sort1 = "od_id";
 if ($sort2 == "") $sort2 = "desc";
 
-$sql_common = " from {$g5['g5_shop_order_table']} o
-                LEFT JOIN (
-                    SELECT od_id, GROUP_CONCAT(DISTINCT CONCAT(b.br_name, '(', c.dmk_br_id, ')') SEPARATOR ', ') as branch_info
-                    FROM {$g5['g5_shop_cart_table']} c
-                    LEFT JOIN dmk_branch b ON c.dmk_br_id = b.br_id
-                    WHERE c.dmk_br_id IS NOT NULL AND c.dmk_br_id != ''
-                    GROUP BY od_id
-                ) branch_data ON o.od_id = branch_data.od_id 
-                $sql_search ";
+$sql_common = " from {$g5['g5_shop_order_table']} $sql_search ";
 
 $sql = " select count(od_id) as cnt " . $sql_common;
 $row = sql_fetch($sql);
@@ -156,15 +147,14 @@ $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
 if ($page < 1) { $page = 1; } // 페이지가 없으면 첫 페이지 (1 페이지)
 $from_record = ($page - 1) * $rows; // 시작 열을 구함
 
-$sql  = " select o.*,
-            (o.od_cart_coupon + o.od_coupon + o.od_send_coupon) as couponprice,
-            branch_data.branch_info
+$sql  = " select *,
+            (od_cart_coupon + od_coupon + od_send_coupon) as couponprice
            $sql_common
-           order by o.$sort1 $sort2
+           order by $sort1 $sort2
            limit $from_record, $rows ";
 $result = sql_query($sql);
 
-$qstr1 = "od_status=".urlencode($od_status)."&amp;od_settle_case=".urlencode($od_settle_case)."&amp;od_misu=$od_misu&amp;od_cancel_price=$od_cancel_price&amp;od_refund_price=$od_refund_price&amp;od_receipt_point=$od_receipt_point&amp;od_coupon=$od_coupon&amp;fr_date=$fr_date&amp;to_date=$to_date&amp;sel_field=$sel_field&amp;search=$search&amp;save_search=$search&amp;filter_br_id=$filter_br_id";
+$qstr1 = "od_status=".urlencode($od_status)."&amp;od_settle_case=".urlencode($od_settle_case)."&amp;od_misu=$od_misu&amp;od_cancel_price=$od_cancel_price&amp;od_refund_price=$od_refund_price&amp;od_receipt_point=$od_receipt_point&amp;od_coupon=$od_coupon&amp;fr_date=$fr_date&amp;to_date=$to_date&amp;sel_field=$sel_field&amp;search=$search&amp;save_search=$search";
 if($default['de_escrow_use'])
     $qstr1 .= "&amp;od_escrow=$od_escrow";
 $qstr = "$qstr1&amp;sort1=$sort1&amp;sort2=$sort2&amp;page=$page";
@@ -192,51 +182,39 @@ if( function_exists('pg_setting_check') ){
     <?php } ?>
 </div>
 
-<form name="frmorderlist" class="local_sch01 local_sch">
-<input type="hidden" name="doc" value="<?php echo get_sanitize_input($doc); ?>">
-<input type="hidden" name="sort1" value="<?php echo get_sanitize_input($sort1); ?>">
-<input type="hidden" name="sort2" value="<?php echo get_sanitize_input($sort2); ?>">
-<input type="hidden" name="page" value="<?php echo get_sanitize_input($page); ?>">
-<input type="hidden" name="save_search" value="<?php echo get_sanitize_input($search); ?>">
-
+<form name="frmorderlist" class="local_sch01 local_sch" method="get">
 <?php
-// 도매까 관리자 권한 확인
-$dmk_auth = dmk_get_admin_auth();
-if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, 총판, 대리점만 지점 필터 표시
-    // 지점 필터링 옵션 생성
-    $branch_options = '<option value="">전체 지점</option>';
-    if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == 1) {
-        // 최고관리자 또는 총판: 모든 지점 조회
-        $branch_sql = " SELECT b.br_id, b.br_name, a.ag_name 
-                        FROM dmk_branch b 
-                        LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
-                        WHERE b.br_status = 1 
-                        ORDER BY a.ag_name, b.br_name ";
-        $branch_result = sql_query($branch_sql);
-        while ($branch_row = sql_fetch_array($branch_result)) {
-            $selected = ($filter_br_id == $branch_row['br_id']) ? ' selected' : '';
-            $branch_options .= '<option value="' . $branch_row['br_id'] . '"' . $selected . '>' . 
-                              htmlspecialchars($branch_row['ag_name'] . ' - ' . $branch_row['br_name']) . 
-                              ' (' . $branch_row['br_id'] . ')</option>';
-        }
-    } elseif ($dmk_auth['mb_type'] == 2) {
-        // 대리점 관리자: 소속 지점만 조회
-        $branch_sql = " SELECT br_id, br_name FROM dmk_branch 
-                        WHERE ag_id = '" . sql_escape_string($dmk_auth['ag_id']) . "' AND br_status = 1 
-                        ORDER BY br_name ";
-        $branch_result = sql_query($branch_sql);
-        while ($branch_row = sql_fetch_array($branch_result)) {
-            $selected = ($filter_br_id == $branch_row['br_id']) ? ' selected' : '';
-            $branch_options .= '<option value="' . $branch_row['br_id'] . '"' . $selected . '>' . 
-                              htmlspecialchars($branch_row['br_name']) . ' (' . $branch_row['br_id'] . ')</option>';
-        }
-    }
+// --- 계층형(총판-대리점-지점) 체인 셀렉트 UI 삽입 ---
+include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+echo dmk_render_chain_select([
+    'page_type' => DMK_CHAIN_SELECT_FULL,
+    'auto_submit' => true,
+    'form_id' => 'frmorderlist',
+    'field_names' => [
+        'distributor' => 'sdt_id',
+        'agency' => 'sag_id',
+        'branch' => 'sbr_id'
+    ],
+    'current_values' => [
+        'sdt_id' => $sdt_id,
+        'sag_id' => $sag_id,
+        'sbr_id' => $sbr_id
+    ],
+    'placeholders' => [
+        'distributor' => '전체 총판',
+        'agency' => '전체 대리점',
+        'branch' => '전체 지점'
+    ]
+]);
 ?>
-<label for="filter_br_id" class="sound_only">지점 선택</label>
-<select name="filter_br_id" id="filter_br_id" onchange="this.form.submit();" style="margin-right:10px;">
-    <?php echo $branch_options ?>
-</select>
-<?php } ?>
+<input type="hidden" name="doc" value="<?php echo $doc; ?>">
+<input type="hidden" name="sort1" value="<?php echo $sort1; ?>">
+<input type="hidden" name="sort2" value="<?php echo $sort2; ?>">
+<input type="hidden" name="page" value="<?php echo $page; ?>">
+<input type="hidden" name="save_search" value="<?php echo $search; ?>">
+<input type="hidden" name="sdt_id" value="<?php echo $sdt_id; ?>">
+<input type="hidden" name="sag_id" value="<?php echo $sag_id; ?>">
+<input type="hidden" name="sbr_id" value="<?php echo $sbr_id; ?>">
 
 <label for="sel_field" class="sound_only">검색대상</label>
 <select name="sel_field" id="sel_field">
@@ -294,7 +272,7 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, �
     <input type="radio" name="od_settle_case" value="신용카드" id="od_settle_case06" <?php echo get_checked($od_settle_case, '신용카드');  ?>>
     <label for="od_settle_case06">신용카드</label>
     <input type="radio" name="od_settle_case" value="간편결제" id="od_settle_case07" <?php echo get_checked($od_settle_case, '간편결제');  ?>>
-    <label for="od_settle_case07" data-tooltip-text="NHN_KCP 간편결제 : PAYCO, 네이버페이, 카카오페이(NHN_KCP), 애플페이(NHN_KCP) &#xa;LG유플러스 간편결제 : PAYNOW &#xa;KG 이니시스 간편결제 : KPAY, 삼성페이, LPAY, 카카오페이(KG이니시스)">PG간편결제</label>
+    <label for="od_settle_case07" data-tooltip-text="NHN_KCP 간편결제 : PAYCO, 네이버페이, 카카오페이(NHN_KCP) &#xa;LG유플러스 간편결제 : PAYNOW &#xa;KG 이니시스 간편결제 : KPAY, 삼성페이, LPAY, 카카오페이(KG이니시스)">PG간편결제</label>
     <input type="radio" name="od_settle_case" value="KAKAOPAY" id="od_settle_case08" <?php echo get_checked($od_settle_case, 'KAKAOPAY');  ?>>
     <label for="od_settle_case08">KAKAOPAY</label>
 </div>
@@ -348,7 +326,6 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, �
         <th scope="col" id="th_odrer">주문자</th>
         <th scope="col" id="th_odrertel">주문자전화</th>
         <th scope="col" id="th_recvr">받는분</th>
-        <th scope="col" id="th_branch" rowspan="2">주문지점</th>
         <th scope="col" rowspan="3">주문합계<br>선불배송비포함</th>
         <th scope="col" rowspan="3">입금합계</th>
         <th scope="col" rowspan="3">주문취소</th>
@@ -448,15 +425,6 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, �
         <td headers="th_odrer" class="td_name"><?php echo $mb_nick; ?></td>
         <td headers="th_odrertel" class="td_tel"><?php echo get_text($row['od_tel']); ?></td>
         <td headers="th_recvr" class="td_name"><a href="<?php echo $_SERVER['SCRIPT_NAME']; ?>?sort1=<?php echo $sort1; ?>&amp;sort2=<?php echo $sort2; ?>&amp;sel_field=od_b_name&amp;search=<?php echo get_text($row['od_b_name']); ?>"><?php echo get_text($row['od_b_name']); ?></a></td>
-        <td headers="th_branch" class="td_branch" rowspan="2" style="font-size:0.9em; color:#666;">
-            <?php 
-            if ($row['branch_info']) {
-                echo '<i class="fa fa-map-marker" style="color:#007bff;"></i> ' . htmlspecialchars($row['branch_info']);
-            } else {
-                echo '<span style="color:#999;">-</span>';
-            }
-            ?>
-        </td>
         <td rowspan="3" class="td_num td_numsum"><?php echo number_format($row['od_cart_price'] + $row['od_send_cost'] + $row['od_send_cost2']); ?></td>
         <td rowspan="3" class="td_num_right"><?php echo number_format($row['od_receipt_price']); ?></td>
         <td rowspan="3" class="td_numcancel<?php echo $td_color; ?> td_num"><?php echo number_format($row['od_cancel_price']); ?></td>
@@ -520,7 +488,7 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, �
     }
     sql_free_result($result);
     if ($i == 0)
-        echo '<tr><td colspan="13" class="empty_table">자료가 없습니다.</td></tr>';
+        echo '<tr><td colspan="12" class="empty_table">자료가 없습니다.</td></tr>';
     ?>
     </tbody>
     <tfoot>
@@ -528,7 +496,6 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, �
         <th scope="row" colspan="3">&nbsp;</th>
         <td>&nbsp;</td>
         <td><?php echo number_format($tot_itemcount); ?>건</td>
-        <td>&nbsp;</td>
         <th scope="row">합 계</th>
         <td><?php echo number_format($tot_orderprice); ?></td>
         <td><?php echo number_format($tot_receiptprice); ?></td>
@@ -581,6 +548,15 @@ if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, �
 
 <?php echo get_paging(G5_IS_MOBILE ? $config['cf_mobile_pages'] : $config['cf_write_pages'], $page, $total_page, "{$_SERVER['SCRIPT_NAME']}?$qstr&amp;page="); ?>
 
+<?php
+// --- 계층형(총판-대리점-지점) 체인 셀렉트 UI asset 중복 방지 및 강제 로드 ---
+if (!defined('DMK_CHAIN_SELECT_ASSET_INCLUDED')) {
+    define('DMK_CHAIN_SELECT_ASSET_INCLUDED', true);
+    echo '<link rel="stylesheet" type="text/css" href="/dmk/adm/js/chain-select.css">';
+    echo '<script src="/dmk/adm/js/chain-select.js"></script>';
+}
+?>
+
 <script>
 $(function(){
     $("#fr_date, #to_date").datepicker({ changeMonth: true, changeYear: true, dateFormat: "yy-mm-dd", showButtonPanel: true, yearRange: "c-99:c+99", maxDate: "+0d" });
@@ -628,6 +604,7 @@ $(function(){
     });
 });
 
+
 function set_date(today)
 {
     <?php
@@ -658,9 +635,7 @@ function set_date(today)
         document.getElementById("to_date").value = "";
     }
 }
-</script>
 
-<script>
 function forderlist_submit(f)
 {
     if (!is_checked("chk[]")) {

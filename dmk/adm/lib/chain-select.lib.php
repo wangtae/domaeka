@@ -330,7 +330,7 @@ function dmk_include_chain_select_assets() {
     $html = '';
     
     // CSS 파일 포함
-    $html .= '<link rel="stylesheet" href="' . G5_URL . '/dmk/adm/css/chain-select.css' . $cache_buster . '">';
+    $html .= '<link rel="stylesheet" href="' . G5_URL . '/dmk/adm/js/chain-select.css' . $cache_buster . '">';
     
     // JavaScript 파일 포함
     $html .= '<script src="' . G5_URL . '/dmk/adm/js/chain-select.js' . $cache_buster . '"></script>';
@@ -481,4 +481,4 @@ function dmk_get_cache_buster() {
     }
     return '';
 }
-?> 
+?>
