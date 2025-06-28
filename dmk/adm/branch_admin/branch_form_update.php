@@ -217,35 +217,16 @@ if ($w == 'u') {
     }
 
     // 지점 관리자는 특정 필드만 수정 가능
-    if ($current_admin['mb_type'] == DMK_MB_TYPE_BRANCH) {
-        // 사용자 요청: 비밀번호, 회사명, 전화번호, 휴대폰 번호, 주소, 이메일
-        $member_update_fields[] = "mb_name = '" . sql_escape_string($mb_name) . "'";
-        $member_update_fields[] = "mb_email = '" . sql_escape_string($mb_email) . "'";
-        $member_update_fields[] = "mb_tel = '" . sql_escape_string($mb_tel) . "'";
-        $member_update_fields[] = "mb_hp = '" . sql_escape_string($mb_hp) . "'";
-        $member_update_fields[] = "mb_zip1 = '" . sql_escape_string($mb_zip1) . "'";
-        $member_update_fields[] = "mb_zip2 = '" . sql_escape_string($mb_zip2) . "'";
-        $member_update_fields[] = "mb_addr1 = '" . sql_escape_string($mb_addr1) . "'";
-        $member_update_fields[] = "mb_addr2 = '" . sql_escape_string($mb_addr2) . "'";
-        $member_update_fields[] = "mb_addr3 = '" . sql_escape_string($mb_addr3) . "'";
-        $member_update_fields[] = "mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "'";
-    } else {
-        // 그 외 관리자는 모든 필드 업데이트 가능
-        $member_update_fields[] = "mb_name = '" . sql_escape_string($mb_name) . "'";
-        $member_update_fields[] = "mb_nick = '" . sql_escape_string($mb_nick) . "'";
-        $member_update_fields[] = "mb_email = '" . sql_escape_string($mb_email) . "'";
-        $member_update_fields[] = "mb_tel = '" . sql_escape_string($mb_tel) . "'";
-        $member_update_fields[] = "mb_hp = '" . sql_escape_string($mb_hp) . "'";
-        $member_update_fields[] = "mb_zip1 = '" . sql_escape_string($mb_zip1) . "'";
-        $member_update_fields[] = "mb_zip2 = '" . sql_escape_string($mb_zip2) . "'";
-        $member_update_fields[] = "mb_addr1 = '" . sql_escape_string($mb_addr1) . "'";
-        $member_update_fields[] = "mb_addr2 = '" . sql_escape_string($mb_addr2) . "'";
-        $member_update_fields[] = "mb_addr3 = '" . sql_escape_string($mb_addr3) . "'";
-        $member_update_fields[] = "mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "'";
-        $member_update_fields[] = "dmk_ag_id = '" . sql_escape_string($ag_id_for_update) . "'";
-        $member_update_fields[] = "dmk_dt_id = '" . sql_escape_string($dt_id_for_update) . "'";
-        $member_update_fields[] = "dmk_br_id = '" . sql_escape_string($br_id) . "'";
-    }
+    $member_update_fields[] = "mb_name = '" . sql_escape_string($mb_name) . "'";
+    $member_update_fields[] = "mb_email = '" . sql_escape_string($mb_email) . "'";
+    $member_update_fields[] = "mb_tel = '" . sql_escape_string($mb_tel) . "'";
+    $member_update_fields[] = "mb_hp = '" . sql_escape_string($mb_hp) . "'";
+    $member_update_fields[] = "mb_zip1 = '" . sql_escape_string($mb_zip1) . "'";
+    $member_update_fields[] = "mb_zip2 = '" . sql_escape_string($mb_zip2) . "'";
+    $member_update_fields[] = "mb_addr1 = '" . sql_escape_string($mb_addr1) . "'";
+    $member_update_fields[] = "mb_addr2 = '" . sql_escape_string($mb_addr2) . "'";
+    $member_update_fields[] = "mb_addr3 = '" . sql_escape_string($mb_addr3) . "'";
+    $member_update_fields[] = "mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "'";
 
     // 업데이트할 필드가 하나라도 있는 경우에만 쿼리 실행
     if (!empty($member_update_fields)) {
