@@ -2,7 +2,18 @@
 $sub_menu = "200100";
 include_once('./_common.php');
 
+// 도매까 권한 라이브러리 포함
+include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
+
+// 현재 관리자 권한 정보 가져오기
+$auth = dmk_get_admin_auth();
+
 auth_check_menu($auth, $sub_menu, 'w');
+
+// 현재 회원의 소속 정보 초기화
+$current_dt_id = '';
+$current_ag_id = '';
+$current_br_id = '';
 
 $mb = array(
 'mb_certify' => null,
@@ -90,9 +101,98 @@ else if ($w == 'u')
     $mb['mb_8'] = get_text($mb['mb_8']);
     $mb['mb_9'] = get_text($mb['mb_9']);
     $mb['mb_10'] = get_text($mb['mb_10']);
+    
+    // dmk_mb_owner_type과 dmk_mb_owner_id를 통해 현재 소속 파악
+    if (!empty($mb['dmk_mb_owner_type']) && !empty($mb['dmk_mb_owner_id'])) {
+        switch ($mb['dmk_mb_owner_type']) {
+            case 'distributor':
+                $current_dt_id = $mb['dmk_mb_owner_id'];
+                break;
+            case 'agency':
+                $current_ag_id = $mb['dmk_mb_owner_id'];
+                // 대리점의 총판 정보 조회
+                $agency_info = sql_fetch("SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($current_ag_id)."'");
+                if ($agency_info) {
+                    $current_dt_id = $agency_info['dt_id'];
+                }
+                break;
+            case 'branch':
+                $current_br_id = $mb['dmk_mb_owner_id'];
+                // 지점의 대리점과 총판 정보 조회
+                $branch_info = sql_fetch("
+                    SELECT b.ag_id, a.dt_id 
+                    FROM dmk_branch b 
+                    JOIN dmk_agency a ON b.ag_id = a.ag_id 
+                    WHERE b.br_id = '".sql_escape_string($current_br_id)."'
+                ");
+                if ($branch_info) {
+                    $current_ag_id = $branch_info['ag_id'];
+                    $current_dt_id = $branch_info['dt_id'];
+                }
+                break;
+        }
+    }
 }
 else
     alert('제대로 된 값이 넘어오지 않았습니다.');
+
+// 총판 목록 조회 (드롭다운에 사용) - 본사 관리자만
+$distributors = array();
+if ($auth['is_super']) {
+    $dt_sql = " SELECT dt.dt_id, m.mb_nick AS dt_name FROM dmk_distributor dt JOIN {$g5['member_table']} m ON dt.dt_id = m.mb_id WHERE dt.dt_status = 1 ORDER BY m.mb_nick ASC ";
+    $dt_result = sql_query($dt_sql);
+    while($row = sql_fetch_array($dt_result)) {
+        $distributors[] = $row;
+    }
+}
+
+// 대리점 목록 조회 (드롭다운에 사용) - 권한 및 선택된 총판에 따라 필터링
+$agencies = array();
+
+// 본사 관리자가 아닌 경우에만 PHP에서 대리점 목록을 미리 조회
+// 본사 관리자의 경우 JavaScript에서 총판 선택에 따라 동적으로 로드
+if (!$auth['is_super']) {
+    $ag_sql = " SELECT a.ag_id, m.mb_nick AS ag_name FROM dmk_agency a JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id WHERE a.ag_status = 1 ";
+
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        // 총판 관리자는 자신의 총판에 속한 대리점만 선택 가능
+        $ag_sql .= " AND a.dt_id = '".sql_escape_string($auth['mb_id'])."' ";
+    } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+        // 대리점 관리자는 자신의 대리점만 선택 가능
+        $ag_sql .= " AND a.ag_id = '".sql_escape_string($auth['ag_id'])."' ";
+    }
+
+    $ag_sql .= " ORDER BY m.mb_nick ASC ";
+    $ag_result = sql_query($ag_sql);
+    while($row = sql_fetch_array($ag_result)) {
+        $agencies[] = $row;
+    }
+}
+
+// 지점 목록 조회 (드롭다운에 사용) - 권한 및 선택된 대리점에 따라 필터링
+$branches = array();
+
+// 본사 관리자가 아닌 경우에만 PHP에서 지점 목록을 미리 조회
+if (!$auth['is_super']) {
+    $br_sql = " SELECT b.br_id, m.mb_nick AS br_name FROM dmk_branch b JOIN {$g5['member_table']} m ON b.br_id = m.mb_id WHERE b.br_status = 1 ";
+
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        // 총판 관리자는 자신의 총판에 속한 지점만 선택 가능
+        $br_sql .= " AND b.ag_id IN (SELECT ag_id FROM dmk_agency WHERE dt_id = '".sql_escape_string($auth['mb_id'])."') ";
+    } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+        // 대리점 관리자는 자신의 대리점에 속한 지점만 선택 가능
+        $br_sql .= " AND b.ag_id = '".sql_escape_string($auth['ag_id'])."' ";
+    } else if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+        // 지점 관리자는 자신의 지점만 선택 가능
+        $br_sql .= " AND b.br_id = '".sql_escape_string($auth['br_id'])."' ";
+    }
+
+    $br_sql .= " ORDER BY m.mb_nick ASC ";
+    $br_result = sql_query($br_sql);
+    while($row = sql_fetch_array($br_result)) {
+        $branches[] = $row;
+    }
+}
 
 // 본인확인방법
 switch($mb['mb_certify']) {
@@ -178,6 +278,31 @@ include_once('./admin.head.php');
 add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
 ?>
 
+<style>
+.hierarchy_select_group {
+    margin-bottom: 10px;
+    display: inline-block;
+    margin-right: 20px;
+    vertical-align: top;
+}
+
+.hierarchy_select_group label {
+    display: inline-block;
+    width: 60px;
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.hierarchy_select_group select {
+    min-width: 200px;
+}
+
+.hierarchy_select_group .frm_info {
+    font-weight: normal;
+    color: #666;
+}
+</style>
+
 <form name="fmember" id="fmember" action="./member_form_update.php" onsubmit="return fmember_submit(this);" method="post" enctype="multipart/form-data">
 <input type="hidden" name="w" value="<?php echo $w ?>">
 <input type="hidden" name="sfl" value="<?php echo $sfl ?>">
@@ -216,7 +341,116 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
         <th scope="row"><label for="mb_level">회원 권한</label></th>
         <td><?php echo get_member_level_select('mb_level', 1, $member['mb_level'], $mb['mb_level']) ?></td>
         <th scope="row">포인트</th>
-        <td><a href="./point_list.php?sfl=mb_id&amp;stx=<?php echo $mb['mb_id'] ?>" target="_blank"><?php echo number_format($mb['mb_point']) ?></a> 점</td>
+        <td><a href="./point_list.php?sfl=mb_id&amp;stx=<?php echo $mb['mb_id'] ?>" target="_blank"><?php echo number_format((int)$mb['mb_point']) ?></a> 점</td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="member_hierarchy">소속</label></th>
+        <td colspan="3">
+            <!-- 총판 선택 -->
+            <?php if ($auth['is_super']) { // 본사 관리자만 총판 선택 박스 노출 ?>
+            <div class="hierarchy_select_group">
+                <label for="dt_id">총판:</label>
+                <select name="dt_id" id="dt_id" class="frm_input">
+                    <option value="">총판 선택</option>
+                    <?php foreach ($distributors as $distributor) { ?>
+                        <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($current_dt_id == $distributor['dt_id']) ? 'selected' : '' ?>>
+                            <?php echo get_text($distributor['dt_name']) ?> (<?php echo $distributor['dt_id'] ?>)
+                        </option>
+                    <?php } ?>
+                </select>
+            </div>
+            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { // 총판 관리자는 자신의 총판 ID를 hidden 필드로 전달 ?>
+            <div class="hierarchy_select_group">
+                <label>총판:</label>
+                <span class="frm_info"><?php echo get_text($auth['mb_id']) ?> (<?php echo get_text($auth['mb_name']) ?>)</span>
+                <input type="hidden" name="dt_id" id="dt_id" value="<?php echo get_text($auth['mb_id']) ?>">
+            </div>
+            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) { // 대리점 관리자는 총판 정보만 표시 ?>
+            <div class="hierarchy_select_group">
+                <label>총판:</label>
+                <?php
+                    $parent_dt_id = dmk_get_agency_distributor_id($auth['ag_id']);
+                    $parent_dt_name = $parent_dt_id ? dmk_get_member_name($parent_dt_id) : '미지정';
+                ?>
+                <span class="frm_info"><?php echo get_text($parent_dt_id) ?> (<?php echo get_text($parent_dt_name) ?>)</span>
+                <input type="hidden" name="dt_id" id="dt_id" value="<?php echo get_text($parent_dt_id) ?>">
+            </div>
+            <?php } else { // 그 외 (지점 관리자 등)는 총판 필드 숨김 ?>
+            <input type="hidden" name="dt_id" id="dt_id" value="<?php echo $current_dt_id ?>">
+            <?php } ?>
+
+            <!-- 대리점 선택 -->
+            <?php if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { ?>
+            <div class="hierarchy_select_group">
+                <label for="ag_id">대리점:</label>
+                <select name="ag_id" id="ag_id" class="frm_input">
+                    <?php if ($auth['is_super']) { ?>
+                        <option value="">먼저 총판을 선택하세요</option>
+                    <?php } else { ?>
+                        <option value="">대리점 선택</option>
+                        <?php foreach ($agencies as $agency) { ?>
+                            <option value="<?php echo $agency['ag_id'] ?>" <?php echo ($current_ag_id == $agency['ag_id']) ? 'selected' : '' ?>>
+                                <?php echo get_text($agency['ag_name']) ?> (<?php echo $agency['ag_id'] ?>)
+                            </option>
+                        <?php } ?>
+                    <?php } ?>
+                </select>
+            </div>
+            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) { // 대리점 관리자는 자신의 대리점만 표시 ?>
+            <div class="hierarchy_select_group">
+                <label>대리점:</label>
+                <span class="frm_info"><?php echo get_text($auth['ag_id']) ?> (<?php echo get_text($auth['ag_name']) ?>)</span>
+                <input type="hidden" name="ag_id" id="ag_id" value="<?php echo get_text($auth['ag_id']) ?>">
+            </div>
+            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) { // 지점 관리자는 소속 대리점 표시 ?>
+            <div class="hierarchy_select_group">
+                <label>대리점:</label>
+                <?php
+                    $parent_ag_name = dmk_get_member_name($auth['ag_id']);
+                ?>
+                <span class="frm_info"><?php echo get_text($auth['ag_id']) ?> (<?php echo get_text($parent_ag_name) ?>)</span>
+                <input type="hidden" name="ag_id" id="ag_id" value="<?php echo $current_ag_id ?>">
+            </div>
+            <?php } else { ?>
+            <input type="hidden" name="ag_id" id="ag_id" value="<?php echo $current_ag_id ?>">
+            <?php } ?>
+
+            <!-- 지점 선택 -->
+            <?php if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR || $auth['mb_type'] == DMK_MB_TYPE_AGENCY) { ?>
+            <div class="hierarchy_select_group">
+                <label for="br_id">지점:</label>
+                <select name="br_id" id="br_id" class="frm_input">
+                    <?php if ($auth['is_super']) { ?>
+                        <option value="">먼저 대리점을 선택하세요</option>
+                    <?php } else { ?>
+                        <option value="">지점 선택</option>
+                        <?php foreach ($branches as $branch) { ?>
+                            <option value="<?php echo $branch['br_id'] ?>" <?php echo ($current_br_id == $branch['br_id']) ? 'selected' : '' ?>>
+                                <?php echo get_text($branch['br_name']) ?> (<?php echo $branch['br_id'] ?>)
+                            </option>
+                        <?php } ?>
+                    <?php } ?>
+                </select>
+            </div>
+            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) { // 지점 관리자는 자신의 지점만 표시 ?>
+            <div class="hierarchy_select_group">
+                <label>지점:</label>
+                <span class="frm_info"><?php echo get_text($auth['br_id']) ?> (<?php echo get_text($auth['br_name']) ?>)</span>
+                <input type="hidden" name="br_id" id="br_id" value="<?php echo get_text($auth['br_id']) ?>">
+            </div>
+            <?php } else { ?>
+            <input type="hidden" name="br_id" id="br_id" value="<?php echo $current_br_id ?>">
+            <?php } ?>
+
+            <!-- 소속 정보를 저장할 hidden 필드들 -->
+            <input type="hidden" name="dmk_mb_owner_type" id="dmk_mb_owner_type" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_type'] ?? '') ?>">
+            <input type="hidden" name="dmk_mb_owner_id" id="dmk_mb_owner_id" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_id'] ?? '') ?>">>
+            
+            <div class="frm_info">
+                소속을 지정하지 않으면 일반회원으로 등록됩니다.<br>
+                총판/대리점/지점 소속으로 지정하려면 해당 소속을 선택해주세요.
+            </div>
+        </td>
     </tr>
     <tr>
         <th scope="row"><label for="mb_email">E-mail<strong class="sound_only">필수</strong></label></th>
@@ -277,13 +511,15 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
             <?php echo help('이미지 크기는 <strong>넓이 '.$config['cf_member_icon_width'].'픽셀 높이 '.$config['cf_member_icon_height'].'픽셀</strong>로 해주세요.') ?>
             <input type="file" name="mb_icon" id="mb_icon">
             <?php
-            $mb_dir = substr($mb['mb_id'],0,2);
-            $icon_file = G5_DATA_PATH.'/member/'.$mb_dir.'/'.get_mb_icon_name($mb['mb_id']).'.gif';
-            if (file_exists($icon_file)) {
-                $icon_url = str_replace(G5_DATA_PATH, G5_DATA_URL, $icon_file);
-                $icon_filemtile = (defined('G5_USE_MEMBER_IMAGE_FILETIME') && G5_USE_MEMBER_IMAGE_FILETIME) ? '?'.filemtime($icon_file) : '';
-                echo '<img src="'.$icon_url.$icon_filemtile.'" alt="">';
-                echo '<input type="checkbox" id="del_mb_icon" name="del_mb_icon" value="1">삭제';
+            if ($mb['mb_id']) {
+                $mb_dir = substr($mb['mb_id'],0,2);
+                $icon_file = G5_DATA_PATH.'/member/'.$mb_dir.'/'.get_mb_icon_name($mb['mb_id']).'.gif';
+                if (file_exists($icon_file)) {
+                    $icon_url = str_replace(G5_DATA_PATH, G5_DATA_URL, $icon_file);
+                    $icon_filemtile = (defined('G5_USE_MEMBER_IMAGE_FILETIME') && G5_USE_MEMBER_IMAGE_FILETIME) ? '?'.filemtime($icon_file) : '';
+                    echo '<img src="'.$icon_url.$icon_filemtile.'" alt="">';
+                    echo '<input type="checkbox" id="del_mb_icon" name="del_mb_icon" value="1">삭제';
+                }
             }
             ?>
         </td>
@@ -294,11 +530,13 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
             <?php echo help('이미지 크기는 <strong>넓이 '.$config['cf_member_img_width'].'픽셀 높이 '.$config['cf_member_img_height'].'픽셀</strong>로 해주세요.') ?>
             <input type="file" name="mb_img" id="mb_img">
             <?php
-            $mb_dir = substr($mb['mb_id'],0,2);
-            $icon_file = G5_DATA_PATH.'/member_image/'.$mb_dir.'/'.get_mb_icon_name($mb['mb_id']).'.gif';
-            if (file_exists($icon_file)) {
-                echo get_member_profile_img($mb['mb_id']);
-                echo '<input type="checkbox" id="del_mb_img" name="del_mb_img" value="1">삭제';
+            if ($mb['mb_id']) {
+                $mb_dir = substr($mb['mb_id'],0,2);
+                $icon_file = G5_DATA_PATH.'/member_image/'.$mb_dir.'/'.get_mb_icon_name($mb['mb_id']).'.gif';
+                if (file_exists($icon_file)) {
+                    echo get_member_profile_img($mb['mb_id']);
+                    echo '<input type="checkbox" id="del_mb_img" name="del_mb_img" value="1">삭제';
+                }
             }
             ?>
         </td>
@@ -513,8 +751,275 @@ function fmember_submit(f)
         return false;
     }
 
+    // 소속 정보 업데이트
+    var owner_type = '';
+    var owner_id = '';
+
+    var dt_id = jQuery("#dt_id").val();
+    var ag_id = jQuery("#ag_id").val();
+    var br_id = jQuery("#br_id").val();
+
+    if (br_id) {
+        owner_type = 'branch';
+        owner_id = br_id;
+    } else if (ag_id) {
+        owner_type = 'agency';
+        owner_id = ag_id;
+    } else if (dt_id) {
+        owner_type = 'distributor';
+        owner_id = dt_id;
+    } else {
+        owner_type = '';
+        owner_id = '';
+    }
+
+    jQuery("#dmk_mb_owner_type").val(owner_type);
+    jQuery("#dmk_mb_owner_id").val(owner_id);
+
     return true;
 }
+
+// jQuery를 사용하여 AJAX 요청을 처리하는 함수 - 대리점 목록 업데이트
+function updateAgencyOptions(dt_id, selected_ag_id = '') {
+    console.log("=== updateAgencyOptions 시작 ===");
+    console.log("dt_id:", dt_id, "selected_ag_id:", selected_ag_id);
+    
+    var agencySelect = jQuery('#ag_id');
+    if (agencySelect.length === 0) {
+        console.error("ag_id 선택박스를 찾을 수 없습니다.");
+        return;
+    }
+    
+    // 기존 옵션 완전히 제거하고 기본 옵션 추가
+    agencySelect.empty().append('<option value="">대리점 선택</option>');
+    
+    // 지점 선택박스도 초기화
+    var branchSelect = jQuery('#br_id');
+    if (branchSelect.length > 0) {
+        branchSelect.empty().append('<option value="">먼저 대리점을 선택하세요</option>');
+    }
+
+    if (dt_id) {
+        var ajaxUrl = '../dmk/adm/_ajax/get_agencies.php';
+        console.log("AJAX URL:", ajaxUrl);
+        
+        jQuery.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                dt_id: dt_id
+            },
+            beforeSend: function() {
+                console.log("AJAX 요청 전송 중...");
+                agencySelect.find('option[value=""]').text('로딩 중...');
+            },
+            success: function(response) {
+                console.log("=== AJAX 성공 응답 ===");
+                console.log("전체 응답:", response);
+                
+                // 다시 기본 옵션으로 초기화
+                agencySelect.empty().append('<option value="">대리점 선택</option>');
+                
+                if (response.success) {
+                    console.log("응답 데이터:", response.data);
+                    console.log("데이터 개수:", response.data.length);
+                    
+                    if (response.data.length === 0) {
+                        agencySelect.find('option[value=""]').text('해당 총판에 속한 대리점이 없습니다');
+                        console.log("대리점 데이터가 없습니다.");
+                    } else {
+                        jQuery.each(response.data, function(index, agency) {
+                            var optionText = agency.name + ' (' + agency.id + ')';
+                            var option = new Option(optionText, agency.id);
+                            agencySelect.append(jQuery(option));
+                        });
+                        
+                        // 선택된 대리점 값을 설정
+                        if (selected_ag_id) {
+                            console.log("전달받은 selected_ag_id로 값 설정 시도:", selected_ag_id);
+                            agencySelect.val(selected_ag_id);
+                        }
+                    }
+                } else {
+                    console.error("AJAX 요청 실패:", response.message);
+                    agencySelect.find('option[value=""]').text('대리점 로드 실패');
+                }
+                
+                if (response.debug) {
+                    console.log("디버그 정보:", response.debug);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log("=== AJAX 오류 ===");
+                console.error("Status:", status);
+                console.error("Error:", error);
+                console.error("Response Text:", xhr.responseText);
+                console.error("Status Code:", xhr.status);
+                
+                agencySelect.empty().append('<option value="">네트워크 오류 또는 서버 응답 오류</option>');
+            },
+            complete: function() {
+                console.log("AJAX 요청 완료. 최종 select HTML:", agencySelect.html());
+                console.log("최종 선택된 값:", agencySelect.val());
+            }
+        });
+    } else {
+        console.log("dt_id가 비어있어 AJAX 요청을 하지 않습니다.");
+        agencySelect.empty().append('<option value="">먼저 총판을 선택하세요</option>');
+    }
+    console.log("=== updateAgencyOptions 끝 ===");
+}
+
+// jQuery를 사용하여 AJAX 요청을 처리하는 함수 - 지점 목록 업데이트
+function updateBranchOptions(ag_id, selected_br_id = '') {
+    console.log("=== updateBranchOptions 시작 ===");
+    console.log("ag_id:", ag_id, "selected_br_id:", selected_br_id);
+    
+    var branchSelect = jQuery('#br_id');
+    if (branchSelect.length === 0) {
+        console.error("br_id 선택박스를 찾을 수 없습니다.");
+        return;
+    }
+    
+    // 기존 옵션 완전히 제거하고 기본 옵션 추가
+    branchSelect.empty().append('<option value="">지점 선택</option>');
+
+    if (ag_id) {
+        var ajaxUrl = '../dmk/adm/_ajax/get_branches.php';
+        console.log("AJAX URL:", ajaxUrl);
+        
+        jQuery.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                ag_id: ag_id
+            },
+            beforeSend: function() {
+                console.log("AJAX 요청 전송 중...");
+                branchSelect.find('option[value=""]').text('로딩 중...');
+            },
+            success: function(response) {
+                console.log("=== AJAX 성공 응답 ===");
+                console.log("전체 응답:", response);
+                
+                // 다시 기본 옵션으로 초기화
+                branchSelect.empty().append('<option value="">지점 선택</option>');
+                
+                if (response.success) {
+                    console.log("응답 데이터:", response.data);
+                    console.log("데이터 개수:", response.data.length);
+                    
+                    if (response.data.length === 0) {
+                        branchSelect.find('option[value=""]').text('해당 대리점에 속한 지점이 없습니다');
+                        console.log("지점 데이터가 없습니다.");
+                    } else {
+                        jQuery.each(response.data, function(index, branch) {
+                            var optionText = branch.name + ' (' + branch.id + ')';
+                            var option = new Option(optionText, branch.id);
+                            branchSelect.append(jQuery(option));
+                        });
+                        
+                        // 선택된 지점 값을 설정
+                        if (selected_br_id) {
+                            console.log("전달받은 selected_br_id로 값 설정 시도:", selected_br_id);
+                            branchSelect.val(selected_br_id);
+                        }
+                    }
+                } else {
+                    console.error("AJAX 요청 실패:", response.message);
+                    branchSelect.find('option[value=""]').text('지점 로드 실패');
+                }
+                
+                if (response.debug) {
+                    console.log("디버그 정보:", response.debug);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log("=== AJAX 오류 ===");
+                console.error("Status:", status);
+                console.error("Error:", error);
+                console.error("Response Text:", xhr.responseText);
+                console.error("Status Code:", xhr.status);
+                
+                branchSelect.empty().append('<option value="">네트워크 오류 또는 서버 응답 오류</option>');
+            },
+            complete: function() {
+                console.log("AJAX 요청 완료. 최종 select HTML:", branchSelect.html());
+                console.log("최종 선택된 값:", branchSelect.val());
+            }
+        });
+    } else {
+        console.log("ag_id가 비어있어 AJAX 요청을 하지 않습니다.");
+        branchSelect.empty().append('<option value="">먼저 대리점을 선택하세요</option>');
+    }
+    console.log("=== updateBranchOptions 끝 ===");
+}
+
+jQuery(document).ready(function() {
+    <?php if ($auth['is_super']) { ?>
+    // 본사 관리자의 경우: 페이지 로드 시 총판이 선택되어 있다면 대리점, 지점 목록 초기화
+    var initialDtId = jQuery('#dt_id').val();
+    var initialAgId = '<?php echo $current_ag_id; ?>';
+    var initialBrId = '<?php echo $current_br_id; ?>';
+
+    console.log("페이지 로드 시 - initialDtId:", initialDtId, "initialAgId:", initialAgId, "initialBrId:", initialBrId);
+
+    // 페이지 로드 시 초기화 (한 번만 실행)
+    if (initialDtId) {
+        console.log("초기 대리점 목록 로드 시작");
+        updateAgencyOptions(initialDtId, initialAgId);
+        
+        // 대리점이 선택되어 있다면 지점 목록도 로드
+        if (initialAgId) {
+            setTimeout(function() {
+                updateBranchOptions(initialAgId, initialBrId);
+            }, 500); // 대리점 로드 후 약간의 지연
+        }
+    } else {
+        console.log("총판이 선택되지 않아 초기화 생략");
+    }
+
+    // 소속 총판 변경 시 대리점 목록 업데이트
+    jQuery('#dt_id').off('change.agencyUpdate').on('change.agencyUpdate', function() {
+        var selectedDtId = jQuery(this).val();
+        console.log("총판 변경됨:", selectedDtId);
+        updateAgencyOptions(selectedDtId);
+    });
+
+    // 소속 대리점 변경 시 지점 목록 업데이트
+    jQuery('#ag_id').off('change.branchUpdate').on('change.branchUpdate', function() {
+        var selectedAgId = jQuery(this).val();
+        console.log("대리점 변경됨:", selectedAgId);
+        updateBranchOptions(selectedAgId);
+    });
+    
+    <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { ?>
+    // 총판 관리자의 경우: 대리점 변경 시 지점 목록 업데이트
+    var initialAgId = '<?php echo $current_ag_id; ?>';
+    var initialBrId = '<?php echo $current_br_id; ?>';
+
+    console.log("총판 관리자 - initialAgId:", initialAgId, "initialBrId:", initialBrId);
+
+    // 페이지 로드 시 지점 목록 초기화
+    if (initialAgId) {
+        console.log("초기 지점 목록 로드 시작");
+        updateBranchOptions(initialAgId, initialBrId);
+    }
+
+    // 소속 대리점 변경 시 지점 목록 업데이트
+    jQuery('#ag_id').off('change.branchUpdate').on('change.branchUpdate', function() {
+        var selectedAgId = jQuery(this).val();
+        console.log("대리점 변경됨:", selectedAgId);
+        updateBranchOptions(selectedAgId);
+    });
+    
+    <?php } else { ?>
+    // 대리점 관리자나 지점 관리자의 경우: 별도 초기화 불필요 (PHP에서 이미 처리됨)
+    console.log("대리점/지점 관리자 - JavaScript 초기화 생략");
+    <?php } ?>
+});
 </script>
 <?php
 run_event('admin_member_form_after', $mb, $w);
