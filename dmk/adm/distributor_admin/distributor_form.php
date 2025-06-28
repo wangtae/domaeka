@@ -30,6 +30,22 @@ if ($mb_id) {
     }
 } else {
     $is_add = true;
+    // 등록 모드일 때 기본값 설정
+    $distributor = array(
+        'mb_id' => '',
+        'mb_name' => '',
+        'mb_nick' => '',
+        'mb_hp' => '',
+        'mb_tel' => '',
+        'mb_email' => '',
+        'mb_zip1' => '',
+        'mb_zip2' => '',
+        'mb_addr1' => '',
+        'mb_addr2' => '',
+        'mb_addr3' => '',
+        'mb_addr_jibeon' => '',
+        'dt_status' => 1
+    );
 }
 
 ?>
@@ -58,18 +74,6 @@ if ($mb_id) {
                 </td>
             </tr>
             <tr>
-                <th scope="row"><label for="mb_name">총판명</label></th>
-                <td>
-                    <input type="text" name="mb_name" value="<?php echo get_text($distributor['mb_name']); ?>" id="mb_name" required class="frm_input required" size="30">
-                </td>
-            </tr>
-            <tr>
-                <th scope="row"><label for="mb_nick">회사명</label></th>
-                <td>
-                    <input type="text" name="mb_nick" value="<?php echo get_text($distributor['mb_nick']); ?>" id="mb_nick" class="frm_input" size="30">
-                </td>
-            </tr>
-            <tr>
                 <th scope="row"><label for="mb_password">비밀번호</label></th>
                 <td>
                     <input type="password" name="mb_password" id="mb_password" <?php echo $is_add ? 'required' : ''; ?> class="frm_input <?php echo $is_add ? 'required' : ''; ?>" size="20" maxlength="20">
@@ -80,6 +84,18 @@ if ($mb_id) {
                 <th scope="row"><label for="mb_password_re">비밀번호 확인</label></th>
                 <td>
                     <input type="password" name="mb_password_re" id="mb_password_re" <?php echo $is_add ? 'required' : ''; ?> class="frm_input <?php echo $is_add ? 'required' : ''; ?>" size="20" maxlength="20">
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="mb_name">총판명</label></th>
+                <td>
+                    <input type="text" name="mb_name" value="<?php echo get_text($distributor['mb_name']); ?>" id="mb_name" required class="frm_input required" size="30">
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="mb_nick">회사명</label></th>
+                <td>
+                    <input type="text" name="mb_nick" value="<?php echo get_text($distributor['mb_nick']); ?>" id="mb_nick" class="frm_input" size="30">
                 </td>
             </tr>
             <tr>

@@ -50,7 +50,7 @@ if (!$mb_name) {
 if ($w == '') { // 등록
     // ID 중복 확인
     $row = sql_fetch(" SELECT mb_id FROM {$g5['member_table']} WHERE mb_id = '$mb_id' ");
-    if ($row['mb_id']) {
+    if ($row && $row['mb_id']) {
         alert('이미 존재하는 회원 아이디입니다.');
         exit;
     }
@@ -65,7 +65,8 @@ if ($w == '') { // 등록
         alert('비밀번호를 8글자 이상 입력하십시오.');
     }
 
-    $mb_password_hash = get_encrypt_password($mb_password);
+    // 영카트 비밀번호 암호화 함수 사용
+    $mb_password_hash = create_hash($mb_password);
 
     // g5_member 테이블에 총판 등록
     $sql = " INSERT INTO {$g5['member_table']} SET
@@ -86,17 +87,27 @@ if ($w == '') { // 등록
                 mb_ip = '$REMOTE_ADDR',
                 mb_level = " . DMK_DISTRIBUTOR_MB_LEVEL . ",
                 dmk_mb_type = " . DMK_DISTRIBUTOR_MB_TYPE . ",
-                dmk_admin_type = '" . DMK_DISTRIBUTOR_ADMIN_TYPE . "';";
-    sql_query($sql);
+                dmk_dt_id = '$mb_id',
+                dmk_admin_type = '" . DMK_DISTRIBUTOR_ADMIN_TYPE . "' ";
+    $result1 = sql_query($sql);
+    
+    if (!$result1) {
+        alert('g5_member 테이블 등록 실패: ' . sql_error());
+        exit;
+    }
 
     // dmk_distributor 테이블에 총판 정보 등록
     $sql = " INSERT INTO dmk_distributor SET
                 dt_id = '$mb_id',
-                dt_datetime = now(),
-                dt_status = '$dt_status',
+                dt_status = $dt_status,
                 dt_created_by = '{$member['mb_id']}',
-                dt_admin_type = '" . DMK_DISTRIBUTOR_ADMIN_TYPE . "';";
-    sql_query($sql);
+                dt_admin_type = '" . DMK_DISTRIBUTOR_ADMIN_TYPE . "' ";
+    $result2 = sql_query($sql);
+    
+    if (!$result2) {
+        alert('dmk_distributor 테이블 등록 실패: ' . sql_error());
+        exit;
+    }
 
     // 관리자 액션 로그
     dmk_log_admin_action('insert', '총판 등록', '총판ID: '.$mb_id, json_encode($_POST), null, 'distributor_form', 'g5_member,dmk_distributor');
@@ -112,7 +123,8 @@ if ($w == '') { // 등록
         if (strlen($mb_password) < 8) {
             alert('비밀번호를 8글자 이상 입력하십시오.');
         }
-        $mb_password_hash = ", mb_password = '" . get_encrypt_password($mb_password) . "'";
+        // 영카트 비밀번호 암호화 함수 사용
+        $mb_password_hash = ", mb_password = '" . create_hash($mb_password) . "'";
     } else {
         $mb_password_hash = '';
     }
@@ -136,9 +148,14 @@ if ($w == '') { // 등록
 
     // dmk_distributor 테이블 상태 업데이트
     $sql = " UPDATE dmk_distributor SET
-                dt_status = '$dt_status'
+                dt_status = $dt_status
               WHERE dt_id = '$mb_id' ";
-    sql_query($sql);
+    $result2 = sql_query($sql);
+    
+    if (!$result2) {
+        alert('dmk_distributor 테이블 업데이트 실패: ' . sql_error());
+        exit;
+    }
 
     // 관리자 액션 로그
     dmk_log_admin_action('edit', '총판 정보 수정', '총판ID: '.$mb_id, json_encode($_POST), null, 'distributor_form', 'g5_member,dmk_distributor');

@@ -37,6 +37,8 @@ error_log("[DMK DEBUG] distributor_list.php - DMK_MB_TYPE_DISTRIBUTOR: " . DMK_M
 // NOTE: dmk_can_access_menu 함수에서 이미 권한을 체크하므로, 여기서는 최고관리자 여부를 별도로 체크할 필요 없음.
 //       총판 관리자는 자신의 하위 대리점 및 지점 데이터를 조회할 수 있어야 함.
 //       dmk_get_admin_auth() 결과의 is_super만으로 체크하면 총판 계정은 해당 페이지에 접근할 수 없음.
+
+// 총판 관리는 본사 관리자와 총판 관리자만 접근 가능
 if (!$dmk_auth['is_super']) { // 최고 관리자가 아닌 경우
     error_log("[DMK DEBUG] distributor_list.php - Not super admin, mb_type: " . $dmk_auth['mb_type']);
     if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { // 총판 관리자인 경우
@@ -46,7 +48,7 @@ if (!$dmk_auth['is_super']) { // 최고 관리자가 아닌 경우
     } else {
         // 그 외의 경우 (대리점, 지점 관리자 등)에는 총판 목록에 접근 불가
         error_log("[DMK DEBUG] distributor_list.php - Access denied for mb_type: " . $dmk_auth['mb_type']);
-        alert('접근 권한이 없습니다.');
+        alert('총판 관리는 본사 관리자와 총판 관리자만 접근할 수 있습니다.');
     }
 }
 
@@ -90,6 +92,17 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <input type="text" name="stx" value="<?php echo $stx ?>" id="stx" class="frm_input" placeholder="회원ID, 이름, 닉네임">
 <input type="submit" class="btn_submit" value="검색">
 </form>
+
+<div class="btn_fixed_top">
+    <?php
+    // 총판 등록 기능은 본사 관리자만 사용 가능
+    if ($dmk_auth['is_super']) {
+    ?>
+    <a href="./distributor_form.php" class="btn_01 btn">총판 등록</a>
+    <?php
+    }
+    ?>
+</div>
 
 <div class="local_desc01 local_desc">
     <p>
