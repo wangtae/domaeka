@@ -260,8 +260,8 @@ if ($w == 'u') {
     // 관리자 액션 로깅
     dmk_log_admin_action('branch_modify', $br_id, '지점 정보 수정: ' . $mb_nick, $sub_menu);
     
-    // 대리점 방식과 동일하게 메시지와 함께 이동
-    alert('지점 정보가 성공적으로 수정되었습니다.', './branch_form.php?w=u&br_id=' . $br_id);
+    goto_url('./branch_form.php?w=u&br_id='.$br_id);
+    
     exit;
 } else {
     // 등록
@@ -354,8 +354,8 @@ if ($w == 'u') {
     // 관리자 액션 로깅
     dmk_log_admin_action('insert', '지점 등록', '지점ID: '.$br_id, json_encode($_POST), null, 'branch_form', 'g5_member,dmk_branch');
     
-    // 대리점 방식과 동일하게 메시지와 함께 이동
-    alert('지점이 성공적으로 등록되었습니다.', './branch_list.php');
+
+    goto_url('./branch_form.php');
     exit;
 }
 

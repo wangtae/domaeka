@@ -101,7 +101,7 @@ if ($w == '') { // 등록
     $result1 = sql_query($sql);
     
     if (!$result1) {
-        alert('g5_member 테이블 등록 실패: ' . sql_error());
+        alert('g5_member 테이블 등록 실패: DB 오류');
         exit;
     }
 
@@ -114,14 +114,14 @@ if ($w == '') { // 등록
     $result2 = sql_query($sql);
     
     if (!$result2) {
-        alert('dmk_distributor 테이블 등록 실패: ' . sql_error());
+        alert('dmk_distributor 테이블 등록 실패: DB 오류');
         exit;
     }
 
     // 관리자 액션 로그
     dmk_log_admin_action('insert', '총판 등록', '총판ID: '.$mb_id, json_encode($_POST), null, 'distributor_form', 'g5_member,dmk_distributor');
 
-    goto_url('./distributor_list.php', '총판이 성공적으로 등록되었습니다.');
+    goto_url('./distributor_list.php');
     exit;
 
 } else if ($w == 'u') { // 수정
@@ -163,14 +163,14 @@ if ($w == '') { // 등록
     $result2 = sql_query($sql);
     
     if (!$result2) {
-        alert('dmk_distributor 테이블 업데이트 실패: ' . sql_error());
+        alert('dmk_distributor 테이블 업데이트 실패: DB 오류');
         exit;
     }
 
     // 관리자 액션 로그
     dmk_log_admin_action('edit', '총판 정보 수정', '총판ID: '.$mb_id, json_encode($_POST), null, 'distributor_form', 'g5_member,dmk_distributor');
 
-    goto_url('./distributor_form.php?w=u&mb_id='.$mb_id, '총판 정보가 성공적으로 수정되었습니다.');
+    goto_url('./distributor_form.php?w=u&mb_id='.$mb_id);
     exit;
 } else {
     alert('잘못된 접근입니다.');
@@ -178,4 +178,4 @@ if ($w == '') { // 등록
 }
 
 include_once (G5_ADMIN_PATH.'/admin.tail.php');
-?> 
+?>

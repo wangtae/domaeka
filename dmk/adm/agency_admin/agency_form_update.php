@@ -138,7 +138,7 @@ if ($w == '') { // 등록
     // 관리자 액션 로그
     dmk_log_admin_action('insert', '대리점 등록', '대리점ID: '.$ag_id, json_encode($_POST), null, 'agency_form', 'g5_member,dmk_agency');
 
-    goto_url('./agency_list.php', '대리점이 성공적으로 등록되었습니다.');
+    goto_url('./agency_list.php');
     exit;
 
 } else if ($w == 'u') { // 수정
@@ -181,7 +181,7 @@ if ($w == '') { // 등록
     // 관리자 액션 로그
     dmk_log_admin_action('edit', '대리점 정보 수정', '대리점ID: '.$ag_id, json_encode($_POST), null, 'agency_form', 'g5_member,dmk_agency');
 
-    goto_url('./agency_form.php?w=u&ag_id='.$ag_id, '대리점 정보가 성공적으로 수정되었습니다.');
+    goto_url('./agency_form.php?w=u&ag_id='.$ag_id);
     exit;
 } else {
     alert('잘못된 접근입니다.');
