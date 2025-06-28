@@ -379,7 +379,7 @@ function dmk_authenticate_admin($required_level) {
 
     // 1. 관리자 로그인 여부 확인 및 권한 정보 가져오기
     if (!$auth || empty($auth['mb_id'])) {
-        // 관리자가 아니거나 로그인하지 않은 경우, 로그인 페이지로 리디렉션
+        // 관리를 아니거나 로그인하지 않은 경우, 로그인 페이지로 리디렉션
         alert("관리자 권한이 필요합니다.", G5_ADMIN_URL);
         exit;
     }
@@ -506,50 +506,61 @@ function dmk_can_modify_agency($agency_id) {
 /**
  * 현재 로그인한 관리자가 특정 지점을 수정할 권한이 있는지 확인합니다.
  * 
- * @param string $br_id 지점 ID
+ * @param string $branch_id 지점 ID
  * @return bool 수정 권한 여부
  */
-function dmk_can_modify_branch($br_id) {
+function dmk_can_modify_branch($branch_id) {
     global $g5;
-    
+
     $auth = dmk_get_admin_auth();
-    
+
     if (!$auth) {
         return false;
     }
-    
-    // 최고 관리자는 모든 지점 수정 가능
+
+    // 1. 최고 관리자는 모든 지점 정보 수정 가능
     if ($auth['is_super']) {
         return true;
     }
-    
-    // 지점 정보 조회
-    $sql = " SELECT b.br_id, b.ag_id, a.dt_id 
-             FROM dmk_branch b 
-             LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
-             WHERE b.br_id = '" . sql_escape_string($br_id) . "' ";
-    $branch = sql_fetch($sql);
-    
-    if (!$branch) {
-        return false;
+
+    // 2. 총판 관리자는 자신의 총판에 속한 지점 수정 가능
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        $branch_dt_id = dmk_get_branch_distributor_id($branch_id);
+        return $auth['mb_id'] === $branch_dt_id;
     }
-    
-    switch ($auth['mb_type']) {
-        case DMK_MB_TYPE_DISTRIBUTOR:
-            // 총판 관리자는 자신의 총판에 속한 지점만 수정 가능
-            return $branch['dt_id'] === $auth['mb_id'];
-            
-        case DMK_MB_TYPE_AGENCY:
-            // 대리점 관리자는 자신의 대리점에 속한 지점만 수정 가능
-            return $branch['ag_id'] === $auth['ag_id'];
-            
-        case DMK_MB_TYPE_BRANCH:
-            // 지점 관리자는 자신의 지점만 수정 가능
-            return $branch['br_id'] === $auth['br_id'];
-            
-        default:
-            return false;
+
+    // 3. 대리점 관리자는 자신의 대리점에 속한 지점 수정 가능
+    if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+        $branch_ag_id = dmk_get_branch_agency_id($branch_id);
+        return $auth['ag_id'] === $branch_ag_id;
     }
+
+    // 4. 지점 관리자는 자신의 지점 정보만 수정 가능
+    if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH && $auth['mb_id'] === $branch_id) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * 지점의 소속 총판 ID를 가져옵니다.
+ *
+ * @param string $branch_id 지점 ID
+ * @return string|null 총판 ID
+ */
+function dmk_get_branch_distributor_id($branch_id) {
+    global $g5;
+
+    if (!$branch_id) return null;
+
+    $sql = " SELECT a.dt_id 
+             FROM dmk_branch b
+             JOIN dmk_agency a ON b.ag_id = a.ag_id
+             WHERE b.br_id = '".sql_escape_string($branch_id)."' ";
+    $row = sql_fetch($sql);
+
+    return $row ? $row['dt_id'] : null;
 }
 
 /**
@@ -1501,5 +1512,3 @@ function dmk_authenticate_form_access($menu_code, $w = '', $target_id = '') {
     // 모든 검사를 통과하지 못하면 접근 차단
     alert('접근 권한이 없습니다.');
 }
-
-?> 

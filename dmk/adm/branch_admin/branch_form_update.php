@@ -7,9 +7,6 @@ include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 // 관리자 액션 로깅 라이브러리 포함
 include_once(G5_DMK_PATH . "/adm/lib/admin.log.lib.php");
 
-// 디버그: POST 데이터 전체 확인
-var_dump("Full POST Data: ", $_POST);
-
 // 디버그: 데이터베이스 연결 테스트
 $test_db_query = "SELECT COUNT(*) AS member_count FROM {$g5['member_table']}";
 $test_db_result = sql_fetch($test_db_query);
@@ -54,6 +51,10 @@ var_dump("POST mb_name: ", $_POST['mb_name'] ?? 'N/A');
 
 // 우편번호 처리 (앞자리, 뒷자리 분리)
 $mb_zip = isset($_POST['mb_zip']) ? clean_xss_tags($_POST['mb_zip']) : '';
+
+// 변수 초기화
+$mb_zip1 = isset($_POST['mb_zip1']) ? clean_xss_tags($_POST['mb_zip1']) : '';
+$mb_zip2 = isset($_POST['mb_zip2']) ? clean_xss_tags($_POST['mb_zip2']) : '';
 
 $mb_addr1 = isset($_POST['mb_addr1']) ? clean_xss_tags($_POST['mb_addr1']) : '';
 $mb_addr2 = isset($_POST['mb_addr2']) ? clean_xss_tags($_POST['mb_addr2']) : '';
@@ -243,6 +244,7 @@ if ($w == 'u') {
         $member_update_fields[] = "mb_addr_jibeon = '" . sql_escape_string($mb_addr_jibeon) . "'";
         $member_update_fields[] = "dmk_ag_id = '" . sql_escape_string($ag_id_for_update) . "'";
         $member_update_fields[] = "dmk_dt_id = '" . sql_escape_string($dt_id_for_update) . "'";
+        $member_update_fields[] = "dmk_br_id = '" . sql_escape_string($br_id) . "'";
     }
 
     // 업데이트할 필드가 하나라도 있는 경우에만 쿼리 실행
@@ -258,9 +260,9 @@ if ($w == 'u') {
     // 관리자 액션 로깅
     dmk_log_admin_action('branch_modify', $br_id, '지점 정보 수정: ' . $mb_nick, $sub_menu);
     
-    $msg = '지점이 수정되었습니다.';
-    goto_url('./branch_form.php?w=u&br_id=' . sql_escape_string($br_id));
-    
+    // 대리점 방식과 동일하게 메시지와 함께 이동
+    alert('지점 정보가 성공적으로 수정되었습니다.', './branch_form.php?w=u&br_id=' . $br_id);
+    exit;
 } else {
     // 등록
     
@@ -335,6 +337,7 @@ if ($w == 'u') {
                 dmk_mb_type = " . DMK_BRANCH_MB_TYPE . ",
                 dmk_dt_id = '" . sql_escape_string($agency['dt_id']) . "',
                 dmk_ag_id = '" . sql_escape_string($ag_id) . "',
+                dmk_br_id = '" . sql_escape_string($br_id) . "',
                 dmk_admin_type = '" . DMK_BRANCH_ADMIN_TYPE . "';";
     sql_query($sql);
 
@@ -351,7 +354,8 @@ if ($w == 'u') {
     // 관리자 액션 로깅
     dmk_log_admin_action('insert', '지점 등록', '지점ID: '.$br_id, json_encode($_POST), null, 'branch_form', 'g5_member,dmk_branch');
     
-    goto_url('./branch_list.php', '지점이 성공적으로 등록되었습니다.');
+    // 대리점 방식과 동일하게 메시지와 함께 이동
+    alert('지점이 성공적으로 등록되었습니다.', './branch_list.php');
     exit;
 }
 
@@ -366,4 +370,4 @@ function generate_unique_code($length = 8) {
     return $randomString;
 }
 
-?> 
+?>

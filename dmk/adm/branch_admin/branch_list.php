@@ -57,8 +57,8 @@ if (!$dmk_auth['is_super']) {
         // 대리점 관리자: 자신의 대리점에 속한 지점들만 조회
         $sql_search .= " AND b.ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' ";
     } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
-        // 지점 관리자: 자신의 지점만 조회
-        $sql_search .= " AND b.br_id = '".sql_escape_string($dmk_auth['br_id'])."' ";
+        // 지점 관리자: 자신의 지점만 조회 (로그인한 사용자의 mb_id를 사용)
+        $sql_search .= " AND br_m.mb_id = '".sql_escape_string($member['mb_id'])."' ";
     } else {
         // 그 외의 경우 접근 불가
         alert('접근 권한이 없습니다.');
@@ -274,4 +274,4 @@ function fbranchlist_submit(f) {
 
 <?php
 include_once (G5_ADMIN_PATH.'/admin.tail.php');
-?> 
+?>
