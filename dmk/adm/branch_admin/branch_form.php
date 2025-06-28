@@ -170,7 +170,7 @@ if (!$auth['is_super']) {
     <tr>
         <th scope="row"><label for="dt_id">소속 총판</label></th>
         <td>
-            <select name="dt_id" id="dt_id" class="frm_input" onchange="updateAgencyOptions(this.value);">
+            <select name="dt_id" id="dt_id" class="frm_input">
                 <option value="">총판 선택</option>
                 <?php foreach ($distributors as $distributor) { ?>
                     <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($branch['dt_id'] == $distributor['dt_id']) ? 'selected' : '' ?>>
@@ -481,7 +481,7 @@ function updateAgencyOptions(dt_id, selected_ag_id = '') {
     agencySelect.empty().append('<option value="">대리점 선택</option>');
 
     if (dt_id) {
-        var ajaxUrl = '<?php echo G5_ADMIN_URL; ?>/ajax_get_owners.php';
+        var ajaxUrl = '../_ajax/get_agencies.php'; // 올바른 AJAX 엔드포인트로 수정
         console.log("AJAX URL:", ajaxUrl);
         
         jQuery.ajax({
@@ -489,8 +489,7 @@ function updateAgencyOptions(dt_id, selected_ag_id = '') {
             type: 'POST',
             dataType: 'json',
             data: {
-                owner_type: 2, // 2는 대리점을 의미
-                parent_id: dt_id
+                dt_id: dt_id // 파라미터 이름 수정
             },
             beforeSend: function() {
                 console.log("AJAX 요청 전송 중...");
@@ -513,22 +512,21 @@ function updateAgencyOptions(dt_id, selected_ag_id = '') {
                         console.log("대리점 데이터가 없습니다.");
                     } else {
                         jQuery.each(response.data, function(index, agency) {
-                            console.log("대리점 추가:", agency.id, agency.name);
-                            var option = jQuery('<option></option>')
-                                .attr('value', agency.id)
-                                .text(agency.name + ' (' + agency.id + ')');
-                            agencySelect.append(option);
+                            var optionText = agency.name + ' (' + agency.id + ')';
+                            var option = new Option(optionText, agency.id);
+                            agencySelect.append(jQuery(option));
                         });
                         
                         // 현재 선택된 대리점 값을 설정 (수정 모드 또는 초기 로드 시)
                         if (selected_ag_id) {
+                            console.log("전달받은 selected_ag_id로 값 설정 시도:", selected_ag_id);
                             agencySelect.val(selected_ag_id);
-                            console.log("선택된 대리점 설정:", selected_ag_id, "실제 값:", agencySelect.val());
-                        } else if ('<?php echo $branch['ag_id'] ?? ''; ?>') {
-                            // 등록 모드에서 GET으로 ag_id가 넘어온 경우
+                        } else {
                             var phpAgId = '<?php echo $branch['ag_id'] ?? ''; ?>';
-                            agencySelect.val(phpAgId);
-                            console.log("PHP에서 가져온 대리점 설정:", phpAgId, "실제 값:", agencySelect.val());
+                            if(phpAgId) {
+                                console.log("PHP 변수에서 가져온 ag_id로 값 설정 시도:", phpAgId);
+                                agencySelect.val(phpAgId);
+                            }
                         }
                     }
                 } else {
@@ -547,7 +545,11 @@ function updateAgencyOptions(dt_id, selected_ag_id = '') {
                 console.error("Response Text:", xhr.responseText);
                 console.error("Status Code:", xhr.status);
                 
-                agencySelect.empty().append('<option value="">네트워크 오류</option>');
+                agencySelect.empty().append('<option value="">네트워크 오류 또는 서버 응답 오류</option>');
+            },
+            complete: function() {
+                console.log("AJAX 요청 완료. 최종 select HTML:", agencySelect.html());
+                console.log("최종 선택된 값:", agencySelect.val());
             }
         });
     } else {
@@ -590,4 +592,4 @@ jQuery(document).ready(function() {
 
 <?php
 include_once (G5_ADMIN_PATH.'/admin.tail.php');
-?> 
+?>

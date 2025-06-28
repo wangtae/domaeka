@@ -5,7 +5,17 @@
 ********************/
 
 // 이 상수가 정의되지 않으면 각각의 개별 페이지는 별도로 실행될 수 없음
-define('_GNUBOARD_', true);
+if (!defined('_GNUBOARD_')) {
+    define('_GNUBOARD_', true);
+}
+
+//==============================================================================
+// MySQL 접속 정보
+// define('G5_DB_HOST', 'localhost'); // DB 서버
+// define('G5_DB_USER', 'root'); // DB 사용자 아이디
+// define('G5_DB_PASSWORD', ''); // DB 사용자 비밀번호
+// define('G5_DB_NAME', 'gnuboard5'); // 사용할 DB 이름
+// define('G5_DB_PORT', '3306'); // DB 포트번호, 기본값은 3306
 
 include_once($g5_path['path'].'/version.php');   // 설정 파일
 
@@ -23,7 +33,7 @@ date_default_timezone_set("Asia/Seoul");
 보안서버주소가 없다면 공란으로 두시면 되며 보안서버주소 뒤에 / 는 붙이지 않습니다.
 입력 예) https://www.domain.com:443/gnuboard5
 */
-define('G5_DOMAIN', 'http://localhost:8001');
+define('G5_DOMAIN', 'http://localhost:8002');
 define('G5_HTTPS_DOMAIN', '');
 
 // 그누보드 디버그바 설정입니다, 실제 서버운영시 false 로 설정해 주세요.
