@@ -47,8 +47,9 @@ if (!$au_auth) {
     alert('권한을 입력하세요.');
 }
 
-// 권한 문자열 검증
-if (!preg_match('/^[rwd]+$/', $au_auth)) {
+// 권한 문자열 검증 (SET 형식에서 허용되는 값들)
+$valid_auth_values = ['', 'r', 'w', 'd', 'r,w', 'r,d', 'w,d', 'r,w,d'];
+if (!in_array($au_auth, $valid_auth_values)) {
     alert('권한은 r, w, d 조합으로만 입력 가능합니다.');
 }
 
