@@ -3,6 +3,11 @@
  * 총판-대리점-지점 체인 선택박스 구현
  */
 
+// 중복 로드 방지
+if (typeof DmkChainSelect !== 'undefined') {
+    console.warn('DmkChainSelect is already defined. Skipping redefinition.');
+} else {
+
 class DmkChainSelect {
     constructor(options) {
         this.options = {
@@ -324,8 +329,8 @@ class DmkChainSelect {
                 
                 // 선택값 복원 (currentValues에 저장된 값 사용)
                 if (this.currentValues.agency) {
-                    if (this.hasOption(currentAgencySelect, this.currentValues.agency)) {
-                        currentAgencySelect.value = this.currentValues.agency;
+                    if (this.hasOption(agencySelect, this.currentValues.agency)) {
+                        agencySelect.value = this.currentValues.agency;
                         this.log('대리점 선택값 복원:', this.currentValues.agency);
                     } else {
                         this.log('대리점 선택값 복원 실패 - 옵션 없음:', this.currentValues.agency);
@@ -345,7 +350,7 @@ class DmkChainSelect {
                     message: error.message,
                     stack: error.stack
                 });
-                this.setLoadingState(currentAgencySelect, false);
+                this.setLoadingState(agencySelect, false);
                 
                 // 사용자에게 오류 메시지 표시 (디버그 모드일 때)
                 if (this.options.debug) {
@@ -562,5 +567,9 @@ class DmkChainSelect {
     }
 }
 
-// 전역 함수로 노출
-window.DmkChainSelect = DmkChainSelect;
+// 전역 함수로 노출 (중복 로드가 아닌 경우만)
+if (typeof window.DmkChainSelect === 'undefined') {
+    window.DmkChainSelect = DmkChainSelect;
+}
+
+} // 중복 방지 블록 종료

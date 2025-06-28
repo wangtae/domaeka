@@ -323,33 +323,11 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
     </colgroup>
     <tbody>
     <tr>
-        <th scope="row"><label for="mb_id">아이디<?php echo $sound_only ?></label></th>
-        <td>
-            <input type="text" name="mb_id" value="<?php echo $mb['mb_id'] ?>" id="mb_id" <?php echo $required_mb_id ?> class="frm_input <?php echo $required_mb_id_class ?>" size="15"  maxlength="20">
-            <?php if ($w=='u'){ ?><a href="./boardgroupmember_form.php?mb_id=<?php echo $mb['mb_id'] ?>" class="btn_frmline">접근가능그룹보기</a><?php } ?>
-        </td>
-        <th scope="row"><label for="mb_password">비밀번호<?php echo $sound_only ?></label></th>
-        <td><input type="password" name="mb_password" id="mb_password" <?php echo $required_mb_password ?> class="frm_input <?php echo $required_mb_password ?>" size="15" maxlength="20"></td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_name">이름(실명)<strong class="sound_only">필수</strong></label></th>
-        <td><input type="text" name="mb_name" value="<?php echo $mb['mb_name'] ?>" id="mb_name" required class="required frm_input" size="15"  maxlength="20"></td>
-        <th scope="row"><label for="mb_nick">닉네임<strong class="sound_only">필수</strong></label></th>
-        <td><input type="text" name="mb_nick" value="<?php echo $mb['mb_nick'] ?>" id="mb_nick" required class="required frm_input" size="15"  maxlength="20"></td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="mb_level">회원 권한</label></th>
-        <td><?php echo get_member_level_select('mb_level', 1, $member['mb_level'], $mb['mb_level']) ?></td>
-        <th scope="row">포인트</th>
-        <td><a href="./point_list.php?sfl=mb_id&amp;stx=<?php echo $mb['mb_id'] ?>" target="_blank"><?php echo number_format((int)$mb['mb_point']) ?></a> 점</td>
-    </tr>
-    <tr>
         <th scope="row"><label for="member_hierarchy">소속</label></th>
         <td colspan="3">
             <!-- 총판 선택 -->
             <?php if ($auth['is_super']) { // 본사 관리자만 총판 선택 박스 노출 ?>
             <div class="hierarchy_select_group">
-                <label for="dt_id">총판:</label>
                 <select name="dt_id" id="dt_id" class="frm_input">
                     <option value="">총판 선택</option>
                     <?php foreach ($distributors as $distributor) { ?>
@@ -382,7 +360,6 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
             <!-- 대리점 선택 -->
             <?php if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { ?>
             <div class="hierarchy_select_group">
-                <label for="ag_id">대리점:</label>
                 <select name="ag_id" id="ag_id" class="frm_input">
                     <?php if ($auth['is_super']) { ?>
                         <option value="">먼저 총판을 선택하세요</option>
@@ -418,7 +395,6 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
             <!-- 지점 선택 -->
             <?php if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR || $auth['mb_type'] == DMK_MB_TYPE_AGENCY) { ?>
             <div class="hierarchy_select_group">
-                <label for="br_id">지점:</label>
                 <select name="br_id" id="br_id" class="frm_input">
                     <?php if ($auth['is_super']) { ?>
                         <option value="">먼저 대리점을 선택하세요</option>
@@ -447,11 +423,32 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
             <input type="hidden" name="dmk_mb_owner_id" id="dmk_mb_owner_id" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_id'] ?? '') ?>">>
             
             <div class="frm_info">
-                소속을 지정하지 않으면 일반회원으로 등록됩니다.<br>
-                총판/대리점/지점 소속으로 지정하려면 해당 소속을 선택해주세요.
+                지점을 지정해야 회원 가입이 가능합니다.
             </div>
         </td>
     </tr>
+    <tr>
+        <th scope="row"><label for="mb_id">아이디<?php echo $sound_only ?></label></th>
+        <td>
+            <input type="text" name="mb_id" value="<?php echo $mb['mb_id'] ?>" id="mb_id" <?php echo $required_mb_id ?> class="frm_input <?php echo $required_mb_id_class ?>" size="15"  maxlength="20">
+            <?php if ($w=='u'){ ?><a href="./boardgroupmember_form.php?mb_id=<?php echo $mb['mb_id'] ?>" class="btn_frmline">접근가능그룹보기</a><?php } ?>
+        </td>
+        <th scope="row"><label for="mb_password">비밀번호<?php echo $sound_only ?></label></th>
+        <td><input type="password" name="mb_password" id="mb_password" <?php echo $required_mb_password ?> class="frm_input <?php echo $required_mb_password ?>" size="15" maxlength="20"></td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_name">이름(실명)<strong class="sound_only">필수</strong></label></th>
+        <td><input type="text" name="mb_name" value="<?php echo $mb['mb_name'] ?>" id="mb_name" required class="required frm_input" size="15"  maxlength="20"></td>
+        <th scope="row"><label for="mb_nick">닉네임<strong class="sound_only">필수</strong></label></th>
+        <td><input type="text" name="mb_nick" value="<?php echo $mb['mb_nick'] ?>" id="mb_nick" required class="required frm_input" size="15"  maxlength="20"></td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="mb_level">회원 권한</label></th>
+        <td><?php echo get_member_level_select('mb_level', 1, $member['mb_level'], $mb['mb_level']) ?></td>
+        <th scope="row">포인트</th>
+        <td><a href="./point_list.php?sfl=mb_id&amp;stx=<?php echo $mb['mb_id'] ?>" target="_blank"><?php echo number_format((int)$mb['mb_point']) ?></a> 점</td>
+    </tr>
+    
     <tr>
         <th scope="row"><label for="mb_email">E-mail<strong class="sound_only">필수</strong></label></th>
         <td><input type="text" name="mb_email" value="<?php echo $mb['mb_email'] ?>" id="mb_email" maxlength="100" required class="required frm_input email" size="30"></td>

@@ -318,6 +318,13 @@ function dmk_render_chain_select($options = []) {
  * @return string HTML 코드
  */
 function dmk_include_chain_select_assets() {
+    // 중복 로드 방지를 위한 전역 변수 체크
+    global $dmk_chain_select_assets_included;
+    if ($dmk_chain_select_assets_included) {
+        return '';
+    }
+    $dmk_chain_select_assets_included = true;
+    
     $cache_buster = dmk_get_cache_buster();
     
     $html = '';
