@@ -165,9 +165,46 @@ if ($mb_id) {
 <script>
 function fdistributorform_submit(f)
 {
+    // 아이디 유효성 검사
+    if (f.mb_id && f.mb_id.value) {
+        var mb_id = f.mb_id.value;
+        
+        // 길이 체크
+        if (mb_id.length < 4 || mb_id.length > 20) {
+            alert('아이디는 4~20자 사이여야 합니다.');
+            f.mb_id.focus();
+            return false;
+        }
+        
+        // 문자 규칙 체크
+        if (!/^[a-zA-Z0-9_]+$/.test(mb_id)) {
+            alert('아이디는 영문자, 숫자, 언더스코어(_)만 사용 가능합니다.');
+            f.mb_id.focus();
+            return false;
+        }
+        
+        // 첫 글자 체크
+        if (!/^[a-zA-Z]/.test(mb_id)) {
+            alert('아이디는 영문자로 시작해야 합니다.');
+            f.mb_id.focus();
+            return false;
+        }
+    }
+
     if (f.mb_password.value) {
-        if (f.mb_password.value.length < 8) {
-            alert("비밀번호를 8글자 이상 입력하십시오.");
+        var mb_id = f.mb_id ? f.mb_id.value : '';
+        var password = f.mb_password.value;
+        
+        // 비밀번호 길이 체크 (6자 이상)
+        if (password.length < 6) {
+            alert("비밀번호는 6자 이상이어야 합니다.");
+            f.mb_password.focus();
+            return false;
+        }
+        
+        // 아이디와 완전히 동일한 비밀번호 금지 (대소문자 구분 없이)
+        if (password.toLowerCase() === mb_id.toLowerCase()) {
+            alert("비밀번호는 아이디와 달라야 합니다.");
             f.mb_password.focus();
             return false;
         }

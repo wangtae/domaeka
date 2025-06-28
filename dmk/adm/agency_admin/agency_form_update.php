@@ -56,6 +56,13 @@ if (!$ag_id) {
     exit;
 }
 
+// 아이디 유효성 검증
+$id_validation = dmk_validate_member_id($ag_id);
+if ($id_validation !== true) {
+    alert($id_validation);
+    exit;
+}
+
 if (!$mb_name) {
     alert('대리점 이름이 누락되었습니다.');
     exit;
@@ -85,12 +92,11 @@ if ($w == '') { // 등록
         alert('비밀번호를 입력해 주십시오.');
         exit;
     }
-    if ($mb_password != $mb_password_confirm) {
-        alert('비밀번호가 일치하지 않습니다.');
-        exit;
-    }
-    if (strlen($mb_password) < 8) {
-        alert('비밀번호를 8글자 이상 입력하십시오.');
+    
+    // 비밀번호 유효성 검증
+    $password_validation = dmk_validate_password($ag_id, $mb_password, $mb_password_confirm);
+    if ($password_validation !== true) {
+        alert($password_validation);
         exit;
     }
 
@@ -137,14 +143,13 @@ if ($w == '') { // 등록
 
 } else if ($w == 'u') { // 수정
     if ($mb_password) {
-        if ($mb_password != $mb_password_confirm) {
-            alert('비밀번호가 일치하지 않습니다.');
+        // 비밀번호 유효성 검증
+        $password_validation = dmk_validate_password($ag_id, $mb_password, $mb_password_confirm);
+        if ($password_validation !== true) {
+            alert($password_validation);
             exit;
         }
-        if (strlen($mb_password) < 8) {
-            alert('비밀번호를 8글자 이상 입력하십시오.');
-            exit;
-        }
+        
         $mb_password_hash = ", mb_password = '" . sql_password($mb_password) . "'";
     } else {
         $mb_password_hash = '';

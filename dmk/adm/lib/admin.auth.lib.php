@@ -1,5 +1,59 @@
 <?php
 /**
+ * 도매까 비밀번호 유효성 검증 함수
+ * 모든 계층 관리자(본사, 총판, 대리점, 지점) 등록 시 사용
+ * 
+ * @param string $mb_id 사용자 아이디
+ * @param string $password 검증할 비밀번호
+ * @param string $password_confirm 비밀번호 확인
+ * @return string|true 오류 메시지 또는 true(성공)
+ */
+function dmk_validate_password($mb_id, $password, $password_confirm = null) {
+    // 비밀번호 길이 체크 (6자 이상)
+    if (strlen($password) < 6) {
+        return '비밀번호는 6자 이상이어야 합니다.';
+    }
+    
+    // 비밀번호 확인 체크 (전달된 경우만)
+    if ($password_confirm !== null && $password !== $password_confirm) {
+        return '비밀번호가 일치하지 않습니다.';
+    }
+    
+    // 아이디와 완전히 동일한 비밀번호 금지 (대소문자 구분 없이)
+    if (strtolower($password) === strtolower($mb_id)) {
+        return '비밀번호는 아이디와 달라야 합니다.';
+    }
+    
+    return true;
+}
+
+/**
+ * 도매까 회원 아이디 유효성 검증 함수
+ * 모든 계층 관리자(본사, 총판, 대리점, 지점) 등록 시 사용
+ * 
+ * @param string $mb_id 검증할 아이디
+ * @return string|true 오류 메시지 또는 true(성공)
+ */
+function dmk_validate_member_id($mb_id) {
+    // 길이 체크
+    if (strlen($mb_id) < 4 || strlen($mb_id) > 20) {
+        return '아이디는 4~20자 사이여야 합니다.';
+    }
+    
+    // 문자 규칙 체크 (영문자, 숫자, 언더스코어만 허용)
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $mb_id)) {
+        return '아이디는 영문자, 숫자, 언더스코어(_)만 사용 가능합니다.';
+    }
+    
+    // 첫 글자는 영문자로 시작 (권장)
+    if (!preg_match('/^[a-zA-Z]/', $mb_id)) {
+        return '아이디는 영문자로 시작해야 합니다.';
+    }
+    
+    return true;
+}
+
+/**
  * Domaeka 관리자 인증 및 권한 관리 라이브러리
  * 
  * 영카트 최고관리자 - 총판 - 대리점 - 지사 계층 구조에 따른 관리자 권한 처리

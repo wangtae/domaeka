@@ -69,6 +69,13 @@ if (!$br_id) {
     exit;
 }
 
+// 아이디 유효성 검증
+$id_validation = dmk_validate_member_id($br_id);
+if ($id_validation !== true) {
+    alert($id_validation);
+    exit;
+}
+
 if (!$ag_id) {
     alert('소속 대리점을 선택하세요.');
     exit;
@@ -86,12 +93,6 @@ if (!$mb_name) {
 
 if (!$mb_email) {
     alert('이메일을 입력하세요.');
-    exit;
-}
-
-// 지점 ID 유효성 검사 (관리자 ID로도 사용)
-if (!preg_match('/^[a-zA-Z0-9_]{3,20}$/', $br_id)) {
-    alert('지점 ID는 영문, 숫자, 언더스코어만 사용 가능하며 3~20자여야 합니다.');
     exit;
 }
 
@@ -177,12 +178,13 @@ if ($w == 'u') {
     // 비밀번호 변경 체크
     $mb_password_update = '';
     if ($mb_password) {
-        if ($mb_password != $mb_password_confirm) {
-            alert('비밀번호가 일치하지 않습니다.');
+        // 비밀번호 유효성 검증
+        $password_validation = dmk_validate_password($br_id, $mb_password, $mb_password_confirm);
+        if ($password_validation !== true) {
+            alert($password_validation);
+            exit;
         }
-        if (strlen($mb_password) < 8) {
-            alert('비밀번호는 8자 이상이어야 합니다.');
-        }
+        
         $mb_password_update = ", mb_password = '" . sql_password($mb_password) . "'";
     }
     
@@ -273,13 +275,11 @@ if ($w == 'u') {
         alert('비밀번호를 입력하세요.');
         exit;
     }
-    if ($mb_password != $mb_password_confirm) {
-        alert('비밀번호가 일치하지 않습니다.');
-        exit;
-    }
-    // 비밀번호 강도 체크
-    if (strlen($mb_password) < 8) {
-        alert('비밀번호는 8자 이상이어야 합니다.');
+    
+    // 비밀번호 유효성 검증
+    $password_validation = dmk_validate_password($br_id, $mb_password, $mb_password_confirm);
+    if ($password_validation !== true) {
+        alert($password_validation);
         exit;
     }
     
