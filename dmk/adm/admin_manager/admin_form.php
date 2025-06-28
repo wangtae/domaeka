@@ -335,13 +335,13 @@ if (!$auth['is_super']) {
                 <input type="hidden" name="dmk_mb_type" id="dmk_mb_type" value="">
                 <span class="frm_info">소속 기관 선택에 따라 자동으로 관리자 유형이 결정됩니다.</span>
             <?php } ?>
-            <input type="hidden" name="mb_level" id="mb_level" value="<?php echo $member_info['mb_level'] ?>">
+            <input type="hidden" name="mb_level" id="mb_level" value="<?php echo isset($member_info['mb_level']) ? $member_info['mb_level'] : ''; ?>">
         </td>
     </tr>
     <tr>
         <th scope="row"><label for="mb_memo">메모</label></th>
         <td>
-            <textarea name="mb_memo" id="mb_memo" rows="5" class="frm_textbox"><?php echo $member_info['mb_memo'] ?></textarea>
+            <textarea name="mb_memo" id="mb_memo" rows="5" class="frm_textbox"><?php echo isset($member_info['mb_memo']) ? $member_info['mb_memo'] : ''; ?></textarea>
             <span class="frm_info">관리자에 대한 추가 정보나 메모를 입력합니다.</span>
         </td>
     </tr>
