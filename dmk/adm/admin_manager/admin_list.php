@@ -64,6 +64,8 @@ if (!$dmk_auth['is_super']) {
         $sql_search .= " AND m.mb_level >= 4 AND m.mb_level <= 6 ";
     } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH) {
         $sql_search .= " AND m.mb_level = 4 ";
+        // 자신의 지점만 조회
+        $sql_search .= " AND m.dmk_br_id = '".sql_escape_string($dmk_auth['br_id'])."' ";
     }
     // 대리점 관리자는 자신의 대리점에 속한 관리자만 조회
     if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
@@ -102,9 +104,14 @@ $from_record = ($page - 1) * $rows;
 $sql = " SELECT DISTINCT m.* {$sql_common} {$sql_search} {$sql_order} LIMIT {$from_record}, {$rows} "; // 조인 제거
 $result = sql_query($sql);
 
-// 디버깅용 SQL 쿼리 출력
-echo "<!-- DEBUG SQL: " . htmlspecialchars($sql) . " -->";
-echo "<!-- DEBUG SEARCH PARAMS: sdt_id={$sdt_id}, sag_id={$sag_id}, sbr_id={$sbr_id} -->";
+// 디버깅용 SQL 쿼리 및 br_id 출력
+// 실제로 어떤 조건이 적용되는지 확인
+// 아래 코드는 개발자만 볼 수 있도록 HTML 주석으로 출력
+// (운영 배포 전 반드시 제거)
+echo "<!-- DEBUG SQL: " . htmlspecialchars(
+    $sql
+) . " -->";
+echo "<!-- DEBUG dmk_auth['br_id']: " . htmlspecialchars($dmk_auth['br_id']) . " -->";
 
 // URL 쿼리 스트링 생성
 $qstr = 'sfl='.$sfl.'&amp;stx='.$stx.'&amp;sdt_id='.$sdt_id.'&amp;sag_id='.$sag_id.'&amp;sbr_id='.$sbr_id;

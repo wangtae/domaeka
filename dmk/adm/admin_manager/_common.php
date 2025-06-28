@@ -19,7 +19,7 @@ $auth = dmk_get_admin_auth();
 //echo "<script>console.log('DMK Auth from _common.php:', " . json_encode($auth) . ");</script>";
 
 // 서브관리자 등록/수정 권한 확인
-if (!$auth['is_super'] && $auth['mb_type'] != DMK_MB_TYPE_DISTRIBUTOR && $auth['mb_type'] != DMK_MB_TYPE_AGENCY) {
+if (!$auth['is_super'] && $auth['mb_type'] != DMK_MB_TYPE_DISTRIBUTOR && $auth['mb_type'] != DMK_MB_TYPE_AGENCY && $auth['mb_type'] != DMK_MB_TYPE_BRANCH) {
     alert('서브관리자 등록/수정 권한이 없습니다.');
     exit;
 }
