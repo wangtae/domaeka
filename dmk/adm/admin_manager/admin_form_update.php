@@ -167,6 +167,26 @@ if ($w == '') {
     
     sql_query($sql);
     
+    
+    // 관리자 액션 로깅
+    dmk_log_admin_action(
+        'insert',
+        '서브관리자 등록: ' . $mb_id,
+        'g5_member',
+        json_encode([
+            'mb_id' => $mb_id,
+            'mb_name' => $mb_name,
+            'mb_nick' => $mb_nick,
+            'dmk_mb_type' => $dmk_mb_type,
+            'mb_level' => $mb_level,
+            'dmk_dt_id' => $dt_id,
+            'dmk_ag_id' => $ag_id,
+            'dmk_br_id' => $br_id
+        ]),
+        null,
+        '190600'
+    );
+    
     goto_url('./admin_list.php');
     
 } elseif ($w == 'u') {

@@ -137,7 +137,7 @@ $dmk_auth_menu = array(
 
 <div class="local_ov01 local_ov">
     <?php echo $listall ?>
-    <span class="btn_ov01"><span class="ov_txt">설정된 도매까 권한</span><span class="ov_num"><?php echo number_format($total_count) ?>건</span></span>
+    <span class="btn_ov01"><span class="ov_txt">설정된 권한</span><span class="ov_num"><?php echo number_format($total_count) ?>건</span></span>
 </div>
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
@@ -260,7 +260,7 @@ echo $pagelist;
     <input type="hidden" name="token" value="">
 
     <section id="add_admin">
-        <h2 class="h2_frm">도매까 권한 추가</h2>
+        <h2 class="h2_frm">서브관리자 메뉴별 권한 추가</h2>
 
         <div class="local_desc01 local_desc">
             <p>
@@ -308,17 +308,21 @@ echo $pagelist;
                         <td>
                             <select name="au_menu" id="au_menu" required class="required">
                                 <option value="">선택하세요</option>
-                                <?php foreach ($dmk_auth_menu as $menu_code => $menu_name) { ?>
-                                <option value="<?php echo $menu_code ?>"><?php echo $menu_code ?> <?php echo $menu_name ?></option>
-                                <?php } ?>
+                                <!-- 동적으로 로드됨 -->
                             </select>
+                            <span class="frm_info">선택된 관리자의 계층에 따라 접근 가능한 메뉴만 표시됩니다.</span>
                         </td>
                     </tr>
                     <tr>
                         <th scope="row"><label for="au_auth">권한<strong class="sound_only">필수</strong></label></th>
                         <td>
-                            <input type="text" name="au_auth" value="r" id="au_auth" required class="required frm_input" size="10" maxlength="10">
-                            <span class="frm_info">r(읽기), w(쓰기), d(삭제) 조합으로 입력하세요. 예: rw, rwd</span>
+                            <div class="auth_checkbox_group">
+                                <label for="auth_r"><input type="checkbox" name="auth_perms[]" value="r" id="auth_r" checked> 읽기(r)</label>
+                                <label for="auth_w"><input type="checkbox" name="auth_perms[]" value="w" id="auth_w"> 쓰기(w)</label>
+                                <label for="auth_d"><input type="checkbox" name="auth_perms[]" value="d" id="auth_d"> 삭제(d)</label>
+                            </div>
+                            <input type="hidden" name="au_auth" id="au_auth" value="r">
+                            <span class="frm_info">체크박스를 선택하여 권한을 설정하세요. 읽기 권한은 기본으로 선택됩니다.</span>
                         </td>
                     </tr>
                 </tbody>
@@ -368,23 +372,120 @@ function fauth_add_submit(f) {
         return false;
     }
 
-    if (!f.au_auth.value) {
-        alert("권한을 입력하세요.");
-        f.au_auth.focus();
-        return false;
-    }
+    // 체크박스에서 선택된 권한들을 au_auth 필드에 설정
+    updateAuthField();
 
-    // 권한 문자열 유효성 검사
-    var auth_pattern = /^[rwd]+$/;
-    if (!auth_pattern.test(f.au_auth.value)) {
-        alert("권한은 r(읽기), w(쓰기), d(삭제)의 조합으로만 입력 가능합니다.\n예: r, rw, rwd");
-        f.au_auth.focus();
+    if (!f.au_auth.value) {
+        alert("권한을 선택하세요.");
         return false;
     }
 
     return true;
 }
+
+// 체크박스 선택에 따라 au_auth 필드 업데이트
+function updateAuthField() {
+    var checkboxes = document.querySelectorAll('input[name="auth_perms[]"]');
+    var selectedPerms = [];
+    
+    checkboxes.forEach(function(checkbox) {
+        if (checkbox.checked) {
+            selectedPerms.push(checkbox.value);
+        }
+    });
+    
+    document.getElementById('au_auth').value = selectedPerms.join('');
+}
+
+// 페이지 로드 시 체크박스 이벤트 리스너 추가
+document.addEventListener('DOMContentLoaded', function() {
+    var checkboxes = document.querySelectorAll('input[name="auth_perms[]"]');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', updateAuthField);
+    });
+    
+    // 읽기 권한은 항상 체크되어야 함 (최소 권한)
+    document.getElementById('auth_r').addEventListener('change', function() {
+        if (!this.checked) {
+            alert('읽기 권한은 필수입니다.');
+            this.checked = true;
+        }
+        updateAuthField();
+    });
+    
+    // 관리자 선택 시 메뉴 동적 로드
+    document.getElementById('mb_id').addEventListener('change', function() {
+        loadMenusForAdmin(this.value);
+    });
+});
+
+// 선택된 관리자에 따라 메뉴 로드
+function loadMenusForAdmin(mb_id) {
+    var menuSelect = document.getElementById('au_menu');
+    
+    // 기존 옵션 제거
+    menuSelect.innerHTML = '<option value="">선택하세요</option>';
+    
+    if (!mb_id) {
+        return;
+    }
+    
+    // AJAX로 메뉴 목록 가져오기
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', './get_menus_for_admin.php?mb_id=' + encodeURIComponent(mb_id), true);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            try {
+                var menus = JSON.parse(xhr.responseText);
+                
+                if (menus.error) {
+                    alert(menus.error);
+                    return;
+                }
+                
+                // 메뉴 옵션 추가
+                menus.forEach(function(menu) {
+                    var option = document.createElement('option');
+                    option.value = menu.code;
+                    option.textContent = menu.code + ' ' + menu.name;
+                    menuSelect.appendChild(option);
+                });
+                
+            } catch (e) {
+                console.error('메뉴 데이터 파싱 오류:', e);
+                alert('메뉴 로드 중 오류가 발생했습니다.');
+            }
+        }
+    };
+    xhr.send();
+}
 </script>
+
+<style>
+.auth_checkbox_group {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 5px;
+}
+
+.auth_checkbox_group label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.auth_checkbox_group input[type="checkbox"] {
+    margin-right: 5px;
+    margin-left: 0;
+}
+
+.auth_checkbox_group label:hover {
+    background-color: #f8f9fa;
+    padding: 3px 5px;
+    border-radius: 3px;
+}
+</style>
 
 <?php
 require_once G5_ADMIN_PATH.'/admin.tail.php';

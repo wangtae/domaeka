@@ -7,7 +7,24 @@ check_admin_token();
 
 $mb_id = isset($_POST['mb_id']) ? clean_xss_tags($_POST['mb_id']) : '';
 $au_menu = isset($_POST['au_menu']) ? clean_xss_tags($_POST['au_menu']) : '';
-$au_auth = isset($_POST['au_auth']) ? clean_xss_tags($_POST['au_auth']) : '';
+$au_auth_raw = isset($_POST['au_auth']) ? $_POST['au_auth'] : ''; // 원본 값
+
+// 권한 문자열 정제 및 SET 형식으로 변환
+if ($au_auth_raw && preg_match('/^[rwd]+$/', $au_auth_raw)) {
+    // SET 타입을 위해 각 문자를 쉼표로 구분
+    $auth_chars = str_split($au_auth_raw);
+    $auth_chars = array_unique($auth_chars); // 중복 제거
+    $au_auth = implode(',', $auth_chars);
+} else {
+    $au_auth = ''; // 비어있거나 잘못된 경우 빈 문자열
+}
+
+// 디버깅: POST 데이터 확인
+error_log("DMK_AUTH_UPDATE: mb_id = " . $mb_id);
+error_log("DMK_AUTH_UPDATE: au_menu = " . $au_menu);
+error_log("DMK_AUTH_UPDATE: au_auth_raw = " . $au_auth_raw);
+error_log("DMK_AUTH_UPDATE: au_auth = " . $au_auth);
+error_log("DMK_AUTH_UPDATE: _POST data: " . print_r($_POST, true));
 
 $dmk_auth = dmk_get_admin_auth();
 
@@ -82,7 +99,9 @@ if ($row['cnt']) {
     $sql = " UPDATE {$g5['auth_table']} SET 
                 au_auth = '".sql_escape_string($au_auth)."' 
              WHERE mb_id = '".sql_escape_string($mb_id)."' AND au_menu = '".sql_escape_string($au_menu)."' ";
-    sql_query($sql);
+    error_log("DMK_AUTH_UPDATE: UPDATE SQL = " . $sql);
+    $result = sql_query($sql);
+    error_log("DMK_AUTH_UPDATE: UPDATE result = " . ($result ? 'success' : 'failed'));
     
     alert('권한이 수정되었습니다.', './dmk_auth_list.php');
 } else {
@@ -91,8 +110,10 @@ if ($row['cnt']) {
                 mb_id = '".sql_escape_string($mb_id)."',
                 au_menu = '".sql_escape_string($au_menu)."',
                 au_auth = '".sql_escape_string($au_auth)."' ";
-    sql_query($sql);
+    error_log("DMK_AUTH_UPDATE: INSERT SQL = " . $sql);
+    $result = sql_query($sql);
+    error_log("DMK_AUTH_UPDATE: INSERT result = " . ($result ? 'success' : 'failed'));
     
     alert('권한이 추가되었습니다.', './dmk_auth_list.php');
 }
-?> 
+?>
