@@ -148,8 +148,15 @@ function get_branch_name($br_id) {
     // 공통 체인 선택박스 렌더링 (간소화된 버전)
     echo dmk_render_chain_select([
         'page_type' => DMK_CHAIN_SELECT_FULL,
-        'auto_submit' => true, // 관리자 목록에서도 자동 제출 활성화
-        'debug' => true // 디버그 모드 활성화
+        'auto_submit' => true,
+        'current_values' => [
+            'sdt_id' => $sdt_id,
+            'sag_id' => $sag_id,
+            'sbr_id' => $sbr_id,
+            'dt_id' => $sdt_id,
+            'ag_id' => $sag_id,
+        ],
+        'debug' => false
     ]);
     ?>
 
@@ -348,4 +355,4 @@ $pagelist = get_paging(G5_IS_MOBILE ? $config['cf_mobile_pages'] : $config['cf_w
 echo $pagelist;
 
 require_once '../../../adm/admin.tail.php';
-?> 
+?>

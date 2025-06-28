@@ -58,3 +58,7 @@ error.log
 
 #PMA
 _tools/
+
+# mcp
+.cursor/mcp.json
+.vscode/mcp.json
