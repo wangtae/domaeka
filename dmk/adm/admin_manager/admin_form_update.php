@@ -66,24 +66,24 @@ if ($w == '' && !$dmk_mb_type) {
 
 // dmk_mb_type에 따른 mb_level 설정 (신규 등록 시에만)
 if ($w == '') {
-    switch ($dmk_mb_type) {
+switch ($dmk_mb_type) {
         case DMK_MB_TYPE_DISTRIBUTOR: // 총판
-            $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
-            break;
+        $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
+        break;
         case DMK_MB_TYPE_AGENCY: // 대리점
-            $mb_level = DMK_MB_LEVEL_AGENCY;
-            break;
+        $mb_level = DMK_MB_LEVEL_AGENCY;
+        break;
         case DMK_MB_TYPE_BRANCH: // 지점
-            $mb_level = DMK_MB_LEVEL_BRANCH;
-            break;
-        default:
-            alert('올바른 관리자 유형을 선택하세요.');
+        $mb_level = DMK_MB_LEVEL_BRANCH;
+        break;
+    default:
+        alert('올바른 관리자 유형을 선택하세요.');
     }
 }
 
 // 권한 체크 (신규 등록 시에만)
 if ($w == '') {
-    $can_create_level = false;
+$can_create_level = false;
 
     // Debugging: 권한 체크 전 주요 변수 값 확인
     error_log("DMK_AUTH_UPDATE: 로그인 사용자 mb_level: " . ($dmk_auth['mb_level'] ?? 'N/A'));
@@ -91,18 +91,18 @@ if ($w == '') {
     error_log("DMK_AUTH_UPDATE: 생성하려는 관리자 dmk_mb_type: " . ($dmk_mb_type ?? 'N/A'));
     error_log("DMK_AUTH_UPDATE: 로그인 사용자 is_super: " . ($dmk_auth['is_super'] ? 'true' : 'false'));
 
-    if ($dmk_auth['is_super']) {
-        $can_create_level = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && $mb_level <= DMK_MB_LEVEL_DISTRIBUTOR) {
-        $can_create_level = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && $mb_level <= DMK_MB_LEVEL_AGENCY) {
-        $can_create_level = true;
-    } elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH && $mb_level == DMK_MB_LEVEL_BRANCH) {
-        $can_create_level = true;
-    }
+if ($dmk_auth['is_super']) {
+    $can_create_level = true;
+} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR && $mb_level <= DMK_MB_LEVEL_DISTRIBUTOR) {
+    $can_create_level = true;
+} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_AGENCY && $mb_level <= DMK_MB_LEVEL_AGENCY) {
+    $can_create_level = true;
+} elseif ($dmk_auth['mb_level'] == DMK_MB_LEVEL_BRANCH && $mb_level == DMK_MB_LEVEL_BRANCH) {
+    $can_create_level = true;
+}
 
-    if (!$can_create_level) {
-        alert('해당 레벨의 관리자를 생성할 권한이 없습니다.');
+if (!$can_create_level) {
+    alert('해당 레벨의 관리자를 생성할 권한이 없습니다.');
     }
 }
 
@@ -202,7 +202,7 @@ if ($w == '') {
     if (!$can_modify) {
         alert('수정 권한이 없습니다.');
     }
-    
+
     // 닉네임 중복 체크 (자신 제외)
     $sql = " SELECT COUNT(*) as cnt FROM {$g5['member_table']} WHERE mb_nick = '".sql_escape_string($mb_nick)."' AND mb_id != '".sql_escape_string($mb_id)."' ";
     $row = sql_fetch($sql);

@@ -11,7 +11,7 @@ $dt_id = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dt_id = isset($_POST['dt_id']) ? clean_xss_tags($_POST['dt_id']) : '';
 } else {
-    $dt_id = isset($_GET['dt_id']) ? clean_xss_tags($_GET['dt_id']) : '';
+$dt_id = isset($_GET['dt_id']) ? clean_xss_tags($_GET['dt_id']) : '';
 }
 
 $response = array(
@@ -21,43 +21,43 @@ $response = array(
 );
 
 try {
-    $agencies = [];
+$agencies = [];
 
-    // 권한별 데이터 접근 제어
-    if ($dmk_auth['is_super']) {
-        // 본사 관리자: 선택된 총판의 대리점 조회
-        $ag_sql_where = '';
-        if (!empty($dt_id)) {
-            $ag_sql_where = " WHERE a.dt_id = '".sql_escape_string($dt_id)."' AND a.ag_status = 1 ";
-        } else {
-            $ag_sql_where = " WHERE a.ag_status = 1 ";
-        }
+// 권한별 데이터 접근 제어
+if ($dmk_auth['is_super']) {
+    // 본사 관리자: 선택된 총판의 대리점 조회
+    $ag_sql_where = '';
+    if (!empty($dt_id)) {
+        $ag_sql_where = " WHERE a.dt_id = '".sql_escape_string($dt_id)."' AND a.ag_status = 1 ";
+    } else {
+        $ag_sql_where = " WHERE a.ag_status = 1 ";
+    }
 
-        $ag_sql = "SELECT a.ag_id, m.mb_nick AS ag_name 
-                   FROM dmk_agency a
-                   JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
-                   ". $ag_sql_where ." ORDER BY m.mb_nick ASC";
-        $ag_res = sql_query($ag_sql);
-        while($ag_row = sql_fetch_array($ag_res)) {
-            $agencies[] = array(
-                'id' => $ag_row['ag_id'],
-                'name' => $ag_row['ag_name']
-            );
-        }
-    } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-        // 총판 관리자: 자신의 총판에 속한 대리점만 조회
-        $ag_sql = "SELECT a.ag_id, m.mb_nick AS ag_name 
-                   FROM dmk_agency a
-                   JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
+    $ag_sql = "SELECT a.ag_id, m.mb_nick AS ag_name 
+               FROM dmk_agency a
+               JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
+               ". $ag_sql_where ." ORDER BY m.mb_nick ASC";
+    $ag_res = sql_query($ag_sql);
+    while($ag_row = sql_fetch_array($ag_res)) {
+        $agencies[] = array(
+            'id' => $ag_row['ag_id'],
+            'name' => $ag_row['ag_name']
+        );
+    }
+} else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+    // 총판 관리자: 자신의 총판에 속한 대리점만 조회
+    $ag_sql = "SELECT a.ag_id, m.mb_nick AS ag_name 
+               FROM dmk_agency a
+               JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
                    WHERE a.dt_id = '".sql_escape_string($dmk_auth['mb_id'])."' AND a.ag_status = 1 
-                   ORDER BY m.mb_nick ASC";
-        $ag_res = sql_query($ag_sql);
-        while($ag_row = sql_fetch_array($ag_res)) {
-            $agencies[] = array(
-                'id' => $ag_row['ag_id'],
-                'name' => $ag_row['ag_name']
-            );
-        }
+               ORDER BY m.mb_nick ASC";
+    $ag_res = sql_query($ag_sql);
+    while($ag_row = sql_fetch_array($ag_res)) {
+        $agencies[] = array(
+            'id' => $ag_row['ag_id'],
+            'name' => $ag_row['ag_name']
+        );
+    }
     } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
         // 대리점 관리자: 자신의 대리점만 조회
         $agencies[] = array(

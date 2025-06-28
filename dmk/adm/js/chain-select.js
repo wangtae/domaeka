@@ -157,17 +157,17 @@ class DmkChainSelect {
             this.loadBranches(agencyId);
         }
         
-        // 콜백 실행
+            // 콜백 실행
         this.log('onAgencyChange 콜백 실행 시도');
-        if (this.options.onAgencyChange) {
-            this.options.onAgencyChange(agencyId);
-        }
-        
-        // 자동 폼 제출
+            if (this.options.onAgencyChange) {
+                this.options.onAgencyChange(agencyId);
+            }
+            
+            // 자동 폼 제출
         this.log('자동 폼 제출 조건 확인: ', this.options.autoSubmit);
-        if (this.options.autoSubmit) {
+            if (this.options.autoSubmit) {
             this.log('submitForm 함수 호출 시도');
-            this.submitForm();
+                this.submitForm();
         }
         this.log('onAgencyChange 함수 종료');
     }
@@ -275,27 +275,27 @@ class DmkChainSelect {
         
         // Promise 반환
         return new Promise((resolve, reject) => {
-            if (!branchSelect) {
-                this.log('지점 선택박스를 찾을 수 없음');
+        if (!branchSelect) {
+            this.log('지점 선택박스를 찾을 수 없음');
                 resolve(); // 지점 선택박스가 없어도 Promise 해결
-                return;
-            }
-            
-            this.setLoadingState(branchSelect, true);
-            
+            return;
+        }
+        
+        this.setLoadingState(branchSelect, true);
+        
             this.log('지점 AJAX 요청 URL:', `${this.options.branchEndpoint}?ag_id=${agencyId}`);
             
             fetch(`${this.options.branchEndpoint}?ag_id=${agencyId}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    this.log('지점 목록 로드 완료:', data);
-                    this.clearSelect(this.options.branchSelectId);
-                    
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.log('지점 목록 로드 완료:', data);
+                this.clearSelect(this.options.branchSelectId);
+                
                     // 응답 구조 확인 및 데이터 추출
                     let branches = [];
                     if (data && typeof data === 'object') {
@@ -311,26 +311,26 @@ class DmkChainSelect {
                     this.log('처리할 지점 데이터:', branches);
                     
                     branches.forEach(branch => {
-                        const option = document.createElement('option');
-                        option.value = branch.id;
+                    const option = document.createElement('option');
+                    option.value = branch.id;
                         option.textContent = branch.name;
-                        branchSelect.appendChild(option);
-                    });
-                    
+                    branchSelect.appendChild(option);
+                });
+                
                     if (this.currentValues.branch && this.hasOption(branchSelect, this.currentValues.branch)) {
                         branchSelect.value = this.currentValues.branch;
                     }
                     resolve();
-                })
-                .catch(error => {
+            })
+            .catch(error => {
                     console.error('[DmkChainSelect] 지점 목록 로드 오류:', error);
                     this.clearSelect(this.options.branchSelectId);
                     reject(error);
                 })
                 .finally(() => {
-                    this.setLoadingState(branchSelect, false);
+                this.setLoadingState(branchSelect, false);
                 });
-        });
+            });
     }
     
     clearSelect(selectId) {
