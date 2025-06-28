@@ -20,11 +20,12 @@ if ($is_admin != 'super') {
 $g5['title'] = '총판 관리 <i class="fa fa-star dmk-new-icon" title="NEW"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
-// 총판은 최고관리자 하위의 계층이므로, dmk_mb_type이 총판(1)인 회원들을 조회
+// 총판은 최고관리자 하위의 계층이므로, dmk_mb_type이 총판(1)이면서 dmk_admin_type이 'main'인 회원들을 조회
+// 또한 dmk_distributor 테이블에 실제 데이터가 존재하는 총판만 표시
 // 계층 구조: admin(영카트 최고관리자) > distributor(총판) > agency(대리점) > branch(지점)
 $sql_common = " FROM {$g5['member_table']} m 
-                LEFT JOIN dmk_distributor d ON m.mb_id = d.dt_id";
-$sql_search = " WHERE m.dmk_mb_type = 1 "; // 총판 관리자만 조회
+                INNER JOIN dmk_distributor d ON m.mb_id = d.dt_id";
+$sql_search = " WHERE m.dmk_mb_type = 1 AND m.dmk_admin_type = 'main' "; // 총판이면서 메인 관리자만 조회
 
 // 권한에 따른 데이터 필터링
 $dmk_auth = dmk_get_admin_auth();
