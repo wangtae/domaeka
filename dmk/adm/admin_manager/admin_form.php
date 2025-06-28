@@ -201,7 +201,10 @@ if (!$auth['is_super']) {
                 'current_values' => [
                     'dt_id' => $member_info['dmk_dt_id'] ?? '',
                     'ag_id' => $member_info['dmk_ag_id'] ?? '',
-                    'br_id' => $member_info['dmk_br_id'] ?? ''
+                    'br_id' => $member_info['dmk_br_id'] ?? '',
+                    'sdt_id' => $member_info['dmk_dt_id'] ?? '',
+                    'sag_id' => $member_info['dmk_ag_id'] ?? '',
+                    'sbr_id' => $member_info['dmk_br_id'] ?? ''
                 ]
             ]);
             ?>

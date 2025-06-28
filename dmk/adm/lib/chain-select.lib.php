@@ -169,9 +169,12 @@ function dmk_render_chain_select($options = []) {
         'dmk_auth' => $dmk_auth,
         'page_type' => DMK_CHAIN_SELECT_FULL, // 기본값
         'current_values' => [
-            'sdt_id' => $_GET['sdt_id'] ?? $_GET['dt_id'] ?? '',
-            'sag_id' => $_GET['sag_id'] ?? $_GET['ag_id'] ?? '',
-            'sbr_id' => $_GET['sbr_id'] ?? $_GET['br_id'] ?? ''
+            'sdt_id' => '',
+            'sag_id' => '',
+            'sbr_id' => '',
+            'dt_id' => '',
+            'ag_id' => '',
+            'br_id' => ''
         ],
         'form_id' => 'fsearch', // 표준 폼 ID
         'auto_submit' => true, // 기본적으로 자동 제출
@@ -212,7 +215,7 @@ function dmk_render_chain_select($options = []) {
     // 총판 선택박스
     if ($config['show_distributor']) {
         $distributors = dmk_get_distributors_for_select($options['dmk_auth']);
-        $selected_dt_id = $config['initial_distributor'] ?: $options['current_values']['sdt_id'];
+        $selected_dt_id = $config['initial_distributor'] ?: (isset($options['current_values']['sdt_id']) ? $options['current_values']['sdt_id'] : (isset($options['current_values']['dt_id']) ? $options['current_values']['dt_id'] : ''));
         $readonly = $config['distributor_readonly'] ? 'readonly' : '';
         $field_name = $options['field_names']['distributor'] ?? 'sdt_id';
 
@@ -236,7 +239,7 @@ function dmk_render_chain_select($options = []) {
     
     // 대리점 선택박스
     if ($config['show_agency']) {
-        $selected_ag_id = $config['initial_agency'] ?: $options['current_values']['sag_id'];
+        $selected_ag_id = $config['initial_agency'] ?: (isset($options['current_values']['sag_id']) ? $options['current_values']['sag_id'] : (isset($options['current_values']['ag_id']) ? $options['current_values']['ag_id'] : ''));
         $readonly = $config['agency_readonly'] ? 'readonly' : '';
         $field_name = $options['field_names']['agency'] ?? 'sag_id';
         
@@ -258,7 +261,7 @@ function dmk_render_chain_select($options = []) {
     
     // 지점 선택박스
     if ($config['show_branch']) {
-        $selected_br_id = $config['initial_branch'] ?: $options['current_values']['sbr_id'];
+        $selected_br_id = $config['initial_branch'] ?: (isset($options['current_values']['sbr_id']) ? $options['current_values']['sbr_id'] : (isset($options['current_values']['br_id']) ? $options['current_values']['br_id'] : ''));
         $readonly = $config['branch_readonly'] ? 'readonly' : '';
         $field_name = $options['field_names']['branch'] ?? 'sbr_id';
         
@@ -276,9 +279,9 @@ function dmk_render_chain_select($options = []) {
             'branchSelectId' => $options['field_names']['branch'] ?? 'sbr_id',
             'agencyEndpoint' => $options['ajax_endpoints']['agencies'],
             'branchEndpoint' => $options['ajax_endpoints']['branches'],
-            'initialDistributor' => $config['initial_distributor'] ?: $options['current_values'][$options['field_names']['distributor'] ?? 'sdt_id'],
-            'initialAgency' => $config['initial_agency'] ?: $options['current_values'][$options['field_names']['agency'] ?? 'sag_id'],
-            'initialBranch' => $config['initial_branch'] ?: $options['current_values'][$options['field_names']['branch'] ?? 'sbr_id'],
+            'initialDistributor' => $config['initial_distributor'] ?: (isset($options['current_values']) && isset($options['current_values'][$options['field_names']['distributor'] ?? 'sdt_id']) ? $options['current_values'][$options['field_names']['distributor'] ?? 'sdt_id'] : ''),
+            'initialAgency' => $config['initial_agency'] ?: (isset($options['current_values']) && isset($options['current_values'][$options['field_names']['agency'] ?? 'sag_id']) ? $options['current_values'][$options['field_names']['agency'] ?? 'sag_id'] : ''),
+            'initialBranch' => $config['initial_branch'] ?: (isset($options['current_values']) && isset($options['current_values'][$options['field_names']['branch'] ?? 'sbr_id']) ? $options['current_values'][$options['field_names']['branch'] ?? 'sbr_id'] : ''),
             'autoSubmit' => $options['auto_submit'],
             'formId' => $options['form_id'],
             'debug' => $options['debug']
