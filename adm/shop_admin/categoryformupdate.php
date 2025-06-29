@@ -114,7 +114,7 @@ foreach( $check_keys as $key ){
     if( isset($$key) && preg_match('#\.+(/|\\)#', $$key) ){
         // alert('스킨명 또는 경로에 포함시킬수 없는 문자열이 있습니다.'); // 임시 주석 처리
     }
-}
+} 
 
 if( function_exists('filter_input_include_path') ){
     $ca_include_head = filter_input_include_path($ca_include_head);
@@ -287,6 +287,18 @@ else if ($w == "d")
     $sql = " delete from {$g5['g5_shop_category_table']} where ca_id = '$ca_id' ";
     sql_query($sql);
     run_event('shop_admin_category_deleted', $ca_id);
+}
+
+// 계층 필수값 유효성 검사
+if (
+    !(
+        ($dmk_dt_id) ||
+        ($dmk_dt_id && $dmk_ag_id) || // 대리점/지점인데 대리점ID 없음
+        ($dmk_br_id && $dmk_dt_id && $dmk_ag_id) // 지점인데 상위ID 없음
+    )
+) {
+    alert( $dmk_dt_id . ' ' . $dmk_ag_id . ' ' . $dmk_br_id);
+    alert('카테고리 소유 계층 정보가 올바르지 않습니다. 총판/대리점/지점을 모두 선택해 주세요.');
 }
 
 if(function_exists('get_admin_captcha_by'))

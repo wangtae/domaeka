@@ -431,6 +431,22 @@ $(function() {
         );
     });
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    function syncChainSelectToInputs() {
+        var sdt = document.getElementById('sdt_id');
+        var sag = document.getElementById('sag_id');
+        var sbr = document.getElementById('sbr_id');
+        if (document.getElementById('dmk_dt_id')) document.getElementById('dmk_dt_id').value = sdt ? sdt.value : '';
+        if (document.getElementById('dmk_ag_id')) document.getElementById('dmk_ag_id').value = sag ? sag.value : '';
+        if (document.getElementById('dmk_br_id')) document.getElementById('dmk_br_id').value = sbr ? sbr.value : '';
+    }
+    syncChainSelectToInputs();
+    ['sdt_id','sag_id','sbr_id'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', syncChainSelectToInputs);
+    });
+});
 </script>
 
 <?php

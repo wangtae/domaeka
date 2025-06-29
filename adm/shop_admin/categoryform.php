@@ -244,9 +244,9 @@ else {
 <input type="hidden" name="sdt_id" value="<?php echo $sdt_id; ?>">
 <input type="hidden" name="sag_id" value="<?php echo $sag_id; ?>">
 <input type="hidden" name="sbr_id" value="<?php echo $sbr_id; ?>">
-<input type="hidden" name="dmk_dt_id" value="<?php echo $ca['dmk_dt_id']; ?>">
-<input type="hidden" name="dmk_ag_id" value="<?php echo $ca['dmk_ag_id']; ?>">
-<input type="hidden" name="dmk_br_id" value="<?php echo $ca['dmk_br_id']; ?>">
+<input type="text" name="dmk_dt_id" id="dmk_dt_id" value="<?php echo $ca['dmk_dt_id']; ?>" readonly>
+<input type="text" name="dmk_ag_id" id="dmk_ag_id" value="<?php echo $ca['dmk_ag_id']; ?>" readonly>
+<input type="text" name="dmk_br_id" id="dmk_br_id" value="<?php echo $ca['dmk_br_id']; ?>" readonly>
 
 <section id="anc_scatefrm_basic">
     <h2 class="h2_frm">필수입력</h2>
@@ -919,58 +919,29 @@ jQuery(function($){
     });
 });
 
-jQuery(document).ready(function($) {
-    var dmkAuth = <?php echo json_encode($dmk_auth); ?>;
-    var initialOwnerType = '<?php echo $selected_owner_type; ?>';
-    var initialOwnerId = '<?php echo $selected_owner_id; ?>';
-
-    function populateOwnerIdSelect(ownerType, currentSelectedId) {
-        var ownerIdSelect = $('#dmk_ca_owner_id');
-        ownerIdSelect.empty(); // Clear existing options
-
-        if (!ownerType) {
-            ownerIdSelect.append('<option value="">계층을 선택해주세요</option>');
-            return;
-        }
-
-        var parentId = '';
-        // 현재 로그인한 관리자 유형에 따라 parent_id 결정
-        if (!dmkAuth.is_super) { 
-            if (ownerType === 'AGENCY' && dmkAuth.mb_type === <?php echo DMK_MB_TYPE_DISTRIBUTOR; ?>) {
-                parentId = dmkAuth.mb_id; // 현재 사용자가 총판이면 총판 ID가 부모 ID
-            } else if (ownerType === 'BRANCH' && dmkAuth.mb_type === <?php echo DMK_MB_TYPE_AGENCY; ?>) {
-                parentId = dmkAuth.ag_id; // 현재 사용자가 대리점이면 대리점 ID가 부모 ID
-            }
-        }
-        // 최고 관리자의 경우 parentId는 빈 문자열로 유지되어 ajax.get_dmk_owner_ids.php 에서 모든 목록을 가져오게 됨
-
-        $.ajax({
-            url: './ajax.get_dmk_owner_ids.php',
-            type: 'GET',
-            dataType: 'json',
-            data: {
-                owner_type: ownerType,
-                parent_id: parentId 
-            },
-            success: function(data) {
-                if (data.length > 0) {
-                    $.each(data, function(index, item) {
-                        var selectedAttr = (currentSelectedId === item.id) ? 'selected' : '';
-                        ownerIdSelect.append('<option value="' + item.id + '" ' + selectedAttr + '>' + item.name + ' (' + item.id + ')</option>');
-                    });
-                } else {
-                    ownerIdSelect.append('<option value="">선택 가능한 ID 없음</option>');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX Error: ", status, error);
-                ownerIdSelect.append('<option value="">데이터 로드 실패</option>');
-            }
-        });
-    }
+// --- 계층형 체인 셀렉트 연동: 선택 시 dmk_* 필드 실시간 반영 ---
+function syncDmkOwnerFields() {
+    var sdt = document.getElementById('sdt_id');
+    var sag = document.getElementById('sag_id');
+    var sbr = document.getElementById('sbr_id');
+    var dt = document.getElementById('dmk_dt_id');
+    var ag = document.getElementById('dmk_ag_id');
+    var br = document.getElementById('dmk_br_id');
+    if (dt) dt.value = sdt && sdt.value ? sdt.value : '';
+    if (ag) ag.value = sag && sag.value ? sag.value : '';
+    if (br) br.value = sbr && sbr.value ? sbr.value : '';
+}
+// 이벤트 바인딩 (DOMContentLoaded 이후)
+document.addEventListener('DOMContentLoaded', function() {
+    var sdt = document.getElementById('sdt_id');
+    var sag = document.getElementById('sag_id');
+    var sbr = document.getElementById('sbr_id');
+    if (sdt) sdt.addEventListener('change', syncDmkOwnerFields);
+    if (sag) sag.addEventListener('change', syncDmkOwnerFields);
+    if (sbr) sbr.addEventListener('change', syncDmkOwnerFields);
+    // 최초 1회 동기화
+    syncDmkOwnerFields();
 });
-
-/*document.fcategoryform.ca_name.focus(); 포커스 해제*/
 </script>
 
 <?php
