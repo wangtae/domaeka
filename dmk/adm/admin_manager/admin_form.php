@@ -8,7 +8,7 @@ include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
 // 현재 관리자 권한 정보 가져오기 (이미 _common.php에서 가져왔으므로 재사용)
 // $auth = dmk_get_admin_auth(); // 이미 _common.php에서 처리됨
 
-// 메뉴 접근 권한 확인
+// 메뉴 접근 권한 확인 
 $w = isset($_GET['w']) ? $_GET['w'] : '';
 $mb_id = isset($_GET['mb_id']) ? clean_xss_tags($_GET['mb_id']) : '';
 

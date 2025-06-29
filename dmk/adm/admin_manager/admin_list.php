@@ -81,7 +81,7 @@ if ($stx) {
     $sql_search .= " AND ( ";
     $sql_search .= " m.".sql_escape_string($sfl)." LIKE '".sql_escape_string($stx)."%' ";
     $sql_search .= " ) ";
-}
+} 
 
 // 페이징 설정
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;

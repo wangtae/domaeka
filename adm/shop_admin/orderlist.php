@@ -187,24 +187,26 @@ if( function_exists('pg_setting_check') ){
 // --- 계층형(총판-대리점-지점) 체인 셀렉트 UI 삽입 ---
 include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
 echo dmk_render_chain_select([
-    'page_type' => DMK_CHAIN_SELECT_FULL,
-    'auto_submit' => true,
-    'form_id' => 'frmorderlist',
-    'field_names' => [
-        'distributor' => 'sdt_id',
-        'agency' => 'sag_id',
-        'branch' => 'sbr_id'
-    ],
+    'page_type' => DMK_CHAIN_SELECT_FULL,    
     'current_values' => [
         'sdt_id' => $sdt_id,
         'sag_id' => $sag_id,
         'sbr_id' => $sbr_id
     ],
+    'field_names' => [
+        'distributor' => 'sdt_id',
+        'agency' => 'sag_id',
+        'branch' => 'sbr_id'
+    ],
+    
     'placeholders' => [
         'distributor' => '전체 총판',
         'agency' => '전체 대리점',
         'branch' => '전체 지점'
-    ]
+    ],
+    'form_id' => 'frmorderlist',
+    'auto_submit' => true,
+    
 ]);
 ?>
 <input type="hidden" name="doc" value="<?php echo $doc; ?>">

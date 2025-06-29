@@ -3,20 +3,39 @@
  * 총판-대리점-지점 체인 선택박스 스타일
  */
 
-/* 선택박스 컨테이너 */
+/* 기본 폼 스타일에 맞춘 선택박스 컨테이너 */
 .dmk-chain-select-container {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
+    margin-bottom: 0;
+}
+
+/* 목록 페이지용 스타일 */
+.local_sch .dmk-chain-select-container {
     margin-bottom: 10px;
+}
+
+/* 폼 내부용 스타일 (카테고리 소유 계층 필드) */
+.dmk-owner-select.dmk-chain-select-container {
+    margin-bottom: 0;
+    align-items: flex-start;
 }
 
 /* 선택박스 그룹 */
 .dmk-chain-select-group {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 5px;
+    align-items: center;
+}
+
+/* 폼 내부에서는 라벨을 위에 두고 컬럼 방향으로 */
+.dmk-owner-select .dmk-chain-select-group {
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-start;
 }
 
 /* 선택박스 라벨 */
@@ -27,21 +46,34 @@
     margin-bottom: 3px;
 }
 
-/* 선택박스 기본 스타일 */
+/* 목록 페이지에서 라벨 숨김 */
+.local_sch .dmk-chain-select-label {
+    display: none;
+}
+
+/* 선택박스 기본 스타일 - admin 폼 스타일에 맞춤 */
 .dmk-chain-select {
-    min-width: 150px;
-    padding: 5px 8px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
+    min-width: 140px;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 2px;
     font-size: 12px;
     background-color: #fff;
     transition: all 0.2s ease;
+    height: 28px;
+    vertical-align: middle;
+}
+
+/* 목록 페이지용 선택박스 */
+.local_sch .dmk-chain-select {
+    min-width: 120px;
+    margin-right: 5px;
 }
 
 .dmk-chain-select:focus {
     border-color: #4CAF50;
     outline: none;
-    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+    box-shadow: 0 0 3px rgba(76, 175, 80, 0.3);
 }
 
 /* 읽기 전용 선택박스 */
@@ -203,4 +235,102 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
-} 
+}
+
+/* 분류 관리 페이지 전용 스타일 */
+.hierarchy_filter {
+    background: #f8f9fa;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.hierarchy_desc {
+    font-size: 11px;
+    color: #666;
+    margin-top: 10px;
+    line-height: 1.4;
+}
+
+.hierarchy_desc br {
+    line-height: 1.8;
+}
+
+/* 로딩 상태 */
+.dmk-chain-select[disabled] {
+    background-color: #f8f8f8;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* 반응형 - 모바일 대응 */
+@media (max-width: 768px) {
+    .dmk-owner-select.dmk-chain-select-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .dmk-owner-select .dmk-chain-select-group {
+        width: 100%;
+    }
+    
+    .dmk-owner-select .dmk-chain-select {
+        min-width: auto;
+        width: 100%;
+    }
+}
+
+.local_desc01.local_desc h2 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+/* 분류 폼 페이지 스타일 */
+.local_sch .hierarchy_filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+/* --- DMK Admin: Inline Search Form Utility --- */
+.dmk-search-inline-form {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.dmk-search-inline-form > * {
+    margin-right: 10px;
+    margin-bottom: 0 !important;
+}
+.dmk-search-inline-form > *:last-child {
+    margin-right: 0;
+}
+
+/* Remove 100% width or block display for selects/inputs in inline form */
+.dmk-search-inline-form select,
+.dmk-search-inline-form input[type="text"],
+.dmk-search-inline-form input[type="submit"] {
+    width: auto;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Responsive: stack vertically on mobile */
+@media (max-width: 768px) {
+    .dmk-search-inline-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .dmk-search-inline-form > * {
+        margin-right: 0;
+        width: 100%;
+    }
+}

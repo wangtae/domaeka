@@ -201,6 +201,8 @@ function dmk_render_chain_select($options = []) {
             'agency' => 'sag_id',
             'branch' => 'sbr_id'
         ],
+        'show_labels' => false, // 기본적으로 목록 페이지용으로 라벨 숨김
+        'container_class' => '', // 추가 컨테이너 클래스
         'debug' => true // 기본적으로 디버그 모드 ON (개발 중)
     ];
     
@@ -211,6 +213,12 @@ function dmk_render_chain_select($options = []) {
     $config = dmk_get_chain_select_config($options['dmk_auth'], $options['page_type']);
     
     $html = '';
+    
+    // 컨테이너 시작
+    $container_classes = 'dmk-chain-select-container';
+    if (!empty($options['container_class'])) {
+        $container_classes .= ' ' . $options['container_class'];
+    }
     
     // 총판 선택박스
     if ($config['show_distributor']) {
@@ -223,8 +231,13 @@ function dmk_render_chain_select($options = []) {
         error_log("DMK_CHAIN_SELECT: Distributors Data: " . print_r($distributors, true));
         error_log("DMK_CHAIN_SELECT: Selected Distributor ID: " . $selected_dt_id);
 
-        $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['distributor'] . '</label>';
-        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
+        
+        if ($options['show_labels']) {
+            $html .= '<label for="' . $field_name . '" class="dmk-chain-select-label">' . $options['labels']['distributor'] . '</label>';
+        } else {
+            $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['distributor'] . '</label>';
+        }
+        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly . '>';
         $html .= '<option value="">' . $options['placeholders']['distributor'] . '</option>';
         
         foreach ($distributors as $distributor) {
@@ -243,8 +256,12 @@ function dmk_render_chain_select($options = []) {
         $readonly = $config['agency_readonly'] ? 'readonly' : '';
         $field_name = $options['field_names']['agency'] ?? 'sag_id';
         
-        $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['agency'] . '</label>';
-        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
+        if ($options['show_labels']) {
+            $html .= '<label for="' . $field_name . '" class="dmk-chain-select-label">' . $options['labels']['agency'] . '</label>';
+        } else {
+            $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['agency'] . '</label>';
+        }
+        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly . '>';
         $html .= '<option value="">' . $options['placeholders']['agency'] . '</option>';
         
         // 대리점 관리자인 경우, 자신의 대리점만 옵션으로 추가
@@ -257,6 +274,7 @@ function dmk_render_chain_select($options = []) {
              // (이미 chain-select.js에서 AJAX로 로드하므로 여기서는 별도 처리 없음)
         }
         $html .= '</select>';
+        
     }
     
     // 지점 선택박스
@@ -265,11 +283,17 @@ function dmk_render_chain_select($options = []) {
         $readonly = $config['branch_readonly'] ? 'readonly' : '';
         $field_name = $options['field_names']['branch'] ?? 'sbr_id';
         
-        $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['branch'] . '</label>';
-        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="' . $options['css_classes']['select'] . '" ' . $readonly . '>';
+        if ($options['show_labels']) {
+            $html .= '<label for="' . $field_name . '" class="dmk-chain-select-label">' . $options['labels']['branch'] . '</label>';
+        } else {
+            $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['branch'] . '</label>';
+        }
+        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly . '>';
         $html .= '<option value="">' . $options['placeholders']['branch'] . '</option>';
         $html .= '</select>';
+        
     }
+
     
     // JavaScript 초기화 코드
     if ($config['show_distributor'] || $config['show_agency'] || $config['show_branch']) {
@@ -435,13 +459,13 @@ echo json_encode($branches);
  */
 function dmk_is_developer_ip() {
     // 환경 변수로 개발자 모드 설정 확인
-    if (defined('DMK_DEVELOPER_MODE') && DMK_DEVELOPER_MODE) {
+    if (defined('DMK_DEVELOPER_MODE') && constant('DMK_DEVELOPER_MODE')) {
         return true;
     }
     
     // 환경 변수 DMK_DEVELOPER_IPS가 설정된 경우
     if (defined('DMK_DEVELOPER_IPS')) {
-        $developer_ips = explode(',', DMK_DEVELOPER_IPS);
+        $developer_ips = explode(',', constant('DMK_DEVELOPER_IPS'));
         $client_ip = $_SERVER['REMOTE_ADDR'] ?? '';
         
         if (in_array($client_ip, $developer_ips)) {

@@ -90,8 +90,10 @@ foreach( $check_str_keys as $key=>$val ){
     $$key = $_POST[$key] = $value;
 }
 
-$dmk_ca_owner_type = isset($_POST['dmk_ca_owner_type']) ? clean_xss_tags($_POST['dmk_ca_owner_type'], 1, 1) : '';
-$dmk_ca_owner_id = isset($_POST['dmk_ca_owner_id']) ? clean_xss_tags($_POST['dmk_ca_owner_id'], 1, 1) : '';
+// 새로운 계층 구조 필드
+$dmk_dt_id = isset($_POST['dmk_dt_id']) ? clean_xss_tags($_POST['dmk_dt_id'], 1, 1) : '';
+$dmk_ag_id = isset($_POST['dmk_ag_id']) ? clean_xss_tags($_POST['dmk_ag_id'], 1, 1) : '';
+$dmk_br_id = isset($_POST['dmk_br_id']) ? clean_xss_tags($_POST['dmk_br_id'], 1, 1) : '';
 
 $ca_head_html = isset($_POST['ca_head_html']) ? $_POST['ca_head_html'] : '';
 $ca_tail_html = isset($_POST['ca_tail_html']) ? $_POST['ca_tail_html'] : '';
@@ -147,9 +149,14 @@ if ($w == "" || $w == "u")
 
     if ($w == "") {
         // 새로운 카테고리 생성 시 도매까 카테고리 소유 정보 기본 설정
-        $owner_info = dmk_get_category_owner_info();
-        $dmk_ca_owner_type = $owner_info['owner_type'];
-        $dmk_ca_owner_id = $owner_info['owner_id'];
+        if (empty($dmk_dt_id) && empty($dmk_ag_id) && empty($dmk_br_id)) {
+            $owner_info = dmk_get_category_owner_info();
+            if ($owner_info) {
+                $dmk_dt_id = $owner_info['dmk_dt_id'] ?? '';
+                $dmk_ag_id = $owner_info['dmk_ag_id'] ?? '';
+                $dmk_br_id = $owner_info['dmk_br_id'] ?? '';
+            }
+        }
     }
 }
 
@@ -204,8 +211,9 @@ $sql_common = " ca_order                = '$ca_order',
                 ca_8                    = '$ca_8',
                 ca_9                    = '$ca_9',
                 ca_10                   = '$ca_10',
-                dmk_ca_owner_type       = '$dmk_ca_owner_type',
-                dmk_ca_owner_id         = '$dmk_ca_owner_id' ";
+                dmk_dt_id               = '$dmk_dt_id',
+                dmk_ag_id               = '$dmk_ag_id',
+                dmk_br_id               = '$dmk_br_id' ";
 
 
 if ($w == "")

@@ -327,7 +327,6 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
         <td colspan="3">
             <!-- 총판 선택 -->
             <?php if ($auth['is_super']) { // 본사 관리자만 총판 선택 박스 노출 ?>
-            <div class="hierarchy_select_group">
                 <select name="dt_id" id="dt_id" class="frm_input">
                     <option value="">총판 선택</option>
                     <?php foreach ($distributors as $distributor) { ?>
@@ -336,7 +335,6 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
                         </option>
                     <?php } ?>
                 </select>
-            </div>
             <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { // 총판 관리자는 자신의 총판 ID를 hidden 필드로 전달 ?>
             <div class="hierarchy_select_group">
                 <label>총판:</label>
@@ -359,7 +357,6 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
 
             <!-- 대리점 선택 -->
             <?php if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { ?>
-            <div class="hierarchy_select_group">
                 <select name="ag_id" id="ag_id" class="frm_input">
                     <?php if ($auth['is_super']) { ?>
                         <option value="">먼저 총판을 선택하세요</option>
@@ -372,7 +369,6 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
                         <?php } ?>
                     <?php } ?>
                 </select>
-            </div>
             <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) { // 대리점 관리자는 자신의 대리점만 표시 ?>
             <div class="hierarchy_select_group">
                 <label>대리점:</label>
@@ -394,7 +390,6 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
 
             <!-- 지점 선택 -->
             <?php if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR || $auth['mb_type'] == DMK_MB_TYPE_AGENCY) { ?>
-            <div class="hierarchy_select_group">
                 <select name="br_id" id="br_id" class="frm_input">
                     <?php if ($auth['is_super']) { ?>
                         <option value="">먼저 대리점을 선택하세요</option>
@@ -407,7 +402,6 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
                         <?php } ?>
                     <?php } ?>
                 </select>
-            </div>
             <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) { // 지점 관리자는 자신의 지점만 표시 ?>
             <div class="hierarchy_select_group">
                 <label>지점:</label>
@@ -420,7 +414,7 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
 
             <!-- 소속 정보를 저장할 hidden 필드들 -->
             <input type="hidden" name="dmk_mb_owner_type" id="dmk_mb_owner_type" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_type'] ?? '') ?>">
-            <input type="hidden" name="dmk_mb_owner_id" id="dmk_mb_owner_id" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_id'] ?? '') ?>">>
+            <input type="hidden" name="dmk_mb_owner_id" id="dmk_mb_owner_id" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_id'] ?? '') ?>">
             
             <div class="frm_info">
                 지점을 지정해야 회원 가입이 가능합니다.

@@ -900,12 +900,13 @@ function dmk_auth_check_menu($auth, $sub_menu, $attr, $return = false) {
 }
 
 /**
- * 카테고리 수정 권한을 확인합니다.
+ * 카테고리 수정 권한을 확인합니다. (새로운 계층 구조)
  * 
  * @param string $ca_id 카테고리 ID
  * @return bool 수정 권한 여부
  */
 function dmk_can_modify_category($ca_id) {
+    global $g5, $member;
     $auth = dmk_get_admin_auth();
     
     // 최고 관리자는 모든 카테고리 수정 가능
@@ -913,17 +914,38 @@ function dmk_can_modify_category($ca_id) {
         return true;
     }
     
-    // 총판 관리자만 카테고리 수정 가능
-    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-        return true;
+    // 카테고리 정보 조회
+    $sql = "SELECT dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['g5_shop_category_table']} WHERE ca_id = '{$ca_id}'";
+    $category = sql_fetch($sql);
+    
+    if (!$category) {
+        return false;
     }
     
-    // 대리점, 지점 관리자는 카테고리 수정 불가
+    // 사용자의 계층 정보와 카테고리 소유 계층 정보 비교
+    $user_dt_id = $member['dmk_dt_id'] ?? '';
+    $user_ag_id = $member['dmk_ag_id'] ?? '';
+    $user_br_id = $member['dmk_br_id'] ?? '';
+    
+    // 사용자가 카테고리 소유 계층과 동일하거나 상위 계층인지 확인
+    if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+        // 총판은 자신이 소유한 총판 분류 수정 가능
+        return ($category['dmk_dt_id'] == $user_dt_id);
+    } elseif ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+        // 대리점은 자신이 소유한 대리점/지점 분류 수정 가능
+        return ($category['dmk_dt_id'] == $user_dt_id && $category['dmk_ag_id'] == $user_ag_id);
+    } elseif ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+        // 지점은 자신이 소유한 지점 분류만 수정 가능
+        return ($category['dmk_dt_id'] == $user_dt_id && 
+                $category['dmk_ag_id'] == $user_ag_id && 
+                $category['dmk_br_id'] == $user_br_id);
+    }
+    
     return false;
 }
 
 /**
- * 카테고리 소유 정보를 가져옵니다.
+ * 카테고리 소유 정보를 가져옵니다. (새로운 계층 구조)
  * 
  * @return array 카테고리 소유 정보
  */
@@ -931,8 +953,9 @@ function dmk_get_category_owner_info() {
     $auth = dmk_get_admin_auth();
     
     $owner_info = [
-        'owner_type' => '',
-        'owner_id' => ''
+        'dmk_dt_id' => '',
+        'dmk_ag_id' => '',
+        'dmk_br_id' => ''
     ];
     
     if (!$auth) {
@@ -940,30 +963,14 @@ function dmk_get_category_owner_info() {
     }
 
     if ($auth['is_super']) {
-        // 최고 관리자는 총판 소유가 기본
-        $owner_info['owner_type'] = DMK_OWNER_TYPE_DISTRIBUTOR;
-        // 최고관리자는 특정 총판 ID를 가지지 않으므로 빈 값 유지. 필요시 명시적으로 선택.
-        $owner_info['owner_id'] = '';
+        // 최고 관리자는 기본값을 빈 상태로 유지 (선택에 따라 설정)
+        return $owner_info;
     } else {
-        switch ($auth['mb_type']) {
-            case DMK_MB_TYPE_DISTRIBUTOR:
-                $owner_info['owner_type'] = DMK_OWNER_TYPE_DISTRIBUTOR;
-                $owner_info['owner_id'] = $auth['mb_id']; // 총판 ID
-                break;
-            case DMK_MB_TYPE_AGENCY:
-                $owner_info['owner_type'] = DMK_OWNER_TYPE_AGENCY;
-                $owner_info['owner_id'] = $auth['ag_id']; // 대리점 ID
-                break;
-            case DMK_MB_TYPE_BRANCH:
-                $owner_info['owner_type'] = DMK_OWNER_TYPE_BRANCH;
-                $owner_info['owner_id'] = $auth['br_id']; // 지점 ID
-                break;
-            default:
-                // 그 외 계층은 기본적으로 소유권 없음 (또는 제한적)
-                $owner_info['owner_type'] = ''; 
-                $owner_info['owner_id'] = '';
-                break;
-        }
+        // 일반 관리자는 자신의 계층 정보를 반환
+        global $member;
+        $owner_info['dmk_dt_id'] = $member['dmk_dt_id'] ?? '';
+        $owner_info['dmk_ag_id'] = $member['dmk_ag_id'] ?? '';
+        $owner_info['dmk_br_id'] = $member['dmk_br_id'] ?? '';
     }
     
     return $owner_info;
