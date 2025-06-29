@@ -405,7 +405,6 @@ class DmkChainSelect {
             })
             .then(data => {
                 this.log('지점 목록 로드 완료:', data);
-                this.clearSelect(this.options.branchSelectId);
                 
                     // 응답 구조 확인 및 데이터 추출
                     let branches = [];
@@ -420,17 +419,43 @@ class DmkChainSelect {
                     }
                     
                     this.log('처리할 지점 데이터:', branches);
+                    this.log('지점 데이터 길이:', branches.length);
                     
-                    branches.forEach(branch => {
-                    const option = document.createElement('option');
-                    option.value = branch.id;
-                        option.textContent = branch.name;
-                    branchSelect.appendChild(option);
-                });
-                
+                    // 지점 선택박스 옵션 정리 (기본 옵션 제외)
+                    this.log('지점 옵션 정리 전 옵션 수:', branchSelect.options.length);
+                    // 첫 번째 옵션(기본 옵션)을 제외하고 모든 옵션 제거
+                    while (branchSelect.options.length > 1) {
+                        branchSelect.removeChild(branchSelect.lastChild);
+                    }
+                    this.log('지점 옵션 정리 후 옵션 수:', branchSelect.options.length);
+                    
+                    // 지점 데이터가 있는 경우 옵션 추가
+                    if (branches && branches.length > 0) {
+                        branches.forEach((branch, index) => {
+                            this.log(`지점 옵션 추가 중 [${index}]:`, branch);
+                            const option = document.createElement('option');
+                            option.value = branch.id;
+                            option.textContent = `${branch.name} (${branch.id})`;
+                            branchSelect.appendChild(option);
+                            this.log('옵션 추가 후 총 옵션 수:', branchSelect.options.length);
+                        });
+                        this.log('지점 옵션 추가 완료, 최종 옵션 수:', branchSelect.options.length);
+                    } else {
+                        this.log('지점 데이터가 없습니다.');
+                    }
+                    
+                    // 현재 저장된 지점 값이 있으면 선택
                     if (this.currentValues.branch && this.hasOption(branchSelect, this.currentValues.branch)) {
                         branchSelect.value = this.currentValues.branch;
+                        this.log('지점 선택값 복원:', this.currentValues.branch);
                     }
+                    
+                    // 지점 선택박스의 모든 옵션 로그 출력
+                    this.log('지점 선택박스 모든 옵션들:');
+                    for (let i = 0; i < branchSelect.options.length; i++) {
+                        this.log(`  옵션 [${i}]: value="${branchSelect.options[i].value}", text="${branchSelect.options[i].text}"`);
+                    }
+                    
                     resolve();
             })
             .catch(error => {
@@ -439,7 +464,11 @@ class DmkChainSelect {
                     reject(error);
                 })
                 .finally(() => {
-                this.setLoadingState(branchSelect, false);
+                // 로딩 상태만 해제 (옵션은 건드리지 않음)
+                if (branchSelect) {
+                    branchSelect.classList.remove('loading');
+                    branchSelect.disabled = false;
+                }
                 });
             });
     }
