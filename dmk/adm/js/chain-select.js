@@ -344,6 +344,10 @@ class DmkChainSelect {
                         const option = document.createElement('option');
                         option.value = agency.id;
                         option.textContent = `${agency.name} (${agency.id})`;
+                        // 상위 계층 정보를 data attribute에 저장
+                        if (agency.dt_id) {
+                            option.setAttribute('data-dt-id', agency.dt_id);
+                        }
                         currentAgencySelect.appendChild(option);
                         this.log(`옵션 추가 후 총 옵션 수: ${currentAgencySelect.options.length}`);
                     });
@@ -467,6 +471,13 @@ class DmkChainSelect {
                             const option = document.createElement('option');
                             option.value = branch.id;
                             option.textContent = `${branch.name} (${branch.id})`;
+                            // 상위 계층 정보를 data attribute에 저장
+                            if (branch.dt_id) {
+                                option.setAttribute('data-dt-id', branch.dt_id);
+                            }
+                            if (branch.ag_id) {
+                                option.setAttribute('data-ag-id', branch.ag_id);
+                            }
                             branchSelect.appendChild(option);
                             this.log('옵션 추가 후 총 옵션 수:', branchSelect.options.length);
                         });
@@ -626,11 +637,28 @@ class DmkChainSelect {
         let brId = '';
         
         if (this.currentValues.branch) {
-            // 지점이 선택된 경우: AJAX로 지점의 상위 계층 정보 가져오기
-            this.fetchHierarchyInfo(this.currentValues.branch, 'branch');
+            // 지점이 선택된 경우: 지점의 data attribute에서 상위 계층 정보 가져오기
+            brId = this.currentValues.branch;
+            const branchSelect = document.getElementById(this.options.branchSelectId);
+            if (branchSelect) {
+                const selectedOption = branchSelect.querySelector(`option[value="${this.currentValues.branch}"]`);
+                if (selectedOption) {
+                    dtId = selectedOption.getAttribute('data-dt-id') || '';
+                    agId = selectedOption.getAttribute('data-ag-id') || '';
+                }
+            }
+            this.updateHiddenFields(dtId, agId, brId);
         } else if (this.currentValues.agency) {
-            // 대리점이 선택된 경우: AJAX로 대리점의 상위 계층 정보 가져오기
-            this.fetchHierarchyInfo(this.currentValues.agency, 'agency');
+            // 대리점이 선택된 경우: 대리점의 data attribute에서 상위 계층 정보 가져오기
+            agId = this.currentValues.agency;
+            const agencySelect = document.getElementById(this.options.agencySelectId);
+            if (agencySelect) {
+                const selectedOption = agencySelect.querySelector(`option[value="${this.currentValues.agency}"]`);
+                if (selectedOption) {
+                    dtId = selectedOption.getAttribute('data-dt-id') || '';
+                }
+            }
+            this.updateHiddenFields(dtId, agId, '');
         } else if (this.currentValues.distributor) {
             // 총판만 선택된 경우: 총판 ID만 설정
             dtId = this.currentValues.distributor;
@@ -641,49 +669,11 @@ class DmkChainSelect {
         }
     }
     
-    // AJAX로 계층 정보 가져오기
-    fetchHierarchyInfo(memberId, memberType) {
-        if (!memberId) return;
-        
-        const endpoint = '/dmk/adm/_ajax/get_member_hierarchy.php';
-        const url = `${endpoint}?mb_id=${encodeURIComponent(memberId)}`;
-        
-        this.log(`계층 정보 AJAX 요청: ${url}`);
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                this.log('계층 정보 AJAX 응답:', data);
-                if (data.success) {
-                    const dtId = data.dmk_dt_id || '';
-                    const agId = data.dmk_ag_id || '';
-                    const brId = data.dmk_br_id || '';
-                    
-                    this.updateHiddenFields(dtId, agId, brId);
-                } else {
-                    this.log('계층 정보 가져오기 실패:', data.message);
-                    // 실패 시 현재 선택값을 기준으로 설정
-                    if (memberType === 'distributor') {
-                        this.updateHiddenFields(memberId, '', '');
-                    } else if (memberType === 'agency') {
-                        this.updateHiddenFields('', memberId, '');
-                    } else if (memberType === 'branch') {
-                        this.updateHiddenFields('', '', memberId);
-                    }
-                }
-            })
-            .catch(error => {
-                this.log('계층 정보 AJAX 오류:', error);
-                // 오류 시 현재 선택값을 기준으로 설정
-                if (memberType === 'distributor') {
-                    this.updateHiddenFields(memberId, '', '');
-                } else if (memberType === 'agency') {
-                    this.updateHiddenFields('', memberId, '');
-                } else if (memberType === 'branch') {
-                    this.updateHiddenFields('', '', memberId);
-                }
-            });
-    }
+    // [Deprecated] AJAX로 계층 정보 가져오기 - 이제 data attribute 사용
+    // fetchHierarchyInfo(memberId, memberType) {
+    //     // 이 메소드는 더 이상 사용하지 않습니다.
+    //     // 대신 선택박스 option의 data attribute를 사용합니다.
+    // }
     
     // Hidden fields 실제 업데이트
     updateHiddenFields(dtId, agId, brId) {

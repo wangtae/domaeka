@@ -44,7 +44,7 @@ try {
         }
 
         if ($ag_sql_where) {
-            $ag_sql = "SELECT a.ag_id, m.mb_nick AS ag_name 
+            $ag_sql = "SELECT a.ag_id, a.dt_id, m.mb_nick AS ag_name 
                        FROM dmk_agency a
                        JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
                        ". $ag_sql_where ." ORDER BY m.mb_nick ASC";
@@ -55,13 +55,14 @@ try {
             while($ag_row = sql_fetch_array($ag_res)) {
                 $agencies[] = array(
                     'id' => $ag_row['ag_id'],
-                    'name' => $ag_row['ag_name']
+                    'name' => $ag_row['ag_name'],
+                    'dt_id' => $ag_row['dt_id']  // 상위 총판 ID 포함
                 );
             }
         }
     } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
         // 총판 관리자: 자신의 총판에 속한 대리점만 조회
-        $ag_sql = "SELECT a.ag_id, m.mb_nick AS ag_name 
+        $ag_sql = "SELECT a.ag_id, a.dt_id, m.mb_nick AS ag_name 
                    FROM dmk_agency a
                    JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
                    WHERE a.dt_id = '".sql_escape_string($dmk_auth['mb_id'])."' AND a.ag_status = 1 
@@ -70,14 +71,16 @@ try {
         while($ag_row = sql_fetch_array($ag_res)) {
             $agencies[] = array(
                 'id' => $ag_row['ag_id'],
-                'name' => $ag_row['ag_name']
+                'name' => $ag_row['ag_name'],
+                'dt_id' => $ag_row['dt_id']  // 상위 총판 ID 포함
             );
         }
     } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
         // 대리점 관리자: 자신의 대리점만 조회
         $agencies[] = array(
             'id' => $dmk_auth['ag_id'],
-            'name' => $dmk_auth['mb_name']
+            'name' => $dmk_auth['mb_name'],
+            'dt_id' => $dmk_auth['dt_id']  // 상위 총판 ID 포함
         );
     }
 

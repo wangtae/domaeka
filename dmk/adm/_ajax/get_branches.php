@@ -43,15 +43,18 @@ if ($dmk_auth['is_super']) {
         $br_sql_where = " WHERE b.br_status = 1 ";
     }
 
-    $br_sql = "SELECT b.br_id, m.mb_nick AS br_name 
+    $br_sql = "SELECT b.br_id, b.ag_id, a.dt_id, m.mb_nick AS br_name 
                FROM dmk_branch b
+               JOIN dmk_agency a ON b.ag_id = a.ag_id
                JOIN {$g5['member_table']} m ON b.br_id = m.mb_id
                ". $br_sql_where ." ORDER BY m.mb_nick ASC";
     $br_res = sql_query($br_sql);
     while($br_row = sql_fetch_array($br_res)) {
         $branches[] = array(
             'id' => $br_row['br_id'],
-            'name' => $br_row['br_name']
+            'name' => $br_row['br_name'],
+            'ag_id' => $br_row['ag_id'],  // 상위 대리점 ID 포함
+            'dt_id' => $br_row['dt_id']   // 상위 총판 ID 포함
         );
     }
 } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
@@ -61,7 +64,7 @@ if ($dmk_auth['is_super']) {
         $br_sql_where .= " AND b.ag_id = '".sql_escape_string($ag_id)."' ";
     }
 
-    $br_sql = "SELECT b.br_id, m.mb_nick AS br_name 
+    $br_sql = "SELECT b.br_id, b.ag_id, a.dt_id, m.mb_nick AS br_name 
                FROM dmk_branch b
                JOIN dmk_agency a ON b.ag_id = a.ag_id
                JOIN {$g5['member_table']} m ON b.br_id = m.mb_id
@@ -70,13 +73,16 @@ if ($dmk_auth['is_super']) {
     while($br_row = sql_fetch_array($br_res)) {
         $branches[] = array(
             'id' => $br_row['br_id'],
-            'name' => $br_row['br_name']
+            'name' => $br_row['br_name'],
+            'ag_id' => $br_row['ag_id'],  // 상위 대리점 ID 포함
+            'dt_id' => $br_row['dt_id']   // 상위 총판 ID 포함
         );
     }
 } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
         // 대리점 관리자: 자신의 대리점에 속한 지점만 조회 (ag_id 파라미터 무시)
-    $br_sql = "SELECT b.br_id, m.mb_nick AS br_name 
+    $br_sql = "SELECT b.br_id, b.ag_id, a.dt_id, m.mb_nick AS br_name 
                FROM dmk_branch b
+               JOIN dmk_agency a ON b.ag_id = a.ag_id
                JOIN {$g5['member_table']} m ON b.br_id = m.mb_id
                WHERE b.ag_id = '".sql_escape_string($dmk_auth['ag_id'])."' AND b.br_status = 1 
                ORDER BY m.mb_nick ASC";
@@ -84,7 +90,9 @@ if ($dmk_auth['is_super']) {
     while($br_row = sql_fetch_array($br_res)) {
         $branches[] = array(
             'id' => $br_row['br_id'],
-            'name' => $br_row['br_name']
+            'name' => $br_row['br_name'],
+            'ag_id' => $br_row['ag_id'],  // 상위 대리점 ID 포함
+            'dt_id' => $br_row['dt_id']   // 상위 총판 ID 포함
         );
     }
 }
