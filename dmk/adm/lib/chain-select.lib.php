@@ -203,7 +203,13 @@ function dmk_render_chain_select($options = []) {
         ],
         'show_labels' => false, // 기본적으로 목록 페이지용으로 라벨 숨김
         'container_class' => '', // 추가 컨테이너 클래스
-        'debug' => true // 기본적으로 디버그 모드 ON (개발 중)
+        'debug' => true, // 기본적으로 디버그 모드 ON (개발 중)
+        'include_hidden_fields' => true, // dmk_dt_id, dmk_ag_id, dmk_br_id hidden 필드 포함 여부
+        'hidden_field_names' => [
+            'dt_id' => 'dmk_dt_id',
+            'ag_id' => 'dmk_ag_id', 
+            'br_id' => 'dmk_br_id'
+        ]
     ];
     
     // 사용자 옵션과 기본 옵션 병합 (사용자 옵션이 우선)
@@ -294,6 +300,17 @@ function dmk_render_chain_select($options = []) {
         
     }
 
+    // Hidden fields 추가 (dmk_dt_id, dmk_ag_id, dmk_br_id)
+    if ($options['include_hidden_fields']) {
+        $dt_id_value = $config['initial_distributor'] ?: (isset($options['current_values']['dt_id']) ? $options['current_values']['dt_id'] : '');
+        $ag_id_value = $config['initial_agency'] ?: (isset($options['current_values']['ag_id']) ? $options['current_values']['ag_id'] : '');
+        $br_id_value = $config['initial_branch'] ?: (isset($options['current_values']['br_id']) ? $options['current_values']['br_id'] : '');
+        
+        $html .= '<input type="hidden" name="' . $options['hidden_field_names']['dt_id'] . '" id="' . $options['hidden_field_names']['dt_id'] . '" value="' . htmlspecialchars($dt_id_value) . '">';
+        $html .= '<input type="hidden" name="' . $options['hidden_field_names']['ag_id'] . '" id="' . $options['hidden_field_names']['ag_id'] . '" value="' . htmlspecialchars($ag_id_value) . '">';
+        $html .= '<input type="hidden" name="' . $options['hidden_field_names']['br_id'] . '" id="' . $options['hidden_field_names']['br_id'] . '" value="' . htmlspecialchars($br_id_value) . '">';
+    }
+
     
     // JavaScript 초기화 코드
     if ($config['show_distributor'] || $config['show_agency'] || $config['show_branch']) {
@@ -308,7 +325,10 @@ function dmk_render_chain_select($options = []) {
             'initialBranch' => $config['initial_branch'] ?: (isset($options['current_values']) && isset($options['current_values'][$options['field_names']['branch'] ?? 'sbr_id']) ? $options['current_values'][$options['field_names']['branch'] ?? 'sbr_id'] : ''),
             'autoSubmit' => $options['auto_submit'],
             'formId' => $options['form_id'],
-            'debug' => $options['debug']
+            'debug' => $options['debug'],
+            // Hidden fields 설정 추가
+            'includeHiddenFields' => $options['include_hidden_fields'],
+            'hiddenFieldNames' => $options['hidden_field_names']
         ];
         
         // 디버깅을 위해 autoSubmit 값 출력

@@ -244,9 +244,6 @@ else {
 <input type="hidden" name="sdt_id" value="<?php echo $sdt_id; ?>">
 <input type="hidden" name="sag_id" value="<?php echo $sag_id; ?>">
 <input type="hidden" name="sbr_id" value="<?php echo $sbr_id; ?>">
-<input type="text" name="dmk_dt_id" id="dmk_dt_id" value="<?php echo $ca['dmk_dt_id']; ?>" readonly>
-<input type="text" name="dmk_ag_id" id="dmk_ag_id" value="<?php echo $ca['dmk_ag_id']; ?>" readonly>
-<input type="text" name="dmk_br_id" id="dmk_br_id" value="<?php echo $ca['dmk_br_id']; ?>" readonly>
 
 <section id="anc_scatefrm_basic">
     <h2 class="h2_frm">필수입력</h2>
@@ -357,77 +354,10 @@ else {
                         'form_id' => 'fcategoryform',
                         'auto_submit' => false,
                         'show_labels' => false,
-                        'container_class' => 'dmk-owner-select'
+                        'container_class' => 'dmk-owner-select',
+                        'include_hidden_fields' => true
                     ]);
                     ?>
-                    <!-- 계층 정보를 소유자 정보로 전달하기 위한 hidden field -->
-                    <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        function updateOwnerInfo() {
-                            var sdtId = document.getElementById('sdt_id') ? document.getElementById('sdt_id').value : '';
-                            var sagId = document.getElementById('sag_id') ? document.getElementById('sag_id').value : '';
-                            var sbrId = document.getElementById('sbr_id') ? document.getElementById('sbr_id').value : '';
-                            
-                            var dtIdField = document.querySelector('input[name="dmk_dt_id"]');
-                            var agIdField = document.querySelector('input[name="dmk_ag_id"]');
-                            var brIdField = document.querySelector('input[name="dmk_br_id"]');
-                            
-                            if (sbrId) {
-                                // AJAX로 지점 정보를 가져와서 계층 정보 설정
-                                fetch('/dmk/adm/_ajax/get_member_hierarchy.php?mb_id=' + sbrId)
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            if (dtIdField) dtIdField.value = data.dmk_dt_id || '';
-                                            if (agIdField) agIdField.value = data.dmk_ag_id || '';
-                                            if (brIdField) brIdField.value = data.dmk_br_id || '';
-                                        }
-                                    })
-                                    .catch(error => console.error('Error:', error));
-                            } else if (sagId) {
-                                // AJAX로 대리점 정보를 가져와서 계층 정보 설정
-                                fetch('/dmk/adm/_ajax/get_member_hierarchy.php?mb_id=' + sagId)
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            if (dtIdField) dtIdField.value = data.dmk_dt_id || '';
-                                            if (agIdField) agIdField.value = data.dmk_ag_id || '';
-                                            if (brIdField) brIdField.value = '';
-                                        }
-                                    })
-                                    .catch(error => console.error('Error:', error));
-                            } else if (sdtId) {
-                                // AJAX로 총판 정보를 가져와서 계층 정보 설정
-                                fetch('/dmk/adm/_ajax/get_member_hierarchy.php?mb_id=' + sdtId)
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            if (dtIdField) dtIdField.value = data.dmk_dt_id || '';
-                                            if (agIdField) agIdField.value = '';
-                                            if (brIdField) brIdField.value = '';
-                                        }
-                                    })
-                                    .catch(error => console.error('Error:', error));
-                            } else {
-                                // 모든 필드 초기화
-                                if (dtIdField) dtIdField.value = '';
-                                if (agIdField) agIdField.value = '';
-                                if (brIdField) brIdField.value = '';
-                            }
-                        }
-                        
-                        // 선택박스 변경 이벤트 리스너 등록
-                        ['sdt_id', 'sag_id', 'sbr_id'].forEach(function(id) {
-                            var element = document.getElementById(id);
-                            if (element) {
-                                element.addEventListener('change', updateOwnerInfo);
-                            }
-                        });
-                        
-                        // 초기 실행
-                        updateOwnerInfo();
-                    });
-                    </script>
                     <div class="hierarchy_desc" style="margin-top: 10px; font-size: 11px; color: #666;">
                         • 총판까지만 선택 시 총판 분류가 됩니다.<br>
                         • 대리점까지 선택 시 대리점 분류가 됩니다.<br>

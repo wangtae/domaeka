@@ -37,6 +37,14 @@ class DmkChainSelect {
             // 디버그 모드
             debug: true,
             
+            // Hidden fields 설정
+            includeHiddenFields: false,
+            hiddenFieldNames: {
+                dt_id: 'dmk_dt_id',
+                ag_id: 'dmk_ag_id',
+                br_id: 'dmk_br_id'
+            },
+            
             ...options
         };
         
@@ -96,6 +104,9 @@ class DmkChainSelect {
         
         // 초기 로드
         this.loadInitialData();
+        
+        // 초기 hidden fields 동기화
+        this.syncHiddenFields();
     }
     
     loadInitialData() {
@@ -131,6 +142,9 @@ class DmkChainSelect {
         this.currentValues.distributor = distributorId;
         this.currentValues.agency = '';
         this.currentValues.branch = '';
+
+        // Hidden fields 동기화
+        this.syncHiddenFields();
 
         if (distributorId) {
             // AJAX 요청 완료 후 콜백에서 폼 제출
@@ -172,6 +186,9 @@ class DmkChainSelect {
         this.currentValues.agency = agencyId;
         this.currentValues.branch = '';  // 지점 값도 확실히 초기화
         
+        // Hidden fields 동기화
+        this.syncHiddenFields();
+        
         // 지점 목록 로드 (비동기)
         this.log('지점 목록 로드 조건 확인: ', agencyId, document.getElementById(this.options.branchSelectId));
         if (agencyId && document.getElementById(this.options.branchSelectId)) {
@@ -212,6 +229,9 @@ class DmkChainSelect {
         this.log('지점 변경:', branchId);
         
         this.currentValues.branch = branchId;
+        
+        // Hidden fields 동기화
+        this.syncHiddenFields();
         
         // 콜백 실행
         if (this.options.onBranchChange) {
@@ -590,6 +610,102 @@ class DmkChainSelect {
         if (this.options.debug) {
             console.log('[DmkChainSelect]', ...args);
         }
+    }
+    
+    // Hidden fields 동기화 메소드
+    syncHiddenFields() {
+        if (!this.options.includeHiddenFields) {
+            return;
+        }
+        
+        this.log('Hidden fields 동기화 시작');
+        
+        // 현재 선택값에 따라 계층 정보 설정
+        let dtId = '';
+        let agId = '';
+        let brId = '';
+        
+        if (this.currentValues.branch) {
+            // 지점이 선택된 경우: AJAX로 지점의 상위 계층 정보 가져오기
+            this.fetchHierarchyInfo(this.currentValues.branch, 'branch');
+        } else if (this.currentValues.agency) {
+            // 대리점이 선택된 경우: AJAX로 대리점의 상위 계층 정보 가져오기
+            this.fetchHierarchyInfo(this.currentValues.agency, 'agency');
+        } else if (this.currentValues.distributor) {
+            // 총판만 선택된 경우: 총판 ID만 설정
+            dtId = this.currentValues.distributor;
+            this.updateHiddenFields(dtId, '', '');
+        } else {
+            // 아무것도 선택되지 않은 경우: 모든 필드 초기화
+            this.updateHiddenFields('', '', '');
+        }
+    }
+    
+    // AJAX로 계층 정보 가져오기
+    fetchHierarchyInfo(memberId, memberType) {
+        if (!memberId) return;
+        
+        const endpoint = '/dmk/adm/_ajax/get_member_hierarchy.php';
+        const url = `${endpoint}?mb_id=${encodeURIComponent(memberId)}`;
+        
+        this.log(`계층 정보 AJAX 요청: ${url}`);
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                this.log('계층 정보 AJAX 응답:', data);
+                if (data.success) {
+                    const dtId = data.dmk_dt_id || '';
+                    const agId = data.dmk_ag_id || '';
+                    const brId = data.dmk_br_id || '';
+                    
+                    this.updateHiddenFields(dtId, agId, brId);
+                } else {
+                    this.log('계층 정보 가져오기 실패:', data.message);
+                    // 실패 시 현재 선택값을 기준으로 설정
+                    if (memberType === 'distributor') {
+                        this.updateHiddenFields(memberId, '', '');
+                    } else if (memberType === 'agency') {
+                        this.updateHiddenFields('', memberId, '');
+                    } else if (memberType === 'branch') {
+                        this.updateHiddenFields('', '', memberId);
+                    }
+                }
+            })
+            .catch(error => {
+                this.log('계층 정보 AJAX 오류:', error);
+                // 오류 시 현재 선택값을 기준으로 설정
+                if (memberType === 'distributor') {
+                    this.updateHiddenFields(memberId, '', '');
+                } else if (memberType === 'agency') {
+                    this.updateHiddenFields('', memberId, '');
+                } else if (memberType === 'branch') {
+                    this.updateHiddenFields('', '', memberId);
+                }
+            });
+    }
+    
+    // Hidden fields 실제 업데이트
+    updateHiddenFields(dtId, agId, brId) {
+        const dtIdField = document.getElementById(this.options.hiddenFieldNames.dt_id);
+        if (dtIdField) {
+            dtIdField.value = dtId;
+            this.log(`${this.options.hiddenFieldNames.dt_id} = ${dtId}`);
+        }
+        
+        const agIdField = document.getElementById(this.options.hiddenFieldNames.ag_id);
+        if (agIdField) {
+            agIdField.value = agId;
+            this.log(`${this.options.hiddenFieldNames.ag_id} = ${agId}`);
+        }
+        
+        const brIdField = document.getElementById(this.options.hiddenFieldNames.br_id);
+        if (brIdField) {
+            brIdField.value = brId;
+            this.log(`${this.options.hiddenFieldNames.br_id} = ${brId}`);
+        }
+        
+        this.log('Hidden fields 업데이트 완료');
     }
     
     // 현재 선택값 반환

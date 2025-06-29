@@ -742,13 +742,20 @@ function fmember_submit(f)
         return false;
     }
 
-    // 소속 정보 업데이트
-    var owner_type = '';
-    var owner_id = '';
-
+    // 소속 정보 필수값 검증
     var dt_id = jQuery("#dt_id").val();
     var ag_id = jQuery("#ag_id").val();
     var br_id = jQuery("#br_id").val();
+
+    // 총판, 대리점, 지점 중 하나는 반드시 선택되어야 함
+    if (!(dt_id && ag_id && br_id)) {
+        alert('소속 정보는 필수입니다. 총판, 대리점, 지점 모두를 선택해주세요.');
+        return false;
+    }
+
+    // 소속 정보 업데이트
+    var owner_type = '';
+    var owner_id = '';
 
     if (br_id) {
         owner_type = 'branch';
