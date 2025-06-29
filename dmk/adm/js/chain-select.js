@@ -124,9 +124,9 @@ class DmkChainSelect {
 
         this.log('총판 변경:', distributorId);
 
-        // loadAgencies 내부에서 select를 비우므로, 이중으로 호출할 필요가 없습니다.
-        // this.clearSelect(this.options.agencySelectId);
-        // this.clearSelect(this.options.branchSelectId);
+        // 총판이 변경되면 즉시 하위 선택박스들을 초기화
+        this.clearSelect(this.options.agencySelectId);
+        this.clearSelect(this.options.branchSelectId);
 
         this.currentValues.distributor = distributorId;
         this.currentValues.agency = '';
@@ -146,10 +146,7 @@ class DmkChainSelect {
                 }
             });
         } else {
-            // 총판이 선택되지 않은 경우 하위 목록을 비우고 폼을 제출합니다.
-            this.clearSelect(this.options.agencySelectId);
-            this.clearSelect(this.options.branchSelectId);
-
+            // 총판이 선택되지 않은 경우 이미 초기화했으므로 폼만 제출
             // 콜백 실행
             if (this.options.onDistributorChange) {
                 this.options.onDistributorChange(distributorId);
@@ -169,30 +166,41 @@ class DmkChainSelect {
         
         this.log('대리점 변경:', agencyId);
         
-        // 하위 선택박스 초기화
+        // 대리점이 변경되면 즉시 지점 선택박스 초기화
         this.clearSelect(this.options.branchSelectId);
         
         this.currentValues.agency = agencyId;
-        this.currentValues.branch = '';
+        this.currentValues.branch = '';  // 지점 값도 확실히 초기화
         
         // 지점 목록 로드 (비동기)
         this.log('지점 목록 로드 조건 확인: ', agencyId, document.getElementById(this.options.branchSelectId));
         if (agencyId && document.getElementById(this.options.branchSelectId)) {
             this.log('지점 목록 로드 함수 호출');
-            this.loadBranches(agencyId);
+            this.loadBranches(agencyId).then(() => {
+                // 지점 로드 완료 후 콜백 및 폼 제출
+                this.executeAgencyChangeCallback();
+            }).catch(() => {
+                // 지점 로드 실패해도 콜백 및 폼 제출
+                this.executeAgencyChangeCallback();
+            });
+        } else {
+            // 지점 선택박스가 없거나 대리점이 선택되지 않은 경우
+            this.executeAgencyChangeCallback();
+        }
+    }
+    
+    executeAgencyChangeCallback() {
+        // 콜백 실행
+        this.log('onAgencyChange 콜백 실행 시도');
+        if (this.options.onAgencyChange) {
+            this.options.onAgencyChange(this.currentValues.agency);
         }
         
-            // 콜백 실행
-        this.log('onAgencyChange 콜백 실행 시도');
-            if (this.options.onAgencyChange) {
-                this.options.onAgencyChange(agencyId);
-            }
-            
-            // 자동 폼 제출
+        // 자동 폼 제출
         this.log('자동 폼 제출 조건 확인: ', this.options.autoSubmit);
-            if (this.options.autoSubmit) {
+        if (this.options.autoSubmit) {
             this.log('submitForm 함수 호출 시도');
-                this.submitForm();
+            this.submitForm();
         }
         this.log('onAgencyChange 함수 종료');
     }
@@ -224,6 +232,9 @@ class DmkChainSelect {
             this.log('대리점 선택박스를 찾을 수 없음');
             return;
         }
+        
+        // 지점 선택박스도 함께 초기화 (총판 변경 시 지점도 초기화되어야 함)
+        this.clearSelect(this.options.branchSelectId);
         
         // 로딩 표시
         this.setLoadingState(agencySelect, true);
@@ -512,16 +523,29 @@ class DmkChainSelect {
         this.log(`'${selectId}' 최종 HTML:`, $select.html());
     }
 
-    clearSelect(selectElement, placeholder = '') {
-        const select = document.getElementById(selectElement);
-        if (!select) return;
+    clearSelect(selectElementId, placeholder = '') {
+        const select = document.getElementById(selectElementId);
+        if (!select) {
+            this.log(`clearSelect: '${selectElementId}' 요소를 찾을 수 없습니다.`);
+            return;
+        }
         
-        // 첫 번째 옵션(전체) 제외하고 모든 옵션 제거
+        this.log(`clearSelect: '${selectElementId}' 선택박스 초기화 시작`);
+        
+        // 선택값 초기화
+        select.value = '';
+        
+        // 첫 번째 옵션(전체/선택안함) 제외하고 모든 옵션 제거
         while (select.options.length > 1) {
             select.remove(1);
         }
         
-        select.value = '';
+        // 첫 번째 옵션이 선택되도록 보장
+        if (select.options.length > 0) {
+            select.selectedIndex = 0;
+        }
+        
+        this.log(`clearSelect: '${selectElementId}' 초기화 완료, 남은 옵션 수: ${select.options.length}`);
     }
     
     hasOption(select, value) {
