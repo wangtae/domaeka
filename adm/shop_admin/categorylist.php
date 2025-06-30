@@ -6,10 +6,23 @@ include_once('./_common.php');
 include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
 include_once(G5_PATH.'/dmk/adm/lib/chain-select.lib.php');
 
-auth_check_menu($auth, $sub_menu, "r");
-
-// 계층 정보 가져오기
+// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
+include_once(G5_PATH.'/dmk/dmk_global_settings.php');
 $dmk_auth = dmk_get_admin_auth();
+$user_type = dmk_get_current_user_type();
+
+// DMK main 관리자는 DMK 설정에 정의된 메뉴에 최고관리자처럼 접근 가능
+if ($dmk_auth && $dmk_auth['admin_type'] === 'main' && dmk_is_menu_allowed('400200', $user_type)) {
+    // DMK main 관리자는 auth_check_menu 우회
+} else {
+    // 일반 관리자는 기존 권한 체크 수행
+    auth_check_menu($auth, $sub_menu, "r");
+}
+
+// 추가 DMK 권한 체크
+if (!dmk_is_menu_allowed('400200', $user_type)) {
+    alert('분류관리에 접근 권한이 없습니다.', G5_ADMIN_URL);
+}
 
 // 계층별 필터링 파라미터 처리
 $sdt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';

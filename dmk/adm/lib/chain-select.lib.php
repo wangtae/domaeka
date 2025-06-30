@@ -72,17 +72,15 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
                 $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
                 break;
             case DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY:
-                // 총판 관리자는 대리점만 선택 가능 (총판은 고정)
-                $config['show_distributor'] = true; // 총판 선택박스 노출
-                $config['distributor_readonly'] = true; // 총판 선택박스를 읽기 전용으로 설정
+                // 총판 관리자는 대리점만 선택 가능 (총판 선택박스 숨김)
+                $config['show_distributor'] = false; // 총판 선택박스 숨김
                 $config['show_agency'] = true;
                 $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
                 break;
             case DMK_CHAIN_SELECT_FULL:
             default:
-                // 총판 관리자는 대리점-지점 선택 가능 (총판은 고정)
-                $config['show_distributor'] = true; // 총판 선택박스 노출
-                $config['distributor_readonly'] = true; // 총판 선택박스를 읽기 전용으로 설정
+                // 총판 관리자는 대리점-지점 선택 가능 (총판 선택박스 숨김)
+                $config['show_distributor'] = false; // 총판 선택박스 숨김
                 $config['show_agency'] = true;
                 $config['show_branch'] = true;
                 $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
@@ -98,9 +96,9 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
                 break;
             case DMK_CHAIN_SELECT_FULL:
             default:
-                // 대리점 관리자는 자신의 대리점 선택박스를 보고, 지점 선택 가능 (총판은 고정)
-                $config['show_agency'] = true; // 대리점 선택박스 노출
-                $config['agency_readonly'] = true; // 대리점 선택박스를 읽기 전용으로 설정
+                // 대리점 관리자는 지점 선택박스만 표시 (총판, 대리점 선택박스 숨김)
+                $config['show_distributor'] = false; // 총판 선택박스 숨김
+                $config['show_agency'] = false; // 대리점 선택박스 숨김
                 $config['show_branch'] = true;
                 $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
                 $config['initial_agency'] = $dmk_auth['ag_id'] ?? '';
@@ -110,6 +108,9 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
     // 지점 관리자인 경우
     else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
         // 지점 관리자는 모든 페이지에서 선택박스 표시 안함 (모든 값이 고정)
+        $config['show_distributor'] = false; // 총판 선택박스 숨김
+        $config['show_agency'] = false; // 대리점 선택박스 숨김
+        $config['show_branch'] = false; // 지점 선택박스 숨김
         $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
         $config['initial_agency'] = $dmk_auth['ag_id'] ?? '';
         $config['initial_branch'] = $dmk_auth['br_id'] ?? '';

@@ -237,8 +237,26 @@ document.addEventListener('DOMContentLoaded', function() {
         <td class="td_left"><?php echo $row['br_id'] ?></td>
         <td class="td_left"><?php echo $row['br_nick'] ?></td>
         <td class="td_left"><?php echo $row['br_name'] ?></td>
-        <td class="td_left"><?php echo $row['ag_name'] ?> (<?php echo $row['ag_id'] ?>)</td>
-        <td class="td_left"><?php echo $row['dt_name'] ?> (<?php echo $row['dt_id'] ?>)</td>
+        <td class="td_left">
+            <?php 
+            // 계층별 대리점 정보 표시 제어
+            if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                echo $row['ag_name'] . ' (' . $row['ag_id'] . ')';
+            } else {
+                echo $row['ag_name']; // 하위 계층은 ID 숨김
+            }
+            ?>
+        </td>
+        <td class="td_left">
+            <?php 
+            // 계층별 총판 정보 표시 제어 - 대리점/지점 관리자는 총판 정보 숨김
+            if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                echo $row['dt_name'] . ' (' . $row['dt_id'] . ')';
+            } else {
+                echo '-'; // 하위 계층은 총판 정보 숨김
+            }
+            ?>
+        </td>
         <td class="td_left"><?php echo $row['br_tel'] ? $row['br_tel'] : $row['br_hp'] ?></td>
         <td class="td_datetime"><?php echo substr($row['br_datetime_from_member'], 0, 10) ?></td>
         <td class="td_mng">

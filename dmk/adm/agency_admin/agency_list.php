@@ -79,7 +79,7 @@ if (!$sst) {
 
 $sql_order = " ORDER BY $sst $sod ";
 
-// 총판 목록 조회 (본사 관리자용)
+// 총판 목록 조회 (본사 관리자용만)
 $distributors = [];
 if ($dmk_auth['is_super']) {
     $distributor_sql = " SELECT d.dt_id, m.mb_name AS dt_name 
@@ -201,7 +201,14 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <input type="hidden" name="ag_id[<?php echo $i ?>]" value="<?php echo $row['ag_id'] ?>">
         </td>
         <td>
-            <?php echo $row['distributor_name'] ? $row['dt_id'] . ' (' . $row['distributor_name'] . ')' : '<span style="color:#999;">미배정</span>' ?>
+            <?php 
+            // 계층별 총판 정보 표시 제어 - 대리점 관리자는 총판 정보 숨김
+            if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                echo $row['distributor_name'] ? $row['dt_id'] . ' (' . $row['distributor_name'] . ')' : '<span style="color:#999;">미배정</span>';
+            } else {
+                echo $row['distributor_name'] ? $row['distributor_name'] : '<span style="color:#999;">미배정</span>'; // ID 숨김
+            }
+            ?>
         </td>
         <td><?php echo $row['ag_id'] ?></td>
         <td>

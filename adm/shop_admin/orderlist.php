@@ -2,7 +2,19 @@
 $sub_menu = '400400';
 include_once('./_common.php');
 
-auth_check_menu($auth, $sub_menu, "r");
+// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
+include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
+include_once(G5_PATH.'/dmk/dmk_global_settings.php');
+$dmk_auth = dmk_get_admin_auth();
+$user_type = dmk_get_current_user_type();
+
+// DMK main 관리자는 DMK 설정에 정의된 메뉴에 최고관리자처럼 접근 가능
+if ($dmk_auth && $dmk_auth['admin_type'] === 'main' && dmk_is_menu_allowed('400400', $user_type)) {
+    // DMK main 관리자는 auth_check_menu 우회
+} else {
+    // 일반 관리자는 기존 권한 체크 수행
+    auth_check_menu($auth, $sub_menu, "r");
+}
 
 $g5['title'] = '주문내역';
 include_once (G5_ADMIN_PATH.'/admin.head.php');

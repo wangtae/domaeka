@@ -7,12 +7,22 @@ include_once(G5_EDITOR_LIB);
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
 
-auth_check_menu($auth, $sub_menu, "w");
-
-// 도매까 권한 확인 - 총판 관리자만 분류 관리 가능
+// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
+include_once(G5_PATH.'/dmk/dmk_global_settings.php');
 $dmk_auth = dmk_get_admin_auth();
-if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > 1) {
-    alert('분류관리는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+$user_type = dmk_get_current_user_type();
+
+// DMK main 관리자는 DMK 설정에 정의된 메뉴에 최고관리자처럼 접근 가능
+if ($dmk_auth && $dmk_auth['admin_type'] === 'main' && dmk_is_menu_allowed('400200', $user_type)) {
+    // DMK main 관리자는 auth_check_menu 우회
+} else {
+    // 일반 관리자는 기존 권한 체크 수행
+    auth_check_menu($auth, $sub_menu, "w");
+}
+
+// 추가 DMK 권한 체크
+if (!dmk_is_menu_allowed('400200', $user_type)) {
+    alert('분류관리에 접근 권한이 없습니다.', G5_ADMIN_URL);
 }
 
 // 계층별 필터링 파라미터 처리

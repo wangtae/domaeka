@@ -219,7 +219,14 @@ if (!$auth['is_super']) {
             <?php
                 $current_dt_name = dmk_get_member_name($member_info['dmk_dt_id']);
             ?>
-            <input type="text" value="<?php echo get_text($member_info['dmk_dt_id']) ?> (<?php echo get_text($current_dt_name) ?>)" class="frm_input" readonly>
+            <input type="text" value="<?php 
+                // 하위 계층 관리자는 상위 계층 ID 숨김
+                if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                    echo get_text($member_info['dmk_dt_id']) . ' (' . get_text($current_dt_name) . ')';
+                } else {
+                    echo get_text($current_dt_name); // ID 숨김
+                }
+            ?>" class="frm_input" readonly>
             <input type="hidden" name="dt_id" value="<?php echo get_text($member_info['dmk_dt_id']) ?>">
             <span class="frm_info">총판은 수정할 수 없습니다.</span>
         </td>
@@ -230,7 +237,14 @@ if (!$auth['is_super']) {
             <?php
                 $current_ag_name = $member_info['dmk_ag_id'] ? dmk_get_member_name($member_info['dmk_ag_id']) : '미지정';
             ?>
-            <input type="text" name="ag_id_display" value="<?php echo get_text($member_info['dmk_ag_id']) ?> (<?php echo get_text($current_ag_name) ?>)" id="ag_id_display" class="frm_input" readonly>
+            <input type="text" name="ag_id_display" value="<?php 
+                // 하위 계층 관리자는 상위 계층 ID 숨김
+                if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                    echo get_text($member_info['dmk_ag_id']) . ' (' . get_text($current_ag_name) . ')';
+                } else {
+                    echo get_text($current_ag_name); // ID 숨김
+                }
+            ?>" id="ag_id_display" class="frm_input" readonly>
             <input type="hidden" name="ag_id" value="<?php echo get_text($member_info['dmk_ag_id']) ?>">
             <span class="frm_info">대리점은 수정할 수 없습니다.</span>
         </td>
@@ -241,7 +255,14 @@ if (!$auth['is_super']) {
             <?php
                 $current_br_name = $member_info['dmk_br_id'] ? dmk_get_member_name($member_info['dmk_br_id']) : '미지정';
             ?>
-            <input type="text" name="br_id_display" value="<?php echo get_text($member_info['dmk_br_id']) ?> (<?php echo get_text($current_br_name) ?>)" id="br_id_display" class="frm_input" readonly>
+            <input type="text" name="br_id_display" value="<?php 
+                // 하위 계층 관리자는 상위 계층 ID 숨김
+                if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                    echo get_text($member_info['dmk_br_id']) . ' (' . get_text($current_br_name) . ')';
+                } else {
+                    echo get_text($current_br_name); // ID 숨김
+                }
+            ?>" id="br_id_display" class="frm_input" readonly>
             <input type="hidden" name="br_id" value="<?php echo get_text($member_info['dmk_br_id']) ?>">
             <span class="frm_info">지점은 수정할 수 없습니다.</span>
         </td>

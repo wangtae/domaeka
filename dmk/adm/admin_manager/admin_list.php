@@ -269,9 +269,19 @@ function get_branch_name($br_id) {
                         $ag_sql = "SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($br_row['ag_id'])."'";
                         $ag_row = sql_fetch($ag_sql);
                         if ($ag_row) {
-                            $dt_sql = "SELECT mb_nick as dt_name FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($ag_row['dt_id'])."'";
-                            $dt_row = sql_fetch($dt_sql);
-                            $admin_org_name = ($dt_row ? $dt_row['dt_name'] : '미등록총판') . ' > ' . $ag_name . ' > ' . $br_name;
+                            // 계층별 표시 제어 - 하위 계층은 상위 계층 정보 숨김
+                            if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                                // 본사나 총판은 전체 계층 표시
+                                $dt_sql = "SELECT mb_nick as dt_name FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($ag_row['dt_id'])."'";
+                                $dt_row = sql_fetch($dt_sql);
+                                $admin_org_name = ($dt_row ? $dt_row['dt_name'] : '미등록총판') . ' > ' . $ag_name . ' > ' . $br_name;
+                            } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+                                // 대리점은 대리점 > 지점만 표시
+                                $admin_org_name = $ag_name . ' > ' . $br_name;
+                            } else {
+                                // 지점은 지점명만 표시
+                                $admin_org_name = $br_name;
+                            }
                             $admin_org_id = $row['dmk_br_id'];
                         } else {
                             $admin_org_name = '미등록대리점 > ' . $br_name;
@@ -288,9 +298,16 @@ function get_branch_name($br_id) {
                     $ag_sql = "SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($row['dmk_ag_id'])."'";
                     $ag_row = sql_fetch($ag_sql);
                     if ($ag_row) {
-                        $dt_sql = "SELECT mb_nick as dt_name FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($ag_row['dt_id'])."'";
-                        $dt_row = sql_fetch($dt_sql);
-                        $admin_org_name = ($dt_row ? $dt_row['dt_name'] : '미등록총판') . ' > ' . $ag_name;
+                        // 계층별 표시 제어 - 하위 계층은 상위 계층 정보 숨김
+                        if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                            // 본사나 총판은 전체 계층 표시
+                            $dt_sql = "SELECT mb_nick as dt_name FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($ag_row['dt_id'])."'";
+                            $dt_row = sql_fetch($dt_sql);
+                            $admin_org_name = ($dt_row ? $dt_row['dt_name'] : '미등록총판') . ' > ' . $ag_name;
+                        } else {
+                            // 대리점 이하는 대리점명만 표시
+                            $admin_org_name = $ag_name;
+                        }
                         $admin_org_id = $row['dmk_ag_id'];
                     } else {
                         $admin_org_name = '미등록대리점';
@@ -308,7 +325,8 @@ function get_branch_name($br_id) {
                 }
                 
                 $admin_org_display = $admin_org_name;
-                if (!empty($admin_org_id)) {
+                // 상위 계층 관리자만 ID 표시 (하위 계층은 상위 ID 숨김)
+                if (!empty($admin_org_id) && ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR)) {
                     $admin_org_display .= ' (' . $admin_org_id . ')';
                 }
                 

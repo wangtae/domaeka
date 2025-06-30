@@ -144,7 +144,7 @@ while($row = sql_fetch_array($dt_result)) {
                 <?php 
                     $current_dt_name = dmk_get_member_name($auth['dt_id']);
                 ?>
-                <input type="text" value="<?php echo get_text($auth['dt_id']) ?> (<?php echo get_text($current_dt_name) ?>)" class="frm_input" readonly>
+                <input type="text" value="<?php echo get_text($current_dt_name) ?>" class="frm_input" readonly>
                 <input type="hidden" name="dt_id" value="<?php echo get_text($auth['dt_id']) ?>">
                 <span class="frm_info">총판 관리자는 자신의 총판에만 대리점을 등록할 수 있습니다.</span>
             <?php } else { ?>
@@ -182,7 +182,7 @@ while($row = sql_fetch_array($dt_result)) {
                     $display_dt_id = get_text($agency['dt_id']);
                     $display_dt_name = dmk_get_member_name($agency['dt_id']);
                 ?>
-                <input type="text" value="<?php echo $display_dt_id ?> (<?php echo $display_dt_name ?>)" class="frm_input" readonly>
+                <input type="text" value="<?php echo $display_dt_name ?>" class="frm_input" readonly>
                 <input type="hidden" name="dt_id" value="<?php echo $display_dt_id ?>">
 
                 <span class="frm_info">총판 관리자는 자신의 총판에만 대리점을 수정할 수 있습니다.</span>

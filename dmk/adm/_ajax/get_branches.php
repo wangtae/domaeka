@@ -53,8 +53,7 @@ if ($dmk_auth['is_super']) {
         $branches[] = array(
             'id' => $br_row['br_id'],
             'name' => $br_row['br_name'],
-            'ag_id' => $br_row['ag_id'],  // 상위 대리점 ID 포함
-            'dt_id' => $br_row['dt_id']   // 상위 총판 ID 포함
+            // 상위 계층 ID 제거 - 보안상 노출하지 않음
         );
     }
 } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
@@ -74,8 +73,7 @@ if ($dmk_auth['is_super']) {
         $branches[] = array(
             'id' => $br_row['br_id'],
             'name' => $br_row['br_name'],
-            'ag_id' => $br_row['ag_id'],  // 상위 대리점 ID 포함
-            'dt_id' => $br_row['dt_id']   // 상위 총판 ID 포함
+            // 상위 계층 ID 제거 - 보안상 노출하지 않음
         );
     }
 } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
@@ -91,8 +89,7 @@ if ($dmk_auth['is_super']) {
         $branches[] = array(
             'id' => $br_row['br_id'],
             'name' => $br_row['br_name'],
-            'ag_id' => $br_row['ag_id'],  // 상위 대리점 ID 포함
-            'dt_id' => $br_row['dt_id']   // 상위 총판 ID 포함
+            // 상위 계층 ID 제거 - 보안상 노출하지 않음
         );
     }
 }

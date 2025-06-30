@@ -185,7 +185,7 @@ if (!$auth['is_super']) {
     <tr>
         <th scope="row">소속 총판</th>
         <td>
-            <input type="text" value="<?php echo get_text($auth['mb_id']) ?> (<?php echo get_text($auth['mb_name']) ?>)" class="frm_input" readonly>
+            <input type="text" value="<?php echo get_text($auth['mb_name']) ?>" class="frm_input" readonly>
             <input type="hidden" name="dt_id" value="<?php echo get_text($auth['mb_id']) ?>">
             <span class="frm_info">총판 관리자는 소속 총판을 변경할 수 없습니다.</span>
         </td>
@@ -198,7 +198,7 @@ if (!$auth['is_super']) {
                 $parent_dt_id = dmk_get_agency_distributor_id($auth['ag_id']);
                 $parent_dt_name = $parent_dt_id ? dmk_get_member_name($parent_dt_id) : '미지정';
             ?>
-            <input type="text" value="<?php echo get_text($parent_dt_id) ?> (<?php echo get_text($parent_dt_name) ?>)" class="frm_input" readonly>
+            <input type="text" value="<?php echo get_text($parent_dt_name) ?>" class="frm_input" readonly>
             <input type="hidden" name="dt_id" value="<?php echo get_text($parent_dt_id) ?>">
             <span class="frm_info">대리점 관리자는 소속 총판을 변경할 수 없습니다.</span>
         </td>

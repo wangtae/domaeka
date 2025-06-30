@@ -56,7 +56,7 @@ try {
                 $agencies[] = array(
                     'id' => $ag_row['ag_id'],
                     'name' => $ag_row['ag_name'],
-                    'dt_id' => $ag_row['dt_id']  // 상위 총판 ID 포함
+                    // 상위 총판 ID 제거 - 보안상 노출하지 않음
                 );
             }
         }
@@ -72,7 +72,7 @@ try {
             $agencies[] = array(
                 'id' => $ag_row['ag_id'],
                 'name' => $ag_row['ag_name'],
-                'dt_id' => $ag_row['dt_id']  // 상위 총판 ID 포함
+                // 상위 총판 ID 제거 - 보안상 노출하지 않음
             );
         }
     } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
@@ -80,7 +80,7 @@ try {
         $agencies[] = array(
             'id' => $dmk_auth['ag_id'],
             'name' => $dmk_auth['mb_name'],
-            'dt_id' => $dmk_auth['dt_id']  // 상위 총판 ID 포함
+            // 상위 총판 ID 제거 - 보안상 노출하지 않음
         );
     }
 
