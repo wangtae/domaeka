@@ -19,6 +19,13 @@ if (!dmk_can_access_menu($sub_menu)) {
 
 dmk_auth_check_menu($auth, $sub_menu, 'w');
 
+// 현재 로그인한 관리자 정보 (early definition)
+$current_admin = dmk_get_admin_auth();
+
+// 메뉴 접근 권한 확인
+// dmk_authenticate_form_access 함수를 사용하여 통합 권한 체크
+dmk_authenticate_form_access('branch_form', $w, $br_id);
+
 check_demo();
 check_admin_token();
 

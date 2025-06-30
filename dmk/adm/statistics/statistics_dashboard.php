@@ -9,14 +9,12 @@ include_once('../../../adm/_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
 // 지점 관리자 mb_type 상수 정의
-define('DMK_BRANCH_MB_TYPE', 4);
 
-// 도매까 권한 확인
-$dmk_auth = dmk_get_admin_auth();
-// 지점 관리자 (mb_type 3)도 자신의 통계를 볼 수 있도록 권한 수정
-// 최고 관리자가 아니면서 mb_type이 DMK_BRANCH_MB_TYPE (3)보다 큰 경우에만 접근 제한
-if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > DMK_BRANCH_MB_TYPE) {
-    alert('통계 조회는 총판, 대리점 및 지점 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
+
+// 메뉴 접근 권한 확인
+$current_user_type = dmk_get_current_user_type();
+if (!dmk_can_access_menu($sub_menu, $current_user_type)) {
+    alert('접근 권한이 없습니다.');
 }
 
 $g5['title'] = '통계 대시보드 (프로토타입으로 실제 내용 구현해야 함)';
@@ -42,7 +40,7 @@ switch ($dmk_auth['mb_type']) {
         }
         break;
     case 3: // 지점 - 자신의 지점만 조회 가능
-        $branch_filter = " AND b.br_id = '" . sql_escape_string($dmk_auth['br_id']) . "'";
+        $branch_filter = " AND b.br_id = '" . sql_escape_string($dmk_auth['mb_id']) . "'";
         break;
 }
 
