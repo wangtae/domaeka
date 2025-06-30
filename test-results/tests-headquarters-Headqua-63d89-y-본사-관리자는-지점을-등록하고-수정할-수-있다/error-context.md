@@ -1,0 +1,152 @@
+# Page snapshot
+
+```yaml
+- text: 최고관리자 최고관리자님 로그인 중
+- link "로그아웃":
+  - /url: http://localhost:8001/bbs/logout.php
+- link "본문 바로가기":
+  - /url: "#container"
+- banner:
+  - heading "도매까" [level=1]
+  - button "메뉴"
+  - link "도매까 관리자":
+    - /url: http://localhost:8001/adm/
+    - img "도매까 관리자"
+  - list:
+    - listitem:
+      - button " 본사 메뉴열기"
+  - navigation:
+    - heading "관리자 주메뉴" [level=2]
+    - list:
+      - listitem:
+        - button "환경설정"
+      - listitem:
+        - button "프랜차이즈 관리"
+        - heading "프랜차이즈 관리" [level=3]
+        - list:
+          - listitem:
+            - link "총판관리 ":
+              - /url: http://localhost:8001/dmk/adm/distributor_admin/distributor_list.php
+          - listitem:
+            - link "대리점관리 ":
+              - /url: http://localhost:8001/dmk/adm/agency_admin/agency_list.php
+          - listitem:
+            - link "지점관리 ":
+              - /url: http://localhost:8001/dmk/adm/branch_admin/branch_list.php
+          - listitem:
+            - link "통계분석 ":
+              - /url: http://localhost:8001/dmk/adm/statistics/statistics_dashboard.php
+          - listitem:
+            - link "서브관리자관리 ":
+              - /url: http://localhost:8001/dmk/adm/admin_manager/admin_list.php
+          - listitem:
+            - link "서브관리자권한설정 ":
+              - /url: http://localhost:8001/dmk/adm/admin_manager/dmk_auth_list.php
+          - listitem:
+            - link "계층별메뉴권한설정 ":
+              - /url: http://localhost:8001/dmk/adm/admin_manager/menu_config.php
+      - listitem:
+        - button "회원관리"
+      - listitem:
+        - button "게시판관리"
+      - listitem:
+        - button "쇼핑몰관리"
+      - listitem:
+        - button "쇼핑몰현황/기타"
+      - listitem:
+        - button "SMS 관리"
+- heading "지점 등록" [level=1]
+- table "지점 등록":
+  - caption: 지점 등록
+  - rowgroup:
+    - row "소속 총판 총판 선택 해당 지점이 소속될 총판을 선택합니다. (대리점 선택에 영향)":
+      - rowheader "소속 총판"
+      - cell "총판 선택 해당 지점이 소속될 총판을 선택합니다. (대리점 선택에 영향)":
+        - combobox "소속 총판":
+          - option "총판 선택" [selected]
+          - option "d_distributor_01 (d_distributor_01)"
+          - option "d_distributor_02d (d_distributor_02)"
+          - option "도매까본사 (domaeka)"
+          - option "테스트회사_1751299829878 (DT_TEST_175129982987)"
+        - text: 해당 지점이 소속될 총판을 선택합니다. (대리점 선택에 영향)
+    - row "소속 대리점 필수 먼저 총판을 선택하세요 해당 지점이 소속될 대리점을 선택합니다.":
+      - rowheader "소속 대리점 필수":
+        - text: 소속 대리점
+        - strong: 필수
+      - cell "먼저 총판을 선택하세요 해당 지점이 소속될 대리점을 선택합니다.":
+        - combobox "소속 대리점 필수":
+          - option "먼저 총판을 선택하세요" [selected]
+        - text: 해당 지점이 소속될 대리점을 선택합니다.
+    - row "지점 ID 필수 지점을 구분하는 고유 ID입니다. 이 ID는 지점 관리자의 회원 ID로도 사용됩니다.":
+      - rowheader "지점 ID 필수":
+        - text: 지점 ID
+        - strong: 필수
+      - cell "지점을 구분하는 고유 ID입니다. 이 ID는 지점 관리자의 회원 ID로도 사용됩니다.":
+        - textbox "지점 ID 필수"
+        - text: 지점을 구분하는 고유 ID입니다. 이 ID는 지점 관리자의 회원 ID로도 사용됩니다.
+    - row "비밀번호 필수 영문, 숫자, 특수문자 조합 (8~20자)":
+      - rowheader "비밀번호 필수":
+        - text: 비밀번호
+        - strong: 필수
+      - cell "영문, 숫자, 특수문자 조합 (8~20자)":
+        - textbox "비밀번호 필수"
+        - text: 영문, 숫자, 특수문자 조합 (8~20자)
+    - row "비밀번호 확인 필수":
+      - rowheader "비밀번호 확인 필수":
+        - text: 비밀번호 확인
+        - strong: 필수
+      - cell:
+        - textbox "비밀번호 확인 필수"
+    - row "지점명 필수 지점의 공식 명칭 (UI 표시에 주로 사용)":
+      - rowheader "지점명 필수":
+        - text: 지점명
+        - strong: 필수
+      - cell "지점의 공식 명칭 (UI 표시에 주로 사용)":
+        - textbox "지점명 필수"
+        - text: 지점의 공식 명칭 (UI 표시에 주로 사용)
+    - row "회사명 필수 회사명을 입력합니다.":
+      - rowheader "회사명 필수":
+        - text: 회사명
+        - strong: 필수
+      - cell "회사명을 입력합니다.":
+        - textbox "회사명 필수"
+        - text: 회사명을 입력합니다.
+    - row "이메일 필수":
+      - rowheader "이메일 필수":
+        - text: 이메일
+        - strong: 필수
+      - cell:
+        - textbox "이메일 필수"
+    - row "전화번호":
+      - rowheader "전화번호"
+      - cell:
+        - textbox "전화번호"
+    - row "휴대폰번호":
+      - rowheader "휴대폰번호"
+      - cell:
+        - textbox "휴대폰번호"
+    - row "주소 우편번호 주소 검색 기본주소 상세주소 참고항목":
+      - rowheader "주소"
+      - cell "우편번호 주소 검색 기본주소 상세주소 참고항목":
+        - text: 우편번호
+        - textbox "우편번호"
+        - button "주소 검색"
+        - textbox "기본주소"
+        - text: 기본주소
+        - textbox "상세주소"
+        - text: 상세주소
+        - textbox "참고항목"
+        - text: 참고항목
+    - row "단축 URL 코드 y7d2yhzdkgv 주문 페이지 단축 URL에 사용됩니다. 비워두면 자동 생성됩니다.":
+      - rowheader "단축 URL 코드"
+      - cell "y7d2yhzdkgv 주문 페이지 단축 URL에 사용됩니다. 비워두면 자동 생성됩니다.":
+        - textbox "단축 URL 코드": y7d2yhzdkgv
+        - text: 주문 페이지 단축 URL에 사용됩니다. 비워두면 자동 생성됩니다.
+- link "목록":
+  - /url: ./branch_list.php?
+- button "확인"
+- contentinfo:
+  - paragraph:
+    - text: Copyright © localhost:8001. All rights reserved. YoungCart Version 5.4.5.5.1
+    - button "TOP"
+```
