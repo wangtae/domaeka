@@ -354,8 +354,7 @@ else {
                         'form_id' => 'fcategoryform',
                         'auto_submit' => false,
                         'show_labels' => false,
-                        'container_class' => 'dmk-owner-select',
-                        'include_hidden_fields' => true
+                        'container_class' => 'dmk-owner-select'
                     ]);
                     ?>
                     <div class="hierarchy_desc" style="margin-top: 10px; font-size: 11px; color: #666;">
@@ -849,29 +848,6 @@ jQuery(function($){
     });
 });
 
-// --- 계층형 체인 셀렉트 연동: 선택 시 dmk_* 필드 실시간 반영 ---
-function syncDmkOwnerFields() {
-    var sdt = document.getElementById('sdt_id');
-    var sag = document.getElementById('sag_id');
-    var sbr = document.getElementById('sbr_id');
-    var dt = document.getElementById('dmk_dt_id');
-    var ag = document.getElementById('dmk_ag_id');
-    var br = document.getElementById('dmk_br_id');
-    if (dt) dt.value = sdt && sdt.value ? sdt.value : '';
-    if (ag) ag.value = sag && sag.value ? sag.value : '';
-    if (br) br.value = sbr && sbr.value ? sbr.value : '';
-}
-// 이벤트 바인딩 (DOMContentLoaded 이후)
-document.addEventListener('DOMContentLoaded', function() {
-    var sdt = document.getElementById('sdt_id');
-    var sag = document.getElementById('sag_id');
-    var sbr = document.getElementById('sbr_id');
-    if (sdt) sdt.addEventListener('change', syncDmkOwnerFields);
-    if (sag) sag.addEventListener('change', syncDmkOwnerFields);
-    if (sbr) sbr.addEventListener('change', syncDmkOwnerFields);
-    // 최초 1회 동기화
-    syncDmkOwnerFields();
-});
 </script>
 
 <?php

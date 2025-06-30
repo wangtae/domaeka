@@ -14,13 +14,21 @@ define('DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY', 'distributor_agency');
 define('DMK_CHAIN_SELECT_FULL', 'full'); // 총판-대리점-지점
 
 /**
+ * 페이지 모드 정의
+ */
+define('DMK_CHAIN_MODE_LIST', 'list');     // 목록 페이지 - 선택박스로 표시
+define('DMK_CHAIN_MODE_FORM_NEW', 'form_new'); // 등록 폼 - 선택박스로 표시
+define('DMK_CHAIN_MODE_FORM_EDIT', 'form_edit'); // 수정 폼 - readonly input으로 표시
+
+/**
  * 관리자 권한에 따른 선택박스 표시 레벨 결정
  * 
  * @param array $dmk_auth 관리자 권한 정보
  * @param string $page_type 페이지 유형 (full, distributor_agency, distributor_only)
+ * @param string $page_mode 페이지 모드 (list, form_new, form_edit)
  * @return array 표시할 선택박스 정보
  */
-function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FULL) {
+function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FULL, $page_mode = DMK_CHAIN_MODE_LIST) {
     $config = [
         'show_distributor' => false,
         'show_agency' => false,
@@ -30,7 +38,10 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
         'branch_readonly' => false,
         'initial_distributor' => '',
         'initial_agency' => '',
-        'initial_branch' => ''
+        'initial_branch' => '',
+        'page_mode' => $page_mode,
+        'render_as_input' => ($page_mode === DMK_CHAIN_MODE_FORM_EDIT), // form_edit 모드에서는 input으로 렌더링
+        'show_hierarchy_info' => true // 하위 계층이 상위 계층 정보를 볼 수 있는지 여부
     ];
     
     // 최고관리자인 경우
@@ -102,6 +113,23 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
         $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
         $config['initial_agency'] = $dmk_auth['ag_id'] ?? '';
         $config['initial_branch'] = $dmk_auth['br_id'] ?? '';
+        $config['show_hierarchy_info'] = false; // 지점 관리자는 상위 계층 정보 숨김
+    }
+    
+    // 하위 계층에서 상위 계층 정보 숨김 처리
+    if (!$dmk_auth['is_super']) {
+        // 총판 관리자는 자신의 총판 ID만 알 수 있음
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            $config['show_hierarchy_info'] = false; // 상위 계층 정보 숨김
+        }
+        // 대리점 관리자는 자신의 총판/대리점 ID만 알 수 있음  
+        else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            $config['show_hierarchy_info'] = false; // 상위 계층 정보 숨김
+        }
+        // 지점 관리자는 자신의 총판/대리점/지점 ID만 알 수 있음
+        else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            $config['show_hierarchy_info'] = false; // 상위 계층 정보 숨김
+        }
     }
     
     return $config;
@@ -168,6 +196,7 @@ function dmk_render_chain_select($options = []) {
     $default_options = [
         'dmk_auth' => $dmk_auth,
         'page_type' => DMK_CHAIN_SELECT_FULL, // 기본값
+        'page_mode' => DMK_CHAIN_MODE_LIST, // 기본값
         'current_values' => [
             'sdt_id' => '',
             'sag_id' => '',
@@ -203,20 +232,14 @@ function dmk_render_chain_select($options = []) {
         ],
         'show_labels' => false, // 기본적으로 목록 페이지용으로 라벨 숨김
         'container_class' => '', // 추가 컨테이너 클래스
-        'debug' => true, // 기본적으로 디버그 모드 ON (개발 중)
-        'include_hidden_fields' => true, // dmk_dt_id, dmk_ag_id, dmk_br_id hidden 필드 포함 여부
-        'hidden_field_names' => [
-            'dt_id' => 'dmk_dt_id',
-            'ag_id' => 'dmk_ag_id', 
-            'br_id' => 'dmk_br_id'
-        ]
+        'debug' => true // 기본적으로 디버그 모드 ON (개발 중)
     ];
     
     // 사용자 옵션과 기본 옵션 병합 (사용자 옵션이 우선)
     $options = array_merge($default_options, $options);
     
     // 관리자 권한에 따른 자동 설정
-    $config = dmk_get_chain_select_config($options['dmk_auth'], $options['page_type']);
+    $config = dmk_get_chain_select_config($options['dmk_auth'], $options['page_type'], $options['page_mode']);
     
     $html = '';
     
@@ -238,22 +261,46 @@ function dmk_render_chain_select($options = []) {
         error_log("DMK_CHAIN_SELECT: Selected Distributor ID: " . $selected_dt_id);
 
         
+        // 라벨 추가
         if ($options['show_labels']) {
             $html .= '<label for="' . $field_name . '" class="dmk-chain-select-label">' . $options['labels']['distributor'] . '</label>';
         } else {
             $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['distributor'] . '</label>';
         }
-        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly . '>';
-        $html .= '<option value="">' . $options['placeholders']['distributor'] . '</option>';
         
-        foreach ($distributors as $distributor) {
-            $selected = ($selected_dt_id == $distributor['dt_id']) ? 'selected' : '';
-            $html .= '<option value="' . htmlspecialchars($distributor['dt_id']) . '" ' . $selected . '>';
-            $html .= htmlspecialchars($distributor['dt_name']) . ' (' . htmlspecialchars($distributor['dt_id']) . ')';
-            $html .= '</option>';
+        // form_edit 모드에서는 readonly input으로 렌더링
+        if ($config['render_as_input']) {
+            $display_value = '';
+            if ($selected_dt_id) {
+                foreach ($distributors as $distributor) {
+                    if ($distributor['dt_id'] == $selected_dt_id) {
+                        $display_value = $config['show_hierarchy_info'] ? 
+                            $distributor['dt_name'] . ' (' . $distributor['dt_id'] . ')' : 
+                            $distributor['dt_name'];
+                        break;
+                    }
+                }
+            }
+            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly>';
+            $html .= '<input type="hidden" name="' . $field_name . '" id="' . $field_name . '" value="' . htmlspecialchars($selected_dt_id) . '">';
+        } else {
+            // 기존 select 박스 렌더링
+            $readonly_attr = $config['distributor_readonly'] ? 'readonly' : '';
+            $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly_attr . '>';
+            $html .= '<option value="">' . $options['placeholders']['distributor'] . '</option>';
+            
+            foreach ($distributors as $distributor) {
+                $selected = ($selected_dt_id == $distributor['dt_id']) ? 'selected' : '';
+                $option_text = $config['show_hierarchy_info'] ? 
+                    $distributor['dt_name'] . ' (' . $distributor['dt_id'] . ')' : 
+                    $distributor['dt_name'];
+                $html .= '<option value="' . htmlspecialchars($distributor['dt_id']) . '" ' . $selected . '>';
+                $html .= htmlspecialchars($option_text);
+                $html .= '</option>';
+            }
+            
+            $html .= '</select>';
         }
-        
-        $html .= '</select>';
     }
     
     // 대리점 선택박스
@@ -262,24 +309,52 @@ function dmk_render_chain_select($options = []) {
         $readonly = $config['agency_readonly'] ? 'readonly' : '';
         $field_name = $options['field_names']['agency'] ?? 'sag_id';
         
+        // 라벨 추가
         if ($options['show_labels']) {
             $html .= '<label for="' . $field_name . '" class="dmk-chain-select-label">' . $options['labels']['agency'] . '</label>';
         } else {
             $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['agency'] . '</label>';
         }
-        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly . '>';
-        $html .= '<option value="">' . $options['placeholders']['agency'] . '</option>';
         
-        // 대리점 관리자인 경우, 자신의 대리점만 옵션으로 추가
-        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && !empty($dmk_auth['ag_id'])) {
-            $ag_name = dmk_get_member_name($dmk_auth['ag_id']); // mb_id로 mb_name (mb_nick) 가져오는 함수 활용
-            $selected = ($selected_ag_id == $dmk_auth['ag_id']) ? 'selected' : '';
-            $html .= '<option value="' . htmlspecialchars($dmk_auth['ag_id']) . '" ' . $selected . '>' . htmlspecialchars($ag_name) . ' (' . htmlspecialchars($dmk_auth['ag_id']) . ')</option>';
+        // form_edit 모드에서는 readonly input으로 렌더링
+        if ($config['render_as_input']) {
+            $display_value = '';
+            if ($selected_ag_id) {
+                // 대리점 관리자인 경우, 자신의 대리점 정보 사용
+                if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && !empty($dmk_auth['ag_id']) && $selected_ag_id == $dmk_auth['ag_id']) {
+                    $ag_name = dmk_get_member_name($dmk_auth['ag_id']);
+                    $display_value = $config['show_hierarchy_info'] ? 
+                        $ag_name . ' (' . $dmk_auth['ag_id'] . ')' : 
+                        $ag_name;
+                } else {
+                    // 다른 경우는 AJAX를 통해 데이터를 가져와야 할 수도 있지만, 수정 모드에서는 현재 값만 표시
+                    $display_value = $config['show_hierarchy_info'] ? 
+                        '대리점 (' . $selected_ag_id . ')' : 
+                        '대리점';
+                }
+            }
+            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly>';
+            $html .= '<input type="hidden" name="' . $field_name . '" id="' . $field_name . '" value="' . htmlspecialchars($selected_ag_id) . '">';
         } else {
-             // 그 외의 경우 (예: 최고관리자, 총판관리자), AJAX로 동적 로드를 위해 빈 상태 유지 또는 초기값만 설정
-             // (이미 chain-select.js에서 AJAX로 로드하므로 여기서는 별도 처리 없음)
+            // 기존 select 박스 렌더링
+            $readonly_attr = $config['agency_readonly'] ? 'readonly' : '';
+            $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly_attr . '>';
+            $html .= '<option value="">' . $options['placeholders']['agency'] . '</option>';
+            
+            // 대리점 관리자인 경우, 자신의 대리점만 옵션으로 추가
+            if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && !empty($dmk_auth['ag_id'])) {
+                $ag_name = dmk_get_member_name($dmk_auth['ag_id']);
+                $selected = ($selected_ag_id == $dmk_auth['ag_id']) ? 'selected' : '';
+                $option_text = $config['show_hierarchy_info'] ? 
+                    $ag_name . ' (' . $dmk_auth['ag_id'] . ')' : 
+                    $ag_name;
+                $html .= '<option value="' . htmlspecialchars($dmk_auth['ag_id']) . '" ' . $selected . '>' . htmlspecialchars($option_text) . '</option>';
+            } else {
+                 // 그 외의 경우 (예: 최고관리자, 총판관리자), AJAX로 동적 로드를 위해 빈 상태 유지 또는 초기값만 설정
+                 // (이미 chain-select.js에서 AJAX로 로드하므로 여기서는 별도 처리 없음)
+            }
+            $html .= '</select>';
         }
-        $html .= '</select>';
         
     }
     
@@ -289,31 +364,46 @@ function dmk_render_chain_select($options = []) {
         $readonly = $config['branch_readonly'] ? 'readonly' : '';
         $field_name = $options['field_names']['branch'] ?? 'sbr_id';
         
+        // 라벨 추가
         if ($options['show_labels']) {
             $html .= '<label for="' . $field_name . '" class="dmk-chain-select-label">' . $options['labels']['branch'] . '</label>';
         } else {
             $html .= '<label for="' . $field_name . '" class="' . $options['css_classes']['label'] . '">' . $options['labels']['branch'] . '</label>';
         }
-        $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly . '>';
-        $html .= '<option value="">' . $options['placeholders']['branch'] . '</option>';
-        $html .= '</select>';
+        
+        // form_edit 모드에서는 readonly input으로 렌더링
+        if ($config['render_as_input']) {
+            $display_value = '';
+            if ($selected_br_id) {
+                // 지점 관리자인 경우, 자신의 지점 정보 사용
+                if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH && !empty($dmk_auth['br_id']) && $selected_br_id == $dmk_auth['br_id']) {
+                    $br_name = dmk_get_member_name($dmk_auth['br_id']);
+                    $display_value = $config['show_hierarchy_info'] ? 
+                        $br_name . ' (' . $dmk_auth['br_id'] . ')' : 
+                        $br_name;
+                } else {
+                    // 다른 경우는 현재 값만 표시
+                    $display_value = $config['show_hierarchy_info'] ? 
+                        '지점 (' . $selected_br_id . ')' : 
+                        '지점';
+                }
+            }
+            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly>';
+            $html .= '<input type="hidden" name="' . $field_name . '" id="' . $field_name . '" value="' . htmlspecialchars($selected_br_id) . '">';
+        } else {
+            // 기존 select 박스 렌더링
+            $readonly_attr = $config['branch_readonly'] ? 'readonly' : '';
+            $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly_attr . '>';
+            $html .= '<option value="">' . $options['placeholders']['branch'] . '</option>';
+            $html .= '</select>';
+        }
         
     }
 
-    // Hidden fields 추가 (dmk_dt_id, dmk_ag_id, dmk_br_id)
-    if ($options['include_hidden_fields']) {
-        $dt_id_value = $config['initial_distributor'] ?: (isset($options['current_values']['dt_id']) ? $options['current_values']['dt_id'] : '');
-        $ag_id_value = $config['initial_agency'] ?: (isset($options['current_values']['ag_id']) ? $options['current_values']['ag_id'] : '');
-        $br_id_value = $config['initial_branch'] ?: (isset($options['current_values']['br_id']) ? $options['current_values']['br_id'] : '');
-        
-        $html .= '<input type="hidden" name="' . $options['hidden_field_names']['dt_id'] . '" id="' . $options['hidden_field_names']['dt_id'] . '" value="' . htmlspecialchars($dt_id_value) . '">';
-        $html .= '<input type="hidden" name="' . $options['hidden_field_names']['ag_id'] . '" id="' . $options['hidden_field_names']['ag_id'] . '" value="' . htmlspecialchars($ag_id_value) . '">';
-        $html .= '<input type="hidden" name="' . $options['hidden_field_names']['br_id'] . '" id="' . $options['hidden_field_names']['br_id'] . '" value="' . htmlspecialchars($br_id_value) . '">';
-    }
 
     
-    // JavaScript 초기화 코드
-    if ($config['show_distributor'] || $config['show_agency'] || $config['show_branch']) {
+    // JavaScript 초기화 코드 (form_edit 모드가 아닐 때만)
+    if (!$config['render_as_input'] && ($config['show_distributor'] || $config['show_agency'] || $config['show_branch'])) {
         $js_config = [
             'distributorSelectId' => $options['field_names']['distributor'] ?? 'sdt_id',
             'agencySelectId' => $options['field_names']['agency'] ?? 'sag_id',
@@ -325,10 +415,7 @@ function dmk_render_chain_select($options = []) {
             'initialBranch' => $config['initial_branch'] ?: (isset($options['current_values']) && isset($options['current_values'][$options['field_names']['branch'] ?? 'sbr_id']) ? $options['current_values'][$options['field_names']['branch'] ?? 'sbr_id'] : ''),
             'autoSubmit' => $options['auto_submit'],
             'formId' => $options['form_id'],
-            'debug' => $options['debug'],
-            // Hidden fields 설정 추가
-            'includeHiddenFields' => $options['include_hidden_fields'],
-            'hiddenFieldNames' => $options['hidden_field_names']
+            'debug' => $options['debug']
         ];
         
         // 디버깅을 위해 autoSubmit 값 출력
@@ -524,5 +611,67 @@ function dmk_get_cache_buster() {
         return '?t=' . time();
     }
     return '';
+}
+
+/**
+ * 편의 함수들 - 간단한 사용을 위한 래퍼 함수들
+ */
+
+/**
+ * 목록 페이지용 체인 선택박스 (list 모드)
+ * 
+ * @param array $current_values 현재 선택된 값들
+ * @param string $page_type 페이지 타입
+ * @param array $additional_options 추가 옵션
+ * @return string HTML 코드
+ */
+function dmk_chain_select_for_list($current_values = [], $page_type = DMK_CHAIN_SELECT_FULL, $additional_options = []) {
+    $options = array_merge([
+        'page_mode' => DMK_CHAIN_MODE_LIST,
+        'page_type' => $page_type,
+        'current_values' => $current_values,
+        'auto_submit' => true
+    ], $additional_options);
+    
+    return dmk_render_chain_select($options);
+}
+
+/**
+ * 등록 폼용 체인 선택박스 (form_new 모드)
+ * 
+ * @param array $current_values 현재 선택된 값들
+ * @param string $page_type 페이지 타입
+ * @param array $additional_options 추가 옵션
+ * @return string HTML 코드
+ */
+function dmk_chain_select_for_form_new($current_values = [], $page_type = DMK_CHAIN_SELECT_FULL, $additional_options = []) {
+    $options = array_merge([
+        'page_mode' => DMK_CHAIN_MODE_FORM_NEW,
+        'page_type' => $page_type,
+        'current_values' => $current_values,
+        'auto_submit' => false
+    ], $additional_options);
+    
+    return dmk_render_chain_select($options);
+}
+
+/**
+ * 수정 폼용 체인 선택박스 (form_edit 모드 - readonly input으로 표시)
+ * 
+ * @param array $current_values 현재 선택된 값들
+ * @param string $page_type 페이지 타입
+ * @param array $additional_options 추가 옵션
+ * @return string HTML 코드
+ */
+function dmk_chain_select_for_form_edit($current_values = [], $page_type = DMK_CHAIN_SELECT_FULL, $additional_options = []) {
+    $options = array_merge([
+        'page_mode' => DMK_CHAIN_MODE_FORM_EDIT,
+        'page_type' => $page_type,
+        'current_values' => $current_values,
+        'auto_submit' => false,
+        'show_labels' => true
+    ], $additional_options);
+    
+    return dmk_render_chain_select($options);
 }
 ?>

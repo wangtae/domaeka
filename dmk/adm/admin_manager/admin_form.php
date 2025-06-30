@@ -484,8 +484,5 @@ function fmember_submit(f) {
 </script>
 
 <?php
-// 체인 선택박스 에셋 포함 (body 끝 부분에 추가)
-echo dmk_include_chain_select_assets();
-
 include_once (G5_ADMIN_PATH.'/admin.tail.php');
 ?> 

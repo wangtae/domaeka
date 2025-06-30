@@ -214,9 +214,6 @@ echo dmk_render_chain_select([
 <input type="hidden" name="sort2" value="<?php echo $sort2; ?>">
 <input type="hidden" name="page" value="<?php echo $page; ?>">
 <input type="hidden" name="save_search" value="<?php echo $search; ?>">
-<input type="hidden" name="sdt_id" value="<?php echo $sdt_id; ?>">
-<input type="hidden" name="sag_id" value="<?php echo $sag_id; ?>">
-<input type="hidden" name="sbr_id" value="<?php echo $sbr_id; ?>">
 
 <label for="sel_field" class="sound_only">검색대상</label>
 <select name="sel_field" id="sel_field">
@@ -550,14 +547,6 @@ echo dmk_render_chain_select([
 
 <?php echo get_paging(G5_IS_MOBILE ? $config['cf_mobile_pages'] : $config['cf_write_pages'], $page, $total_page, "{$_SERVER['SCRIPT_NAME']}?$qstr&amp;page="); ?>
 
-<?php
-// --- 계층형(총판-대리점-지점) 체인 셀렉트 UI asset 중복 방지 및 강제 로드 ---
-if (!defined('DMK_CHAIN_SELECT_ASSET_INCLUDED')) {
-    define('DMK_CHAIN_SELECT_ASSET_INCLUDED', true);
-    echo '<link rel="stylesheet" type="text/css" href="/dmk/adm/js/chain-select.css">';
-    echo '<script src="/dmk/adm/js/chain-select.js"></script>';
-}
-?>
 
 <script>
 $(function(){

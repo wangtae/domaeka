@@ -1,5 +1,16 @@
 {
   "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/wangt/cursor/projects/web/domaeka"
+      ],
+      "env": {
+        "WSL_DISTRO_NAME": "Ubuntu"
+      }
+    },
     "mysql": {
       "type": "stdio",
       "command": "npx",
@@ -22,6 +33,11 @@
         "ALLOW_DELETE_OPERATION": "true"
       }
     },
+    "fetch": {
+      "type": "stdio",
+      "command": "/home/wangt/.local/bin/uvx",
+      "args": ["mcp-server-fetch"]
+    },
     "playwright": {
         "type": "stdio",  
         "command": "npx",
@@ -31,6 +47,14 @@
           "--save-trace",
           "--output-dir=/home/wangt/cursor/projects/playwright-trace"
       ]
+    },
+    "memory": {
+      "command": "npx", 
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     }
   }
 }
