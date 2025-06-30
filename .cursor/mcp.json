@@ -15,6 +15,14 @@
         "MYSQL_PASSWORD": "!domaekaservice@.",
         "MYSQL_DATABASE": "domaeka"
       }
+    },
+    "playwright": {
+        "command": "npx",
+        "headless": false,
+        "args": [
+          "@playwright/mcp@latest",
+        "--headless=false"
+      ]
     }
   }
 }
