@@ -5,6 +5,9 @@ include_once(G5_EDITOR_LIB);
 include_once(G5_LIB_PATH.'/iteminfo.lib.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
+// 도매까 권한 정보 초기화
+$dmk_auth = dmk_get_admin_auth();
+
 // 도매까 관리자 유형 상수 정의
 if (!defined('DMK_MB_TYPE_SUPER_ADMIN')) define('DMK_MB_TYPE_SUPER_ADMIN', 0);
 if (!defined('DMK_MB_TYPE_DISTRIBUTOR')) define('DMK_MB_TYPE_DISTRIBUTOR', 1);
@@ -93,7 +96,22 @@ if ($w == "u" && empty($it['dmk_it_owner_type']) && empty($it['dmk_it_owner_id']
     }
 }
 
-auth_check_menu($auth, $sub_menu, "w");
+// DMK 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
+include_once(G5_PATH.'/dmk/dmk_global_settings.php');
+$user_type = dmk_get_current_user_type();
+
+// DMK main 관리자는 DMK 설정에 정의된 메뉴에 최고관리자처럼 접근 가능
+if ($dmk_auth && $dmk_auth['admin_type'] === 'main' && dmk_is_menu_allowed('400300', $user_type)) {
+    // DMK main 관리자는 auth_check_menu 우회
+} else {
+    // 일반 관리자는 기존 권한 체크 수행
+    auth_check_menu($auth, $sub_menu, "w");
+}
+
+// 추가 DMK 권한 체크
+if (!dmk_is_menu_allowed('400300', $user_type)) {
+    alert('상품관리에 접근 권한이 없습니다.', G5_ADMIN_URL);
+}
 
 $html_title = "상품 ";
 
