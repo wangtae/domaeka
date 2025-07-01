@@ -31,9 +31,64 @@ if ($w == 'u') {
 }
 
 $it_img1 = $it_img2 = $it_img3 = $it_img4 = $it_img5 = $it_img6 = $it_img7 = $it_img8 = $it_img9 = $it_img10 = '';
+// 계층 선택 데이터 처리 (chained select에서 전달)
+$sdt_id = isset($_POST['sdt_id']) ? clean_xss_tags($_POST['sdt_id'], 1, 1) : '';
+$sag_id = isset($_POST['sag_id']) ? clean_xss_tags($_POST['sag_id'], 1, 1) : '';
+$sbr_id = isset($_POST['sbr_id']) ? clean_xss_tags($_POST['sbr_id'], 1, 1) : '';
+
+// 계층 선택에 따른 dmk 필드 설정
+$dmk_dt_id = '';
+$dmk_ag_id = '';
+$dmk_br_id = '';
+
+if ($sbr_id) {
+    // 지점까지 선택된 경우 - 지점 상품
+    $br_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sbr_id)."'");
+    if ($br_info) {
+        $dmk_dt_id = $br_info['dmk_dt_id'];
+        $dmk_ag_id = $br_info['dmk_ag_id'];
+        $dmk_br_id = $br_info['dmk_br_id'];
+    }
+} elseif ($sag_id) {
+    // 대리점까지 선택된 경우 - 대리점 상품
+    $ag_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sag_id)."'");
+    if ($ag_info) {
+        $dmk_dt_id = $ag_info['dmk_dt_id'];
+        $dmk_ag_id = $ag_info['dmk_ag_id'];
+    }
+} elseif ($sdt_id) {
+    // 총판만 선택된 경우 - 총판 상품
+    $dt_info = sql_fetch("SELECT dmk_dt_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sdt_id)."'");
+    if ($dt_info) {
+        $dmk_dt_id = $dt_info['dmk_dt_id'];
+    }
+} else {
+    // 수정 시 기존 값 유지 또는 현재 관리자 정보로 설정
+    $dmk_dt_id = isset($_POST['dmk_dt_id']) ? clean_xss_tags($_POST['dmk_dt_id'], 1, 1) : '';
+    $dmk_ag_id = isset($_POST['dmk_ag_id']) ? clean_xss_tags($_POST['dmk_ag_id'], 1, 1) : '';
+    $dmk_br_id = isset($_POST['dmk_br_id']) ? clean_xss_tags($_POST['dmk_br_id'], 1, 1) : '';
+    
+    // 값이 없고 신규 등록이면 현재 관리자 정보로 설정
+    if (empty($dmk_dt_id) && empty($dmk_ag_id) && empty($dmk_br_id) && $w == '') {
+        $dmk_auth = dmk_get_admin_auth();
+        if (!$dmk_auth['is_super']) {
+            if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                $dmk_dt_id = $dmk_auth['dt_id'];
+            } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+                $dmk_dt_id = $dmk_auth['dt_id'];
+                $dmk_ag_id = $dmk_auth['ag_id'];
+            } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+                $dmk_dt_id = $dmk_auth['dt_id'];
+                $dmk_ag_id = $dmk_auth['ag_id'];
+                $dmk_br_id = $dmk_auth['br_id'];
+            }
+        }
+    }
+}
+
 // 파일정보
 if($w == "u") {
-    $sql = " select it_img1, it_img2, it_img3, it_img4, it_img5, it_img6, it_img7, it_img8, it_img9, it_img10, dmk_it_owner_type, dmk_it_owner_id
+    $sql = " select it_img1, it_img2, it_img3, it_img4, it_img5, it_img6, it_img7, it_img8, it_img9, it_img10, dmk_dt_id, dmk_ag_id, dmk_br_id
                 from {$g5['g5_shop_item_table']}
                 where it_id = '$it_id' ";
     $file = sql_fetch($sql);
@@ -48,8 +103,13 @@ if($w == "u") {
     $it_img8    = $file['it_img8'];
     $it_img9    = $file['it_img9'];
     $it_img10   = $file['it_img10'];
-    $dmk_it_owner_type = $file['dmk_it_owner_type'];
-    $dmk_it_owner_id = $file['dmk_it_owner_id'];
+    
+    // 수정 시 기존 계층 정보가 있으면 우선 사용
+    if (!$dmk_dt_id && !$dmk_ag_id && !$dmk_br_id) {
+        $dmk_dt_id = $file['dmk_dt_id'] ?? '';
+        $dmk_ag_id = $file['dmk_ag_id'] ?? '';
+        $dmk_br_id = $file['dmk_br_id'] ?? '';
+    }
 }
 
 $it_img_dir = G5_DATA_PATH.'/item';
@@ -416,8 +476,31 @@ $sql_common = " ca_id               = '$ca_id',
                 it_8                = '$it_8',
                 it_9                = '$it_9',
                 it_10               = '$it_10',
-                dmk_it_owner_type   = '{$dmk_it_owner_type}',
-                dmk_it_owner_id     = '{$dmk_it_owner_id}' ";
+                dmk_dt_id           = '{$dmk_dt_id}',
+                dmk_ag_id           = '{$dmk_ag_id}',
+                dmk_br_id           = '{$dmk_br_id}' ";
+
+// 계층 필수값 유효성 검사 (본사 관리자가 아닌 경우)
+$dmk_auth = dmk_get_admin_auth();
+if (!$dmk_auth['is_super']) {
+    // 계층 정보가 올바른지 확인
+    $valid_hierarchy = false;
+    
+    if ($dmk_dt_id && !$dmk_ag_id && !$dmk_br_id) {
+        // 총판 상품
+        $valid_hierarchy = true;
+    } elseif ($dmk_dt_id && $dmk_ag_id && !$dmk_br_id) {
+        // 대리점 상품
+        $valid_hierarchy = true;
+    } elseif ($dmk_dt_id && $dmk_ag_id && $dmk_br_id) {
+        // 지점 상품
+        $valid_hierarchy = true;
+    }
+    
+    if (!$valid_hierarchy) {
+        alert('상품 소유 계층 정보가 올바르지 않습니다. 총판, 대리점, 지점 중 하나를 완전히 선택해 주세요.');
+    }
+}
 
 if ($w == "")
 {

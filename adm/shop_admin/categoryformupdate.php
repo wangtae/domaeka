@@ -90,10 +90,53 @@ foreach( $check_str_keys as $key=>$val ){
     $$key = $_POST[$key] = $value;
 }
 
-// 새로운 계층 구조 필드
-$dmk_dt_id = isset($_POST['dmk_dt_id']) ? clean_xss_tags($_POST['dmk_dt_id'], 1, 1) : '';
-$dmk_ag_id = isset($_POST['dmk_ag_id']) ? clean_xss_tags($_POST['dmk_ag_id'], 1, 1) : '';
-$dmk_br_id = isset($_POST['dmk_br_id']) ? clean_xss_tags($_POST['dmk_br_id'], 1, 1) : '';
+// 계층 선택 데이터 처리 (chained select에서 전달)
+$sdt_id = isset($_POST['sdt_id']) ? clean_xss_tags($_POST['sdt_id'], 1, 1) : '';
+$sag_id = isset($_POST['sag_id']) ? clean_xss_tags($_POST['sag_id'], 1, 1) : '';
+$sbr_id = isset($_POST['sbr_id']) ? clean_xss_tags($_POST['sbr_id'], 1, 1) : '';
+
+// 계층 선택에 따른 dmk 필드 설정
+$dmk_dt_id = '';
+$dmk_ag_id = '';
+$dmk_br_id = '';
+
+if ($sbr_id) {
+    // 지점까지 선택된 경우 - 지점 분류
+    $br_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sbr_id)."'");
+    if ($br_info) {
+        $dmk_dt_id = $br_info['dmk_dt_id'];
+        $dmk_ag_id = $br_info['dmk_ag_id'];
+        $dmk_br_id = $br_info['dmk_br_id'];
+    }
+} elseif ($sag_id) {
+    // 대리점까지 선택된 경우 - 대리점 분류
+    $ag_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sag_id)."'");
+    if ($ag_info) {
+        $dmk_dt_id = $ag_info['dmk_dt_id'];
+        $dmk_ag_id = $ag_info['dmk_ag_id'];
+    }
+} elseif ($sdt_id) {
+    // 총판만 선택된 경우 - 총판 분류
+    $dt_info = sql_fetch("SELECT dmk_dt_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sdt_id)."'");
+    if ($dt_info) {
+        $dmk_dt_id = $dt_info['dmk_dt_id'];
+    }
+} else {
+    // 선택되지 않은 경우 현재 관리자 정보로 설정
+    $dmk_auth = dmk_get_admin_auth();
+    if (!$dmk_auth['is_super']) {
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            $dmk_dt_id = $dmk_auth['dt_id'];
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            $dmk_dt_id = $dmk_auth['dt_id'];
+            $dmk_ag_id = $dmk_auth['ag_id'];
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            $dmk_dt_id = $dmk_auth['dt_id'];
+            $dmk_ag_id = $dmk_auth['ag_id'];
+            $dmk_br_id = $dmk_auth['br_id'];
+        }
+    }
+}
 
 $ca_head_html = isset($_POST['ca_head_html']) ? $_POST['ca_head_html'] : '';
 $ca_tail_html = isset($_POST['ca_tail_html']) ? $_POST['ca_tail_html'] : '';
@@ -289,16 +332,26 @@ else if ($w == "d")
     run_event('shop_admin_category_deleted', $ca_id);
 }
 
-// 계층 필수값 유효성 검사
-if (
-    !(
-        ($dmk_dt_id) ||
-        ($dmk_dt_id && $dmk_ag_id) || // 대리점/지점인데 대리점ID 없음
-        ($dmk_br_id && $dmk_dt_id && $dmk_ag_id) // 지점인데 상위ID 없음
-    )
-) {
-    alert( $dmk_dt_id . ' ' . $dmk_ag_id . ' ' . $dmk_br_id);
-    alert('카테고리 소유 계층 정보가 올바르지 않습니다. 총판/대리점/지점을 모두 선택해 주세요.');
+// 계층 필수값 유효성 검사 (본사 관리자가 아닌 경우)
+$dmk_auth = dmk_get_admin_auth();
+if (!$dmk_auth['is_super']) {
+    // 계층 정보가 올바른지 확인
+    $valid_hierarchy = false;
+    
+    if ($dmk_dt_id && !$dmk_ag_id && !$dmk_br_id) {
+        // 총판 분류
+        $valid_hierarchy = true;
+    } elseif ($dmk_dt_id && $dmk_ag_id && !$dmk_br_id) {
+        // 대리점 분류
+        $valid_hierarchy = true;
+    } elseif ($dmk_dt_id && $dmk_ag_id && $dmk_br_id) {
+        // 지점 분류
+        $valid_hierarchy = true;
+    }
+    
+    if (!$valid_hierarchy) {
+        alert('카테고리 소유 계층 정보가 올바르지 않습니다. 총판, 대리점, 지점 중 하나를 완전히 선택해 주세요.');
+    }
 }
 
 if(function_exists('get_admin_captcha_by'))
