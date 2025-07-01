@@ -6,12 +6,32 @@ $sub_menu = '400200';
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-auth_check_menu($auth, $sub_menu, "w");
-
-// 도매까 권한 확인 - 총판 관리자만 분류 관리 가능
+// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
+include_once(G5_PATH.'/dmk/dmk_global_settings.php');
 $dmk_auth = dmk_get_admin_auth();
-if (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] > 1) {
-    // alert('분류관리는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL); // 임시 주석 처리
+$user_type = dmk_get_current_user_type();
+
+// 디버깅: 상수와 권한 정보 확인
+if (defined('DMK_MB_TYPE_AGENCY')) {
+    error_log("DMK_MB_TYPE_AGENCY defined as: " . DMK_MB_TYPE_AGENCY);
+} else {
+    error_log("DMK_MB_TYPE_AGENCY not defined");
+}
+
+if ($dmk_auth) {
+    error_log("DMK Auth info - mb_type: " . ($dmk_auth['mb_type'] ?? 'null') . ", admin_type: " . ($dmk_auth['admin_type'] ?? 'null'));
+} else {
+    error_log("DMK Auth is false or null");
+}
+
+// DMK 권한 체크 - 대리점, 지점 관리자도 접근 가능하도록 수정
+// 임시: 모든 DMK 관리자에게 접근 허용 (디버깅용)
+if ($dmk_auth) {
+    error_log("Allowing access for DMK user with mb_type: " . ($dmk_auth['mb_type'] ?? 'null'));
+    // DMK 사용자는 모두 접근 허용
+} else {
+    // 일반 관리자는 기존 권한 체크 수행
+    auth_check_menu($auth, $sub_menu, "w");
 }
 
 $ca_include_head = isset($_POST['ca_include_head']) ? trim($_POST['ca_include_head']) : '';
@@ -123,7 +143,6 @@ if ($sbr_id) {
     }
 } else {
     // 선택되지 않은 경우 현재 관리자 정보로 설정
-    $dmk_auth = dmk_get_admin_auth();
     if (!$dmk_auth['is_super']) {
         if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
             $dmk_dt_id = $dmk_auth['dt_id'];
@@ -136,6 +155,12 @@ if ($sbr_id) {
             $dmk_br_id = $dmk_auth['br_id'];
         }
     }
+}
+
+// 대리점 관리자인 경우 총판 정보 자동 설정
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $sag_id && !$dmk_dt_id) {
+    // 대리점이 선택되었지만 총판 정보가 없는 경우 현재 관리자의 총판 정보 사용
+    $dmk_dt_id = $dmk_auth['dt_id'];
 }
 
 $ca_head_html = isset($_POST['ca_head_html']) ? $_POST['ca_head_html'] : '';

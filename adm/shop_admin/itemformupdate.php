@@ -6,10 +6,32 @@ include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 if ($w == "u" || $w == "d")
     check_demo();
 
-if ($w == '' || $w == 'u')
-    auth_check_menu($auth, $sub_menu, "w");
-else if ($w == 'd')
-    auth_check_menu($auth, $sub_menu, "d");
+// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
+include_once(G5_PATH.'/dmk/dmk_global_settings.php');
+$dmk_auth = dmk_get_admin_auth();
+$user_type = dmk_get_current_user_type();
+
+// DMK 권한 체크 - 대리점, 지점 관리자도 접근 가능하도록 수정
+if ($dmk_auth && $dmk_auth['admin_type'] === 'main') {
+    // DMK main 관리자는 기존 체크를 우회하고 DMK 권한만 확인
+    if (!dmk_is_menu_allowed('400300', $user_type)) {
+        alert('상품관리에 접근 권한이 없습니다.', G5_ADMIN_URL);
+    }
+} else if ($dmk_auth && ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY || $dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH)) {
+    // 대리점, 지점 관리자는 직접 접근 허용 (DMK 시스템에서 관리)
+    // 접근 허용됨
+} else {
+    // 일반 관리자는 기존 권한 체크 수행
+    if ($w == '' || $w == 'u')
+        auth_check_menu($auth, $sub_menu, "w");
+    else if ($w == 'd')
+        auth_check_menu($auth, $sub_menu, "d");
+    
+    // 추가 DMK 권한 체크
+    if (!dmk_is_menu_allowed('400300', $user_type)) {
+        alert('상품관리에 접근 권한이 없습니다.', G5_ADMIN_URL);
+    }
+}
 
 check_admin_token();
 
@@ -70,7 +92,6 @@ if ($sbr_id) {
     
     // 값이 없고 신규 등록이면 현재 관리자 정보로 설정
     if (empty($dmk_dt_id) && empty($dmk_ag_id) && empty($dmk_br_id) && $w == '') {
-        $dmk_auth = dmk_get_admin_auth();
         if (!$dmk_auth['is_super']) {
             if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
                 $dmk_dt_id = $dmk_auth['dt_id'];
@@ -84,6 +105,12 @@ if ($sbr_id) {
             }
         }
     }
+}
+
+// 대리점 관리자인 경우 총판 정보 자동 설정
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $sag_id && !$dmk_dt_id) {
+    // 대리점이 선택되었지만 총판 정보가 없는 경우 현재 관리자의 총판 정보 사용
+    $dmk_dt_id = $dmk_auth['dt_id'];
 }
 
 // 파일정보
