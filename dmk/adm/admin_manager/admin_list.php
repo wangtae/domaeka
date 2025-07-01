@@ -187,6 +187,9 @@ function get_branch_name($br_id) {
         } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
             $can_create_sub_admin = true; // 대리점은 지점 서브 관리자 생성 가능
             $target_type = 'branch'; // 지점 생성으로 연결
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            $can_create_sub_admin = true; // 지점도 서브 관리자 생성 가능
+            $target_type = 'branch'; // 지점 서브 관리자 생성으로 연결
         }
 
         if ($can_create_sub_admin) {

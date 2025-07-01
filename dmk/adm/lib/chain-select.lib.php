@@ -79,11 +79,11 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
                 break;
             case DMK_CHAIN_SELECT_FULL:
             default:
-                // 총판 관리자는 대리점-지점 선택 가능 (총판 선택박스 숨김)
-                $config['show_distributor'] = false; // 총판 선택박스 숨김
+                // 총판 관리자도 총판-대리점-지점 모두 선택 가능 (서브관리자 등록 시)
+                $config['show_distributor'] = true; // 총판 선택박스 표시
                 $config['show_agency'] = true;
                 $config['show_branch'] = true;
-                $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
+                $config['initial_distributor'] = $dmk_auth['dt_id'] ?? $dmk_auth['mb_id'] ?? '';
                 break;
         }
     }

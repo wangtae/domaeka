@@ -182,14 +182,22 @@ if (!$auth['is_super']) {
         <col>
     </colgroup>
     <tbody>
-    <?php if ($w != 'u') { // 등록 모드일 때만 ?>
+    <?php if ($w != 'u' && $auth['mb_type'] != DMK_MB_TYPE_BRANCH) { // 등록 모드이고 지점 관리자가 아닌 경우에만 ?>
     <tr>
         <th scope="row">소속 기관</th>
         <td>
             <?php
+            // 관리자 유형에 따른 chain select 타입 결정
+            $chain_select_type = DMK_CHAIN_SELECT_FULL;
+            if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+                $chain_select_type = DMK_CHAIN_SELECT_FULL; // 총판은 총판-대리점-지점 모두 표시
+            } elseif ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+                $chain_select_type = DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY; // 대리점은 대리점-지점만 표시
+            }
+            
             // 공통 체인 선택박스 렌더링
             echo dmk_render_chain_select([
-                'page_type' => DMK_CHAIN_SELECT_FULL,
+                'page_type' => $chain_select_type,
                 'auto_submit' => false, // 등록 페이지에서는 자동 제출 비활성화
                 'debug' => true, // 디버그 모드 활성화
                 'form_id' => 'fmember', // 폼 ID 변경
@@ -212,6 +220,13 @@ if (!$auth['is_super']) {
         </td>
     </tr>
     <?php } // 등록 모드일 때만 끝 ?>
+    
+    <?php if ($w != 'u' && $auth['mb_type'] == DMK_MB_TYPE_BRANCH) { ?>
+    <!-- 지점 관리자의 경우 소속 기관 정보를 hidden으로만 전송 -->
+    <input type="hidden" name="dt_id" value="<?php echo get_text($auth['dt_id']) ?>">
+    <input type="hidden" name="ag_id" value="<?php echo get_text($auth['ag_id']) ?>">
+    <input type="hidden" name="br_id" value="<?php echo get_text($auth['br_id']) ?>">
+    <?php } ?>
     <?php if ($w == 'u') { // 수정 모드일 때 소속 정보 읽기 전용으로 표시 ?>
     
     <?php if ($auth['mb_type'] != DMK_MB_TYPE_AGENCY) { // 대리점 관리자가 아닌 경우에만 총판 정보 표시 ?>
@@ -350,7 +365,7 @@ if (!$auth['is_super']) {
             <input type="text" name="mb_hp" value="<?php echo get_text($member_info['mb_hp']) ?>" id="mb_hp" class="frm_input" size="20" maxlength="20" placeholder="010-1234-5678">
         </td>
     </tr>
-    <tr>
+    <tr style="display: none;">
         <th scope="row"><label for="dmk_mb_type">관리자 유형</label></th>
         <td>
             <?php if ($w == 'u') { ?>
@@ -365,11 +380,24 @@ if (!$auth['is_super']) {
                 <input type="hidden" name="dmk_mb_type" value="<?php echo $member_info['dmk_mb_type'] ?>">
                 <span class="frm_info">관리자 유형은 수정할 수 없습니다.</span>
             <?php } else { ?>
-                <input type="text" name="dmk_mb_type_display" id="dmk_mb_type_display" class="frm_input" readonly placeholder="소속 기관을 선택하면 자동으로 결정됩니다">
-                <input type="hidden" name="dmk_mb_type" id="dmk_mb_type" value="">
-                <span class="frm_info">소속 기관 선택에 따라 자동으로 관리자 유형이 결정됩니다.</span>
+                <?php if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) { ?>
+                    <!-- 지점 관리자의 경우 자동으로 지점 관리자로 설정 -->
+                    <input type="text" name="dmk_mb_type_display" id="dmk_mb_type_display" class="frm_input" readonly value="지점 관리자">
+                    <input type="hidden" name="dmk_mb_type" id="dmk_mb_type" value="<?php echo DMK_MB_TYPE_BRANCH; ?>">
+                    <span class="frm_info">지점 관리자는 지점 서브관리자만 등록할 수 있습니다.</span>
+                <?php } else { ?>
+                    <input type="text" name="dmk_mb_type_display" id="dmk_mb_type_display" class="frm_input" readonly placeholder="소속 기관을 선택하면 자동으로 결정됩니다">
+                    <input type="hidden" name="dmk_mb_type" id="dmk_mb_type" value="">
+                    <span class="frm_info">소속 기관 선택에 따라 자동으로 관리자 유형이 결정됩니다.</span>
+                <?php } ?>
             <?php } ?>
-            <input type="hidden" name="mb_level" id="mb_level" value="<?php echo isset($member_info['mb_level']) ? $member_info['mb_level'] : ''; ?>">
+            <input type="hidden" name="mb_level" id="mb_level" value="<?php 
+                if ($w != 'u' && $auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+                    echo DMK_MB_LEVEL_BRANCH;
+                } else {
+                    echo isset($member_info['mb_level']) ? $member_info['mb_level'] : '';
+                }
+            ?>">
         </td>
     </tr>
     <tr>
@@ -454,10 +482,21 @@ function fmember_submit(f) {
     <?php if ($w != 'u') { // 신규 등록시에만 관리자 유형 검증 ?>
     // 관리자 유형이 설정되었는지 확인
     var dmk_mb_type = jQuery('#dmk_mb_type').val();
+    
+    <?php if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) { ?>
+    // 지점 관리자의 경우 자동으로 지점 관리자 유형 설정
+    if (!dmk_mb_type) {
+        jQuery('#dmk_mb_type').val('<?php echo DMK_MB_TYPE_BRANCH; ?>');
+        jQuery('#mb_level').val('<?php echo DMK_MB_LEVEL_BRANCH; ?>');
+        jQuery('#dmk_mb_type_display').val('지점 관리자');
+        dmk_mb_type = '<?php echo DMK_MB_TYPE_BRANCH; ?>';
+    }
+    <?php } else { ?>
     if (!dmk_mb_type) {
         alert("소속 기관을 선택하세요.");
         return false;
     }
+    <?php } ?>
     <?php } ?>
     
     // 기존 유효성 검사 로직...

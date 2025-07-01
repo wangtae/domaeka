@@ -11,6 +11,7 @@ $w = isset($_POST['w']) ? clean_xss_tags($_POST['w']) : '';
 // 디버깅: 요청 타입과 주요 변수 확인
 error_log("Admin form update - w: " . ($w ?? 'empty') . ", Request method: " . $_SERVER['REQUEST_METHOD']);
 error_log("POST data keys: " . implode(', ', array_keys($_POST)));
+error_log("POST dmk_mb_type value: " . (isset($_POST['dmk_mb_type']) ? $_POST['dmk_mb_type'] : 'NOT_SET'));
 $mb_id = isset($_POST['mb_id']) ? clean_xss_tags($_POST['mb_id']) : '';
 $mb_password = isset($_POST['mb_password']) ? $_POST['mb_password'] : '';
 $mb_password_confirm = isset($_POST['mb_password_confirm']) ? $_POST['mb_password_confirm'] : '';
@@ -35,6 +36,18 @@ $ag_id = isset($_POST['ag_id']) ? clean_xss_tags($_POST['ag_id']) : '';
 $br_id = isset($_POST['br_id']) ? clean_xss_tags($_POST['br_id']) : '';
 
 $dmk_auth = dmk_get_admin_auth();
+
+// 총판 관리자가 서브 관리자를 등록하는 경우 자동으로 계층 정보 설정
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && $w == '') {
+    // 총판 관리자는 항상 자신의 dt_id를 설정
+    if (empty($dt_id) && !empty($dmk_auth['dt_id'])) {
+        $dt_id = $dmk_auth['dt_id'];
+    }
+    // 만약 dt_id가 여전히 비어있다면 현재 관리자의 mb_id를 사용 (총판의 경우)
+    if (empty($dt_id)) {
+        $dt_id = $dmk_auth['mb_id'];
+    }
+}
 
 // 대리점 관리자가 서브 관리자를 등록하는 경우 자동으로 계층 정보 설정
 if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $w == '') {
@@ -80,12 +93,12 @@ if (!$mb_email) {
     exit;
 }
 
-if ($w == '' && !$dmk_mb_type) { // 신규 등록일 때만 관리자 유형 검사
-    alert('관리자 유형을 선택하세요.');
-    exit;
-}
+// 디버깅: 주요 변수 값 확인
+error_log("DEBUG AUTO SETUP: w=" . ($w ?? 'empty') . ", dmk_mb_type=" . ($dmk_mb_type ?? 'empty') . ", dmk_auth_mb_type=" . ($dmk_auth['mb_type'] ?? 'empty'));
 
 // 체인 선택박스의 소속 기관 정보에 따른 관리자 유형 자동 결정 (신규 등록 시에만)
+error_log("DEBUG CHAIN SETUP: entering chain setup logic - w=" . ($w ?? 'empty') . ", dmk_mb_type=" . ($dmk_mb_type ?? 'empty'));
+error_log("DEBUG CHAIN SETUP: br_id=" . ($br_id ?? 'empty') . ", ag_id=" . ($ag_id ?? 'empty') . ", dt_id=" . ($dt_id ?? 'empty'));
 if ($w == '' && !$dmk_mb_type) {
     if ($br_id) {
         // 지점이 선택된 경우: 지점 관리자
@@ -100,9 +113,42 @@ if ($w == '' && !$dmk_mb_type) {
         $dmk_mb_type = DMK_MB_TYPE_DISTRIBUTOR;
         $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
     } else {
-        alert('소속 기관을 선택하세요.');
-        exit;
+        // 관리자 유형별 자동 설정 로직
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            // 지점 관리자가 서브 관리자를 등록하는 경우 자동으로 지점 관리자로 설정
+            $dmk_mb_type = DMK_MB_TYPE_BRANCH;
+            $mb_level = DMK_MB_LEVEL_BRANCH;
+            // 지점 관리자는 자신의 계층 정보를 그대로 사용
+            $dt_id = $dmk_auth['dt_id'];
+            $ag_id = $dmk_auth['ag_id']; 
+            $br_id = $dmk_auth['br_id'];
+            
+            // 디버깅: 지점 관리자 자동 설정 확인
+            error_log("BRANCH ADMIN AUTO SETUP: dt_id=" . ($dt_id ?? 'empty') . ", ag_id=" . ($ag_id ?? 'empty') . ", br_id=" . ($br_id ?? 'empty'));
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            // 대리점 관리자가 서브 관리자를 등록하는 경우 자동으로 대리점 관리자로 설정
+            $dmk_mb_type = DMK_MB_TYPE_AGENCY;
+            $mb_level = DMK_MB_LEVEL_AGENCY;
+            // 대리점 관리자는 자신의 계층 정보를 그대로 사용
+            $dt_id = $dmk_auth['dt_id'];
+            $ag_id = $dmk_auth['ag_id'];
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            // 총판 관리자가 서브 관리자를 등록하는 경우 자동으로 총판 관리자로 설정
+            $dmk_mb_type = DMK_MB_TYPE_DISTRIBUTOR;
+            $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
+            // 총판 관리자는 자신의 계층 정보를 그대로 사용
+            $dt_id = $dmk_auth['dt_id'];
+        } else {
+            alert('소속 기관을 선택하세요.');
+            exit;
+        }
     }
+}
+
+// 신규 등록 시 관리자 유형이 설정되지 않았다면 에러
+if ($w == '' && !$dmk_mb_type) { 
+    alert('관리자 유형을 선택하세요.');
+    exit;
 }
 
 // dmk_mb_type에 따른 mb_level 설정 (신규 등록 시에만)
