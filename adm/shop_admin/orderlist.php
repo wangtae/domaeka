@@ -16,7 +16,7 @@ if ($dmk_auth && $dmk_auth['admin_type'] === 'main' && dmk_is_menu_allowed('4004
     auth_check_menu($auth, $sub_menu, "r");
 }
 
-$g5['title'] = '주문내역';
+$g5['title'] = '쇼핑몰 관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 include_once(G5_PLUGIN_PATH.'/jquery-ui/datepicker.php');
 
