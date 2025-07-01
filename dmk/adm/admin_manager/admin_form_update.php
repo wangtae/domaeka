@@ -114,12 +114,11 @@ if ($w == '') {
         alert('비밀번호를 입력하세요.');
     }
     
-    if ($mb_password != $mb_password_confirm) {
-        alert('비밀번호가 일치하지 않습니다.');
-    }
-    
-    if (strlen($mb_password) < 3) {
-        alert('비밀번호를 3글자 이상 입력하세요.');
+    // 비밀번호 유효성 검증
+    $password_validation = dmk_validate_password($mb_id, $mb_password, $mb_password_confirm);
+    if ($password_validation !== true) {
+        alert($password_validation);
+        exit;
     }
     
     // 아이디 중복 체크
@@ -240,12 +239,11 @@ if ($w == '') {
     // 업데이트 쿼리 구성
     $sql_password = '';
     if ($mb_password) {
-        if ($mb_password != $mb_password_confirm) {
-            alert('비밀번호가 일치하지 않습니다.');
-        }
-        
-        if (strlen($mb_password) < 3) {
-            alert('비밀번호를 3글자 이상 입력하세요.');
+        // 비밀번호 유효성 검증
+        $password_validation = dmk_validate_password($mb_id, $mb_password, $mb_password_confirm);
+        if ($password_validation !== true) {
+            alert($password_validation);
+            exit;
         }
         
         $mb_password_hash = password_hash($mb_password, PASSWORD_DEFAULT);

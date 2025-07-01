@@ -245,7 +245,7 @@ while($row = sql_fetch_array($dt_result)) {
         <th scope="row"><label for="mb_password">비밀번호<strong class="sound_only">필수</strong></label></th>
         <td>
             <input type="password" name="mb_password" id="mb_password" required class="frm_input required" size="20" maxlength="20">
-            <span class="frm_info">영문, 숫자, 특수문자 조합 (8~20자)</span>
+            <span class="frm_info">6자 이상, 아이디와 동일한 비밀번호 금지</span>
         </td>
     </tr>
     <tr>
@@ -259,7 +259,7 @@ while($row = sql_fetch_array($dt_result)) {
         <th scope="row"><label for="mb_password">비밀번호 변경</label></th>
         <td>
             <input type="password" name="mb_password" id="mb_password" class="frm_input" size="20" maxlength="20">
-            <span class="frm_info">변경하려면 입력하세요. 영문, 숫자, 특수문자 조합 (8~20자)</span>
+            <span class="frm_info">변경하려면 입력하세요. 6자 이상, 아이디와 동일한 비밀번호 금지</span>
         </td>
     </tr>
     <tr>
@@ -402,8 +402,18 @@ function fagency_submit(f)
         }
         
         var password = f.mb_password.value;
-        if (password.length < 8) { // 비밀번호 최소 길이 8자로 변경
-            alert("비밀번호는 8자 이상이어야 합니다.");
+        var mb_id = f.ag_id ? f.ag_id.value : '';
+        
+        // 비밀번호 길이 체크 (6자 이상)
+        if (password.length < 6) {
+            alert("비밀번호는 6자 이상이어야 합니다.");
+            f.mb_password.focus();
+            return false;
+        }
+        
+        // 아이디와 완전히 동일한 비밀번호 금지 (대소문자 구분 없이)
+        if (password.toLowerCase() === mb_id.toLowerCase()) {
+            alert("비밀번호는 아이디와 달라야 합니다.");
             f.mb_password.focus();
             return false;
         }
