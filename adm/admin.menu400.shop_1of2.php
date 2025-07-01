@@ -17,10 +17,16 @@ if (!$menu_title) {
     $menu_title = '쇼핑몰관리'; // 기본 타이틀
 }
 
-// 최고관리자 또는 총판 관리자만 접근 가능한 쇼핑몰 메뉴
-if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
-    $menu['menu400'][] = array('400000', $menu_title, G5_ADMIN_URL . '/shop_admin/', 'shop_config');
+// 쇼핑몰 관리 메인 메뉴 (모든 관리자에게 표시)
+$menu['menu400'][] = array('400000', $menu_title, G5_ADMIN_URL . '/shop_admin/', 'shop_config');
+
+// 쇼핑몰 현황은 최고관리자만 접근 가능
+if (is_super_admin($member['mb_id'])) {
     $menu['menu400'][] = array('400010', '쇼핑몰현황', G5_ADMIN_URL . '/shop_admin/', 'shop_index');
+}
+
+// 쇼핑몰 설정은 최고관리자와 총판 관리자만 접근 가능
+if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
     $menu['menu400'][] = array('400100', '쇼핑몰설정', G5_ADMIN_URL . '/shop_admin/configform.php', 'scf_config');
 }
 
