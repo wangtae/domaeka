@@ -170,51 +170,57 @@ function dmk_get_admin_auth() {
     }
     
     // 총판 관리자 확인
-    $dt_sql = "SELECT dt_id FROM dmk_distributor WHERE dt_id = '".sql_escape_string($member['mb_id'])."' AND dt_status = 1";
-    $dt_result = sql_query($dt_sql);
-    if (sql_num_rows($dt_result) > 0) {
-        $dt_row = sql_fetch_array($dt_result);
-        return [
-            'is_super' => false,
-            'mb_type' => 'distributor',
-            'dt_id' => $dt_row['dt_id'],
-            'ag_id' => '',
-            'br_id' => ''
-        ];
+    if ($member['mb_level'] == 8) {
+        $dt_sql = "SELECT dt_id FROM dmk_distributor WHERE dt_id = '".sql_escape_string($member['mb_id'])."' AND dt_status = 1";
+        $dt_result = sql_query($dt_sql);
+        if (sql_num_rows($dt_result) > 0) {
+            $dt_row = sql_fetch_array($dt_result);
+            return [
+                'is_super' => false,
+                'mb_type' => 'distributor',
+                'dt_id' => $dt_row['dt_id'],
+                'ag_id' => '',
+                'br_id' => ''
+            ];
+        }
     }
     
     // 대리점 관리자 확인
-    $ag_sql = "SELECT ag_id, dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($member['mb_id'])."' AND ag_status = 1";
-    $ag_result = sql_query($ag_sql);
-    if (sql_num_rows($ag_result) > 0) {
-        $ag_row = sql_fetch_array($ag_result);
-        return [
-            'is_super' => false,
-            'mb_type' => 'agency',
-            'dt_id' => $ag_row['dt_id'],
-            'ag_id' => $ag_row['ag_id'],
-            'br_id' => ''
-        ];
+    if ($member['mb_level'] == 6) {
+        $ag_sql = "SELECT ag_id, dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($member['mb_id'])."' AND ag_status = 1";
+        $ag_result = sql_query($ag_sql);
+        if (sql_num_rows($ag_result) > 0) {
+            $ag_row = sql_fetch_array($ag_result);
+            return [
+                'is_super' => false,
+                'mb_type' => 'agency',
+                'dt_id' => $ag_row['dt_id'],
+                'ag_id' => $ag_row['ag_id'],
+                'br_id' => ''
+            ];
+        }
     }
     
     // 지점 관리자 확인
-    $br_sql = "SELECT br_id, ag_id FROM dmk_branch WHERE br_id = '".sql_escape_string($member['mb_id'])."' AND br_status = 1";
-    $br_result = sql_query($br_sql);
-    if (sql_num_rows($br_result) > 0) {
-        $br_row = sql_fetch_array($br_result);
-        
-        // 지점의 소속 대리점 정보 조회
-        $ag_info_sql = "SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($br_row['ag_id'])."'";
-        $ag_info_result = sql_query($ag_info_sql);
-        $ag_info_row = sql_fetch_array($ag_info_result);
-        
-        return [
-            'is_super' => false,
-            'mb_type' => 'branch',
-            'dt_id' => $ag_info_row['dt_id'],
-            'ag_id' => $br_row['ag_id'],
-            'br_id' => $br_row['br_id']
-        ];
+    if ($member['mb_level'] == 4) {
+        $br_sql = "SELECT br_id, ag_id FROM dmk_branch WHERE br_id = '".sql_escape_string($member['mb_id'])."' AND br_status = 1";
+        $br_result = sql_query($br_sql);
+        if (sql_num_rows($br_result) > 0) {
+            $br_row = sql_fetch_array($br_result);
+            
+            // 지점의 소속 대리점 정보 조회
+            $ag_info_sql = "SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($br_row['ag_id'])."'";
+            $ag_info_result = sql_query($ag_info_sql);
+            $ag_info_row = sql_fetch_array($ag_info_result);
+            
+            return [
+                'is_super' => false,
+                'mb_type' => 'branch',
+                'dt_id' => $ag_info_row['dt_id'],
+                'ag_id' => $br_row['ag_id'],
+                'br_id' => $br_row['br_id']
+            ];
+        }
     }
     
     // 일반 회원
