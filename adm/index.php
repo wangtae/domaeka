@@ -1,6 +1,21 @@
 <?php
-$sub_menu = '100000';
+// 사용자 유형별 기본 메뉴 설정
 require_once './_common.php';
+
+// 도매까 권한 정보 조회
+$dmk_auth = dmk_get_admin_auth();
+
+// 사용자 유형별 기본 sub_menu 설정
+if ($dmk_auth && $dmk_auth['is_super']) {
+    // 본사 관리자 - 환경설정 메뉴 (100100 - 기본환경설정)
+    $sub_menu = '100100';
+} else if ($dmk_auth && !$dmk_auth['is_super']) {
+    // 총판/대리점/지점 - 프랜차이즈 관리 메뉴 (190100 - 총판관리)
+    $sub_menu = '190100';
+} else {
+    // 기본값 (일반 관리자)
+    $sub_menu = '100100';
+}
 
 @require_once './safe_check.php';
 

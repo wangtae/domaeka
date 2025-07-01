@@ -25,23 +25,61 @@ $start_date = isset($_GET['start_date']) ? clean_xss_tags($_GET['start_date']) :
 $end_date = isset($_GET['end_date']) ? clean_xss_tags($_GET['end_date']) : date('Y-m-t');
 $period_type = isset($_GET['period_type']) ? clean_xss_tags($_GET['period_type']) : 'daily';
 
+// 계층별 필터링을 위한 GET 파라미터 처리
+$filter_dt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
+$filter_ag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
+$filter_br_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
+
+// 도매까 권한 정보 조회
+$dmk_auth = dmk_get_admin_auth();
+
 // 권한에 따른 데이터 필터링
 $branch_filter = '';
 
-switch ($dmk_auth['mb_type']) {
-    case 1: // 총판 - 모든 데이터 조회 가능
-        break;
-    case 2: // 대리점 - 소속 지점만 조회 가능
-        $branch_ids = dmk_get_agency_branch_ids($dmk_auth['ag_id']);
-        if (!empty($branch_ids)) {
-            $branch_filter = " AND b.br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "')";
-        } else {
-            $branch_filter = " AND 1=0";
-        }
-        break;
-    case 3: // 지점 - 자신의 지점만 조회 가능
-        $branch_filter = " AND b.br_id = '" . sql_escape_string($dmk_auth['mb_id']) . "'";
-        break;
+// 기본 권한별 필터링
+if ($dmk_auth && !$dmk_auth['is_super']) {
+    switch ($dmk_auth['mb_type']) {
+        case 1: // 총판 - 자신의 총판에 속한 지점만
+            if (!empty($dmk_auth['dt_id'])) {
+                $branch_filter = " AND b.br_id IN (
+                    SELECT DISTINCT br.br_id FROM dmk_branch br
+                    JOIN dmk_agency ag ON br.ag_id = ag.ag_id 
+                    WHERE ag.dt_id = '".sql_escape_string($dmk_auth['dt_id'])."'
+                )";
+            }
+            break;
+        case 2: // 대리점 - 소속 지점만 조회 가능
+            if (!empty($dmk_auth['ag_id'])) {
+                $branch_filter = " AND b.br_id IN (
+                    SELECT DISTINCT br_id FROM dmk_branch 
+                    WHERE ag_id = '".sql_escape_string($dmk_auth['ag_id'])."'
+                )";
+            }
+            break;
+        case 3: // 지점 - 자신의 지점만 조회 가능
+            if (!empty($dmk_auth['br_id'])) {
+                $branch_filter = " AND b.br_id = '" . sql_escape_string($dmk_auth['br_id']) . "'";
+            }
+            break;
+    }
+}
+
+// 계층별 필터링 추가 (GET 파라미터 기반)
+if ($filter_dt_id) {
+    $branch_filter .= " AND b.br_id IN (
+        SELECT DISTINCT br.br_id FROM dmk_branch br
+        JOIN dmk_agency ag ON br.ag_id = ag.ag_id 
+        WHERE ag.dt_id = '".sql_escape_string($filter_dt_id)."'
+    )";
+}
+if ($filter_ag_id) {
+    $branch_filter .= " AND b.br_id IN (
+        SELECT DISTINCT br_id FROM dmk_branch 
+        WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
+    )";
+}
+if ($filter_br_id) {
+    $branch_filter .= " AND b.br_id = '".sql_escape_string($filter_br_id)."'";
 }
 
 // 전체 통계 요약
@@ -167,6 +205,39 @@ $top_branches_result = sql_query($top_branches_sql);
     box-sizing: border-box;
     transition: all 0.3s ease;
     vertical-align: top;
+}
+
+/* chained-select 스타일 조정 */
+.dmk-chain-select-container {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.dmk-chain-select-container select {
+    padding: 12px 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 14px;
+    height: 48px;
+    min-height: 48px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    margin-right: 10px;
+}
+
+.dmk-chain-select-container select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.dmk-hierarchy-info {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    border-radius: 8px;
+    color: #495057;
+    font-weight: 500;
+    border: 2px solid #e9ecef;
 }
 
 .filter-group input:focus, .filter-group select:focus {
@@ -318,7 +389,81 @@ $top_branches_result = sql_query($top_branches_sql);
 
     <!-- 필터 섹션 -->
     <div class="filter-section">
-        <form method="get" class="filter-form">
+        <form method="get" class="filter-form" id="statisticsForm">
+            
+            <!-- 도매까 계층 선택박스 -->
+            <div class="filter-group" style="width: 100%; margin-bottom: 20px;">
+                <?php
+                // 도매까 체인 선택박스 포함 (권한에 따라 표시)
+                if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == 1) {
+                    include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+                    
+                    // 현재 선택된 계층 값들 (권한에 따라 자동 설정)
+                    $current_dt_id = $filter_dt_id;
+                    $current_ag_id = $filter_ag_id;
+                    $current_br_id = $filter_br_id;
+                    
+                    // 권한에 따른 페이지 타입 결정
+                    $page_type = DMK_CHAIN_SELECT_FULL;
+                    if ($dmk_auth['mb_type'] == 1) {
+                        $page_type = DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY;
+                        // 총판 관리자는 자신의 총판으로 고정
+                        $current_dt_id = $dmk_auth['dt_id'];
+                    }
+                    
+                    echo dmk_render_chain_select([
+                        'page_type' => $page_type,
+                        'auto_submit' => false,
+                        'form_id' => 'statisticsForm',
+                        'field_names' => [
+                            'distributor' => 'sdt_id',
+                            'agency' => 'sag_id', 
+                            'branch' => 'sbr_id'
+                        ],
+                        'current_values' => [
+                            'sdt_id' => $current_dt_id,
+                            'sag_id' => $current_ag_id,
+                            'sbr_id' => $current_br_id
+                        ],
+                        'placeholders' => [
+                            'distributor' => '전체 총판',
+                            'agency' => '전체 대리점',
+                            'branch' => '전체 지점'
+                        ]
+                    ]);
+                } else if ($dmk_auth['mb_type'] == 2) {
+                    // 대리점 관리자는 소속 지점만 선택 가능
+                    include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+                    
+                    echo dmk_render_chain_select([
+                        'page_type' => DMK_CHAIN_SELECT_FULL,
+                        'auto_submit' => false,
+                        'form_id' => 'statisticsForm',
+                        'field_names' => [
+                            'distributor' => 'sdt_id',
+                            'agency' => 'sag_id', 
+                            'branch' => 'sbr_id'
+                        ],
+                        'current_values' => [
+                            'sdt_id' => $dmk_auth['dt_id'],
+                            'sag_id' => $dmk_auth['ag_id'],
+                            'sbr_id' => $filter_br_id
+                        ],
+                        'placeholders' => [
+                            'distributor' => '전체 총판',
+                            'agency' => '전체 대리점',
+                            'branch' => '전체 지점'
+                        ]
+                    ]);
+                } else if ($dmk_auth['mb_type'] == 3) {
+                    // 지점 관리자는 자신의 지점만 표시 (선택박스 없음)
+                    echo '<div class="dmk-chain-select-container">';
+                    echo '<span class="dmk-hierarchy-info">현재 조회 범위: ' . htmlspecialchars($dmk_auth['br_name'] ?? '해당 지점') . ' 지점</span>';
+                    echo '</div>';
+                }
+                ?>
+            </div>
+            
             <div class="filter-group">
                 <label for="start_date">시작일</label>
                 <input type="date" id="start_date" name="start_date" value="<?php echo $start_date; ?>">

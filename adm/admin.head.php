@@ -245,6 +245,20 @@ jQuery(function($){
     $(".gnb_ul li .btn_op" ).click(function() {
         $(this).parent().addClass("on").siblings().removeClass("on");
     });
+    
+    // 페이지 로드시 첫 번째 메뉴를 자동으로 선택된 상태로 표시
+    $(document).ready(function() {
+        // 현재 선택된 메뉴가 있는지 확인
+        var hasActiveMenu = $(".gnb_ul li.on").length > 0;
+        
+        // 선택된 메뉴가 없으면 첫 번째 보이는 메뉴를 선택
+        if (!hasActiveMenu) {
+            var firstVisibleMenu = $(".gnb_ul li:visible:first");
+            if (firstVisibleMenu.length > 0) {
+                firstVisibleMenu.addClass("on");
+            }
+        }
+    });
 
 });
 </script>
