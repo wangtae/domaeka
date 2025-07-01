@@ -213,6 +213,8 @@ if (!$auth['is_super']) {
     </tr>
     <?php } // 등록 모드일 때만 끝 ?>
     <?php if ($w == 'u') { // 수정 모드일 때 소속 정보 읽기 전용으로 표시 ?>
+    
+    <?php if ($auth['mb_type'] != DMK_MB_TYPE_AGENCY) { // 대리점 관리자가 아닌 경우에만 총판 정보 표시 ?>
     <tr>
         <th scope="row">소속 총판</th>
         <td>
@@ -231,6 +233,11 @@ if (!$auth['is_super']) {
             <span class="frm_info">총판은 수정할 수 없습니다.</span>
         </td>
     </tr>
+    <?php } else { ?>
+    <!-- 대리점 관리자의 경우 총판 정보를 hidden으로만 전송 (소스보기에서도 안보이도록 서버에서 처리) -->
+    <?php } ?>
+    
+    <?php if ($auth['mb_type'] != DMK_MB_TYPE_BRANCH) { // 지점 관리자가 아닌 경우에만 대리점 정보 표시 ?>
     <tr>
         <th scope="row">소속 대리점</th>
         <td>
@@ -249,6 +256,11 @@ if (!$auth['is_super']) {
             <span class="frm_info">대리점은 수정할 수 없습니다.</span>
         </td>
     </tr>
+    <?php } else { ?>
+    <!-- 지점 관리자의 경우 대리점 정보를 hidden으로만 전송 (소스보기에서도 안보이도록 서버에서 처리) -->
+    <?php } ?>
+    
+    <?php if ($member_info['dmk_br_id']) { // 지점이 있는 경우에만 표시 ?>
     <tr>
         <th scope="row">소속 지점</th>
         <td>
@@ -267,6 +279,7 @@ if (!$auth['is_super']) {
             <span class="frm_info">지점은 수정할 수 없습니다.</span>
         </td>
     </tr>
+    <?php } ?>
     <?php } ?>
     <tr>
         <th scope="row"><label for="mb_id">관리자 ID<strong class="sound_only">필수</strong></label></th>

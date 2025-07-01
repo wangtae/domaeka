@@ -6,6 +6,10 @@ include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
 check_admin_token();
 
 $w = isset($_POST['w']) ? clean_xss_tags($_POST['w']) : '';
+
+// 디버깅: 요청 타입과 주요 변수 확인
+error_log("Admin form update - w: " . ($w ?? 'empty') . ", Request method: " . $_SERVER['REQUEST_METHOD']);
+error_log("POST data keys: " . implode(', ', array_keys($_POST)));
 $mb_id = isset($_POST['mb_id']) ? clean_xss_tags($_POST['mb_id']) : '';
 $mb_password = isset($_POST['mb_password']) ? $_POST['mb_password'] : '';
 $mb_password_confirm = isset($_POST['mb_password_confirm']) ? $_POST['mb_password_confirm'] : '';
@@ -16,6 +20,13 @@ $mb_hp = isset($_POST['mb_hp']) ? clean_xss_tags($_POST['mb_hp']) : '';
 $dmk_mb_type = isset($_POST['dmk_mb_type']) ? (int)$_POST['dmk_mb_type'] : 0;
 $mb_level = isset($_POST['mb_level']) ? (int)$_POST['mb_level'] : 0;
 $mb_memo = isset($_POST['mb_memo']) ? clean_xss_tags($_POST['mb_memo']) : '';
+
+// URL 파라미터 캡처 (목록 페이지로 돌아갈 때 사용)
+$sfl = isset($_POST['sfl']) ? clean_xss_tags($_POST['sfl']) : '';
+$stx = isset($_POST['stx']) ? clean_xss_tags($_POST['stx']) : '';
+$sst = isset($_POST['sst']) ? clean_xss_tags($_POST['sst']) : '';
+$sod = isset($_POST['sod']) ? clean_xss_tags($_POST['sod']) : '';
+$page = isset($_POST['page']) ? clean_xss_tags($_POST['page']) : '';
 
 // 체인 선택박스에서 전송되는 소속 기관 정보
 $dt_id = isset($_POST['dt_id']) ? clean_xss_tags($_POST['dt_id']) : '';
@@ -237,6 +248,20 @@ if ($w == '') {
     $ag_id = $member['dmk_ag_id'];
     $br_id = $member['dmk_br_id'];
     
+    // 대리점 관리자가 서브 관리자를 수정하는 경우 계층 정보 보안 처리
+    // 폼에서 dt_id가 전송되지 않았지만 현재 관리자의 정보를 사용해야 함
+    if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+        // 대리점 관리자는 자신의 총판 정보만 사용 가능
+        $dt_id = $dmk_auth['dt_id'];
+    }
+    
+    // 지점 관리자가 서브 관리자를 수정하는 경우 계층 정보 보안 처리
+    if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+        // 지점 관리자는 자신의 총판/대리점 정보만 사용 가능
+        $dt_id = $dmk_auth['dt_id'];
+        $ag_id = $dmk_auth['ag_id'];
+    }
+    
     // 수정 권한 체크
     $can_modify = false;
     if ($dmk_auth['is_super']) {
@@ -291,10 +316,40 @@ if ($w == '') {
                 {$sql_password}
              WHERE mb_id = '".sql_escape_string($mb_id)."' ";
     
-    sql_query($sql);
+    error_log("Update SQL: " . $sql);
+    $result = sql_query($sql);
     
-    // 메시지 없이 현재 폼으로 돌아가기 (목록 정보 유지)
-    goto_url('./admin_form.php?w=u&mb_id='.urlencode($mb_id).'&sfl='.urlencode($sfl).'&stx='.urlencode($stx).'&sst='.urlencode($sst).'&sod='.urlencode($sod).'&page='.urlencode($page));
+    if (!$result) {
+        error_log("SQL update failed for member: " . $mb_id);
+        alert('서브관리자 수정에 실패했습니다. 다시 시도해주세요.');
+        exit;
+    }
+    
+    error_log("Successfully updated member: " . $mb_id);
+    
+    // 관리자 액션 로깅
+    dmk_log_admin_action(
+        'update',
+        '서브관리자 수정: ' . $mb_id,
+        'g5_member',
+        json_encode([
+            'mb_id' => $mb_id,
+            'mb_name' => $mb_name,
+            'mb_nick' => $mb_nick,
+            'dmk_mb_type' => $dmk_mb_type,
+            'mb_level' => $mb_level,
+            'dmk_dt_id' => $dt_id,
+            'dmk_ag_id' => $ag_id,
+            'dmk_br_id' => $br_id
+        ]),
+        null,
+        '190600'
+    );
+    
+    // 수정 완료 후 목록으로 이동
+    $redirect_url = './admin_list.php?sfl='.urlencode($sfl).'&stx='.urlencode($stx).'&sst='.urlencode($sst).'&sod='.urlencode($sod).'&page='.urlencode($page);
+    error_log("Redirecting to: " . $redirect_url);
+    goto_url($redirect_url);
     exit;
 } else {
     alert('잘못된 접근입니다.');
