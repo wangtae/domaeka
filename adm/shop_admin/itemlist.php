@@ -9,11 +9,19 @@ if (!defined('DMK_OWNER_TYPE_DISTRIBUTOR')) define('DMK_OWNER_TYPE_DISTRIBUTOR',
 if (!defined('DMK_OWNER_TYPE_AGENCY')) define('DMK_OWNER_TYPE_AGENCY', 'agency');
 if (!defined('DMK_OWNER_TYPE_BRANCH')) define('DMK_OWNER_TYPE_BRANCH', 'branch');
 
-auth_check_menu($auth, $sub_menu, "r");
+dmk_auth_check_menu($auth, $sub_menu, 'r');
+
+// 도매까 관리자 권한 정보 조회
+$dmk_auth = dmk_get_admin_auth();
 
 if (isset($sfl) && $sfl && !in_array($sfl, array('it_name','it_id','it_maker','it_brand','it_model','it_origin','it_sell_email'))) {
     $sfl = '';
 }
+
+// 계층별 필터링을 위한 GET 파라미터 처리 <i class="fa fa-filter dmk-new-icon" title="NEW"></i>
+$filter_dt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
+$filter_ag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
+$filter_br_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
 
 $g5['title'] = '상품관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
@@ -37,6 +45,33 @@ for ($i=0; $row=sql_fetch_array($result); $i++)
 
 $where = " and ";
 $sql_search = "";
+
+// 계층별 상품 필터링 추가 <i class="fa fa-sitemap dmk-new-icon" title="NEW"></i>
+if ($filter_dt_id) {
+    $sql_search .= " $where a.dmk_owner_id IN (
+        SELECT DISTINCT CONCAT('distributor_', dt_id) FROM dmk_distributor WHERE dt_id = '".sql_escape_string($filter_dt_id)."'
+        UNION
+        SELECT DISTINCT CONCAT('agency_', ag_id) FROM dmk_agency WHERE dt_id = '".sql_escape_string($filter_dt_id)."'
+        UNION  
+        SELECT DISTINCT CONCAT('branch_', br_id) FROM dmk_branch b 
+        JOIN dmk_agency a ON b.ag_id = a.ag_id 
+        WHERE a.dt_id = '".sql_escape_string($filter_dt_id)."'
+    ) ";
+    $where = " and ";
+}
+if ($filter_ag_id) {
+    $sql_search .= " $where a.dmk_owner_id IN (
+        SELECT DISTINCT CONCAT('agency_', ag_id) FROM dmk_agency WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
+        UNION
+        SELECT DISTINCT CONCAT('branch_', br_id) FROM dmk_branch WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
+    ) ";
+    $where = " and ";
+}
+if ($filter_br_id) {
+    $sql_search .= " $where a.dmk_owner_id = 'branch_".sql_escape_string($filter_br_id)."' ";
+    $where = " and ";
+}
+
 if ($stx != "") {
     if ($sfl != "") {
         $sql_search .= " $where $sfl like '%$stx%' ";
@@ -79,8 +114,17 @@ $sql  = " select *
            limit $from_record, $rows ";
 $result = sql_query($sql);
 
-//$qstr  = $qstr.'&amp;sca='.$sca.'&amp;page='.$page;
+// URL 쿼리 스트링 생성 (계층 필터 포함) <i class="fa fa-link dmk-new-icon" title="NEW"></i>
 $qstr  = $qstr.'&amp;sca='.$sca.'&amp;page='.$page.'&amp;save_stx='.$stx;
+if ($filter_dt_id) {
+    $qstr .= '&amp;sdt_id='.$filter_dt_id;
+}
+if ($filter_ag_id) {
+    $qstr .= '&amp;sag_id='.$filter_ag_id;
+}
+if ($filter_br_id) {
+    $qstr .= '&amp;sbr_id='.$filter_br_id;
+}
 
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
 ?>
@@ -92,6 +136,39 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 
 <form name="flist" class="local_sch01 local_sch">
 <input type="hidden" name="save_stx" value="<?php echo $stx; ?>">
+
+    <!-- 도매까 계층 선택박스 (NEW) -->
+    <?php
+    // 도매까 체인 선택박스 포함
+    include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+    
+    // 현재 선택된 계층 값들
+    $current_dt_id = $filter_dt_id;
+    $current_ag_id = $filter_ag_id;
+    $current_br_id = $filter_br_id;
+    
+    echo dmk_render_chain_select([
+        'page_type' => DMK_CHAIN_SELECT_FULL,
+        'auto_submit' => true,
+        'form_id' => 'flist',
+        'field_names' => [
+            'distributor' => 'sdt_id',
+            'agency' => 'sag_id', 
+            'branch' => 'sbr_id'
+        ],
+        'current_values' => [
+            'sdt_id' => $current_dt_id,
+            'sag_id' => $current_ag_id,
+            'sbr_id' => $current_br_id
+        ],
+        'placeholders' => [
+            'distributor' => '전체 총판',
+            'agency' => '전체 대리점',
+            'branch' => '전체 지점'
+        ]
+    ]);
+    ?>
+    <!-- //도매까 계층 선택박스 -->
 
 <label for="sca" class="sound_only">분류선택</label>
 <select name="sca" id="sca">
@@ -130,6 +207,9 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <input type="hidden" name="sfl" value="<?php echo $sfl; ?>">
 <input type="hidden" name="stx" value="<?php echo $stx; ?>">
 <input type="hidden" name="page" value="<?php echo $page; ?>">
+<input type="hidden" name="sdt_id" value="<?php echo $filter_dt_id; ?>">
+<input type="hidden" name="sag_id" value="<?php echo $filter_ag_id; ?>">
+<input type="hidden" name="sbr_id" value="<?php echo $filter_br_id; ?>">
 
 <div class="tbl_head01 tbl_wrap">
     <table>

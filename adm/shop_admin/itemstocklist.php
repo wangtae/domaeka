@@ -3,7 +3,15 @@ $sub_menu = '400620';
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-auth_check_menu($auth, $sub_menu, "r");
+dmk_auth_check_menu($auth, $sub_menu, 'r');
+
+// 도매까 관리자 권한 정보 조회
+$dmk_auth = dmk_get_admin_auth();
+
+// 계층별 필터링을 위한 GET 파라미터 처리 <i class="fa fa-filter dmk-new-icon" title="NEW"></i>
+$filter_dt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
+$filter_ag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
+$filter_br_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
 
 $doc = isset($_GET['doc']) ? clean_xss_tags($_GET['doc'], 1, 1) : '';
 $sort1 = (isset($_GET['sort1']) && in_array($_GET['sort1'], array('it_id', 'it_name', 'it_stock_qty', 'it_use', 'it_soldout', 'it_stock_sms'))) ? $_GET['sort1'] : '';
@@ -16,6 +24,30 @@ $g5['title'] = '상품재고관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
 $sql_search = " where 1 ";
+
+// 계층별 상품 필터링 추가 <i class="fa fa-sitemap dmk-new-icon" title="NEW"></i>
+if ($filter_dt_id) {
+    $sql_search .= " and dmk_owner_id IN (
+        SELECT DISTINCT CONCAT('distributor_', dt_id) FROM dmk_distributor WHERE dt_id = '".sql_escape_string($filter_dt_id)."'
+        UNION
+        SELECT DISTINCT CONCAT('agency_', ag_id) FROM dmk_agency WHERE dt_id = '".sql_escape_string($filter_dt_id)."'
+        UNION  
+        SELECT DISTINCT CONCAT('branch_', br_id) FROM dmk_branch b 
+        JOIN dmk_agency a ON b.ag_id = a.ag_id 
+        WHERE a.dt_id = '".sql_escape_string($filter_dt_id)."'
+    ) ";
+}
+if ($filter_ag_id) {
+    $sql_search .= " and dmk_owner_id IN (
+        SELECT DISTINCT CONCAT('agency_', ag_id) FROM dmk_agency WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
+        UNION
+        SELECT DISTINCT CONCAT('branch_', br_id) FROM dmk_branch WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
+    ) ";
+}
+if ($filter_br_id) {
+    $sql_search .= " and dmk_owner_id = 'branch_".sql_escape_string($filter_br_id)."' ";
+}
+
 if ($search != "") {
 	if ($sel_field != "") {
     	$sql_search .= " and $sel_field like '%$search%' ";
@@ -59,7 +91,17 @@ $sql  = " select it_id,
           limit $from_record, $rows ";
 $result = sql_query($sql);
 
+// URL 쿼리 스트링 생성 (계층 필터 포함) <i class="fa fa-link dmk-new-icon" title="NEW"></i>
 $qstr1 = 'sel_ca_id='.$sel_ca_id.'&amp;sel_field='.$sel_field.'&amp;search='.$search;
+if ($filter_dt_id) {
+    $qstr1 .= '&amp;sdt_id='.$filter_dt_id;
+}
+if ($filter_ag_id) {
+    $qstr1 .= '&amp;sag_id='.$filter_ag_id;
+}
+if ($filter_br_id) {
+    $qstr1 .= '&amp;sbr_id='.$filter_br_id;
+}
 $qstr = $qstr1.'&amp;sort1='.$sort1.'&amp;sort2='.$sort2.'&amp;page='.$page;
 
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
@@ -75,6 +117,39 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <input type="hidden" name="sort1" value="<?php echo get_sanitize_input($sort1); ?>">
 <input type="hidden" name="sort2" value="<?php echo get_sanitize_input($sort2); ?>">
 <input type="hidden" name="page" value="<?php echo get_sanitize_input($page); ?>">
+
+    <!-- 도매까 계층 선택박스 (NEW) -->
+    <?php
+    // 도매까 체인 선택박스 포함
+    include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+    
+    // 현재 선택된 계층 값들
+    $current_dt_id = $filter_dt_id;
+    $current_ag_id = $filter_ag_id;
+    $current_br_id = $filter_br_id;
+    
+    echo dmk_render_chain_select([
+        'page_type' => DMK_CHAIN_SELECT_FULL,
+        'auto_submit' => true,
+        'form_id' => 'flist',
+        'field_names' => [
+            'distributor' => 'sdt_id',
+            'agency' => 'sag_id', 
+            'branch' => 'sbr_id'
+        ],
+        'current_values' => [
+            'sdt_id' => $current_dt_id,
+            'sag_id' => $current_ag_id,
+            'sbr_id' => $current_br_id
+        ],
+        'placeholders' => [
+            'distributor' => '전체 총판',
+            'agency' => '전체 대리점',
+            'branch' => '전체 지점'
+        ]
+    ]);
+    ?>
+    <!-- //도매까 계층 선택박스 -->
 
 <label for="sel_ca_id" class="sound_only">분류선택</label>
 <select name="sel_ca_id" id="sel_ca_id">

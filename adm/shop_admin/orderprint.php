@@ -3,7 +3,12 @@ $sub_menu = '500120';
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-auth_check_menu($auth, $sub_menu, "r");
+dmk_auth_check_menu($auth, $sub_menu, "r");
+
+// 계층별 필터링을 위한 GET 파라미터 처리
+$filter_dt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
+$filter_ag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
+$filter_br_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
 
 $g5['title'] = '주문내역출력';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
@@ -12,9 +17,55 @@ include_once(G5_PLUGIN_PATH.'/jquery-ui/datepicker.php');
 
 <div class="local_sch03 local_sch">
 
+    <!-- 도매까 계층 선택박스 (NEW) -->
+    <div class="hierarchy_filter">
+        <form name="fhierarchy" id="fhierarchy" method="get">
+            <?php
+            // 도매까 체인 선택박스 포함
+            include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+            
+            echo dmk_render_chain_select([
+                'page_type' => DMK_CHAIN_SELECT_FULL,
+                'auto_submit' => true,
+                'form_id' => 'fhierarchy',
+                'field_names' => [
+                    'distributor' => 'sdt_id',
+                    'agency' => 'sag_id', 
+                    'branch' => 'sbr_id'
+                ],
+                'current_values' => [
+                    'sdt_id' => $filter_dt_id,
+                    'sag_id' => $filter_ag_id,
+                    'sbr_id' => $filter_br_id
+                ],
+                'placeholders' => [
+                    'distributor' => '전체 총판',
+                    'agency' => '전체 대리점',
+                    'branch' => '전체 지점'
+                ]
+            ]);
+            ?>
+        </form>
+        <?php
+        // 도매까 권한 정보 조회
+        $dmk_auth = dmk_get_admin_auth();
+        if ($dmk_auth && $dmk_auth['mb_type'] != 3) { // 지점 관리자가 아닌 경우에만 메시지 표시
+        ?>
+        <div class="hierarchy_desc">
+            선택된 계층에 따라 주문내역 출력 범위가 제한됩니다.<br>
+            아래 출력 시 선택된 계층 정보가 자동으로 반영됩니다.
+        </div>
+        <?php } ?>
+    </div>
+    <!-- //도매까 계층 선택박스 -->
+
     <div>
         <form name="forderprint" action="./orderprintresult.php" onsubmit="return forderprintcheck(this);" autocomplete="off">
         <input type="hidden" name="case" value="1">
+        <!-- 계층 필터 정보 전달을 위한 hidden 필드 -->
+        <?php if ($filter_dt_id) { ?><input type="hidden" name="sdt_id" value="<?php echo $filter_dt_id; ?>"><?php } ?>
+        <?php if ($filter_ag_id) { ?><input type="hidden" name="sag_id" value="<?php echo $filter_ag_id; ?>"><?php } ?>
+        <?php if ($filter_br_id) { ?><input type="hidden" name="sbr_id" value="<?php echo $filter_br_id; ?>"><?php } ?>
 
         <strong class="sch_long">기간별 출력</strong>
         <input type="radio" name="csv" value="xls" id="xls1">
@@ -47,6 +98,11 @@ include_once(G5_PLUGIN_PATH.'/jquery-ui/datepicker.php');
 
         <form name="forderprint" action="./orderprintresult.php" onsubmit="return forderprintcheck(this);" autocomplete="off" >
         <input type="hidden" name="case" value="2">
+        <!-- 계층 필터 정보 전달을 위한 hidden 필드 -->
+        <?php if ($filter_dt_id) { ?><input type="hidden" name="sdt_id" value="<?php echo $filter_dt_id; ?>"><?php } ?>
+        <?php if ($filter_ag_id) { ?><input type="hidden" name="sag_id" value="<?php echo $filter_ag_id; ?>"><?php } ?>
+        <?php if ($filter_br_id) { ?><input type="hidden" name="sbr_id" value="<?php echo $filter_br_id; ?>"><?php } ?>
+        
         <strong class="sch_long">주문번호구간별 출력</strong>
 
         <input type="radio" name="csv" value="xls" id="xls2">

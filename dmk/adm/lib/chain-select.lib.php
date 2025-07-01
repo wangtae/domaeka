@@ -244,6 +244,9 @@ function dmk_render_chain_select($options = []) {
     
     $html = '';
     
+    // CSS/JS 에셋 포함
+    $html .= dmk_include_chain_select_assets();
+    
     // 컨테이너 시작
     $container_classes = 'dmk-chain-select-container';
     if (!empty($options['container_class'])) {
@@ -462,7 +465,7 @@ function dmk_include_chain_select_assets() {
     $html = '';
     
     // CSS 파일 포함
-    $html .= '<link rel="stylesheet" href="' . G5_URL . '/dmk/adm/js/chain-select.css' . $cache_buster . '">';
+    $html .= '<link rel="stylesheet" href="' . G5_URL . '/dmk/adm/css/chain-select.css' . $cache_buster . '">';
     
     // JavaScript 파일 포함
     $html .= '<script src="' . G5_URL . '/dmk/adm/js/chain-select.js' . $cache_buster . '"></script>';

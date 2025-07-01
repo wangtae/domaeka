@@ -16,9 +16,9 @@ class DmkChainSelect {
             agencySelectId: 'sag_id',
             branchSelectId: 'sbr_id',
             
-            // AJAX 엔드포인트
-            agencyEndpoint: './get_agencies.php',
-            branchEndpoint: './get_branches.php',
+            // AJAX 엔드포인트 (절대 경로)
+            agencyEndpoint: '/dmk/adm/_ajax/get_agencies.php',
+            branchEndpoint: '/dmk/adm/_ajax/get_branches.php',
             
             // 초기 선택값
             initialDistributor: '',

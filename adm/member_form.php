@@ -325,92 +325,37 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
     <tr>
         <th scope="row"><label for="member_hierarchy">소속</label></th>
         <td colspan="3">
-            <!-- 총판 선택 -->
-            <?php if ($auth['is_super']) { // 본사 관리자만 총판 선택 박스 노출 ?>
-                <select name="dt_id" id="dt_id" class="frm_input">
-                    <option value="">총판 선택</option>
-                    <?php foreach ($distributors as $distributor) { ?>
-                        <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($current_dt_id == $distributor['dt_id']) ? 'selected' : '' ?>>
-                            <?php echo get_text($distributor['dt_name']) ?> (<?php echo $distributor['dt_id'] ?>)
-                        </option>
-                    <?php } ?>
-                </select>
-            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { // 총판 관리자는 자신의 총판 ID를 hidden 필드로 전달 ?>
-            <div class="hierarchy_select_group">
-                <label>총판:</label>
-                <span class="frm_info"><?php echo get_text($auth['mb_id']) ?> (<?php echo get_text($auth['mb_name']) ?>)</span>
-                <input type="hidden" name="dt_id" id="dt_id" value="<?php echo get_text($auth['mb_id']) ?>">
-            </div>
-            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) { // 대리점 관리자는 총판 정보만 표시 ?>
-            <div class="hierarchy_select_group">
-                <label>총판:</label>
-                <?php
-                    $parent_dt_id = dmk_get_agency_distributor_id($auth['ag_id']);
-                    $parent_dt_name = $parent_dt_id ? dmk_get_member_name($parent_dt_id) : '미지정';
-                ?>
-                <span class="frm_info"><?php echo get_text($parent_dt_id) ?> (<?php echo get_text($parent_dt_name) ?>)</span>
-                <input type="hidden" name="dt_id" id="dt_id" value="<?php echo get_text($parent_dt_id) ?>">
-            </div>
-            <?php } else { // 그 외 (지점 관리자 등)는 총판 필드 숨김 ?>
-            <input type="hidden" name="dt_id" id="dt_id" value="<?php echo $current_dt_id ?>">
-            <?php } ?>
-
-            <!-- 대리점 선택 -->
-            <?php if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { ?>
-                <select name="ag_id" id="ag_id" class="frm_input">
-                    <?php if ($auth['is_super']) { ?>
-                        <option value="">먼저 총판을 선택하세요</option>
-                    <?php } else { ?>
-                        <option value="">대리점 선택</option>
-                        <?php foreach ($agencies as $agency) { ?>
-                            <option value="<?php echo $agency['ag_id'] ?>" <?php echo ($current_ag_id == $agency['ag_id']) ? 'selected' : '' ?>>
-                                <?php echo get_text($agency['ag_name']) ?> (<?php echo $agency['ag_id'] ?>)
-                            </option>
-                        <?php } ?>
-                    <?php } ?>
-                </select>
-            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_AGENCY) { // 대리점 관리자는 자신의 대리점만 표시 ?>
-            <div class="hierarchy_select_group">
-                <label>대리점:</label>
-                <span class="frm_info"><?php echo get_text($auth['ag_id']) ?> (<?php echo get_text($auth['ag_name']) ?>)</span>
-                <input type="hidden" name="ag_id" id="ag_id" value="<?php echo get_text($auth['ag_id']) ?>">
-            </div>
-            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) { // 지점 관리자는 소속 대리점 표시 ?>
-            <div class="hierarchy_select_group">
-                <label>대리점:</label>
-                <?php
-                    $parent_ag_name = dmk_get_member_name($auth['ag_id']);
-                ?>
-                <span class="frm_info"><?php echo get_text($auth['ag_id']) ?> (<?php echo get_text($parent_ag_name) ?>)</span>
-                <input type="hidden" name="ag_id" id="ag_id" value="<?php echo $current_ag_id ?>">
-            </div>
-            <?php } else { ?>
-            <input type="hidden" name="ag_id" id="ag_id" value="<?php echo $current_ag_id ?>">
-            <?php } ?>
-
-            <!-- 지점 선택 -->
-            <?php if ($auth['is_super'] || $auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR || $auth['mb_type'] == DMK_MB_TYPE_AGENCY) { ?>
-                <select name="br_id" id="br_id" class="frm_input">
-                    <?php if ($auth['is_super']) { ?>
-                        <option value="">먼저 대리점을 선택하세요</option>
-                    <?php } else { ?>
-                        <option value="">지점 선택</option>
-                        <?php foreach ($branches as $branch) { ?>
-                            <option value="<?php echo $branch['br_id'] ?>" <?php echo ($current_br_id == $branch['br_id']) ? 'selected' : '' ?>>
-                                <?php echo get_text($branch['br_name']) ?> (<?php echo $branch['br_id'] ?>)
-                            </option>
-                        <?php } ?>
-                    <?php } ?>
-                </select>
-            <?php } else if ($auth['mb_type'] == DMK_MB_TYPE_BRANCH) { // 지점 관리자는 자신의 지점만 표시 ?>
-            <div class="hierarchy_select_group">
-                <label>지점:</label>
-                <span class="frm_info"><?php echo get_text($auth['br_id']) ?> (<?php echo get_text($auth['br_name']) ?>)</span>
-                <input type="hidden" name="br_id" id="br_id" value="<?php echo get_text($auth['br_id']) ?>">
-            </div>
-            <?php } else { ?>
-            <input type="hidden" name="br_id" id="br_id" value="<?php echo $current_br_id ?>">
-            <?php } ?>
+            <!-- 도매까 계층 선택박스 (NEW) -->
+            <?php
+            // 도매까 체인 선택박스 포함
+            include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+            
+            $page_mode = ($w == 'u') ? DMK_CHAIN_MODE_FORM_EDIT : DMK_CHAIN_MODE_FORM_NEW;
+            
+            echo dmk_render_chain_select([
+                'page_type' => DMK_CHAIN_SELECT_FULL,
+                'page_mode' => $page_mode,
+                'auto_submit' => false,
+                'form_id' => 'fmember',
+                'field_names' => [
+                    'distributor' => 'dt_id',
+                    'agency' => 'ag_id',
+                    'branch' => 'br_id'
+                ],
+                'current_values' => [
+                    'dt_id' => $current_dt_id,
+                    'ag_id' => $current_ag_id,
+                    'br_id' => $current_br_id
+                ],
+                'placeholders' => [
+                    'distributor' => '총판 선택',
+                    'agency' => '대리점 선택',
+                    'branch' => '지점 선택'
+                ],
+                'show_labels' => false,
+                'container_class' => 'dmk-form-select'
+            ]);
+            ?>
 
             <!-- 소속 정보를 저장할 hidden 필드들 -->
             <input type="hidden" name="dmk_mb_owner_type" id="dmk_mb_owner_type" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_type'] ?? '') ?>">

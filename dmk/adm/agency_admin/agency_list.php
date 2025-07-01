@@ -123,14 +123,31 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 </div>
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
-<?php if ($dmk_auth['is_super']) { // 본사 관리자만 총판 선택박스 표시 ?>
-<select name="dt_id" id="dt_id" class="frm_input" onchange="this.form.submit();">
-    <option value="">총판 전체</option>
-    <?php foreach ($distributors as $distributor) { ?>
-    <option value="<?php echo $distributor['dt_id']; ?>" <?php echo ($dt_id == $distributor['dt_id']) ? 'selected' : ''; ?>><?php echo $distributor['dt_name']; ?> (<?php echo $distributor['dt_id']; ?>)</option>
-    <?php } ?>
-</select>
-<?php } ?>
+    
+    <!-- 도매까 계층 선택박스 (NEW) -->
+    <?php
+    if ($dmk_auth['is_super']) { // 본사 관리자만 총판 선택박스 표시
+        // 도매까 체인 선택박스 포함
+        include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+        
+        echo dmk_render_chain_select([
+            'page_type' => DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY,
+            'auto_submit' => true,
+            'form_id' => 'fsearch',
+            'field_names' => [
+                'distributor' => 'dt_id'
+            ],
+            'current_values' => [
+                'dt_id' => $dt_id
+            ],
+            'placeholders' => [
+                'distributor' => '전체 총판'
+            ]
+        ]);
+    }
+    ?>
+    <!-- //도매까 계층 선택박스 -->
+    
 <label for="stx" class="sound_only">검색어<strong class="sound_only"> 필수</strong></label>
 <input type="text" name="stx" value="<?php echo $stx ?>" id="stx" class="frm_input" placeholder="대리점ID, 대리점명, 대표자명">
 <input type="submit" class="btn_submit" value="검색">

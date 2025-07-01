@@ -3,7 +3,12 @@ $sub_menu = '400410';
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-auth_check_menu($auth, $sub_menu, "r");
+dmk_auth_check_menu($auth, $sub_menu, 'r');
+
+// 계층별 필터링을 위한 GET 파라미터 처리 <i class="fa fa-filter dmk-new-icon" title="NEW"></i>
+$filter_dt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
+$filter_ag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
+$filter_br_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
 
 // 도매까 권한에 따른 조건 추가
 $dmk_auth = dmk_get_admin_auth();
@@ -28,6 +33,31 @@ if ($dmk_auth && !$dmk_auth['is_super']) {
 $sql_common = " from {$g5['g5_shop_order_data_table']} o ";
 
 $sql_search = " where cart_id <> '0' " . $branch_filter;
+
+// 계층별 주문 필터링 추가 (GET 파라미터 기반) <i class="fa fa-sitemap dmk-new-icon" title="NEW"></i>
+if ($filter_dt_id) {
+    $sql_search .= " AND EXISTS (
+        SELECT 1 FROM {$g5['g5_shop_cart_table']} ct 
+        JOIN dmk_branch b ON ct.dmk_br_id = b.br_id 
+        JOIN dmk_agency a ON b.ag_id = a.ag_id 
+        JOIN dmk_distributor d ON a.dt_id = d.dt_id 
+        WHERE ct.od_id = o.cart_id AND d.dt_id = '".sql_escape_string($filter_dt_id)."'
+    )";
+}
+if ($filter_ag_id) {
+    $sql_search .= " AND EXISTS (
+        SELECT 1 FROM {$g5['g5_shop_cart_table']} ct 
+        JOIN dmk_branch b ON ct.dmk_br_id = b.br_id 
+        WHERE ct.od_id = o.cart_id AND b.ag_id = '".sql_escape_string($filter_ag_id)."'
+    )";
+}
+if ($filter_br_id) {
+    $sql_search .= " AND EXISTS (
+        SELECT 1 FROM {$g5['g5_shop_cart_table']} ct 
+        WHERE ct.od_id = o.cart_id AND ct.dmk_br_id = '".sql_escape_string($filter_br_id)."'
+    )";
+}
+
 if ($stx) {
     $sql_search .= " and ( ";
     switch ($sfl) {
@@ -52,7 +82,7 @@ $sql = " select count(*) as cnt
             {$sql_search}
             {$sql_order} ";
 $row = sql_fetch($sql);
-$total_count = $row['cnt'];
+$total_count = $row && isset($row['cnt']) ? (int)$row['cnt'] : 0;
 
 $rows = $config['cf_page_rows'];
 $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
@@ -73,10 +103,44 @@ $colspan = 10;
 ?>
 
 <div class="local_ov01 local_ov">
-   <span class="btn_ov01"><span class="ov_txt">전체 </span><span class="ov_num">  <?php echo number_format($total_count) ?> 건 </span></span> 
+   <span class="btn_ov01"><span class="ov_txt">전체 </span><span class="ov_num">  <?php echo number_format($total_count ?? 0) ?> 건 </span></span> 
 </div>
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
+    
+    <!-- 도매까 계층 선택박스 (NEW) -->
+    <?php
+    // 도매까 체인 선택박스 포함
+    include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+    
+    // 현재 선택된 계층 값들
+    $current_dt_id = $filter_dt_id;
+    $current_ag_id = $filter_ag_id;
+    $current_br_id = $filter_br_id;
+    
+    echo dmk_render_chain_select([
+        'page_type' => DMK_CHAIN_SELECT_FULL,
+        'auto_submit' => true,
+        'form_id' => 'fsearch',
+        'field_names' => [
+            'distributor' => 'sdt_id',
+            'agency' => 'sag_id', 
+            'branch' => 'sbr_id'
+        ],
+        'current_values' => [
+            'sdt_id' => $current_dt_id,
+            'sag_id' => $current_ag_id,
+            'sbr_id' => $current_br_id
+        ],
+        'placeholders' => [
+            'distributor' => '전체 총판',
+            'agency' => '전체 대리점',
+            'branch' => '전체 지점'
+        ]
+    ]);
+    ?>
+    <!-- //도매까 계층 선택박스 -->
+
     <select name="sfl" title="검색대상">
         <option value="od_id"<?php echo get_selected($sfl, "od_id"); ?>>주문번호</option>
     </select>
@@ -91,6 +155,9 @@ $colspan = 10;
 <input type="hidden" name="sfl" value="<?php echo $sfl; ?>">
 <input type="hidden" name="stx" value="<?php echo $stx; ?>">
 <input type="hidden" name="page" value="<?php echo $page; ?>">
+<input type="hidden" name="sdt_id" value="<?php echo $filter_dt_id; ?>">
+<input type="hidden" name="sag_id" value="<?php echo $filter_ag_id; ?>">
+<input type="hidden" name="sbr_id" value="<?php echo $filter_br_id; ?>">
 <input type="hidden" name="token" value="">
 
 <div class="tbl_head01 tbl_wrap" id="inorderlist">

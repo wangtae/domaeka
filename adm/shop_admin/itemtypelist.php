@@ -3,12 +3,15 @@ $sub_menu = '400610';
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-auth_check_menu($auth, $sub_menu, "r");
+dmk_auth_check_menu($auth, $sub_menu, 'r');
 
-// 도매까 권한 확인 - 상품유형관리는 총판 관리자만 접근 가능
-if (!dmk_can_modify_category()) {
-    alert('상품유형관리는 최고관리자 또는 총판 관리자만 접근할 수 있습니다.', G5_ADMIN_URL);
-}
+// 도매까 관리자 권한 정보 조회
+$dmk_auth = dmk_get_admin_auth();
+
+// 계층별 필터링을 위한 GET 파라미터 처리 <i class="fa fa-filter dmk-new-icon" title="NEW"></i>
+$filter_dt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
+$filter_ag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
+$filter_br_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
 
 $doc = isset($_GET['doc']) ? clean_xss_tags($_GET['doc'], 1, 1) : '';
 $sfl = in_array($sfl, array('it_name', 'it_id')) ? $sfl : '';
@@ -33,6 +36,33 @@ if ($sel_field == "")  $sel_field = "it_name";
 
 $where = " where ";
 $sql_search = "";
+
+// 계층별 상품 필터링 추가 <i class="fa fa-sitemap dmk-new-icon" title="NEW"></i>
+if ($filter_dt_id) {
+    $sql_search .= " $where dmk_owner_id IN (
+        SELECT DISTINCT CONCAT('distributor_', dt_id) FROM dmk_distributor WHERE dt_id = '".sql_escape_string($filter_dt_id)."'
+        UNION
+        SELECT DISTINCT CONCAT('agency_', ag_id) FROM dmk_agency WHERE dt_id = '".sql_escape_string($filter_dt_id)."'
+        UNION  
+        SELECT DISTINCT CONCAT('branch_', br_id) FROM dmk_branch b 
+        JOIN dmk_agency a ON b.ag_id = a.ag_id 
+        WHERE a.dt_id = '".sql_escape_string($filter_dt_id)."'
+    ) ";
+    $where = " and ";
+}
+if ($filter_ag_id) {
+    $sql_search .= " $where dmk_owner_id IN (
+        SELECT DISTINCT CONCAT('agency_', ag_id) FROM dmk_agency WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
+        UNION
+        SELECT DISTINCT CONCAT('branch_', br_id) FROM dmk_branch WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
+    ) ";
+    $where = " and ";
+}
+if ($filter_br_id) {
+    $sql_search .= " $where dmk_owner_id = 'branch_".sql_escape_string($filter_br_id)."' ";
+    $where = " and ";
+}
+
 if ($stx != "") {
     if ($sfl != "") {
         $sql_search .= " $where $sfl like '%$stx%' ";
@@ -56,11 +86,12 @@ $sql_order = "order by $sst $sod";
 
 $sql_common = "  from {$g5['g5_shop_item_table']} ";
 $sql_common .= $sql_search;
+$sql_common .= dmk_get_item_where_condition();
 
 // 테이블의 전체 레코드수만 얻음
 $sql = " select count(*) as cnt " . $sql_common;
 $row = sql_fetch($sql);
-$total_count = $row['cnt'];
+$total_count = $row && isset($row['cnt']) ? $row['cnt'] : 0;
 
 $rows = $config['cf_page_rows'];
 $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
@@ -80,7 +111,17 @@ $sql  = " select it_id,
           limit $from_record, $rows ";
 $result = sql_query($sql);
 
+// URL 쿼리 스트링 생성 (계층 필터 포함) <i class="fa fa-link dmk-new-icon" title="NEW"></i>
 $qstr  = $qstr.'&amp;sca='.$sca.'&amp;page='.$page.'&amp;save_stx='.$stx;
+if ($filter_dt_id) {
+    $qstr .= '&amp;sdt_id='.$filter_dt_id;
+}
+if ($filter_ag_id) {
+    $qstr .= '&amp;sag_id='.$filter_ag_id;
+}
+if ($filter_br_id) {
+    $qstr .= '&amp;sbr_id='.$filter_br_id;
+}
 
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
 ?>
@@ -91,8 +132,41 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 </div>
 
 <form name="flist" class="local_sch01 local_sch">
-<input type="hidden" name="doc" value="<?php echo get_sanitize_input($doc); ?>">
-<input type="hidden" name="page" value="<?php echo get_sanitize_input($page); ?>">
+<input type="hidden" name="doc" value="<?php echo $doc; ?>">
+
+    <!-- 도매까 계층 선택박스 (NEW) -->
+    <?php
+    // 도매까 체인 선택박스 포함
+    include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+    
+    // 현재 선택된 계층 값들
+    $current_dt_id = $filter_dt_id;
+    $current_ag_id = $filter_ag_id;
+    $current_br_id = $filter_br_id;
+    
+    echo dmk_render_chain_select([
+        'page_type' => DMK_CHAIN_SELECT_FULL,
+        'auto_submit' => true,
+        'form_id' => 'flist',
+        'field_names' => [
+            'distributor' => 'sdt_id',
+            'agency' => 'sag_id', 
+            'branch' => 'sbr_id'
+        ],
+        'current_values' => [
+            'sdt_id' => $current_dt_id,
+            'sag_id' => $current_ag_id,
+            'sbr_id' => $current_br_id
+        ],
+        'placeholders' => [
+            'distributor' => '전체 총판',
+            'agency' => '전체 대리점',
+            'branch' => '전체 지점'
+        ]
+    ]);
+    ?>
+    <!-- //도매까 계층 선택박스 -->
+<input type="hidden" name="page" value="<?php echo $page; ?>">
 
 <label for="sca" class="sound_only">분류선택</label>
 <select name="sca" id="sca">

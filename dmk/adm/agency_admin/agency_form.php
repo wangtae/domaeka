@@ -148,15 +148,28 @@ while($row = sql_fetch_array($dt_result)) {
                 <input type="hidden" name="dt_id" value="<?php echo get_text($auth['dt_id']) ?>">
                 <span class="frm_info">총판 관리자는 자신의 총판에만 대리점을 등록할 수 있습니다.</span>
             <?php } else { ?>
-                <!-- 최고 관리자는 모든 총판 선택 가능 -->
-                <select name="dt_id" id="dt_id" class="frm_input" required>
-                    <option value="">총판 선택</option>
-                    <?php foreach ($distributors as $distributor) { ?>
-                        <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($agency['dt_id'] == $distributor['dt_id']) ? 'selected' : '' ?>>
-                            <?php echo get_text($distributor['mb_nick'] ?: $distributor['mb_name']) ?> (<?php echo $distributor['dt_id'] ?>)
-                        </option>
-                    <?php } ?>
-                </select>
+                <!-- 도매까 체인 선택박스 사용 (NEW) -->
+                <?php
+                include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+                
+                echo dmk_render_chain_select([
+                    'page_type' => DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY,
+                    'page_mode' => DMK_CHAIN_MODE_FORM_NEW,
+                    'auto_submit' => false,
+                    'form_id' => 'fagency',
+                    'field_names' => [
+                        'distributor' => 'dt_id'
+                    ],
+                    'current_values' => [
+                        'dt_id' => $agency['dt_id']
+                    ],
+                    'placeholders' => [
+                        'distributor' => '총판 선택'
+                    ],
+                    'show_labels' => false,
+                    'container_class' => 'dmk-form-select'
+                ]);
+                ?>
                 <span class="frm_info">해당 대리점이 소속될 총판을 선택합니다.</span>
             <?php } ?>
         </td>
@@ -187,15 +200,28 @@ while($row = sql_fetch_array($dt_result)) {
 
                 <span class="frm_info">총판 관리자는 자신의 총판에만 대리점을 수정할 수 있습니다.</span>
             <?php } else { // 최고 관리자 또는 다른 유형의 관리자 ?>
-                <!-- 최고 관리자는 모든 총판 선택 가능 -->
-                <select name="dt_id" id="dt_id" class="frm_input" required>
-                    <option value="">총판 선택</option>
-                    <?php foreach ($distributors as $distributor) { ?>
-                        <option value="<?php echo $distributor['dt_id'] ?>" <?php echo ($agency['dt_id'] == $distributor['dt_id']) ? 'selected' : '' ?>>
-                            <?php echo get_text($distributor['mb_nick'] ?: $distributor['mb_name']) ?> (<?php echo $distributor['dt_id'] ?>)
-                        </option>
-                    <?php } ?>
-                </select>
+                <!-- 도매까 체인 선택박스 사용 (NEW) -->
+                <?php
+                include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+                
+                echo dmk_render_chain_select([
+                    'page_type' => DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY,
+                    'page_mode' => DMK_CHAIN_MODE_FORM_EDIT,
+                    'auto_submit' => false,
+                    'form_id' => 'fagency',
+                    'field_names' => [
+                        'distributor' => 'dt_id'
+                    ],
+                    'current_values' => [
+                        'dt_id' => $agency['dt_id']
+                    ],
+                    'placeholders' => [
+                        'distributor' => '총판 선택'
+                    ],
+                    'show_labels' => false,
+                    'container_class' => 'dmk-form-select'
+                ]);
+                ?>
                 <span class="frm_info">해당 대리점이 소속될 총판을 선택합니다.</span>
             <?php } ?>
         </td>

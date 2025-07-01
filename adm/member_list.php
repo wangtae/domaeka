@@ -100,7 +100,7 @@ $sql_order = " order by {$sst} {$sod} ";
 
 $sql = " select count(*) as cnt {$sql_common} {$sql_search} {$sql_order} ";
 $row = sql_fetch($sql);
-$total_count = $row['cnt'];
+$total_count = isset($row['cnt']) ? (int)$row['cnt'] : 0;
 
 $rows = $config['cf_page_rows'];
 $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
@@ -112,12 +112,12 @@ $from_record = ($page - 1) * $rows; // 시작 열을 구함
 // 탈퇴회원수
 $sql = " select count(*) as cnt {$sql_common} {$sql_search} and m.mb_leave_date <> '' {$sql_order} ";
 $row = sql_fetch($sql);
-$leave_count = $row['cnt'];
+$leave_count = isset($row['cnt']) ? (int)$row['cnt'] : 0;
 
 // 차단회원수
 $sql = " select count(*) as cnt {$sql_common} {$sql_search} and m.mb_intercept_date <> '' {$sql_order} ";
 $row = sql_fetch($sql);
-$intercept_count = $row['cnt'];
+$intercept_count = isset($row['cnt']) ? (int)$row['cnt'] : 0;
 
 $listall = '<a href="' . $_SERVER['SCRIPT_NAME'] . '" class="ov_listall">전체목록</a>';
 
