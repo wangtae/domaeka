@@ -123,9 +123,31 @@ if (defined('G5_DMK_PATH') && function_exists('dmk_get_admin_auth')) {
     }
 }
 
-// 소속 정보 필수값 검증 (회원은 반드시 지점 소속이어야 함)
-if (empty($posts['dmk_br_id'])) {
-    alert('소속 정보는 필수입니다. 총판, 대리점, 지점 중 하나를 선택해주세요.');
+// 소속 정보 필수값 검증 (신규 등록시에만 적용)
+if ($w == '' && empty($posts['dmk_br_id'])) {
+    alert('소속 정보는 필수입니다. 지점을 선택해주세요.');
+}
+
+// 수정 모드에서는 기존 회원의 소속 정보를 유지하거나 새로 전송된 정보로 업데이트
+if ($w == 'u') {
+    // 기존 회원 정보를 가져와서 누락된 소속 정보를 채움
+    $existing_member = get_member($mb_id);
+    if ($existing_member) {
+        if (empty($posts['dmk_dt_id']) && !empty($existing_member['dmk_dt_id'])) {
+            $posts['dmk_dt_id'] = $existing_member['dmk_dt_id'];
+        }
+        if (empty($posts['dmk_ag_id']) && !empty($existing_member['dmk_ag_id'])) {
+            $posts['dmk_ag_id'] = $existing_member['dmk_ag_id'];
+        }
+        if (empty($posts['dmk_br_id']) && !empty($existing_member['dmk_br_id'])) {
+            $posts['dmk_br_id'] = $existing_member['dmk_br_id'];
+        }
+    }
+    
+    // 수정 후에도 지점 정보가 비어있다면 오류
+    if (empty($posts['dmk_br_id'])) {
+        alert('회원은 반드시 지점에 소속되어야 합니다.');
+    }
 }
 
 $mb_memo = isset($_POST['mb_memo']) ? $_POST['mb_memo'] : '';
@@ -191,6 +213,8 @@ if ($w == '')
         alert('이미 존재하는 이메일입니다.\\nＩＤ : '.$row['mb_id'].'\\n이름 : '.$row['mb_name'].'\\n닉네임 : '.$row['mb_nick'].'\\n메일 : '.$row['mb_email']);
 
     sql_query(" insert into {$g5['member_table']} set mb_id = '{$mb_id}', mb_password = '".sql_password($mb_password)."', mb_datetime = '".G5_TIME_YMDHIS."', mb_ip = '{$_SERVER['REMOTE_ADDR']}', mb_email_certify = '".G5_TIME_YMDHIS."', {$sql_common} ");
+
+    goto_url('./member_list.php');
 }
 else if ($w == 'u')
 {

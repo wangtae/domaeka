@@ -78,6 +78,11 @@ else if ($w == 'u')
     $required_mb_id = 'readonly';
     $html_title = '수정';
 
+    // 회원의 현재 소속 정보 설정 (수정 모드에서 기존 정보 불러오기)
+    $current_dt_id = $mb['dmk_dt_id'] ?? '';
+    $current_ag_id = $mb['dmk_ag_id'] ?? '';
+    $current_br_id = $mb['dmk_br_id'] ?? '';
+
     $mb['mb_name'] = get_text($mb['mb_name']);
     $mb['mb_nick'] = get_text($mb['mb_nick']);
     $mb['mb_email'] = get_text($mb['mb_email']);
@@ -101,37 +106,7 @@ else if ($w == 'u')
     $mb['mb_8'] = get_text($mb['mb_8']);
     $mb['mb_9'] = get_text($mb['mb_9']);
     $mb['mb_10'] = get_text($mb['mb_10']);
-    
-    // dmk_mb_owner_type과 dmk_mb_owner_id를 통해 현재 소속 파악
-    if (!empty($mb['dmk_mb_owner_type']) && !empty($mb['dmk_mb_owner_id'])) {
-        switch ($mb['dmk_mb_owner_type']) {
-            case 'distributor':
-                $current_dt_id = $mb['dmk_mb_owner_id'];
-                break;
-            case 'agency':
-                $current_ag_id = $mb['dmk_mb_owner_id'];
-                // 대리점의 총판 정보 조회
-                $agency_info = sql_fetch("SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($current_ag_id)."'");
-                if ($agency_info) {
-                    $current_dt_id = $agency_info['dt_id'];
-                }
-                break;
-            case 'branch':
-                $current_br_id = $mb['dmk_mb_owner_id'];
-                // 지점의 대리점과 총판 정보 조회
-                $branch_info = sql_fetch("
-                    SELECT b.ag_id, a.dt_id 
-                    FROM dmk_branch b 
-                    JOIN dmk_agency a ON b.ag_id = a.ag_id 
-                    WHERE b.br_id = '".sql_escape_string($current_br_id)."'
-                ");
-                if ($branch_info) {
-                    $current_ag_id = $branch_info['ag_id'];
-                    $current_dt_id = $branch_info['dt_id'];
-                }
-                break;
-        }
-    }
+
 }
 else
     alert('제대로 된 값이 넘어오지 않았습니다.');
@@ -327,6 +302,7 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
         <col>
     </colgroup>
     <tbody>
+    <?php if ( $w == '') { ?>
     <tr>
         <th scope="row"><label for="member_hierarchy">소속</label></th>
         <td colspan="3">
@@ -362,15 +338,13 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
             ]);
             ?>
 
-            <!-- 소속 정보를 저장할 hidden 필드들 -->
-            <input type="hidden" name="dmk_mb_owner_type" id="dmk_mb_owner_type" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_type'] ?? '') ?>">
-            <input type="hidden" name="dmk_mb_owner_id" id="dmk_mb_owner_id" value="<?php echo htmlspecialchars($mb['dmk_mb_owner_id'] ?? '') ?>">
-            
+               
             <div class="frm_info">
                 지점을 지정해야 회원 가입이 가능합니다.
             </div>
         </td>
     </tr>
+    <?php } ?>
     <tr>
         <th scope="row"><label for="mb_id">아이디<?php echo $sound_only ?></label></th>
         <td>
@@ -698,31 +672,13 @@ function fmember_submit(f)
     var br_id = jQuery("#dmk_br_id").val();
 
     // 총판, 대리점, 지점 중 하나는 반드시 선택되어야 함
-    if (!(dt_id && ag_id && br_id)) {
-        alert('소속 정보는 필수입니다. 총판, 대리점, 지점 모두를 선택해주세요.');
+    <?php if ( $w == '') { ?>
+    if (!(br_id)) {
+        alert('지점 정보는 필수입니다.');
         return false;
     }
+    <?php } ?>
 
-    // 소속 정보 업데이트
-    var owner_type = '';
-    var owner_id = '';
-
-    if (br_id) {
-        owner_type = 'branch';
-        owner_id = br_id;
-    } else if (ag_id) {
-        owner_type = 'agency';
-        owner_id = ag_id;
-    } else if (dt_id) {
-        owner_type = 'distributor';
-        owner_id = dt_id;
-    } else {
-        owner_type = '';
-        owner_id = '';
-    }
-
-    jQuery("#dmk_mb_owner_type").val(owner_type);
-    jQuery("#dmk_mb_owner_id").val(owner_id);
 
     return true;
 }
