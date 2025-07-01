@@ -91,15 +91,20 @@ function dmk_get_chain_select_config($dmk_auth, $page_type = DMK_CHAIN_SELECT_FU
     else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
         switch ($page_type) {
             case DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY:
+                // 대리점 관리자는 총판만 선택하는 페이지에서는 선택박스 표시 안함
+                break;
             case DMK_CHAIN_SELECT_DISTRIBUTOR_AGENCY:
-                // 대리점 관리자는 총판/대리점 선택하는 페이지에서는 선택박스 표시 안함
+                // 대리점 관리자는 대리점 선택 가능 (총판 선택박스 숨김)
+                $config['show_distributor'] = false; // 총판 선택박스 숨김
+                $config['show_agency'] = true; // 대리점 선택박스 표시
+                $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
                 break;
             case DMK_CHAIN_SELECT_FULL:
             default:
-                // 대리점 관리자는 지점 선택박스만 표시 (총판, 대리점 선택박스 숨김)
+                // 대리점 관리자는 대리점-지점 선택박스 표시 (총판 선택박스 숨김)
                 $config['show_distributor'] = false; // 총판 선택박스 숨김
-                $config['show_agency'] = false; // 대리점 선택박스 숨김
-                $config['show_branch'] = true;
+                $config['show_agency'] = true; // 대리점 선택박스 표시
+                $config['show_branch'] = true; // 지점 선택박스 표시
                 $config['initial_distributor'] = $dmk_auth['dt_id'] ?? '';
                 $config['initial_agency'] = $dmk_auth['ag_id'] ?? '';
                 break;
@@ -179,6 +184,56 @@ function dmk_get_distributors_for_select($dmk_auth) {
     }
     
     return $distributors;
+}
+
+/**
+ * 대리점 목록 조회 (대리점 관리자가 자신의 대리점을 선택할 수 있도록)
+ * 
+ * @param array $dmk_auth 관리자 권한 정보
+ * @return array 대리점 목록
+ */
+function dmk_get_agencies_for_select($dmk_auth) {
+    global $g5;
+    
+    $agencies = [];
+    
+    if ($dmk_auth['is_super']) {
+        // 최고관리자: 모든 대리점 조회
+        $sql = "SELECT a.ag_id, m.mb_nick AS ag_name 
+                FROM dmk_agency a
+                JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
+                WHERE a.ag_status = 1 
+                ORDER BY m.mb_nick ASC";
+        $result = sql_query($sql);
+        while($row = sql_fetch_array($result)) {
+            $agencies[] = [
+                'id' => $row['ag_id'],
+                'name' => $row['ag_name']
+            ];
+        }
+    } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && !empty($dmk_auth['dt_id'])) {
+        // 총판 관리자: 자신의 총판에 속한 대리점들
+        $sql = "SELECT a.ag_id, m.mb_nick AS ag_name 
+                FROM dmk_agency a
+                JOIN {$g5['member_table']} m ON a.ag_id = m.mb_id
+                WHERE a.dt_id = '".sql_escape_string($dmk_auth['dt_id'])."' AND a.ag_status = 1 
+                ORDER BY m.mb_nick ASC";
+        $result = sql_query($sql);
+        while($row = sql_fetch_array($result)) {
+            $agencies[] = [
+                'id' => $row['ag_id'],
+                'name' => $row['ag_name']
+            ];
+        }
+    } else if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && !empty($dmk_auth['ag_id'])) {
+        // 대리점 관리자: 자신의 대리점만
+        $agencies[] = [
+            'id' => $dmk_auth['ag_id'],
+            'name' => $dmk_auth['ag_name'] ?? $dmk_auth['ag_id']
+        ];
+    }
+    
+    return $agencies;
 }
 
 /**
@@ -345,17 +400,16 @@ function dmk_render_chain_select($options = []) {
             $html .= '<select name="' . $field_name . '" id="' . $field_name . '" class="dmk-chain-select ' . $options['css_classes']['select'] . '" ' . $readonly_attr . '>';
             $html .= '<option value="">' . $options['placeholders']['agency'] . '</option>';
             
-            // 대리점 관리자인 경우, 자신의 대리점만 옵션으로 추가
-            if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && !empty($dmk_auth['ag_id'])) {
-                $ag_name = dmk_get_member_name($dmk_auth['ag_id']);
-                $selected = ($selected_ag_id == $dmk_auth['ag_id']) ? 'selected' : '';
+            // 대리점 목록 추가
+            $agencies = dmk_get_agencies_for_select($options['dmk_auth']);
+            foreach ($agencies as $agency) {
+                $selected = ($selected_ag_id == $agency['id']) ? 'selected' : '';
                 $option_text = $config['show_hierarchy_info'] ? 
-                    $ag_name . ' (' . $dmk_auth['ag_id'] . ')' : 
-                    $ag_name;
-                $html .= '<option value="' . htmlspecialchars($dmk_auth['ag_id']) . '" ' . $selected . '>' . htmlspecialchars($option_text) . '</option>';
-            } else {
-                 // 그 외의 경우 (예: 최고관리자, 총판관리자), AJAX로 동적 로드를 위해 빈 상태 유지 또는 초기값만 설정
-                 // (이미 chain-select.js에서 AJAX로 로드하므로 여기서는 별도 처리 없음)
+                    $agency['name'] . ' (' . $agency['id'] . ')' : 
+                    $agency['name'];
+                $html .= '<option value="' . htmlspecialchars($agency['id']) . '" ' . $selected . '>';
+                $html .= htmlspecialchars($option_text);
+                $html .= '</option>';
             }
             $html .= '</select>';
         }

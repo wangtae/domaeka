@@ -333,7 +333,7 @@ else {
         }
         ?>
 
-        <?php if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= DMK_MB_TYPE_DISTRIBUTOR) { ?>
+        <?php if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= DMK_MB_TYPE_AGENCY) { ?>
         <tr>
             <th scope="row">카테고리 소유 계층</th>
             <td>
@@ -341,6 +341,8 @@ else {
                     <!-- 본사 관리자 신규 등록 시 체인 선택박스 -->
                     <?php 
                     echo dmk_render_chain_select([
+                        'page_type' => DMK_CHAIN_SELECT_FULL,
+                        'page_mode' => DMK_CHAIN_MODE_FORM_NEW,
                         'current_values' => [
                             'sdt_id' => $sdt_id,
                             'sag_id' => $sag_id, 
@@ -372,8 +374,41 @@ else {
                         • 대리점까지 선택 시 대리점 분류가 됩니다.<br>
                         • 지점까지 선택 시 지점 분류가 됩니다.
                     </div>
+                <?php } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $w == '') { ?>
+                    <!-- 대리점 관리자 신규 등록 시 - 대리점 + 지점 선택 (총판 정보는 서버에서 처리) -->
+                    <?php 
+                    echo dmk_render_chain_select([
+                        'page_type' => DMK_CHAIN_SELECT_FULL,
+                        'page_mode' => DMK_CHAIN_MODE_FORM_NEW,
+                        'current_values' => [
+                            'sag_id' => $current_ag_id,
+                            'sbr_id' => $sbr_id
+                        ],
+                        'field_names' => [
+                            'agency' => 'sag_id', 
+                            'branch' => 'sbr_id'
+                        ],
+                        'labels' => [
+                            'agency' => '대리점',
+                            'branch' => '지점'
+                        ],
+                        'placeholders' => [
+                            'agency' => '대리점을 선택하세요',
+                            'branch' => '지점을 선택하세요'
+                        ],
+                        'form_id' => 'fcategoryform',
+                        'auto_submit' => false,
+                        'show_labels' => false,
+                        'container_class' => 'dmk-owner-select'
+                    ]);
+                    ?>
+                    <div class="hierarchy_desc" style="margin-top: 10px; font-size: 11px; color: #666;">
+                        • 대리점을 선택하면 대리점 분류가 됩니다.<br>
+                        • 지점을 선택하면 지점 분류가 됩니다.<br>
+                        • 총판 정보는 자동으로 설정됩니다.
+                    </div>
                 <?php } else { ?>
-                    <!-- 기존 분류 수정이거나 일반 관리자인 경우 -->
+                    <!-- 기존 분류 수정이거나 지점 관리자인 경우 -->
                     <div style="padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 3px;">
                         <strong>현재 분류 소유:</strong><br>
                         <?php

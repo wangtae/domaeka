@@ -589,12 +589,46 @@ class DmkChainSelect {
     
     submitForm() {
         this.log('폼 제출 시도', this.options.formId);
-        const form = document.getElementById(this.options.formId);
-        if (form) {
-            form.submit();
-        } else {
-            this.log('폼을 찾을 수 없음:', this.options.formId);
+        
+        // GET 방식으로 현재 페이지에 파라미터를 포함해서 이동
+        const currentUrl = new URL(window.location);
+        
+        // 현재 선택된 값들을 URL 파라미터로 설정
+        const distributorSelect = document.getElementById(this.options.distributorSelectId);
+        const agencySelect = document.getElementById(this.options.agencySelectId);
+        const branchSelect = document.getElementById(this.options.branchSelectId);
+        
+        if (distributorSelect) {
+            if (distributorSelect.value) {
+                currentUrl.searchParams.set(this.options.distributorSelectId, distributorSelect.value);
+            } else {
+                currentUrl.searchParams.delete(this.options.distributorSelectId);
+            }
         }
+        
+        if (agencySelect) {
+            if (agencySelect.value) {
+                currentUrl.searchParams.set(this.options.agencySelectId, agencySelect.value);
+            } else {
+                currentUrl.searchParams.delete(this.options.agencySelectId);
+            }
+        }
+        
+        if (branchSelect) {
+            if (branchSelect.value) {
+                currentUrl.searchParams.set(this.options.branchSelectId, branchSelect.value);
+            } else {
+                currentUrl.searchParams.delete(this.options.branchSelectId);
+            }
+        }
+        
+        // 페이지를 1로 리셋 (새로운 필터 조건이므로)
+        currentUrl.searchParams.set('page', '1');
+        
+        this.log('새로운 URL로 이동:', currentUrl.toString());
+        
+        // 페이지 이동
+        window.location.href = currentUrl.toString();
     }
     
     log(...args) {
