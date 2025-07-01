@@ -44,6 +44,13 @@ $ag_id = isset($_POST['ag_id']) ? clean_xss_tags($_POST['ag_id']) : '';
 $br_shortcut_code = isset($_POST['br_shortcut_code']) ? clean_xss_tags($_POST['br_shortcut_code']) : '';
 $br_status = isset($_POST['br_status']) ? (int)$_POST['br_status'] : 1;
 
+// 지점 관리자가 자신의 지점을 수정하는 경우 대리점 ID 자동 설정
+if ($w == 'u' && $current_admin['mb_type'] == DMK_MB_TYPE_BRANCH) {
+    if (empty($ag_id) && !empty($current_admin['ag_id'])) {
+        $ag_id = $current_admin['ag_id'];
+    }
+}
+
 // 관리자 계정 정보 (g5_member 테이블에 저장될 필드)
 $mb_password = isset($_POST['mb_password']) ? $_POST['mb_password'] : '';
 $mb_password_confirm = isset($_POST['mb_password_confirm']) ? $_POST['mb_password_confirm'] : '';

@@ -23,6 +23,13 @@ check_admin_token();
 $dt_id = isset($_POST['dt_id']) ? sql_escape_string(trim($_POST['dt_id'])) : '';
 $ag_status = isset($_POST['ag_status']) ? (int)$_POST['ag_status'] : 1;
 
+// 대리점 관리자가 자신의 대리점을 수정하는 경우 총판 ID 자동 설정
+if ($w == 'u' && $current_admin['mb_type'] == DMK_MB_TYPE_AGENCY) {
+    if (empty($dt_id) && !empty($current_admin['dt_id'])) {
+        $dt_id = $current_admin['dt_id'];
+    }
+}
+
 // g5_member 관련 필드들
 $mb_password = isset($_POST['mb_password']) ? trim($_POST['mb_password']) : '';
 $mb_password_confirm = isset($_POST['mb_password_confirm']) ? trim($_POST['mb_password_confirm']) : '';

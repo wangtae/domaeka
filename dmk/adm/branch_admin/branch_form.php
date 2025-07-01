@@ -199,7 +199,7 @@ if (!$auth['is_super']) {
         </td>
     </tr>
     <?php } // 등록 모드일 때만 끝 ?>
-    <?php if ($w == 'u') { // 수정 모드일 때 총판 및 대리점 정보 읽기 전용으로 표시 ?>
+    <?php if ($w == 'u' && $auth['mb_type'] != DMK_MB_TYPE_BRANCH) { // 수정 모드이고 지점 관리자가 아닌 경우만 표시 ?>
     <tr>
         <th scope="row">소속 계층</th>
         <td>
@@ -231,6 +231,12 @@ if (!$auth['is_super']) {
             <span class="frm_info">수정 모드에서는 계층 정보가 읽기 전용으로 표시됩니다.</span>
         </td>
     </tr>
+    <?php } ?>
+    
+    <?php if ($w == 'u' && $auth['mb_type'] == DMK_MB_TYPE_BRANCH) { ?>
+    <!-- 지점 관리자의 경우 hidden 필드로만 전송 -->
+    <input type="hidden" name="dt_id" value="<?php echo get_text($branch['dt_id']) ?>">
+    <input type="hidden" name="ag_id" value="<?php echo get_text($branch['ag_id']) ?>">
     <?php } ?>
     <tr>
         <th scope="row"><label for="br_id">지점 ID<strong class="sound_only">필수</strong></label></th>

@@ -24,6 +24,29 @@ $br_id = isset($_POST['br_id']) ? clean_xss_tags($_POST['br_id']) : '';
 
 $dmk_auth = dmk_get_admin_auth();
 
+// 대리점 관리자가 서브 관리자를 등록하는 경우 자동으로 계층 정보 설정
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $w == '') {
+    if (empty($dt_id) && !empty($dmk_auth['dt_id'])) {
+        $dt_id = $dmk_auth['dt_id'];
+    }
+    if (empty($ag_id) && !empty($dmk_auth['ag_id'])) {
+        $ag_id = $dmk_auth['ag_id'];
+    }
+}
+
+// 지점 관리자가 서브 관리자를 등록하는 경우 자동으로 계층 정보 설정
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH && $w == '') {
+    if (empty($dt_id) && !empty($dmk_auth['dt_id'])) {
+        $dt_id = $dmk_auth['dt_id'];
+    }
+    if (empty($ag_id) && !empty($dmk_auth['ag_id'])) {
+        $ag_id = $dmk_auth['ag_id'];
+    }
+    if (empty($br_id) && !empty($dmk_auth['br_id'])) {
+        $br_id = $dmk_auth['br_id'];
+    }
+}
+
 // 입력값 검증
 if (!$mb_id) {
     alert('아이디를 입력하세요.');
@@ -145,6 +168,9 @@ if ($w == '') {
     // 비밀번호 암호화
     $mb_password_hash = password_hash($mb_password, PASSWORD_DEFAULT);
     
+    // 디버깅: 최종 계층 정보 확인
+    error_log("Final hierarchy info - dt_id: " . ($dt_id ?? 'empty') . ", ag_id: " . ($ag_id ?? 'empty') . ", br_id: " . ($br_id ?? 'empty'));
+    
     // 회원 등록
     $sql = " INSERT INTO {$g5['member_table']} SET
                 mb_id = '".sql_escape_string($mb_id)."',
@@ -164,8 +190,12 @@ if ($w == '') {
                 mb_ip = '".sql_escape_string($_SERVER['REMOTE_ADDR'])."',
                 mb_email_certify = '".G5_TIME_YMDHIS."' ";
     
-    sql_query($sql);
+    $result = sql_query($sql);
     
+    if (!$result) {
+        alert('서브관리자 등록에 실패했습니다. 다시 시도해주세요.');
+        exit;
+    }
     
     // 관리자 액션 로깅
     dmk_log_admin_action(
@@ -187,6 +217,7 @@ if ($w == '') {
     );
     
     goto_url('./admin_list.php');
+    exit;
     
 } elseif ($w == 'u') {
     // 수정
@@ -264,5 +295,9 @@ if ($w == '') {
     
     // 메시지 없이 현재 폼으로 돌아가기 (목록 정보 유지)
     goto_url('./admin_form.php?w=u&mb_id='.urlencode($mb_id).'&sfl='.urlencode($sfl).'&stx='.urlencode($stx).'&sst='.urlencode($sst).'&sod='.urlencode($sod).'&page='.urlencode($page));
+    exit;
+} else {
+    alert('잘못된 접근입니다.');
+    exit;
 }
 ?> 

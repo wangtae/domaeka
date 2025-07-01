@@ -175,7 +175,7 @@ while($row = sql_fetch_array($dt_result)) {
         </td>
     </tr>
     <?php } // 등록 모드일 때만 끝 ?>
-    <?php if ($w == 'u') { // 수정 모드일 때 총판 정보 처리 ?>
+    <?php if ($w == 'u' && $auth['mb_type'] != DMK_MB_TYPE_AGENCY) { // 수정 모드이고 대리점 관리자가 아닌 경우만 표시 ?>
     <tr>
         <th scope="row"><label for="dt_id">소속 총판</label></th>
         <td>
@@ -227,6 +227,11 @@ while($row = sql_fetch_array($dt_result)) {
         </td>
     </tr>
     <?php } // 수정 모드일 때 총판 정보 처리 끝 ?>
+    
+    <?php if ($w == 'u' && $auth['mb_type'] == DMK_MB_TYPE_AGENCY) { ?>
+    <!-- 대리점 관리자의 경우 hidden 필드로만 전송 -->
+    <input type="hidden" name="dt_id" value="<?php echo get_text($agency['dt_id']) ?>">
+    <?php } ?>
     <tr>
         <th scope="row"><label for="ag_id">대리점 ID<strong class="sound_only">필수</strong></label></th>
         <td>
