@@ -7,15 +7,15 @@
 .dmk-chain-select-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
     align-items: center;
     margin-bottom: 0;
 }
 
-/* 목록 페이지용 스타일 */
-.local_sch .dmk-chain-select-container {
-    margin-bottom: 10px;
+.dmk-chain-select-container .dmk-chain-select {
+    margin-right: 3px;
 }
+
+/* 목록 페이지용 스타일 - 컨테이너 불필요 */
 
 /* 폼 내부용 스타일 (카테고리 소유 계층 필드) */
 .dmk-owner-select.dmk-chain-select-container {
@@ -23,12 +23,33 @@
     align-items: flex-start;
 }
 
+.dmk-owner-select.dmk-chain-select-container .dmk-chain-select {
+    margin-right: 3px;
+}
+
 /* 선택박스 그룹 */
 .dmk-chain-select-group {
     display: flex;
     flex-direction: row;
-    gap: 5px;
     align-items: center;
+}
+
+.dmk-chain-select-group .dmk-chain-select {
+    margin-right: 3px;
+}
+
+/* 멤버 폼 페이지 내 체인 선택박스 스타일 */
+.dmk-form-select .dmk-chain-select {
+    margin-right: 3px;
+}
+
+/* 멤버 폼에서 container_class가 dmk-form-select인 경우의 select 스타일 */
+.dmk-chain-select-container.dmk-form-select .dmk-chain-select {
+    margin-right: 3px;
+}
+
+.dmk-chain-select {
+    margin-right: 3px;
 }
 
 /* 폼 내부에서는 라벨을 위에 두고 컬럼 방향으로 */
@@ -55,19 +76,23 @@
 .dmk-chain-select {
     min-width: 140px;
     padding: 4px 6px;
-    border: 1px solid #ccc;
+    border: 1px solid #d5d5d5;
     border-radius: 2px;
     font-size: 12px;
     background-color: #fff;
     transition: all 0.2s ease;
-    height: 28px;
+    height: 35px;
+    line-height: 32px;
     vertical-align: middle;
 }
 
 /* 목록 페이지용 선택박스 */
 .local_sch .dmk-chain-select {
     min-width: 120px;
-    margin-right: 5px;
+    margin-right: 3px;
+    height: 35px;
+    line-height: 32px;
+    vertical-align: middle;
 }
 
 .dmk-chain-select:focus {
@@ -292,7 +317,7 @@
 .local_sch .hierarchy_filter {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 5px;
     align-items: center;
 }
 
@@ -302,11 +327,11 @@
     flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 5px;
     margin-bottom: 10px;
 }
 .dmk-search-inline-form > * {
-    margin-right: 10px;
+    margin-right: 5px;
     margin-bottom: 0 !important;
 }
 .dmk-search-inline-form > *:last-child {

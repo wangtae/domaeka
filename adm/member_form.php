@@ -301,6 +301,11 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
     font-weight: normal;
     color: #666;
 }
+
+/* 체인 선택박스 폼 내 추가 스타일링 */
+.dmk-form-select.dmk-chain-select-container {
+    margin-bottom: 5px;
+}
 </style>
 
 <form name="fmember" id="fmember" action="./member_form_update.php" onsubmit="return fmember_submit(this);" method="post" enctype="multipart/form-data">
