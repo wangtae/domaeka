@@ -343,14 +343,14 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
                 'auto_submit' => false,
                 'form_id' => 'fmember',
                 'field_names' => [
-                    'distributor' => 'dt_id',
-                    'agency' => 'ag_id',
-                    'branch' => 'br_id'
+                    'distributor' => 'dmk_dt_id',
+                    'agency' => 'dmk_ag_id',
+                    'branch' => 'dmk_br_id'
                 ],
                 'current_values' => [
-                    'dt_id' => $current_dt_id,
-                    'ag_id' => $current_ag_id,
-                    'br_id' => $current_br_id
+                    'dmk_dt_id' => $current_dt_id,
+                    'dmk_ag_id' => $current_ag_id,
+                    'dmk_br_id' => $current_br_id
                 ],
                 'placeholders' => [
                     'distributor' => '총판 선택',
@@ -693,9 +693,9 @@ function fmember_submit(f)
     }
 
     // 소속 정보 필수값 검증
-    var dt_id = jQuery("#dt_id").val();
-    var ag_id = jQuery("#ag_id").val();
-    var br_id = jQuery("#br_id").val();
+    var dt_id = jQuery("#dmk_dt_id").val();
+    var ag_id = jQuery("#dmk_ag_id").val();
+    var br_id = jQuery("#dmk_br_id").val();
 
     // 총판, 대리점, 지점 중 하나는 반드시 선택되어야 함
     if (!(dt_id && ag_id && br_id)) {

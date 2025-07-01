@@ -8,14 +8,16 @@ dmk_auth_check_menu($auth, $sub_menu, 'r');
 $sql_common = " from {$g5['member_table']} m 
                 LEFT JOIN dmk_branch b ON m.dmk_br_id = b.br_id 
                 LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
-                LEFT JOIN {$g5['member_table']} mb_br ON b.br_id = mb_br.mb_id -- 지점 관리자 정보 조인
-                LEFT JOIN {$g5['member_table']} mb_ag ON a.ag_id = mb_ag.mb_id -- 대리점 관리자 정보 조인
+                LEFT JOIN {$g5['member_table']} mb_br ON b.br_id = mb_br.mb_id 
+                LEFT JOIN {$g5['member_table']} mb_ag ON a.ag_id = mb_ag.mb_id 
                 ";
 
 $sql_search = " where (1) ";
 
-// 관리자 계정 제외 (mb_level 4 이상은 관리자)
-$sql_search .= " AND m.dmk_mb_type = 0 AND m.mb_level < 4 "; // dmk_mb_type이 0인 일반 회원만 표시
+// 관리자 계정 필터링 (mb_level 4 이상은 관리자)
+// 총판 관리자가 하위 모든 회원을 조회할 수 있도록 dmk_mb_type 및 mb_level 필터링은 제거함.
+// 필요한 경우 별도의 필터링 옵션으로 제공할 수 있음.
+// $sql_search .= " AND m.dmk_mb_type = 0 AND m.mb_level < 4 "; // dmk_mb_type이 0인 일반 회원만 표시
 
 // 도매까 관리자 권한 정보 조회
 $dmk_auth = dmk_get_admin_auth();
@@ -34,7 +36,7 @@ if (!$dmk_auth['is_super']) {
             SELECT b.br_id FROM dmk_branch b 
             JOIN dmk_agency a ON b.ag_id = a.ag_id 
             JOIN dmk_distributor d ON a.dt_id = d.dt_id 
-            WHERE d.dt_mb_id = '".sql_escape_string($dmk_auth['mb_id'])."'
+            WHERE d.dt_id = '".sql_escape_string($dmk_auth['mb_id'])."'
         ) ";
     }
 }
@@ -87,9 +89,9 @@ if ($stx) {
     $sql_search .= " ) ";
 }
 
-if ($is_admin != 'super') {
-    $sql_search .= " and mb_level <= '{$member['mb_level']}' ";
-}
+//if ($is_admin != 'super') {
+    $sql_search .= " and m.mb_level = '2' ";
+//}
 
 if (!$sst) {
     $sst = "m.mb_datetime";
@@ -99,6 +101,8 @@ if (!$sst) {
 $sql_order = " order by {$sst} {$sod} ";
 
 $sql = " select count(*) as cnt {$sql_common} {$sql_search} {$sql_order} ";
+
+
 $row = sql_fetch($sql);
 $total_count = isset($row['cnt']) ? (int)$row['cnt'] : 0;
 
@@ -447,7 +451,17 @@ $colspan = 17;
     <div class="btn_fixed_top">
         <input type="submit" name="act_button" value="선택수정" onclick="document.pressed=this.value" class="btn btn_02">
         <input type="submit" name="act_button" value="선택삭제" onclick="document.pressed=this.value" class="btn btn_02">
-        <?php if ($is_admin == 'super') { ?>
+        <?php 
+        // 회원 추가 권한 체크: 기존 super admin 또는 DMK 관리자
+        $can_add_member = false;
+        if ($is_admin == 'super') {
+            $can_add_member = true;
+        } elseif ($dmk_auth && $dmk_auth['admin_type'] === 'main') {
+            // DMK main 관리자들도 회원 추가 가능
+            $can_add_member = true;
+        }
+        
+        if ($can_add_member) { ?>
             <a href="./member_form.php" id="member_add" class="btn btn_01">회원추가</a>
         <?php } ?>
 

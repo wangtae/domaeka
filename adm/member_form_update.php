@@ -4,6 +4,11 @@ include_once("./_common.php");
 include_once(G5_LIB_PATH."/register.lib.php");
 include_once(G5_LIB_PATH.'/thumbnail.lib.php');
 
+// DMK 관리자 권한 관리
+if (defined('G5_DMK_PATH')) {
+    include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+}
+
 if ($w == 'u')
     check_demo();
 
@@ -72,8 +77,54 @@ foreach( $check_keys as $key ){
     $posts[$key] = isset($_POST[$key]) ? clean_xss_tags($_POST[$key], 1, 1) : '';
 }
 
-// 소속 정보 필수값 검증 (서버 측)
-if (empty($posts['dmk_dt_id']) && empty($posts['dmk_ag_id']) && empty($posts['dmk_br_id'])) {
+// 관리자 유형별 자동 소속 정보 설정
+if (defined('G5_DMK_PATH') && function_exists('dmk_get_admin_auth')) {
+    $dmk_auth = dmk_get_admin_auth();
+    
+    // 디버깅 로그
+    error_log("MEMBER_FORM_UPDATE: Admin type = " . ($dmk_auth['mb_type'] ?? 'NONE'));
+    error_log("MEMBER_FORM_UPDATE: Before auto setup - dt_id=" . ($posts['dmk_dt_id'] ?? 'empty') . ", ag_id=" . ($posts['dmk_ag_id'] ?? 'empty') . ", br_id=" . ($posts['dmk_br_id'] ?? 'empty'));
+    
+    if (isset($dmk_auth['mb_type'])) {
+        // 지점 관리자: 자신의 총판, 대리점, 지점 정보를 모두 사용
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            if (empty($posts['dmk_dt_id']) && !empty($dmk_auth['dt_id'])) {
+                $posts['dmk_dt_id'] = $dmk_auth['dt_id'];
+            }
+            if (empty($posts['dmk_ag_id']) && !empty($dmk_auth['ag_id'])) {
+                $posts['dmk_ag_id'] = $dmk_auth['ag_id'];
+            }
+            if (empty($posts['dmk_br_id']) && !empty($dmk_auth['br_id'])) {
+                $posts['dmk_br_id'] = $dmk_auth['br_id'];
+            }
+            error_log("BRANCH ADMIN AUTO SETUP: dt_id=" . ($posts['dmk_dt_id'] ?? 'empty') . ", ag_id=" . ($posts['dmk_ag_id'] ?? 'empty') . ", br_id=" . ($posts['dmk_br_id'] ?? 'empty'));
+        }
+        // 대리점 관리자: 자신의 총판, 대리점 정보를 사용 (지점은 폼에서 선택)
+        elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            if (empty($posts['dmk_dt_id']) && !empty($dmk_auth['dt_id'])) {
+                $posts['dmk_dt_id'] = $dmk_auth['dt_id'];
+            }
+            if (empty($posts['dmk_ag_id']) && !empty($dmk_auth['ag_id'])) {
+                $posts['dmk_ag_id'] = $dmk_auth['ag_id'];
+            }
+            error_log("AGENCY ADMIN AUTO SETUP: dt_id=" . ($posts['dmk_dt_id'] ?? 'empty') . ", ag_id=" . ($posts['dmk_ag_id'] ?? 'empty') . ", br_id=" . ($posts['dmk_br_id'] ?? 'empty'));
+        }
+        // 총판 관리자: 자신의 총판 정보를 사용 (대리점, 지점은 폼에서 선택)
+        elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            if (empty($posts['dmk_dt_id']) && !empty($dmk_auth['dt_id'])) {
+                $posts['dmk_dt_id'] = $dmk_auth['dt_id'];
+            }
+            // 총판의 경우 dt_id가 없다면 자신의 mb_id를 사용
+            if (empty($posts['dmk_dt_id'])) {
+                $posts['dmk_dt_id'] = $dmk_auth['mb_id'];
+            }
+            error_log("DISTRIBUTOR ADMIN AUTO SETUP: dt_id=" . ($posts['dmk_dt_id'] ?? 'empty') . ", ag_id=" . ($posts['dmk_ag_id'] ?? 'empty') . ", br_id=" . ($posts['dmk_br_id'] ?? 'empty'));
+        }
+    }
+}
+
+// 소속 정보 필수값 검증 (회원은 반드시 지점 소속이어야 함)
+if (empty($posts['dmk_br_id'])) {
     alert('소속 정보는 필수입니다. 총판, 대리점, 지점 중 하나를 선택해주세요.');
 }
 
