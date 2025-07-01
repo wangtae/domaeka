@@ -281,14 +281,14 @@ else {
             DMK_OWNER_TYPE_BRANCH => '지점',
         ];
 
-        $selected_owner_type = $ca['dmk_ca_owner_type'] ?: ($is_super_admin ? DMK_OWNER_TYPE_DISTRIBUTOR : '');
-        $selected_owner_id = $ca['dmk_ca_owner_id'] ?: '';
+        $selected_owner_type = ($is_super_admin ? DMK_OWNER_TYPE_DISTRIBUTOR : '');
+        $selected_owner_id = '';
 
         // 기본값 설정 (새로운 분류 추가 시)
         if ($w == "") {
             $owner_info = dmk_get_category_owner_info();
-            $selected_owner_type = $owner_info['owner_type'];
-            $selected_owner_id = $owner_info['owner_id'];
+            $selected_owner_type = isset($owner_info['owner_type']) ? $owner_info['owner_type'] : '';
+            $selected_owner_id = isset($owner_info['owner_id']) ? $owner_info['owner_id'] : '';
         }
 
         // 선택 가능한 계층 필터링

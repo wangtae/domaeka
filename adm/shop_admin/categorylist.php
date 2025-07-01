@@ -409,7 +409,9 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <div class="btn_fixed_top">
     <input type="submit" value="일괄수정" class="btn_02 btn">
 
-    <?php if ($is_admin == 'super') {
+    <?php 
+    // 본사 관리자 또는 DMK 권한이 있는 관리자에게 분류 추가 버튼 표시
+    if ($is_admin == 'super' || ($dmk_auth && dmk_is_menu_allowed('400200', dmk_get_current_user_type()))) {
         $add_url = './categoryform.php';
         if ($dmk_auth['is_super'] && ($sdt_id || $sag_id || $sbr_id)) {
             $add_url .= '?sdt_id=' . urlencode($sdt_id) . '&sag_id=' . urlencode($sag_id) . '&sbr_id=' . urlencode($sbr_id);
