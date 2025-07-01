@@ -2,6 +2,7 @@
 $sub_menu = "190600";
 require_once '../../../adm/_common.php';
 include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.log.lib.php');
 
 check_admin_token();
 
@@ -61,22 +62,27 @@ if ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH && $w == '') {
 // 입력값 검증
 if (!$mb_id) {
     alert('아이디를 입력하세요.');
+    exit;
 }
 
 if (!$mb_name) {
     alert('이름을 입력하세요.');
+    exit;
 }
 
 if (!$mb_nick) {
     alert('닉네임을 입력하세요.');
+    exit;
 }
 
 if (!$mb_email) {
     alert('이메일을 입력하세요.');
+    exit;
 }
 
 if ($w == '' && !$dmk_mb_type) { // 신규 등록일 때만 관리자 유형 검사
     alert('관리자 유형을 선택하세요.');
+    exit;
 }
 
 // 체인 선택박스의 소속 기관 정보에 따른 관리자 유형 자동 결정 (신규 등록 시에만)
@@ -95,6 +101,7 @@ if ($w == '' && !$dmk_mb_type) {
         $mb_level = DMK_MB_LEVEL_DISTRIBUTOR;
     } else {
         alert('소속 기관을 선택하세요.');
+        exit;
     }
 }
 
@@ -112,6 +119,7 @@ switch ($dmk_mb_type) {
         break;
     default:
         alert('올바른 관리자 유형을 선택하세요.');
+        exit;
     }
 }
 
@@ -137,6 +145,7 @@ if ($dmk_auth['is_super']) {
 
 if (!$can_create_level) {
     alert('해당 레벨의 관리자를 생성할 권한이 없습니다.');
+    exit;
     }
 }
 
@@ -146,6 +155,7 @@ if ($w == '') {
     // 비밀번호 검증
     if (!$mb_password) {
         alert('비밀번호를 입력하세요.');
+        exit;
     }
     
     // 비밀번호 유효성 검증
@@ -160,6 +170,7 @@ if ($w == '') {
     $row = sql_fetch($sql);
     if ($row['cnt']) {
         alert('이미 사용중인 아이디입니다.');
+        exit;
     }
     
     // 닉네임 중복 체크
@@ -167,6 +178,7 @@ if ($w == '') {
     $row = sql_fetch($sql);
     if ($row['cnt']) {
         alert('이미 사용중인 닉네임입니다.');
+        exit;
     }
     
     // 이메일 중복 체크
@@ -174,6 +186,7 @@ if ($w == '') {
     $row = sql_fetch($sql);
     if ($row['cnt']) {
         alert('이미 사용중인 이메일입니다.');
+        exit;
     }
     
     // 비밀번호 암호화
