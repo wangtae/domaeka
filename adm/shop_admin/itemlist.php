@@ -46,29 +46,17 @@ for ($i=0; $row=sql_fetch_array($result); $i++)
 $where = " and ";
 $sql_search = "";
 
-// 계층별 상품 필터링 추가 <i class="fa fa-sitemap dmk-new-icon" title="NEW"></i>
+// 계층별 상품 필터링 추가 (새로운 DMK 필드 구조 사용)
 if ($filter_dt_id) {
-    $sql_search .= " $where a.dmk_owner_id IN (
-        SELECT DISTINCT CONCAT('distributor_', dt_id) FROM dmk_distributor WHERE dt_id = '".sql_escape_string($filter_dt_id)."'
-        UNION
-        SELECT DISTINCT CONCAT('agency_', ag_id) FROM dmk_agency WHERE dt_id = '".sql_escape_string($filter_dt_id)."'
-        UNION  
-        SELECT DISTINCT CONCAT('branch_', br_id) FROM dmk_branch b 
-        JOIN dmk_agency a ON b.ag_id = a.ag_id 
-        WHERE a.dt_id = '".sql_escape_string($filter_dt_id)."'
-    ) ";
+    $sql_search .= " $where (a.dmk_dt_id = '".sql_escape_string($filter_dt_id)."') ";
     $where = " and ";
 }
 if ($filter_ag_id) {
-    $sql_search .= " $where a.dmk_owner_id IN (
-        SELECT DISTINCT CONCAT('agency_', ag_id) FROM dmk_agency WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
-        UNION
-        SELECT DISTINCT CONCAT('branch_', br_id) FROM dmk_branch WHERE ag_id = '".sql_escape_string($filter_ag_id)."'
-    ) ";
+    $sql_search .= " $where (a.dmk_ag_id = '".sql_escape_string($filter_ag_id)."') ";
     $where = " and ";
 }
 if ($filter_br_id) {
-    $sql_search .= " $where a.dmk_owner_id = 'branch_".sql_escape_string($filter_br_id)."' ";
+    $sql_search .= " $where (a.dmk_br_id = '".sql_escape_string($filter_br_id)."') ";
     $where = " and ";
 }
 
@@ -264,38 +252,43 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         </td>
         <td rowspan="3" class="td_hierarchy">
             <?php
-            // 계층 정보 표시
+            // 계층 정보 표시 (새로운 DMK 필드 구조 사용)
             $hierarchy_info = '';
             $hierarchy_name = '';
+            $hierarchy_id = '';
             
-            switch($row['dmk_it_owner_type']) {
-                case DMK_OWNER_TYPE_DISTRIBUTOR:
-                    $hierarchy_info = '총판';
-                    $sql = "SELECT mb_name FROM {$g5['member_table']} WHERE mb_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
-                    $owner_row = sql_fetch($sql);
-                    $hierarchy_name = $owner_row ? $owner_row['mb_name'] : '';
-                    break;
-                case DMK_OWNER_TYPE_AGENCY:
-                    $hierarchy_info = '대리점';
-                    $sql = "SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
-                    $owner_row = sql_fetch($sql);
-                    $hierarchy_name = $owner_row ? $owner_row['ag_name'] : '';
-                    break;
-                case DMK_OWNER_TYPE_BRANCH:
-                    $hierarchy_info = '지점';
-                    $sql = "SELECT br_name FROM dmk_branch WHERE br_id = '" . sql_escape_string($row['dmk_it_owner_id']) . "'";
-                    $owner_row = sql_fetch($sql);
-                    $hierarchy_name = $owner_row ? $owner_row['br_name'] : '';
-                    break;
-                default:
-                    $hierarchy_info = '본사';
-                    $hierarchy_name = '최고관리자';
+            if ($row['dmk_br_id']) {
+                // 지점 상품
+                $hierarchy_info = '지점';
+                $sql = "SELECT br_name FROM dmk_branch WHERE br_id = '" . sql_escape_string($row['dmk_br_id']) . "'";
+                $owner_row = sql_fetch($sql);
+                $hierarchy_name = $owner_row ? $owner_row['br_name'] : '';
+                $hierarchy_id = $row['dmk_br_id'];
+            } elseif ($row['dmk_ag_id']) {
+                // 대리점 상품
+                $hierarchy_info = '대리점';
+                $sql = "SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($row['dmk_ag_id']) . "'";
+                $owner_row = sql_fetch($sql);
+                $hierarchy_name = $owner_row ? $owner_row['ag_name'] : '';
+                $hierarchy_id = $row['dmk_ag_id'];
+            } elseif ($row['dmk_dt_id']) {
+                // 총판 상품
+                $hierarchy_info = '총판';
+                $sql = "SELECT dt_name FROM dmk_distributor WHERE dt_id = '" . sql_escape_string($row['dmk_dt_id']) . "'";
+                $owner_row = sql_fetch($sql);
+                $hierarchy_name = $owner_row ? $owner_row['dt_name'] : '';
+                $hierarchy_id = $row['dmk_dt_id'];
+            } else {
+                // 본사 상품
+                $hierarchy_info = '본사';
+                $hierarchy_name = '최고관리자';
+                $hierarchy_id = 'super';
             }
             ?>
             <div style="text-align:center; font-size:11px;">
                 <strong style="color:#007bff;"><?php echo $hierarchy_info; ?></strong><br>
                 <span style="color:#666;"><?php echo $hierarchy_name; ?></span><br>
-                <span style="color:#999; font-size:10px;">(<?php echo $row['dmk_it_owner_id']; ?>)</span>
+                <span style="color:#999; font-size:10px;">(<?php echo $hierarchy_id; ?>)</span>
             </div>
         </td>
         <td colspan="5" class="td_sort">

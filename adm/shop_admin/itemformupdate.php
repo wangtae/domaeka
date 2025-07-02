@@ -53,7 +53,7 @@ $ca_id3 = isset($_POST['ca_id3']) ? preg_replace('/[^0-9a-z]/i', '', $_POST['ca_
 
 if ($w == 'u') {
     // 도매까 권한 확인
-    if (!dmk_can_modify_item($it_id)) {
+    if (!$dmk_auth['is_super'] && !dmk_can_modify_item($it_id)) {
         alert("수정 할 권한이 없는 상품입니다.");
     }
 }
@@ -73,56 +73,25 @@ if ($is_admin != 'super') {     // 최고관리자가 아니면 체크
 
 $it_img1 = $it_img2 = $it_img3 = $it_img4 = $it_img5 = $it_img6 = $it_img7 = $it_img8 = $it_img9 = $it_img10 = '';
 
-// 계층 선택 데이터 처리 (chained select에서 전달)
-$sdt_id = isset($_POST['sdt_id']) ? clean_xss_tags($_POST['sdt_id'], 1, 1) : '';
-$sag_id = isset($_POST['sag_id']) ? clean_xss_tags($_POST['sag_id'], 1, 1) : '';
-$sbr_id = isset($_POST['sbr_id']) ? clean_xss_tags($_POST['sbr_id'], 1, 1) : '';
+// DMK 계층 필드 직접 처리
+$dmk_dt_id = isset($_POST['dmk_dt_id']) ? clean_xss_tags($_POST['dmk_dt_id'], 1, 1) : '';
+$dmk_ag_id = isset($_POST['dmk_ag_id']) ? clean_xss_tags($_POST['dmk_ag_id'], 1, 1) : '';
+$dmk_br_id = isset($_POST['dmk_br_id']) ? clean_xss_tags($_POST['dmk_br_id'], 1, 1) : '';
 
-// 계층 선택에 따른 dmk 필드 설정
-$dmk_dt_id = '';
-$dmk_ag_id = '';
-$dmk_br_id = '';
-
-if ($sbr_id) {
-    // 지점까지 선택된 경우 - 지점 상품
-    $br_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sbr_id)."'");
-    if ($br_info) {
-        $dmk_dt_id = $br_info['dmk_dt_id'];
-        $dmk_ag_id = $br_info['dmk_ag_id'];
-        $dmk_br_id = $br_info['dmk_br_id'];
-    }
-} elseif ($sag_id) {
-    // 대리점까지 선택된 경우 - 대리점 상품
-    $ag_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sag_id)."'");
-    if ($ag_info) {
-        $dmk_dt_id = $ag_info['dmk_dt_id'];
-        $dmk_ag_id = $ag_info['dmk_ag_id'];
-    }
-} elseif ($sdt_id) {
-    // 총판만 선택된 경우 - 총판 상품
-    $dt_info = sql_fetch("SELECT dmk_dt_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sdt_id)."'");
-    if ($dt_info) {
-        $dmk_dt_id = $dt_info['dmk_dt_id'];
-    }
-} else {
-    // 수정 시 기존 값 유지 또는 현재 관리자 정보로 설정
-    $dmk_dt_id = isset($_POST['dmk_dt_id']) ? clean_xss_tags($_POST['dmk_dt_id'], 1, 1) : '';
-    $dmk_ag_id = isset($_POST['dmk_ag_id']) ? clean_xss_tags($_POST['dmk_ag_id'], 1, 1) : '';
-    $dmk_br_id = isset($_POST['dmk_br_id']) ? clean_xss_tags($_POST['dmk_br_id'], 1, 1) : '';
-    
-    // 값이 없고 신규 등록이면 현재 관리자 정보로 설정
-    if (empty($dmk_dt_id) && empty($dmk_ag_id) && empty($dmk_br_id) && $w == '') {
-        if (!$dmk_auth['is_super']) {
-            if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-                $dmk_dt_id = $dmk_auth['dt_id'];
-            } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
-                $dmk_dt_id = $dmk_auth['dt_id'];
-                $dmk_ag_id = $dmk_auth['ag_id'];
-            } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
-                $dmk_dt_id = $dmk_auth['dt_id'];
-                $dmk_ag_id = $dmk_auth['ag_id'];
-                $dmk_br_id = $dmk_auth['br_id'];
-            }
+// 신규 등록이고 값이 없으면 현재 관리자 정보로 설정
+if ($w == '' && empty($dmk_dt_id) && empty($dmk_ag_id) && empty($dmk_br_id)) {
+    if (!$dmk_auth['is_super']) {
+        // 현재 관리자의 계층 정보로 자동 설정
+        global $member;
+        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+            $dmk_dt_id = $dmk_auth['dt_id'] ?: $member['dmk_dt_id'];
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+            $dmk_dt_id = $dmk_auth['dt_id'] ?: $member['dmk_dt_id'];
+            $dmk_ag_id = $dmk_auth['ag_id'] ?: $member['dmk_ag_id'];
+        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+            $dmk_dt_id = $dmk_auth['dt_id'] ?: $member['dmk_dt_id'];
+            $dmk_ag_id = $dmk_auth['ag_id'] ?: $member['dmk_ag_id'];
+            $dmk_br_id = $dmk_auth['br_id'] ?: $member['dmk_br_id'];
         }
     }
 }
@@ -148,7 +117,7 @@ if ($dmk_it_valid_end_date) {
     $dmk_it_valid_end_date = '0000-00-00';
 }
 
-// DMK 상품 유형
+// DMK 상품 유형 - sanitize 처리 후 다시 설정
 $dmk_it_type = isset($_POST['dmk_it_type']) ? (int)$_POST['dmk_it_type'] : 0;
 // 파일정보
 if($w == "u") {
@@ -439,6 +408,45 @@ $check_sanitize_keys = array(
 'it_type3',             // 상품유형(신상품)
 'it_type4',             // 상품유형(인기)
 'it_type5',             // 상품유형(할인)
+// DMK 추가 필드들
+'it_skin',              // 상품 스킨
+'it_mobile_skin',       // 모바일 스킨
+'it_buy_max_qty',       // 최대구매수량
+'it_sc_qty',            // 배송비 수량
+'it_head_html',         // 상품 상단 HTML
+'it_tail_html',         // 상품 하단 HTML
+'it_mobile_head_html',  // 모바일 상단 HTML
+'it_mobile_tail_html',  // 모바일 하단 HTML
+'it_mobile_explan',     // 모바일 설명
+'it_info_gubun',        // 상품정보고시 구분
+'it_shop_memo',         // 쇼핑몰 메모
+'it_1_subj',            // 추가정보1 제목
+'it_2_subj',            // 추가정보2 제목
+'it_3_subj',            // 추가정보3 제목
+'it_4_subj',            // 추가정보4 제목
+'it_5_subj',            // 추가정보5 제목
+'it_6_subj',            // 추가정보6 제목
+'it_7_subj',            // 추가정보7 제목
+'it_8_subj',            // 추가정보8 제목
+'it_9_subj',            // 추가정보9 제목
+'it_10_subj',           // 추가정보10 제목
+'it_1',                 // 추가정보1
+'it_2',                 // 추가정보2
+'it_3',                 // 추가정보3
+'it_4',                 // 추가정보4
+'it_5',                 // 추가정보5
+'it_6',                 // 추가정보6
+'it_7',                 // 추가정료7
+'it_8',                 // 추가정보이8
+'it_9',                 // 추가정보9
+'it_10',                // 추가정보10
+// DMK 필드 추가
+'dmk_dt_id',            // 총판 ID
+'dmk_ag_id',            // 대리점 ID
+'dmk_br_id',            // 지점 ID
+'dmk_it_valid_start_date', // 상품 유효 시작일
+'dmk_it_valid_end_date',   // 상품 유효 종료일
+'dmk_it_type',          // 상품 유형
 );
 
 foreach( $check_sanitize_keys as $key ){
@@ -503,6 +511,12 @@ $sql_common = " ca_id               = '$ca_id',
                 it_info_value       = '$it_info_value',
                 it_shop_memo        = '$it_shop_memo',
                 ec_mall_pid         = '$ec_mall_pid',
+                dmk_dt_id           = '$dmk_dt_id',
+                dmk_ag_id           = '$dmk_ag_id',
+                dmk_br_id           = '$dmk_br_id',
+                dmk_it_valid_start_date = '$dmk_it_valid_start_date',
+                dmk_it_valid_end_date = '$dmk_it_valid_end_date',
+                dmk_it_type         = '$dmk_it_type',
                 it_img1             = '$it_img1',
                 it_img2             = '$it_img2',
                 it_img3             = '$it_img3',
@@ -532,13 +546,7 @@ $sql_common = " ca_id               = '$ca_id',
                 it_7                = '$it_7',
                 it_8                = '$it_8',
                 it_9                = '$it_9',
-                it_10               = '$it_10',
-                dmk_dt_id           = '$dmk_dt_id',
-                dmk_ag_id           = '$dmk_ag_id',
-                dmk_br_id           = '$dmk_br_id',
-                dmk_it_type         = '$dmk_it_type',
-                dmk_it_valid_start_date = '$dmk_it_valid_start_date',
-                dmk_it_valid_end_date = '$dmk_it_valid_end_date'
+                it_10               = '$it_10'
                 ";
 
 if ($w == "")
@@ -568,6 +576,8 @@ else if ($w == "u")
               where it_id = '$it_id' ";
     sql_query($sql);
 }
+
+
 /*
 else if ($w == "d")
 {

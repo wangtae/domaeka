@@ -437,9 +437,9 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                             'sbr_id' => $sbr_id ?: $selected_br_id
                         ],
                         'field_names' => [
-                            'distributor' => 'sdt_id',
-                            'agency' => 'sag_id',
-                            'branch' => 'sbr_id'
+                            'distributor' => 'dmk_dt_id',
+                            'agency' => 'dmk_ag_id',
+                            'branch' => 'dmk_br_id'
                         ],
                         'labels' => [
                             'distributor' => '총판',
@@ -473,8 +473,8 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                             'sbr_id' => $sbr_id ?: $selected_br_id
                         ],
                         'field_names' => [
-                            'agency' => 'sag_id',
-                            'branch' => 'sbr_id'
+                            'agency' => 'dmk_ag_id',
+                            'branch' => 'dmk_br_id'
                         ],
                         'labels' => [
                             'agency' => '대리점',
@@ -521,10 +521,44 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                         }
                         ?>
                     </div>
-                    <!-- 수정 시에는 기존 값을 hidden으로 유지 -->
-                    <input type="hidden" name="dmk_dt_id" value="<?php echo $it['dmk_dt_id']; ?>">
-                    <input type="hidden" name="dmk_ag_id" value="<?php echo $it['dmk_ag_id']; ?>">
-                    <input type="hidden" name="dmk_br_id" value="<?php echo $it['dmk_br_id']; ?>">
+                    <!-- 수정 시에도 계층 선택 가능 -->
+                    <?php if ($dmk_auth['is_super']) { ?>
+                        <?php 
+                        echo dmk_render_chain_select([
+                            'page_type' => DMK_CHAIN_SELECT_FULL,
+                            'page_mode' => DMK_CHAIN_MODE_FORM_EDIT,
+                            'current_values' => [
+                                'dmk_dt_id' => $it['dmk_dt_id'],
+                                'dmk_ag_id' => $it['dmk_ag_id'],
+                                'dmk_br_id' => $it['dmk_br_id']
+                            ],
+                            'field_names' => [
+                                'distributor' => 'dmk_dt_id',
+                                'agency' => 'dmk_ag_id',
+                                'branch' => 'dmk_br_id'
+                            ],
+                            'labels' => [
+                                'distributor' => '총판',
+                                'agency' => '대리점',
+                                'branch' => '지점'
+                            ],
+                            'placeholders' => [
+                                'distributor' => '총판을 선택하세요',
+                                'agency' => '대리점을 선택하세요',
+                                'branch' => '지점을 선택하세요'
+                            ],
+                            'form_id' => 'fitem',
+                            'auto_submit' => false,
+                            'show_labels' => false,
+                            'container_class' => 'dmk-owner-select'
+                        ]);
+                        ?>
+                    <?php } else { ?>
+                        <!-- 일반 관리자는 수정 불가 -->
+                        <input type="hidden" name="dmk_dt_id" value="<?php echo $it['dmk_dt_id']; ?>">
+                        <input type="hidden" name="dmk_ag_id" value="<?php echo $it['dmk_ag_id']; ?>">
+                        <input type="hidden" name="dmk_br_id" value="<?php echo $it['dmk_br_id']; ?>">
+                    <?php } ?>
                 <?php } ?>
             </td>
         </tr>
@@ -695,11 +729,7 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                 <label for="chk_all_it_order">전체적용</label>
             </td>
         </tr>
-        <tr>
-            <th scope="row" colspan="3" style="background:#fff3cd; text-align:center; font-weight:bold; color:#856404; border-top:2px solid #ffeaa7;">
-                <i class="fa fa-tag"></i> 도매까 상품 설정
-            </th>
-        </tr>
+
         <tr>
             <th scope="row">상품 유형</th>
             <td>
@@ -709,20 +739,6 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                     <option value="1" <?php echo get_selected($it['dmk_it_type'], '1'); ?>>일별 공구</option>
                     <option value="2" <?php echo get_selected($it['dmk_it_type'], '2'); ?>>예약 공구</option>
                 </select>
-            </td>
-            <td class="td_grpset"></td>
-        </tr>
-        <tr>
-            <th scope="row">유효 기간</th>
-            <td>
-                <?php echo help("상품의 판매 유효 기간을 설정하세요. 기간을 설정하지 않으면 무제한으로 판매됩니다."); ?>
-                <label for="dmk_it_valid_start_date">시작일:</label>
-                <input type="text" name="dmk_it_valid_start_date" value="<?php echo $it['dmk_it_valid_start_date']; ?>" id="dmk_it_valid_start_date" class="frm_input datepicker" size="12" maxlength="10" placeholder="YYYY-MM-DD">
-                
-                <label for="dmk_it_valid_end_date" style="margin-left:20px;">종료일:</label>
-                <input type="text" name="dmk_it_valid_end_date" value="<?php echo $it['dmk_it_valid_end_date']; ?>" id="dmk_it_valid_end_date" class="frm_input datepicker" size="12" maxlength="10" placeholder="YYYY-MM-DD">
-                
-                <button type="button" onclick="clearValidDates()" class="btn_frmline" style="margin-left:10px;">기간 초기화</button>
             </td>
             <td class="td_grpset"></td>
         </tr>
@@ -765,7 +781,7 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
             <td>
                 <?php echo help("상품의 유효 시작일을 설정합니다."); ?>
                 <input type="text" name="dmk_it_valid_start_date" value="<?php echo ($it['dmk_it_valid_start_date'] !== '0000-00-00 00:00:00') ? substr($it['dmk_it_valid_start_date'], 0, 10) : ''; ?>" id="dmk_it_valid_start_date" class="frm_input calendar-input" size="10" maxlength="10">
-                <button type="button" class="frm_input_button" id="dmk_it_valid_start_date_btn"><i class="fa fa-calendar-alt"></i></button>
+                <button type="button" class="frm_input_button" id="dmk_it_valid_start_date_btn" style="padding:1px 2px"><i class="fa fa-calendar"></i></button>
             </td>
             <td class="td_grpset"></td>
         </tr>
@@ -774,29 +790,12 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
             <td>
                 <?php echo help("상품의 유효 종료일을 설정합니다."); ?>
                 <input type="text" name="dmk_it_valid_end_date" value="<?php echo ($it['dmk_it_valid_end_date'] !== '0000-00-00 00:00:00') ? substr($it['dmk_it_valid_end_date'], 0, 10) : ''; ?>" id="dmk_it_valid_end_date" class="frm_input calendar-input" size="10" maxlength="10">
-                <button type="button" class="frm_input_button" id="dmk_it_valid_end_date_btn"><i class="fa fa-calendar-alt"></i></button>
+                <button type="button" class="frm_input_button" id="dmk_it_valid_end_date_btn" style="padding:1px 2px"><i class="fa fa-calendar"></i></button>
             </td>
             <td class="td_grpset"></td>
         </tr>
         <script>
         jQuery(function($){
-            $("#dmk_it_valid_start_date").datepicker({
-                changeMonth: true,
-                changeYear: true,
-                dateFormat: "yy-mm-dd",
-                showButtonPanel: true,
-                yearRange: "c-99:c+99"
-            });
-            $("#dmk_it_valid_start_date_btn").on("click", function(){ $("#dmk_it_valid_start_date").datepicker("show"); });
-
-            $("#dmk_it_valid_end_date").datepicker({
-                changeMonth: true,
-                changeYear: true,
-                dateFormat: "yy-mm-dd",
-                showButtonPanel: true,
-                yearRange: "c-99:c+99"
-            });
-            $("#dmk_it_valid_end_date_btn").on("click", function(){ $("#dmk_it_valid_end_date").datepicker("show"); });
 
             var $dtSelect = $('#dt_id');
             var $agSelect = $('#ag_id');
@@ -2596,8 +2595,31 @@ $(document).ready(function() {
     }
 });
 
-// jQuery UI Datepicker 초기화
+// jQuery UI 로드 확인 및 Datepicker 초기화
 $(document).ready(function() {
+    // jQuery UI가 로드되어 있는지 확인
+    if (typeof $.datepicker === 'undefined') {
+        console.log('jQuery UI Datepicker가 로드되지 않았습니다. CDN에서 로드합니다.');
+        
+        // jQuery UI CSS 로드
+        $('<link>').attr({
+            rel: 'stylesheet',
+            type: 'text/css',
+            href: 'https://code.jquery.com/ui/1.12.1/themes/ui-lightness/jquery-ui.css'
+        }).appendTo('head');
+        
+        // jQuery UI JS 로드
+        $.getScript('https://code.jquery.com/ui/1.12.1/jquery-ui.min.js', function() {
+            console.log('jQuery UI가 성공적으로 로드되었습니다.');
+            initializeDatepickers();
+        });
+    } else {
+        console.log('jQuery UI Datepicker가 이미 로드되어 있습니다.');
+        initializeDatepickers();
+    }
+});
+
+function initializeDatepickers() {
     // 한국어 설정
     $.datepicker.setDefaults({
         closeText: '닫기',
@@ -2643,7 +2665,13 @@ $(document).ready(function() {
     if (endDate) {
         $('#dmk_it_valid_start_date').datepicker('option', 'maxDate', endDate);
     }
-});
+    
+    // 유효일자 버튼 클릭 이벤트 핸들러
+    $('#dmk_it_valid_start_date_btn, #dmk_it_valid_end_date_btn').click(function() {
+        var targetInputId = $(this).attr('id').replace('_btn', '');
+        $('#' + targetInputId).datepicker('show');
+    });
+}
 </script>
 
 <?php
