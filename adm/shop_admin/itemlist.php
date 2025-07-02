@@ -82,7 +82,7 @@ $sql_common .= $sql_search;
 // 테이블의 전체 레코드수만 얻음
 $sql = " select count(*) as cnt " . $sql_common;
 $row = sql_fetch($sql);
-$total_count = $row['cnt'];
+$total_count = $row ? (int)$row['cnt'] : 0;
 
 $rows = $config['cf_page_rows'];
 $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
@@ -208,13 +208,13 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <label for="chkall" class="sound_only">상품 전체</label>
             <input type="checkbox" name="chkall" value="1" id="chkall" onclick="check_all(this.form)">
         </th>
-        <th scope="col" rowspan="3"><?php echo subject_sort_link('it_id', 'sca='.$sca); ?>상품코드</a></th>
-        <th scope="col" rowspan="3">계층 정보</th>
+        <th scope="col" rowspan="3"><?php echo subject_sort_link('it_id', 'sca='.$sca); ?>상품코드</a></th>        
         <th scope="col" colspan="5">분류</th>
         <th scope="col" rowspan="3"><?php echo subject_sort_link('it_order', 'sca='.$sca); ?>순서</a></th>
         <th scope="col" rowspan="3"><?php echo subject_sort_link('it_use', 'sca='.$sca, 1); ?>판매</a></th>
         <th scope="col" rowspan="3"><?php echo subject_sort_link('it_soldout', 'sca='.$sca, 1); ?>품절</a></th>
         <th scope="col" rowspan="3"><?php echo subject_sort_link('it_hit', 'sca='.$sca, 1); ?>조회</a></th>
+        <th scope="col" rowspan="3">소속</th>
         <th scope="col" rowspan="3">관리</th>
     </tr>
     <tr>
@@ -250,6 +250,34 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <input type="hidden" name="it_id[<?php echo $i; ?>]" value="<?php echo $row['it_id']; ?>">
             <?php echo $row['it_id']; ?>
         </td>
+        
+        <td colspan="5" class="td_sort">
+            <label for="ca_id_<?php echo $i; ?>" class="sound_only"><?php echo get_text($row['it_name']); ?> 기본분류</label>
+            <select name="ca_id[<?php echo $i; ?>]" id="ca_id_<?php echo $i; ?>">
+                <?php echo conv_selected_option($ca_list, $row['ca_id']); ?>
+            </select>
+            <label for="ca_id2_<?php echo $i; ?>" class="sound_only"><?php echo get_text($row['it_name']); ?> 2차분류</label>
+            <select name="ca_id2[<?php echo $i; ?>]" id="ca_id2_<?php echo $i; ?>">
+                <?php echo conv_selected_option($ca_list, $row['ca_id2']); ?>
+            </select>
+            <label for="ca_id3_<?php echo $i; ?>" class="sound_only"><?php echo get_text($row['it_name']); ?> 3차분류</label>
+            <select name="ca_id3[<?php echo $i; ?>]" id="ca_id3_<?php echo $i; ?>">
+                <?php echo conv_selected_option($ca_list, $row['ca_id3']); ?>
+            </select>
+        </td>
+        <td rowspan="3" class="td_num">
+            <label for="order_<?php echo $i; ?>" class="sound_only">순서</label>
+            <input type="text" name="it_order[<?php echo $i; ?>]" value="<?php echo $row['it_order']; ?>" id="order_<?php echo $i; ?>" class="tbl_input" size="3">
+        </td>
+        <td rowspan="3">
+            <label for="use_<?php echo $i; ?>" class="sound_only">판매여부</label>
+            <input type="checkbox" name="it_use[<?php echo $i; ?>]" <?php echo ($row['it_use'] ? 'checked' : ''); ?> value="1" id="use_<?php echo $i; ?>">
+        </td>
+        <td rowspan="3">
+            <label for="soldout_<?php echo $i; ?>" class="sound_only">품절</label>
+            <input type="checkbox" name="it_soldout[<?php echo $i; ?>]" <?php echo ($row['it_soldout'] ? 'checked' : ''); ?> value="1" id="soldout_<?php echo $i; ?>">
+        </td>
+        <td rowspan="3" class="td_num"><?php echo $row['it_hit']; ?></td>
         <td rowspan="3" class="td_hierarchy">
             <?php
             // 계층 정보 표시 (새로운 DMK 필드 구조 사용)
@@ -291,33 +319,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
                 <span style="color:#999; font-size:10px;">(<?php echo $hierarchy_id; ?>)</span>
             </div>
         </td>
-        <td colspan="5" class="td_sort">
-            <label for="ca_id_<?php echo $i; ?>" class="sound_only"><?php echo get_text($row['it_name']); ?> 기본분류</label>
-            <select name="ca_id[<?php echo $i; ?>]" id="ca_id_<?php echo $i; ?>">
-                <?php echo conv_selected_option($ca_list, $row['ca_id']); ?>
-            </select>
-            <label for="ca_id2_<?php echo $i; ?>" class="sound_only"><?php echo get_text($row['it_name']); ?> 2차분류</label>
-            <select name="ca_id2[<?php echo $i; ?>]" id="ca_id2_<?php echo $i; ?>">
-                <?php echo conv_selected_option($ca_list, $row['ca_id2']); ?>
-            </select>
-            <label for="ca_id3_<?php echo $i; ?>" class="sound_only"><?php echo get_text($row['it_name']); ?> 3차분류</label>
-            <select name="ca_id3[<?php echo $i; ?>]" id="ca_id3_<?php echo $i; ?>">
-                <?php echo conv_selected_option($ca_list, $row['ca_id3']); ?>
-            </select>
-        </td>
-        <td rowspan="3" class="td_num">
-            <label for="order_<?php echo $i; ?>" class="sound_only">순서</label>
-            <input type="text" name="it_order[<?php echo $i; ?>]" value="<?php echo $row['it_order']; ?>" id="order_<?php echo $i; ?>" class="tbl_input" size="3">
-        </td>
-        <td rowspan="3">
-            <label for="use_<?php echo $i; ?>" class="sound_only">판매여부</label>
-            <input type="checkbox" name="it_use[<?php echo $i; ?>]" <?php echo ($row['it_use'] ? 'checked' : ''); ?> value="1" id="use_<?php echo $i; ?>">
-        </td>
-        <td rowspan="3">
-            <label for="soldout_<?php echo $i; ?>" class="sound_only">품절</label>
-            <input type="checkbox" name="it_soldout[<?php echo $i; ?>]" <?php echo ($row['it_soldout'] ? 'checked' : ''); ?> value="1" id="soldout_<?php echo $i; ?>">
-        </td>
-        <td rowspan="3" class="td_num"><?php echo $row['it_hit']; ?></td>
         <td rowspan="3" class="td_mng td_mng_s">
             <a href="./itemform.php?w=u&amp;it_id=<?php echo $row['it_id']; ?>&amp;ca_id=<?php echo $row['ca_id']; ?>&amp;<?php echo $qstr; ?>" class="btn btn_03"><span class="sound_only"><?php echo htmlspecialchars2(cut_str($row['it_name'],250, "")); ?> </span>수정</a>
             <a href="./itemcopy.php?it_id=<?php echo $row['it_id']; ?>&amp;ca_id=<?php echo $row['ca_id']; ?>" class="itemcopy btn btn_02" target="_blank"><span class="sound_only"><?php echo htmlspecialchars2(cut_str($row['it_name'],250, "")); ?> </span>복사</a>
@@ -357,7 +358,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <?php
     }
     if ($i == 0)
-        echo '<tr><td colspan="12" class="empty_table">자료가 한건도 없습니다.</td></tr>';
+        echo '<tr><td colspan="13" class="empty_table">자료가 한건도 없습니다.</td></tr>';
     ?>
     </tbody>
     </table>

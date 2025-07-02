@@ -171,16 +171,25 @@ function dmk_get_item_where_condition() {
     
     switch ($auth['mb_level']) {
         case DMK_MB_LEVEL_AGENCY:
-            return " AND (dmk_it_owner_type = '" . DMK_OWNER_TYPE_DISTRIBUTOR . "' OR (dmk_it_owner_type = 'AGENCY' AND dmk_it_owner_id = '" . sql_escape_string($auth['ag_id']) . "'))";
+            // 대리점 관리자는 본사 상품, 소속 총판 상품, 자신의 상품, 소속 지점 상품 조회 가능
+            $condition = " AND (a.dmk_dt_id IS NULL OR a.dmk_dt_id = '' OR a.dmk_dt_id = '" . sql_escape_string($auth['dt_id']) . "'";
+            $condition .= " OR (a.dmk_ag_id = '" . sql_escape_string($auth['ag_id']) . "')";
+            // 소속 지점들의 상품도 조회 가능
+            $branch_ids = dmk_get_agency_branch_ids($auth['ag_id']);
+            if (!empty($branch_ids)) {
+                $condition .= " OR a.dmk_br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "')";
+            }
+            $condition .= ")";
+            return $condition;
             
         case DMK_MB_LEVEL_BRANCH:
-            // 지점은 총판, 소속 대리점, 자신의 상품만 조회 가능
-            $ag_id = dmk_get_branch_agency_id($auth['br_id']);
-            $condition = " AND (dmk_it_owner_type = '" . DMK_OWNER_TYPE_DISTRIBUTOR . "'";
-            if ($ag_id) {
-                $condition .= " OR (dmk_it_owner_type = 'AGENCY' AND dmk_it_owner_id = '" . sql_escape_string($ag_id) . "')";
+            // 지점 관리자는 본사, 소속 총판, 소속 대리점, 자신의 상품만 조회 가능
+            $condition = " AND (a.dmk_dt_id IS NULL OR a.dmk_dt_id = '' OR a.dmk_dt_id = '" . sql_escape_string($auth['dt_id']) . "'";
+            if ($auth['ag_id']) {
+                $condition .= " OR a.dmk_ag_id = '" . sql_escape_string($auth['ag_id']) . "'";
             }
-            $condition .= " OR (dmk_it_owner_type = 'BRANCH' AND dmk_it_owner_id = '" . sql_escape_string($auth['br_id']) . "'))";
+            $condition .= " OR a.dmk_br_id = '" . sql_escape_string($auth['br_id']) . "'";
+            $condition .= ")";
             return $condition;
             
         default:
@@ -1308,27 +1317,27 @@ function dmk_get_category_where_condition($dt_id = null, $ag_id = null, $br_id =
 
     // 1. 명시적 필터 (사용자 선택) 적용
     if ($br_id) { // 지점 ID가 명시적으로 선택된 경우
-        $conditions[] = " dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id = '" . sql_escape_string($br_id) . "'";
+        $conditions[] = " dmk_br_id = '" . sql_escape_string($br_id) . "'";
     } elseif ($ag_id) { // 대리점 ID가 명시적으로 선택된 경우 (지점 ID는 선택 안 됨)
         // 해당 대리점 소유 카테고리 또는 해당 대리점 산하 지점 소유 카테고리
         $agency_branches = dmk_get_agency_branch_ids($ag_id);
-        $agency_condition = "(dmk_ca_owner_type = '" . DMK_OWNER_TYPE_AGENCY . "' AND dmk_ca_owner_id = '" . sql_escape_string($ag_id) . "')";
+        $agency_condition = "dmk_ag_id = '" . sql_escape_string($ag_id) . "'";
         if (!empty($agency_branches)) {
-            $agency_condition .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $agency_branches)) . "'))";
+            $agency_condition .= " OR dmk_br_id IN ('" . implode("','", array_map('sql_escape_string', $agency_branches)) . "')";
         }
         $conditions[] = "($agency_condition)";
     } elseif ($dt_id) { // 총판 ID가 명시적으로 선택된 경우 (대리점, 지점 ID는 선택 안 됨)
         // 해당 총판 소유 카테고리 또는 해당 총판 산하 대리점/지점 소유 카테고리
-        $distributor_agencies = dmk_get_agencies($dt_id); // 이 함수는 dmk_dt_id를 받으므로 여기서 바로 사용 가능
-        $distributor_branches = dmk_get_branches_for_distributor($dt_id); // 특정 총판의 모든 지점 가져오기
+        $distributor_agencies = dmk_get_agencies($dt_id);
+        $distributor_branches = dmk_get_branches_for_distributor($dt_id);
 
-        $distributor_condition = "(dmk_ca_owner_type = '" . DMK_OWNER_TYPE_DISTRIBUTOR . "' AND dmk_ca_owner_id = '" . sql_escape_string($dt_id) . "')";
+        $distributor_condition = "dmk_dt_id = '" . sql_escape_string($dt_id) . "'";
         if (!empty($distributor_agencies)) {
             $agency_ids = array_column($distributor_agencies, 'ag_id');
-            $distributor_condition .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_AGENCY . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $agency_ids)) . "'))";
+            $distributor_condition .= " OR dmk_ag_id IN ('" . implode("','", array_map('sql_escape_string', $agency_ids)) . "')";
         }
         if (!empty($distributor_branches)) {
-            $distributor_condition .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $distributor_branches)) . "'))";
+            $distributor_condition .= " OR dmk_br_id IN ('" . implode("','", array_map('sql_escape_string', $distributor_branches)) . "')";
         }
         $conditions[] = "($distributor_condition)";
     }
@@ -1340,29 +1349,27 @@ function dmk_get_category_where_condition($dt_id = null, $ag_id = null, $br_id =
         } else {
             switch ($auth['mb_type']) {
                 case DMK_MB_TYPE_DISTRIBUTOR:
-                    // 총판 관리자는 자신 소유의 총판 카테고리 및 하위 계층(대리점, 지점)의 카테고리 조회 가능
-                    $hierarchy_filter = " (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_DISTRIBUTOR . "' AND dmk_ca_owner_id = '" . sql_escape_string($auth['mb_id']) . "') ";
-                    $all_agencies = dmk_get_agencies($auth['mb_id']); // 본인 총판의 대리점
-                    if (!empty($all_agencies)) {
-                        $agency_ids_under_dist = array_column($all_agencies, 'ag_id');
-                        $hierarchy_filter .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_AGENCY . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $agency_ids_under_dist)) . "'))";
-                    }
-                    $all_branches_under_dist = dmk_get_branches_for_distributor($auth['mb_id']); // 본인 총판의 모든 지점
-                    if (!empty($all_branches_under_dist)) {
-                        $hierarchy_filter .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $all_branches_under_dist)) . "'))";
-                    }
+                    // 총판 관리자는 본사 카테고리와 자신의 총판 카테고리 및 하위 계층 카테고리 조회 가능
+                    $hierarchy_filter = " (dmk_dt_id IS NULL OR dmk_dt_id = '' OR dmk_dt_id = '" . sql_escape_string($auth['dt_id']) . "') ";
                     break;
                 case DMK_MB_TYPE_AGENCY:
-                    // 대리점 관리자는 자신 소유의 대리점 카테고리, 그리고 자신 소속 지점의 카테고리 조회 가능
+                    // 대리점 관리자는 본사, 소속 총판, 자신의 대리점, 소속 지점 카테고리 조회 가능
+                    $hierarchy_filter = " (dmk_dt_id IS NULL OR dmk_dt_id = '' OR dmk_dt_id = '" . sql_escape_string($auth['dt_id']) . "'";
+                    $hierarchy_filter .= " OR dmk_ag_id = '" . sql_escape_string($auth['ag_id']) . "'";
+                    // 소속 지점들의 카테고리도 조회 가능
                     $branch_ids = dmk_get_agency_branch_ids($auth['ag_id']);
-                    $hierarchy_filter = " (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_AGENCY . "' AND dmk_ca_owner_id = '" . sql_escape_string($auth['ag_id']) . "')";
                     if (!empty($branch_ids)) {
-                        $hierarchy_filter .= " OR (dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "'))";
+                        $hierarchy_filter .= " OR dmk_br_id IN ('" . implode("','", array_map('sql_escape_string', $branch_ids)) . "')";
                     }
+                    $hierarchy_filter .= ")";
                     break;
                 case DMK_MB_TYPE_BRANCH:
-                    // 지점 관리자는 자신 소유의 지점 카테고리만 조회 가능
-                    $hierarchy_filter = "dmk_ca_owner_type = '" . DMK_OWNER_TYPE_BRANCH . "' AND dmk_ca_owner_id = '" . sql_escape_string($auth['br_id']) . "'";
+                    // 지점 관리자는 본사, 소속 총판, 소속 대리점, 자신의 지점 카테고리 조회 가능
+                    $hierarchy_filter = " (dmk_dt_id IS NULL OR dmk_dt_id = '' OR dmk_dt_id = '" . sql_escape_string($auth['dt_id']) . "'";
+                    if ($auth['ag_id']) {
+                        $hierarchy_filter .= " OR dmk_ag_id = '" . sql_escape_string($auth['ag_id']) . "'";
+                    }
+                    $hierarchy_filter .= " OR dmk_br_id = '" . sql_escape_string($auth['br_id']) . "')";
                     break;
                 default:
                     $hierarchy_filter = '1=0'; // 접근 차단
@@ -1520,4 +1527,38 @@ function dmk_authenticate_form_access($menu_code, $w = '', $target_id = '') {
 
     // 모든 검사를 통과하지 못하면 접근 차단
     alert('접근 권한이 없습니다.');
+}
+
+/**
+ * DMK Main 관리자가 허용된 메뉴에 접근 시, 최고 관리자 권한을 임시로 부여합니다.
+ * 일부 영카트 원본 파일들이 is_admin == 'super' 와 같은 직접적인 최고 관리자 확인 로직을
+ * 가지고 있어, 이를 우회하여 DMK 계층 구조에 맞는 권한을 부여하기 위함입니다.
+ *
+ * @param string $menu_code 현재 접근하려는 메뉴의 코드
+ */
+function dmk_override_super_admin_if_needed($menu_code) {
+    global $is_admin;
+
+    // 이미 최고 관리자인 경우 함수 종료
+    if ($is_admin == 'super') {
+        return;
+    }
+
+    $dmk_auth = dmk_get_admin_auth();
+
+    // DMK 관리자가 아니거나, main 관리자가 아닌 경우 함수 종료
+    if (!$dmk_auth || !isset($dmk_auth['admin_type']) || $dmk_auth['admin_type'] !== 'main') {
+        return;
+    }
+
+    // 현재 사용자의 계층 타입을 가져옴
+    if (!function_exists('dmk_get_current_user_type')) {
+        include_once(G5_PATH . '/dmk/dmk_global_settings.php');
+    }
+    $user_type = dmk_get_current_user_type();
+    
+    // dmk_global_settings.php 에 정의된 dmk_is_menu_allowed 함수를 사용하여 권한 확인
+    if (function_exists('dmk_is_menu_allowed') && dmk_is_menu_allowed($menu_code, $user_type)) {
+        $is_admin = 'super';
+    }
 }

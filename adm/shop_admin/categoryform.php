@@ -70,15 +70,22 @@ if ($w == "")
               where SUBSTRING(ca_id,1,$len) = '$ca_id' ";
     $row = sql_fetch($sql);
 
-    $subid = base_convert($row['max_subid'], 36, 10);
+    // null 값 체크 및 기본값 설정
+    $max_subid = $row['max_subid'] ?? '00';
+    if (empty($max_subid)) {
+        $max_subid = '00';
+    }
+    
+    $subid = base_convert($max_subid, 36, 10);
     $subid += 36;
     if ($subid >= 36 * 36)
     {
         //alert("분류를 더 이상 추가할 수 없습니다.");
         // 빈상태로
         $subid = "  ";
+    } else {
+        $subid = base_convert($subid, 10, 36);
     }
-    $subid = base_convert($subid, 10, 36);
     $subid = substr("00" . $subid, -2);
     $subid = $ca_id . $subid;
 
