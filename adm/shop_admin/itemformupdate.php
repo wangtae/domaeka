@@ -78,23 +78,25 @@ $dmk_dt_id = isset($_POST['dmk_dt_id']) ? clean_xss_tags($_POST['dmk_dt_id'], 1,
 $dmk_ag_id = isset($_POST['dmk_ag_id']) ? clean_xss_tags($_POST['dmk_ag_id'], 1, 1) : '';
 $dmk_br_id = isset($_POST['dmk_br_id']) ? clean_xss_tags($_POST['dmk_br_id'], 1, 1) : '';
 
-// 신규 등록이고 값이 없으면 현재 관리자 정보로 설정
-if ($w == '' && empty($dmk_dt_id) && empty($dmk_ag_id) && empty($dmk_br_id)) {
-    if (!$dmk_auth['is_super']) {
-        // 현재 관리자의 계층 정보로 자동 설정
-        global $member;
-        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-            $dmk_dt_id = $dmk_auth['dt_id'] ?: $member['dmk_dt_id'];
-        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
-            $dmk_dt_id = $dmk_auth['dt_id'] ?: $member['dmk_dt_id'];
-            $dmk_ag_id = $dmk_auth['ag_id'] ?: $member['dmk_ag_id'];
-        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
-            $dmk_dt_id = $dmk_auth['dt_id'] ?: $member['dmk_dt_id'];
-            $dmk_ag_id = $dmk_auth['ag_id'] ?: $member['dmk_ag_id'];
-            $dmk_br_id = $dmk_auth['br_id'] ?: $member['dmk_br_id'];
-        }
-    }
+// DMK 계층 정보 자동 설정 - 관리자의 계층 정보를 기반으로 상위 계층 ID도 자동 설정
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
+    // 총판: 자신의 ID만 설정
+    $dmk_dt_id = $dmk_auth['mb_id'];
+    $dmk_ag_id = $dmk_ag_id;
+    $dmk_br_id = $dmk_br_id;
+} elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
+    // 대리점: 총판 ID와 자신의 ID 설정
+    $dmk_dt_id = $dmk_auth['dt_id'];  
+    $dmk_ag_id = $dmk_auth['mb_id'];          
+    $dmk_br_id = $dmk_br_id;
+} elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
+    // 지점: 총판 ID, 대리점 ID, 자신의 ID 설정
+    $dmk_dt_id = $dmk_auth['dt_id'];
+    $dmk_ag_id = $dmk_auth['ag_id'];
+    $dmk_br_id = $dmk_auth['mb_id'];
 }
+
+
 
 // DMK 날짜 필드 처리
 $dmk_it_valid_start_date = isset($_POST['dmk_it_valid_start_date']) ? clean_xss_tags($_POST['dmk_it_valid_start_date'], 1, 1) : '';
@@ -440,10 +442,7 @@ $check_sanitize_keys = array(
 'it_8',                 // 추가정보이8
 'it_9',                 // 추가정보9
 'it_10',                // 추가정보10
-// DMK 필드 추가
-'dmk_dt_id',            // 총판 ID
-'dmk_ag_id',            // 대리점 ID
-'dmk_br_id',            // 지점 ID
+// DMK 필드 추가 (dmk_dt_id, dmk_ag_id, dmk_br_id는 별도 처리하므로 제외)
 'dmk_it_valid_start_date', // 상품 유효 시작일
 'dmk_it_valid_end_date',   // 상품 유효 종료일
 'dmk_it_type',          // 상품 유형
