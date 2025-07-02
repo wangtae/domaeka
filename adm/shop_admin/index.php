@@ -1,7 +1,21 @@
 <?php
 $sub_menu = '400010';
 include_once('./_common.php');
+
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+
+// 도매까 소유자 유형 상수 정의
+if (!defined('DMK_OWNER_TYPE_SUPER_ADMIN')) define('DMK_OWNER_TYPE_SUPER_ADMIN', 'super_admin');
+if (!defined('DMK_OWNER_TYPE_DISTRIBUTOR')) define('DMK_OWNER_TYPE_DISTRIBUTOR', 'distributor');
+if (!defined('DMK_OWNER_TYPE_AGENCY')) define('DMK_OWNER_TYPE_AGENCY', 'agency');
+if (!defined('DMK_OWNER_TYPE_BRANCH')) define('DMK_OWNER_TYPE_BRANCH', 'branch');
+
+dmk_auth_check_menu($auth, $sub_menu, 'r');
+
+// 도매까 관리자 권한 정보 조회
+$dmk_auth = dmk_get_admin_auth();
+
+
 
 $max_limit = 7; // 몇행 출력할 것인지?
 

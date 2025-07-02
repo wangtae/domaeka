@@ -176,9 +176,10 @@ $it = array(
 'it_tail_html'=>'',
 'it_mobile_head_html'=>'',
 'it_mobile_tail_html'=>'',
-// 도매까 상품 소유 정보 추가
-'dmk_it_owner_type' => '',
-'dmk_it_owner_id' => '',
+// 도매까 상품 소유 정보 추가 (새로운 필드 구조)
+'dmk_dt_id' => '',
+'dmk_ag_id' => '',
+'dmk_br_id' => '',
 // 도매까 상품 유형 추가
 'dmk_it_type' => '0',
 // 도매까 상품 유효 기간 추가
@@ -195,10 +196,8 @@ if ($w == "")
 {
     $html_title .= "입력";
 
-    // 도매까 상품 소유 정보 기본 설정
+    // 도매까 상품 소유 정보 기본 설정 (새로운 필드 구조 사용)
     $owner_info = dmk_get_item_owner_info();
-    $it['dmk_it_owner_type'] = $owner_info['owner_type'];
-    $it['dmk_it_owner_id'] = $owner_info['owner_id'];
     
     // 새로운 계층 필드 기본값 설정
     $it['dmk_dt_id'] = $owner_info['dmk_dt_id'] ?? '';
@@ -379,8 +378,10 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
             DMK_OWNER_TYPE_BRANCH => '지점',
         ];
 
-        $selected_owner_type = $it['dmk_it_owner_type'] ?: ($is_super_admin ? DMK_OWNER_TYPE_DISTRIBUTOR : '');
-        $selected_owner_id = $it['dmk_it_owner_id'] ?: '';
+        // 새로운 필드 구조를 기반으로 소유자 정보 계산
+        $owner_info = dmk_get_owner_info_from_fields($it);
+        $selected_owner_type = $owner_info['owner_type'] ?: ($is_super_admin ? DMK_OWNER_TYPE_DISTRIBUTOR : '');
+        $selected_owner_id = $owner_info['owner_id'] ?: '';
 
         // 기본값 설정 (새로운 상품 추가 시)
         if ($w == "") {
@@ -2644,53 +2645,8 @@ function clearValidDates() {
     alert('유효기간이 초기화되었습니다.');
 }
 
-// 상단 소유 계층 선택박스 동적 로딩 기능
-$(document).ready(function() {
-    // 상단 소유 유형 선택 시 소유 ID 목록 로드
-    $('#dmk_it_owner_type_top').change(function() {
-        var owner_type = $(this).val();
-        var $owner_id_select = $('#dmk_it_owner_id_top');
-        
-        // 소유 ID 선택박스 초기화
-        $owner_id_select.html('<option value="">선택하세요</option>');
-        
-        if (owner_type) {
-            var ajax_data = { owner_type: owner_type };
-            
-            $.ajax({
-                url: './ajax_get_dmk_owner_ids.php',
-                type: 'POST', 
-                data: ajax_data,
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        $.each(response.data, function(index, item) {
-                            $owner_id_select.append('<option value="' + item.id + '">' + item.name + ' (' + item.id + ')</option>');
-                        });
-                    }
-                },
-                error: function() {
-                    console.log('소유자 목록 로드 실패');
-                }
-            });
-        }
-    });
-    
-    // 페이지 로드 시 기존 값이 있으면 초기화
-    var initialOwnerType = $('#dmk_it_owner_type_top').val();
-    var initialOwnerId = '<?php echo $selected_owner_id; ?>';
-    
-    if (initialOwnerType) {
-        $('#dmk_it_owner_type_top').trigger('change');
-        
-        // 약간의 지연 후 초기값 설정
-        setTimeout(function() {
-            if (initialOwnerId) {
-                $('#dmk_it_owner_id_top').val(initialOwnerId);
-            }
-        }, 500);
-    }
-});
+// Legacy JavaScript for deprecated owner fields removed
+// Now using dmk_render_chain_select for hierarchy selection
 
 // jQuery UI 로드 확인 및 Datepicker 초기화
 $(document).ready(function() {

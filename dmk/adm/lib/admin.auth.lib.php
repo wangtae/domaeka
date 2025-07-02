@@ -89,9 +89,9 @@ define('DMK_MB_TYPE_BRANCH',        3); // 지점
 /**
  * 도매까 상품 소유 계층 상수 정의
  */
-define('DMK_OWNER_TYPE_DISTRIBUTOR', 'DISTRIBUTOR'); // 총판 (구 본사)
-define('DMK_OWNER_TYPE_AGENCY',      'AGENCY');           // 대리점
-define('DMK_OWNER_TYPE_BRANCH',      'BRANCH');           // 지점
+define('DMK_OWNER_TYPE_DISTRIBUTOR', 'distributor'); // 총판 (구 본사)
+define('DMK_OWNER_TYPE_AGENCY',      'agency');           // 대리점
+define('DMK_OWNER_TYPE_BRANCH',      'branch');           // 지점
 
 /**
  * 현재 로그인한 관리자의 도매까 권한 정보를 가져옵니다.
@@ -688,10 +688,10 @@ function dmk_get_member_owner_info() {
             return array('owner_type' => 'DISTRIBUTOR', 'owner_id' => $auth['mb_id']);
             
         case DMK_MB_TYPE_AGENCY:
-            return array('owner_type' => 'AGENCY', 'owner_id' => $auth['ag_id']);
+            return array('owner_type' => 'agency', 'owner_id' => $auth['ag_id']);
             
         case DMK_MB_TYPE_BRANCH:
-            return array('owner_type' => 'BRANCH', 'owner_id' => $auth['br_id']);
+            return array('owner_type' => 'branch', 'owner_id' => $auth['br_id']);
             
         default:
             return array('owner_type' => '', 'owner_id' => '');
@@ -1561,4 +1561,36 @@ function dmk_override_super_admin_if_needed($menu_code) {
     if (function_exists('dmk_is_menu_allowed') && dmk_is_menu_allowed($menu_code, $user_type)) {
         $is_admin = 'super';
     }
+}
+
+/**
+ * 새로운 필드 구조(dmk_dt_id, dmk_ag_id, dmk_br_id)를 기반으로 소유자 정보 추출
+ * deprecated된 dmk_it_owner_type, dmk_it_owner_id 필드를 대체
+ * 
+ * @param array $item 상품 데이터 배열
+ * @return array owner_type과 owner_id를 포함한 배열
+ */
+function dmk_get_owner_info_from_fields($item) {
+    $owner_info = [
+        'owner_type' => '',
+        'owner_id' => ''
+    ];
+    
+    if (!$item) {
+        return $owner_info;
+    }
+    
+    // 우선순위: 지점 -> 대리점 -> 총판 순으로 확인
+    if (!empty($item['dmk_br_id'])) {
+        $owner_info['owner_type'] = DMK_OWNER_TYPE_BRANCH;
+        $owner_info['owner_id'] = $item['dmk_br_id'];
+    } elseif (!empty($item['dmk_ag_id'])) {
+        $owner_info['owner_type'] = DMK_OWNER_TYPE_AGENCY; 
+        $owner_info['owner_id'] = $item['dmk_ag_id'];
+    } elseif (!empty($item['dmk_dt_id'])) {
+        $owner_info['owner_type'] = DMK_OWNER_TYPE_DISTRIBUTOR;
+        $owner_info['owner_id'] = $item['dmk_dt_id'];
+    }
+    
+    return $owner_info;
 }
