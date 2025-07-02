@@ -839,19 +839,6 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                 <label for="chk_all_it_order">전체적용</label>
             </td>
         </tr>
-
-        <tr>
-            <th scope="row">상품 유형</th>
-            <td>
-                <?php echo help("상품의 판매 유형을 선택하세요."); ?>
-                <select name="dmk_it_type" id="dmk_it_type" class="frm_input">
-                    <option value="0" <?php echo get_selected($it['dmk_it_type'], '0'); ?>>일반 상품</option>
-                    <option value="1" <?php echo get_selected($it['dmk_it_type'], '1'); ?>>일별 공구</option>
-                    <option value="2" <?php echo get_selected($it['dmk_it_type'], '2'); ?>>예약 공구</option>
-                </select>
-            </td>
-            <td class="td_grpset"></td>
-        </tr>
         <tr>
             <th scope="row">상품유형</th>
             <td>
