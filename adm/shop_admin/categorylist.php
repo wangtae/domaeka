@@ -201,19 +201,18 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <thead>
     <tr>
         <th scope="col" rowspan="2"><?php echo subject_sort_link("ca_id"); ?>분류코드</a></th>
-        <th scope="col" id="sct_cate"><?php echo subject_sort_link("ca_name"); ?>분류명</a></th>
-        <th scope="col" id="sct_hierarchy">소유 계층</th>
+        <th scope="col" id="sct_cate"><?php echo subject_sort_link("ca_name"); ?>분류명</a></th>        
         <th scope="col" id="sct_amount">상품수</th>
         <th scope="col" id="sct_hpcert">본인인증</th>
         <th scope="col" id="sct_imgw">이미지 폭</th>
         <th scope="col" id="sct_imgcol">1행이미지수</th>
         <th scope="col" id="sct_mobileimg">모바일<br>1행이미지수</th>
         <th scope="col" id="sct_pcskin">PC스킨지정</th>
+        <th scope="col" id="sct_hierarchy" rowspan="2">소유 계층</th>
         <th scope="col" rowspan="2">관리</th>
     </tr>
     <tr>
         <th scope="col" id="sct_admin"><?php echo subject_sort_link("ca_mb_id"); ?>관리회원아이디</a></th>
-        <th scope="col" id="sct_hierarchy_detail">계층 상세</th>
         <th scope="col" id="sct_sell"><?php echo subject_sort_link("ca_use"); ?>판매가능</a></th>
         <th scope="col" id="sct_adultcert">성인인증</th>
         <th scope="col" id="sct_imgh">이미지 높이</th>
@@ -285,30 +284,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <a href="<?php echo shop_category_url($row['ca_id']); ?>"><?php echo $row['ca_id']; ?></a>
         </td>
         <td headers="sct_cate" class="sct_name<?php echo $level; ?>"><?php echo $s_level; ?> <input type="text" name="ca_name[<?php echo $i; ?>]" value="<?php echo get_text($row['ca_name']); ?>" id="ca_name_<?php echo $i; ?>" required class="tbl_input full_input required"></td>
-        <td headers="sct_hierarchy" class="td_hierarchy">
-            <?php
-            // 계층 정보 표시
-            $hierarchy_parts = [];
-            if ($row['dmk_dt_id']) {
-                $dt_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_dt_id']}'");
-                $hierarchy_parts[] = ($dt_info['mb_nick'] ?? $row['dmk_dt_id']);
-            }
-            if ($row['dmk_ag_id']) {
-                $ag_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_ag_id']}'");
-                $hierarchy_parts[] = ($ag_info['mb_nick'] ?? $row['dmk_ag_id']);
-            }
-            if ($row['dmk_br_id']) {
-                $br_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_br_id']}'");
-                $hierarchy_parts[] = ($br_info['mb_nick'] ?? $row['dmk_br_id']);
-            }
-            
-            if (!empty($hierarchy_parts)) {
-                echo '<small>' . implode(' > ', $hierarchy_parts) . '</small>';
-            } else {
-                echo '<small style="color: #999;">미설정</small>';
-            }
-            ?>
-        </td>
+        
         <td headers="sct_amount" class="td_amount"><a href="./itemlist.php?sca=<?php echo $row['ca_id']; ?>"><?php echo $row1['cnt']; ?></a></td>
         <td headers="sct_hpcert" class="td_possible">
             <input type="checkbox" name="ca_cert_use[<?php echo $i; ?>]" value="1" id="ca_cert_use_yes<?php echo $i; ?>" <?php if($row['ca_cert_use']) echo 'checked="checked"'; ?>>
@@ -335,6 +311,38 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
                 <?php echo get_list_skin_options("^list.[0-9]+\.skin\.php", $g5_shop_skin_path, $row['ca_skin']); ?>
             </select>
         </td>
+        <td headers="sct_hierarchy" class="td_hierarchy" rowspan="2">
+            <?php
+            // 계층 정보 표시
+            $hierarchy_parts = [];
+            $owner_type = '';
+            if ($row['dmk_dt_id']) {
+                $dt_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_dt_id']}'");
+                $hierarchy_parts[] = ($dt_info['mb_nick'] ?? $row['dmk_dt_id']);
+                $owner_type = '총판';
+            }
+            if ($row['dmk_ag_id']) {
+                $ag_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_ag_id']}'");
+                $hierarchy_parts[] = ($ag_info['mb_nick'] ?? $row['dmk_ag_id']);
+                $owner_type = '대리점';
+            }
+            if ($row['dmk_br_id']) {
+                $br_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_br_id']}'");
+                $hierarchy_parts[] = ($br_info['mb_nick'] ?? $row['dmk_br_id']);
+                $owner_type = '지점';
+            }
+
+            if ( $owner_type ) {
+                echo $owner_type.'<br>';
+            }
+            
+            if (!empty($hierarchy_parts)) {
+                echo '<small>(' . implode(' > ', $hierarchy_parts) . ')</small>';
+            } else {
+                echo '<small style="color: #999;">(미설정)</small>';
+            }
+            ?>
+        </td>
         <td class="td_mng td_mng_s" rowspan="2">
             <?php echo $s_add; ?>
             <?php echo $s_vie; ?>
@@ -352,23 +360,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <?php echo $row['ca_mb_id']; ?>
             <?php } ?>
         </td>
-        <td headers="sct_hierarchy_detail" class="td_hierarchy_detail">
-            <small style="color: #666;">
-                <?php
-                // 계층 ID 상세 정보 표시
-                $hierarchy_details = [];
-                if ($row['dmk_dt_id']) $hierarchy_details[] = "총판: {$row['dmk_dt_id']}";
-                if ($row['dmk_ag_id']) $hierarchy_details[] = "대리점: {$row['dmk_ag_id']}";
-                if ($row['dmk_br_id']) $hierarchy_details[] = "지점: {$row['dmk_br_id']}";
-                
-                if (!empty($hierarchy_details)) {
-                    echo implode(' | ', $hierarchy_details);
-                } else {
-                    echo '계층 정보 없음';
-                }
-                ?>
-            </small>
-        </td>
+    
         <td headers="sct_sell" class="td_possible">
             <input type="checkbox" name="ca_use[<?php echo $i; ?>]" value="1" id="ca_use<?php echo $i; ?>" <?php echo ($row['ca_use'] ? "checked" : ""); ?>>
             <label for="ca_use<?php echo $i; ?>">판매</label>
