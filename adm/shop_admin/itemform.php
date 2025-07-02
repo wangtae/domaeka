@@ -677,7 +677,6 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
     </div>
 </section>
 
-<?php print_r($category_select); ?><?php echo conv_selected_option($category_select, $it['ca_id']); ?>
 
 <section id="anc_sitfrm_cate">
     <h2 class="h2_frm">상품분류</h2>

@@ -100,6 +100,7 @@ $sql  = " select *
            $sql_common
            $sql_order
            limit $from_record, $rows ";
+           
 $result = sql_query($sql);
 
 // URL 쿼리 스트링 생성 (계층 필터 포함) <i class="fa fa-link dmk-new-icon" title="NEW"></i>
