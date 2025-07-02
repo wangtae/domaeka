@@ -199,6 +199,11 @@ if ($w == "")
     $owner_info = dmk_get_item_owner_info();
     $it['dmk_it_owner_type'] = $owner_info['owner_type'];
     $it['dmk_it_owner_id'] = $owner_info['owner_id'];
+    
+    // 새로운 계층 필드 기본값 설정
+    $it['dmk_dt_id'] = $owner_info['dmk_dt_id'] ?? '';
+    $it['dmk_ag_id'] = $owner_info['dmk_ag_id'] ?? '';
+    $it['dmk_br_id'] = $owner_info['dmk_br_id'] ?? '';
 
     // 옵션은 쿠키에 저장된 값을 보여줌. 다음 입력을 위한것임
     //$it[ca_id] = _COOKIE[ck_ca_id];
@@ -226,6 +231,11 @@ else if ($w == "u")
 
     if(!$it)
         alert('상품정보가 존재하지 않습니다.');
+    
+    // 새로운 계층 필드가 없는 경우 기본값 설정
+    if (!isset($it['dmk_dt_id'])) $it['dmk_dt_id'] = '';
+    if (!isset($it['dmk_ag_id'])) $it['dmk_ag_id'] = '';
+    if (!isset($it['dmk_br_id'])) $it['dmk_br_id'] = '';
     
     // 도매까 권한 확인
     if (!dmk_can_modify_item($it_id)) {
@@ -462,6 +472,43 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                         • 대리점까지 선택 시 대리점 상품이 됩니다.<br>
                         • 지점까지 선택 시 지점 상품이 됩니다.
                     </div>
+                <?php } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR && $w == '') { ?>
+                    <!-- 총판 관리자 신규 등록 시 - 총판 + 대리점 + 지점 선택 -->
+                    <?php 
+                    echo dmk_render_chain_select([
+                        'page_type' => DMK_CHAIN_SELECT_FULL,
+                        'page_mode' => DMK_CHAIN_MODE_FORM_NEW,
+                        'current_values' => [
+                            'sdt_id' => $current_dt_id,
+                            'sag_id' => $sag_id ?: $selected_ag_id,
+                            'sbr_id' => $sbr_id ?: $selected_br_id
+                        ],
+                        'field_names' => [
+                            'distributor' => 'dmk_dt_id',
+                            'agency' => 'dmk_ag_id',
+                            'branch' => 'dmk_br_id'
+                        ],
+                        'labels' => [
+                            'distributor' => '총판',
+                            'agency' => '대리점',
+                            'branch' => '지점'
+                        ],
+                        'placeholders' => [
+                            'distributor' => '총판을 선택하세요',
+                            'agency' => '대리점을 선택하세요',
+                            'branch' => '지점을 선택하세요'
+                        ],
+                        'form_id' => 'fitem',
+                        'auto_submit' => false,
+                        'show_labels' => false,
+                        'container_class' => 'dmk-owner-select'
+                    ]);
+                    ?>
+                    <div class="hierarchy_desc" style="margin-top: 10px; font-size: 11px; color: #666;">
+                        • 총판까지만 선택 시 총판 상품이 됩니다.<br>
+                        • 대리점까지 선택 시 대리점 상품이 됩니다.<br>
+                        • 지점까지 선택 시 지점 상품이 됩니다.
+                    </div>
                 <?php } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $w == '') { ?>
                     <!-- 대리점 관리자 신규 등록 시 - 대리점 + 지점 선택 (총판 정보는 서버에서 처리) -->
                     <?php 
@@ -501,15 +548,15 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                         <strong>현재 상품 소유:</strong><br>
                         <?php
                         $hierarchy_info = [];
-                        if ($it['dmk_dt_id']) {
+                        if (isset($it['dmk_dt_id']) && $it['dmk_dt_id']) {
                             $dt_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$it['dmk_dt_id']}'");
                             $hierarchy_info[] = "총판: " . ($dt_info['mb_nick'] ?? $it['dmk_dt_id']);
                         }
-                        if ($it['dmk_ag_id']) {
+                        if (isset($it['dmk_ag_id']) && $it['dmk_ag_id']) {
                             $ag_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$it['dmk_ag_id']}'");
                             $hierarchy_info[] = "대리점: " . ($ag_info['mb_nick'] ?? $it['dmk_ag_id']);
                         }
-                        if ($it['dmk_br_id']) {
+                        if (isset($it['dmk_br_id']) && $it['dmk_br_id']) {
                             $br_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$it['dmk_br_id']}'");
                             $hierarchy_info[] = "지점: " . ($br_info['mb_nick'] ?? $it['dmk_br_id']);
                         }
@@ -521,16 +568,17 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                         }
                         ?>
                     </div>
-                    <!-- 수정 시에도 계층 선택 가능 -->
+                    <!-- 수정 시에도 계층별로 적절한 선택 UI 제공 -->
                     <?php if ($dmk_auth['is_super']) { ?>
+                        <!-- 본사 관리자는 모든 계층 선택 가능 -->
                         <?php 
                         echo dmk_render_chain_select([
                             'page_type' => DMK_CHAIN_SELECT_FULL,
                             'page_mode' => DMK_CHAIN_MODE_FORM_EDIT,
                             'current_values' => [
-                                'dmk_dt_id' => $it['dmk_dt_id'],
-                                'dmk_ag_id' => $it['dmk_ag_id'],
-                                'dmk_br_id' => $it['dmk_br_id']
+                                'dmk_dt_id' => isset($it['dmk_dt_id']) ? $it['dmk_dt_id'] : '',
+                                'dmk_ag_id' => isset($it['dmk_ag_id']) ? $it['dmk_ag_id'] : '',
+                                'dmk_br_id' => isset($it['dmk_br_id']) ? $it['dmk_br_id'] : ''
                             ],
                             'field_names' => [
                                 'distributor' => 'dmk_dt_id',
@@ -553,11 +601,73 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
                             'container_class' => 'dmk-owner-select'
                         ]);
                         ?>
+                    <?php } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) { ?>
+                        <!-- 총판 관리자는 총판-대리점-지점 선택 가능 -->
+                        <?php 
+                        echo dmk_render_chain_select([
+                            'page_type' => DMK_CHAIN_SELECT_FULL,
+                            'page_mode' => DMK_CHAIN_MODE_FORM_EDIT,
+                            'current_values' => [
+                                'dmk_dt_id' => isset($it['dmk_dt_id']) ? $it['dmk_dt_id'] : $current_dt_id,
+                                'dmk_ag_id' => isset($it['dmk_ag_id']) ? $it['dmk_ag_id'] : '',
+                                'dmk_br_id' => isset($it['dmk_br_id']) ? $it['dmk_br_id'] : ''
+                            ],
+                            'field_names' => [
+                                'distributor' => 'dmk_dt_id',
+                                'agency' => 'dmk_ag_id',
+                                'branch' => 'dmk_br_id'
+                            ],
+                            'labels' => [
+                                'distributor' => '총판',
+                                'agency' => '대리점',
+                                'branch' => '지점'
+                            ],
+                            'placeholders' => [
+                                'distributor' => '총판을 선택하세요',
+                                'agency' => '대리점을 선택하세요',
+                                'branch' => '지점을 선택하세요'
+                            ],
+                            'form_id' => 'fitem',
+                            'auto_submit' => false,
+                            'show_labels' => false,
+                            'container_class' => 'dmk-owner-select'
+                        ]);
+                        ?>
+                    <?php } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) { ?>
+                        <!-- 대리점 관리자는 대리점-지점 선택 가능 -->
+                        <?php 
+                        echo dmk_render_chain_select([
+                            'page_type' => DMK_CHAIN_SELECT_FULL,
+                            'page_mode' => DMK_CHAIN_MODE_FORM_EDIT,
+                            'current_values' => [
+                                'dmk_ag_id' => isset($it['dmk_ag_id']) ? $it['dmk_ag_id'] : $current_ag_id,
+                                'dmk_br_id' => isset($it['dmk_br_id']) ? $it['dmk_br_id'] : ''
+                            ],
+                            'field_names' => [
+                                'agency' => 'dmk_ag_id',
+                                'branch' => 'dmk_br_id'
+                            ],
+                            'labels' => [
+                                'agency' => '대리점',
+                                'branch' => '지점'
+                            ],
+                            'placeholders' => [
+                                'agency' => '대리점을 선택하세요',
+                                'branch' => '지점을 선택하세요'
+                            ],
+                            'form_id' => 'fitem',
+                            'auto_submit' => false,
+                            'show_labels' => false,
+                            'container_class' => 'dmk-owner-select'
+                        ]);
+                        ?>
+                        <!-- 총판 정보는 hidden으로 전달 -->
+                        <input type="hidden" name="dmk_dt_id" value="<?php echo isset($it['dmk_dt_id']) ? $it['dmk_dt_id'] : $current_dt_id; ?>">
                     <?php } else { ?>
-                        <!-- 일반 관리자는 수정 불가 -->
-                        <input type="hidden" name="dmk_dt_id" value="<?php echo $it['dmk_dt_id']; ?>">
-                        <input type="hidden" name="dmk_ag_id" value="<?php echo $it['dmk_ag_id']; ?>">
-                        <input type="hidden" name="dmk_br_id" value="<?php echo $it['dmk_br_id']; ?>">
+                        <!-- 지점 관리자는 수정 불가 -->
+                        <input type="hidden" name="dmk_dt_id" value="<?php echo isset($it['dmk_dt_id']) ? $it['dmk_dt_id'] : ''; ?>">
+                        <input type="hidden" name="dmk_ag_id" value="<?php echo isset($it['dmk_ag_id']) ? $it['dmk_ag_id'] : ''; ?>">
+                        <input type="hidden" name="dmk_br_id" value="<?php echo isset($it['dmk_br_id']) ? $it['dmk_br_id'] : ''; ?>">
                     <?php } ?>
                 <?php } ?>
             </td>

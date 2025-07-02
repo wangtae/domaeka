@@ -2,7 +2,17 @@
 $sub_menu = '400200';
 include_once('./_common.php');
 
-auth_check_menu($auth, $sub_menu, "r");
+// DMK 권한 확인
+$dmk_auth = dmk_get_admin_auth();
+
+if (!dmk_can_access_menu($sub_menu)) {
+    alert('이 메뉴에 접근할 권한이 없습니다.', G5_ADMIN_URL);
+}
+
+// 기존 영카트 권한도 확인 (sub 관리자의 경우)
+if (!$dmk_auth['is_super'] && $dmk_auth['admin_type'] === 'sub') {
+    auth_check_menu($auth, $sub_menu, "r");
+}
 
 $g5['title'] = '분류관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
@@ -130,12 +140,26 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         $s_level = '<div><label for="ca_name_'.$i.'" '.$class.'><span class="sound_only">'.$p_ca_name.''.($level+1).'단 분류</span></label></div>';
         $s_level_input_size = 25 - $level *2; // 하위 분류일 수록 입력칸 넓이 작아짐 - 지운아빠 2013-04-02
 
-        if ($level+2 < 6) $s_add = '<a href="./categoryform.php?ca_id='.$row['ca_id'].'&amp;'.$qstr.'" class="btn btn_03">추가</a> '; // 분류는 5단계까지만 가능
-        else $s_add = '';
-        $s_upd = '<a href="./categoryform.php?w=u&amp;ca_id='.$row['ca_id'].'&amp;'.$qstr.'" class="btn btn_02"><span class="sound_only">'.get_text($row['ca_name']).' </span>수정</a> ';
+        // 추가 버튼: 본사, 총판, 대리점만 가능, 5단계까지만 가능
+        if (($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) && ($level+2 < 6)) {
+            $s_add = '<a href="./categoryform.php?ca_id='.$row['ca_id'].'&amp;'.$qstr.'" class="btn btn_03">추가</a> ';
+        } else {
+            $s_add = '';
+        }
+        
+        // 수정 버튼: 본사, 총판, 대리점만 가능
+        if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) {
+            $s_upd = '<a href="./categoryform.php?w=u&amp;ca_id='.$row['ca_id'].'&amp;'.$qstr.'" class="btn btn_02"><span class="sound_only">'.get_text($row['ca_name']).' </span>수정</a> ';
+        } else {
+            $s_upd = '';
+        }
 
-        if ($is_admin == 'super')
+        // 삭제 버튼: 본사와 총판만 가능
+        if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] == 1) { // 1 = DMK_MB_TYPE_DISTRIBUTOR
             $s_del = '<a href="./categoryformupdate.php?w=d&amp;ca_id='.$row['ca_id'].'&amp;'.$qstr.'" onclick="return delete_confirm(this);" class="btn btn_02"><span class="sound_only">'.get_text($row['ca_name']).' </span>삭제</a> ';
+        } else {
+            $s_del = '';
+        }
 
         // 해당 분류에 속한 상품의 수
         $sql1 = " select COUNT(*) as cnt from {$g5['g5_shop_item_table']}
@@ -254,7 +278,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <div class="btn_fixed_top">
     <input type="submit" value="일괄수정" class="btn_02 btn">
 
-    <?php if ($is_admin == 'super') {?>
+    <?php if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 본사, 총판, 대리점만 분류 추가 가능 ?>
     <a href="./categoryform.php" id="cate_add" class="btn btn_01">분류 추가</a>
     <?php } ?>
 </div>
