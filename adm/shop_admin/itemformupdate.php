@@ -3,6 +3,12 @@ $sub_menu = '400300';
 include_once('./_common.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
+// 도매까 관리자 유형 상수 정의
+if (!defined('DMK_MB_TYPE_SUPER_ADMIN')) define('DMK_MB_TYPE_SUPER_ADMIN', 0);
+if (!defined('DMK_MB_TYPE_DISTRIBUTOR')) define('DMK_MB_TYPE_DISTRIBUTOR', 1);
+if (!defined('DMK_MB_TYPE_AGENCY')) define('DMK_MB_TYPE_AGENCY', 2);
+if (!defined('DMK_MB_TYPE_BRANCH')) define('DMK_MB_TYPE_BRANCH', 3);
+
 if ($w == "u" || $w == "d")
     check_demo();
 
@@ -52,7 +58,21 @@ if ($w == 'u') {
     }
 }
 
+if ($is_admin != 'super') {     // 최고관리자가 아니면 체크
+    if( $w === '' ){
+        $sql = "select ca_mb_id from {$g5['g5_shop_category_table']} where ca_id = '$ca_id'";
+    } else {
+        $sql = "select b.ca_mb_id from {$g5['g5_shop_item_table']} a , {$g5['g5_shop_category_table']} b where (a.ca_id = b.ca_id) and a.it_id = '$it_id'";
+    }
+    $checks = sql_fetch($sql);
+
+    if( ! (isset($checks['ca_mb_id']) && $checks['ca_mb_id']) || $checks['ca_mb_id'] !== $member['mb_id'] ){
+        alert("해당 분류의 관리회원이 아닙니다.");
+    }
+}
+
 $it_img1 = $it_img2 = $it_img3 = $it_img4 = $it_img5 = $it_img6 = $it_img7 = $it_img8 = $it_img9 = $it_img10 = '';
+
 // 계층 선택 데이터 처리 (chained select에서 전달)
 $sdt_id = isset($_POST['sdt_id']) ? clean_xss_tags($_POST['sdt_id'], 1, 1) : '';
 $sag_id = isset($_POST['sag_id']) ? clean_xss_tags($_POST['sag_id'], 1, 1) : '';
@@ -107,15 +127,32 @@ if ($sbr_id) {
     }
 }
 
-// 대리점 관리자인 경우 총판 정보 자동 설정
-if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $sag_id && !$dmk_dt_id) {
-    // 대리점이 선택되었지만 총판 정보가 없는 경우 현재 관리자의 총판 정보 사용
-    $dmk_dt_id = $dmk_auth['dt_id'];
+// DMK 날짜 필드 처리
+$dmk_it_valid_start_date = isset($_POST['dmk_it_valid_start_date']) ? clean_xss_tags($_POST['dmk_it_valid_start_date'], 1, 1) : '';
+$dmk_it_valid_end_date = isset($_POST['dmk_it_valid_end_date']) ? clean_xss_tags($_POST['dmk_it_valid_end_date'], 1, 1) : '';
+
+// 날짜 유효성 검사 및 변환
+if ($dmk_it_valid_start_date) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dmk_it_valid_start_date)) {
+        $dmk_it_valid_start_date = '0000-00-00';
+    }
+} else {
+    $dmk_it_valid_start_date = '0000-00-00';
 }
 
+if ($dmk_it_valid_end_date) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dmk_it_valid_end_date)) {
+        $dmk_it_valid_end_date = '0000-00-00';
+    }
+} else {
+    $dmk_it_valid_end_date = '0000-00-00';
+}
+
+// DMK 상품 유형
+$dmk_it_type = isset($_POST['dmk_it_type']) ? (int)$_POST['dmk_it_type'] : 0;
 // 파일정보
 if($w == "u") {
-    $sql = " select it_img1, it_img2, it_img3, it_img4, it_img5, it_img6, it_img7, it_img8, it_img9, it_img10, dmk_dt_id, dmk_ag_id, dmk_br_id
+    $sql = " select it_img1, it_img2, it_img3, it_img4, it_img5, it_img6, it_img7, it_img8, it_img9, it_img10
                 from {$g5['g5_shop_item_table']}
                 where it_id = '$it_id' ";
     $file = sql_fetch($sql);
@@ -130,13 +167,6 @@ if($w == "u") {
     $it_img8    = $file['it_img8'];
     $it_img9    = $file['it_img9'];
     $it_img10   = $file['it_img10'];
-    
-    // 수정 시 기존 계층 정보가 있으면 우선 사용
-    if (!$dmk_dt_id && !$dmk_ag_id && !$dmk_br_id) {
-        $dmk_dt_id = $file['dmk_dt_id'] ?? '';
-        $dmk_ag_id = $file['dmk_ag_id'] ?? '';
-        $dmk_br_id = $file['dmk_br_id'] ?? '';
-    }
 }
 
 $it_img_dir = G5_DATA_PATH.'/item';
@@ -289,7 +319,7 @@ if ($_FILES['it_img10']['name']) {
     $it_img10 = it_img_upload($_FILES['it_img10']['tmp_name'], $_FILES['it_img10']['name'], $it_img_dir.'/'.$it_id);
 }
 
-if ($w == "")
+if ($w == "" || $w == "u")
 {
     // 다음 입력을 위해서 옵션값을 쿠키로 한달동안 저장함
     //@setcookie("ck_ca_id",  $ca_id,  time() + 86400*31, $default[de_cookie_dir], $default[de_cookie_domain]);
@@ -302,10 +332,6 @@ if ($w == "")
     @set_cookie("ck_origin", stripslashes($it_origin), time() + 86400*31);
 }
 
-// 관련상품을 삭제한 뒤에 경고가 노출되어 등록, 수정 없이 관련상품만 삭제될 수 있는 오류 수정 (squared2님,210617)
-// 포인트 비율 값 체크
-if(($it_point_type == 1 || $it_point_type == 2) && ($it_point < 0  || $it_point > 99))
-    alert("포인트 비율을 0과 99 사이의 값으로 입력해 주십시오.");
 
 // 관련상품을 우선 삭제함
 sql_query(" delete from {$g5['g5_shop_item_relation_table']} where it_id = '$it_id' ");
@@ -369,11 +395,15 @@ if($supply_count) {
 $value_array = array();
 $count_ii_article = (isset($_POST['ii_article']) && is_array($_POST['ii_article'])) ? count($_POST['ii_article']) : 0;
 for($i=0; $i<$count_ii_article; $i++) {
-    $key = isset($_POST['ii_article'][$i]) ? html_purifier($_POST['ii_article'][$i]) : '';
-    $val = isset($_POST['ii_value'][$i]) ? html_purifier($_POST['ii_value'][$i]) : '';
+    $key = isset($_POST['ii_article'][$i]) ? strip_tags($_POST['ii_article'][$i], '<br><span><strong><b>') : '';
+    $val = isset($_POST['ii_value'][$i]) ? strip_tags($_POST['ii_value'][$i], '<br><span><strong><b>') : '';
     $value_array[$key] = $val;
 }
 $it_info_value = addslashes(serialize($value_array));
+
+// 포인트 비율 값 체크
+if(($it_point_type == 1 || $it_point_type == 2) && $it_point > 99)
+    alert("포인트 비율을 0과 99 사이의 값으로 입력해 주십시오.");
 
 $it_name = isset($_POST['it_name']) ? strip_tags(clean_xss_attributes(trim($_POST['it_name']))) : '';
 
@@ -503,31 +533,13 @@ $sql_common = " ca_id               = '$ca_id',
                 it_8                = '$it_8',
                 it_9                = '$it_9',
                 it_10               = '$it_10',
-                dmk_dt_id           = '{$dmk_dt_id}',
-                dmk_ag_id           = '{$dmk_ag_id}',
-                dmk_br_id           = '{$dmk_br_id}' ";
-
-// 계층 필수값 유효성 검사 (본사 관리자가 아닌 경우)
-$dmk_auth = dmk_get_admin_auth();
-if (!$dmk_auth['is_super']) {
-    // 계층 정보가 올바른지 확인
-    $valid_hierarchy = false;
-    
-    if ($dmk_dt_id && !$dmk_ag_id && !$dmk_br_id) {
-        // 총판 상품
-        $valid_hierarchy = true;
-    } elseif ($dmk_dt_id && $dmk_ag_id && !$dmk_br_id) {
-        // 대리점 상품
-        $valid_hierarchy = true;
-    } elseif ($dmk_dt_id && $dmk_ag_id && $dmk_br_id) {
-        // 지점 상품
-        $valid_hierarchy = true;
-    }
-    
-    if (!$valid_hierarchy) {
-        alert('상품 소유 계층 정보가 올바르지 않습니다. 총판, 대리점, 지점 중 하나를 완전히 선택해 주세요.');
-    }
-}
+                dmk_dt_id           = '$dmk_dt_id',
+                dmk_ag_id           = '$dmk_ag_id',
+                dmk_br_id           = '$dmk_br_id',
+                dmk_it_type         = '$dmk_it_type',
+                dmk_it_valid_start_date = '$dmk_it_valid_start_date',
+                dmk_it_valid_end_date = '$dmk_it_valid_end_date'
+                ";
 
 if ($w == "")
 {
@@ -584,13 +596,13 @@ if ($w == "" || $w == "u")
         {
             $sql = " insert into {$g5['g5_shop_item_relation_table']}
                         set it_id  = '$it_id',
-                            it_id2 = '".sql_real_escape_string($it_id2[$i])."',
+                            it_id2 = '$it_id2[$i]',
                             ir_no = '$i' ";
             sql_query($sql, false);
 
             // 관련상품의 반대로도 등록
             $sql = " insert into {$g5['g5_shop_item_relation_table']}
-                        set it_id  = '".sql_real_escape_string($it_id2[$i])."',
+                        set it_id  = '$it_id2[$i]',
                             it_id2 = '$it_id',
                             ir_no = '$i' ";
             sql_query($sql, false);
@@ -604,7 +616,7 @@ if ($w == "" || $w == "u")
         if (trim($ev_id[$i]))
         {
             $sql = " insert into {$g5['g5_shop_event_item_table']}
-                        set ev_id = '".sql_real_escape_string($ev_id[$i])."',
+                        set ev_id = '$ev_id[$i]',
                             it_id = '$it_id' ";
             sql_query($sql, false);
         }
@@ -618,7 +630,7 @@ if($option_count) {
                     ( `io_id`, `io_type`, `it_id`, `io_price`, `io_stock_qty`, `io_noti_qty`, `io_use` )
                 VALUES ";
     for($i=0; $i<$option_count; $i++) {
-        $sql .= $comma . " ( '".sql_real_escape_string($_POST['opt_id'][$i])."', '0', '$it_id', '".sql_real_escape_string($_POST['opt_price'][$i])."', '".sql_real_escape_string($_POST['opt_stock_qty'][$i])."', '".sql_real_escape_string($_POST['opt_noti_qty'][$i])."', '".sql_real_escape_string($_POST['opt_use'][$i])."' )";
+        $sql .= $comma . " ( '{$_POST['opt_id'][$i]}', '0', '$it_id', '{$_POST['opt_price'][$i]}', '{$_POST['opt_stock_qty'][$i]}', '{$_POST['opt_noti_qty'][$i]}', '{$_POST['opt_use'][$i]}' )";
         $comma = ' , ';
     }
 
@@ -632,7 +644,7 @@ if($supply_count) {
                     ( `io_id`, `io_type`, `it_id`, `io_price`, `io_stock_qty`, `io_noti_qty`, `io_use` )
                 VALUES ";
     for($i=0; $i<$supply_count; $i++) {
-        $sql .= $comma . " ( '".sql_real_escape_string($_POST['spl_id'][$i])."', '1', '$it_id', '".sql_real_escape_string($_POST['spl_price'][$i])."', '".sql_real_escape_string($_POST['spl_stock_qty'][$i])."', '".sql_real_escape_string($_POST['spl_noti_qty'][$i])."', '".sql_real_escape_string($_POST['spl_use'][$i])."' )";
+        $sql .= $comma . " ( '{$_POST['spl_id'][$i]}', '1', '$it_id', '{$_POST['spl_price'][$i]}', '{$_POST['spl_stock_qty'][$i]}', '{$_POST['spl_noti_qty'][$i]}', '{$_POST['spl_use'][$i]}' )";
         $comma = ' , ';
     }
 
@@ -741,51 +753,6 @@ if($all_fields) {
 
 $is_seo_title_edit = $w ? true : false;
 if( function_exists('shop_seo_title_update') ) shop_seo_title_update($it_id, $is_seo_title_edit);
-
-// 도매까 지점별 재고 테이블 생성 및 데이터 처리
-if (!sql_query(" DESC dmk_item_branch_stock ", false)) {
-    $create_table_sql = "
-        CREATE TABLE IF NOT EXISTS `dmk_item_branch_stock` (
-            `id` int(11) NOT NULL AUTO_INCREMENT,
-            `it_id` varchar(20) NOT NULL,
-            `br_id` varchar(10) NOT NULL,
-            `stock_qty` int(11) NOT NULL DEFAULT 0,
-            `safe_qty` int(11) NOT NULL DEFAULT 0,
-            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (`id`),
-            UNIQUE KEY `unique_item_branch` (`it_id`, `br_id`),
-            KEY `idx_it_id` (`it_id`),
-            KEY `idx_br_id` (`br_id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    ";
-    sql_query($create_table_sql);
-}
-
-// 지점별 재고 데이터 처리
-if (isset($_POST['branch_stocks']) && is_array($_POST['branch_stocks'])) {
-    // 기존 지점별 재고 데이터 삭제
-    sql_query(" DELETE FROM dmk_item_branch_stock WHERE it_id = '" . sql_escape_string($it_id) . "' ");
-    
-    // 새로운 지점별 재고 데이터 삽입
-    foreach ($_POST['branch_stocks'] as $branch_stock) {
-        if (!empty($branch_stock['br_id'])) {
-            $br_id = sql_escape_string($branch_stock['br_id']);
-            $stock_qty = (int)($branch_stock['stock_qty'] ?? 0);
-            $safe_qty = (int)($branch_stock['safe_qty'] ?? 0);
-            
-            $insert_sql = " INSERT INTO dmk_item_branch_stock 
-                           (it_id, br_id, stock_qty, safe_qty) 
-                           VALUES 
-                           ('" . sql_escape_string($it_id) . "', '$br_id', $stock_qty, $safe_qty) 
-                           ON DUPLICATE KEY UPDATE 
-                           stock_qty = $stock_qty, 
-                           safe_qty = $safe_qty,
-                           updated_at = NOW() ";
-            sql_query($insert_sql);
-        }
-    }
-}
 
 run_event('shop_admin_itemformupdate', $it_id, $w);
 

@@ -1,34 +1,9 @@
 <?php
-
-
 $sub_menu = '400200';
 include_once('./_common.php');
 include_once(G5_EDITOR_LIB);
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
-include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
 
-// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
-include_once(G5_PATH.'/dmk/dmk_global_settings.php');
-$dmk_auth = dmk_get_admin_auth();
-$user_type = dmk_get_current_user_type();
-
-// DMK main 관리자는 DMK 설정에 정의된 메뉴에 최고관리자처럼 접근 가능
-if ($dmk_auth && $dmk_auth['admin_type'] === 'main' && dmk_is_menu_allowed('400200', $user_type)) {
-    // DMK main 관리자는 auth_check_menu 우회
-} else {
-    // 일반 관리자는 기존 권한 체크 수행
-    auth_check_menu($auth, $sub_menu, "w");
-}
-
-// 추가 DMK 권한 체크
-if (!dmk_is_menu_allowed('400200', $user_type)) {
-    alert('분류관리에 접근 권한이 없습니다.', G5_ADMIN_URL);
-}
-
-// 계층별 필터링 파라미터 처리
-$sdt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
-$sag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
-$sbr_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
+auth_check_menu($auth, $sub_menu, "w");
 
 $ca_id = isset($_GET['ca_id']) ? preg_replace('/[^0-9a-z]/i', '', $_GET['ca_id']) : '';
 $ca = array(
@@ -37,6 +12,7 @@ $ca = array(
 'ca_name'=>'',
 'ca_order'=>'',
 'ca_mb_id'=>'',
+'ca_skin_dir'=>'',
 'ca_cert_use'=>0,
 'ca_adult_use'=>0,
 'ca_sell_email'=>'',
@@ -47,54 +23,7 @@ $ca = array(
 'ca_tail_html'=>'',
 'ca_mobile_head_html'=>'',
 'ca_mobile_tail_html'=>'',
-// 도매까 카테고리 소유 정보 추가 (새로운 구조)
-'dmk_dt_id' => '',
-'dmk_ag_id' => '',
-'dmk_br_id' => '',
 );
-
-// 계층 정보에 따른 기본값 설정
-if ($dmk_auth['is_super']) {
-    // 본사 관리자인 경우 선택된 계층에 따라 기본값 설정
-    if ($sbr_id) {
-        $ca['ca_mb_id'] = $sbr_id;
-        // 지점 정보 가져오기
-        $br_info = sql_fetch("SELECT * FROM g5_member WHERE mb_id = '{$sbr_id}'");
-        if ($br_info) {
-            $ca['dmk_dt_id'] = $br_info['dmk_dt_id'];
-            $ca['dmk_ag_id'] = $br_info['dmk_ag_id'];
-            $ca['dmk_br_id'] = $br_info['dmk_br_id'];
-        }
-    } elseif ($sag_id) {
-        $ca['ca_mb_id'] = $sag_id;
-        // 대리점 정보 가져오기
-        $ag_info = sql_fetch("SELECT * FROM g5_member WHERE mb_id = '{$sag_id}'");
-        if ($ag_info) {
-            $ca['dmk_dt_id'] = $ag_info['dmk_dt_id'];
-            $ca['dmk_ag_id'] = $ag_info['dmk_ag_id'];
-        }
-    } elseif ($sdt_id) {
-        $ca['ca_mb_id'] = $sdt_id;
-        // 총판 정보 가져오기
-        $dt_info = sql_fetch("SELECT * FROM g5_member WHERE mb_id = '{$sdt_id}'");
-        if ($dt_info) {
-            $ca['dmk_dt_id'] = $dt_info['dmk_dt_id'];
-        }
-    }
-} else {
-    // 일반 관리자는 자신의 정보로 설정
-    $ca['ca_mb_id'] = $member['mb_id'];
-    if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-        $ca['dmk_dt_id'] = $member['dmk_dt_id'];
-    } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
-        $ca['dmk_dt_id'] = $member['dmk_dt_id'];
-        $ca['dmk_ag_id'] = $member['dmk_ag_id'];
-    } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
-        $ca['dmk_dt_id'] = $member['dmk_dt_id'];
-        $ca['dmk_ag_id'] = $member['dmk_ag_id'];
-        $ca['dmk_br_id'] = $member['dmk_br_id'];
-    }
-}
 
 for($i=0;$i<=10;$i++){
     $ca['ca_'.$i.'_subj'] = '';
@@ -102,12 +31,13 @@ for($i=0;$i<=10;$i++){
 }
 
 $sql_common = " from {$g5['g5_shop_category_table']} ";
+if ($is_admin != 'super')
+    $sql_common .= " where ca_mb_id = '{$member['mb_id']}' ";
 
 if ($w == "")
 {
-    // 최고관리자만 1단계 분류를 추가할 수 있다는 제약 제거
-    // if ($is_admin != 'super' && !$ca_id)
-    //     alert("최고관리자만 1단계 분류를 추가할 수 있습니다.");
+    if ($is_admin != 'super' && !$ca_id)
+        alert("최고관리자만 1단계 분류를 추가할 수 있습니다.");
 
     $len = strlen($ca_id);
     if ($len == 10)
@@ -119,7 +49,7 @@ if ($w == "")
               where SUBSTRING(ca_id,1,$len) = '$ca_id' ";
     $row = sql_fetch($sql);
 
-    $subid = base_convert((string)$row['max_subid'], 36, 10);
+    $subid = base_convert($row['max_subid'], 36, 10);
     $subid += 36;
     if ($subid >= 36 * 36)
     {
@@ -154,27 +84,16 @@ if ($w == "")
         $ca['ca_mobile_list_mod'] = 3;
         $ca['ca_mobile_list_row'] = 5;
         $ca['ca_stock_qty'] = 99999;
-
-        // 도매까 카테고리 소유 정보 기본 설정
-        $owner_info = dmk_get_category_owner_info();
-        if ($owner_info) {
-            $ca['dmk_dt_id'] = $owner_info['dmk_dt_id'] ?? '';
-            $ca['dmk_ag_id'] = $owner_info['dmk_ag_id'] ?? '';
-            $ca['dmk_br_id'] = $owner_info['dmk_br_id'] ?? '';
-        }
     }
     $ca['ca_skin'] = "list.10.skin.php";
     $ca['ca_mobile_skin'] = "list.10.skin.php";
-} else if ($w == "u") {
+}
+else if ($w == "u")
+{
     $sql = " select * from {$g5['g5_shop_category_table']} where ca_id = '$ca_id' ";
     $ca = sql_fetch($sql);
     if (! (isset($ca['ca_id']) && $ca['ca_id']))
         alert("자료가 없습니다.");
-
-    // 도매까 권한 확인
-    if (!dmk_can_modify_category($ca_id)) {
-        alert("수정 할 권한이 없는 카테고리입니다.");
-    }
 
     $html_title = $ca['ca_name'] . " 수정";
     $ca['ca_name'] = get_text($ca['ca_name']);
@@ -183,11 +102,6 @@ if ($w == "")
 $g5['title'] = $html_title;
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
-// 체인 선택박스 에셋 포함
-echo dmk_include_chain_select_assets();
-?>
-
-<?php
 $pg_anchor ='<ul class="anchor">
 <li><a href="#anc_scatefrm_basic">필수입력</a></li>
 <li><a href="#anc_scatefrm_optional">선택입력</a></li>
@@ -243,6 +157,7 @@ else {
 
 <form name="fcategoryform" action="./categoryformupdate.php" onsubmit="return fcategoryformcheck(this);" method="post" enctype="multipart/form-data">
 
+<input type="hidden" name="codedup"  value="<?php echo $default['de_code_dup_use']; ?>">
 <input type="hidden" name="w" value="<?php echo $w; ?>">
 <input type="hidden" name="sst" value="<?php echo $sst; ?>">
 <input type="hidden" name="sod" value="<?php echo $sod; ?>">
@@ -250,10 +165,6 @@ else {
 <input type="hidden" name="stx" value="<?php echo $stx; ?>">
 <input type="hidden" name="page" value="<?php echo $page; ?>">
 <input type="hidden" name="ca_explan_html" value="<?php echo $ca['ca_explan_html']; ?>">
-<!-- 계층 정보 전달 -->
-<input type="hidden" name="sdt_id" value="<?php echo $sdt_id; ?>">
-<input type="hidden" name="sag_id" value="<?php echo $sag_id; ?>">
-<input type="hidden" name="sbr_id" value="<?php echo $sbr_id; ?>">
 
 <section id="anc_scatefrm_basic">
     <h2 class="h2_frm">필수입력</h2>
@@ -267,182 +178,13 @@ else {
             <col>
         </colgroup>
         <tbody>
-        <?php
-        // 현재 관리자 정보 가져오기
-        $dmk_auth = dmk_get_admin_auth();
-        $is_super_admin = $dmk_auth['is_super'];
-        $current_mb_type = $dmk_auth['mb_type'];
-        $current_ag_id = $dmk_auth['ag_id'];
-        $current_br_id = $dmk_auth['br_id'];
-
-        $owner_types = [
-            DMK_OWNER_TYPE_DISTRIBUTOR => '총판',
-            DMK_OWNER_TYPE_AGENCY => '대리점',
-            DMK_OWNER_TYPE_BRANCH => '지점',
-        ];
-
-        $selected_owner_type = ($is_super_admin ? DMK_OWNER_TYPE_DISTRIBUTOR : '');
-        $selected_owner_id = '';
-
-        // 기본값 설정 (새로운 분류 추가 시)
-        if ($w == "") {
-            $owner_info = dmk_get_category_owner_info();
-            $selected_owner_type = isset($owner_info['owner_type']) ? $owner_info['owner_type'] : '';
-            $selected_owner_id = isset($owner_info['owner_id']) ? $owner_info['owner_id'] : '';
-        }
-
-        // 선택 가능한 계층 필터링
-        $display_owner_type_select = false;
-        $display_owner_id_select = false;
-        $filtered_owner_types = [];
-
-        if ($is_super_admin) {
-            $display_owner_type_select = true;
-            $display_owner_id_select = true;
-            $filtered_owner_types = $owner_types; // 최고관리자는 모든 계층 선택 가능
-        } else if ($current_mb_type == DMK_MB_TYPE_DISTRIBUTOR) {
-            $display_owner_type_select = true;
-            $display_owner_id_select = true;
-            $filtered_owner_types = [
-                DMK_OWNER_TYPE_DISTRIBUTOR => '총판',
-                DMK_OWNER_TYPE_AGENCY => '대리점',
-                DMK_OWNER_TYPE_BRANCH => '지점',
-            ];
-            // 총판인 경우 기본적으로 자신의 총판으로 설정
-            if ($w == "" && empty($selected_owner_type)) {
-                $selected_owner_type = DMK_OWNER_TYPE_DISTRIBUTOR;
-                $selected_owner_id = $dmk_auth['mb_id']; // 총판 ID
-            }
-        } else if ($current_mb_type == DMK_MB_TYPE_AGENCY) {
-            $display_owner_type_select = true;
-            $display_owner_id_select = true;
-            $filtered_owner_types = [
-                DMK_OWNER_TYPE_AGENCY => '대리점',
-                DMK_OWNER_TYPE_BRANCH => '지점',
-            ];
-            // 대리점인 경우 기본적으로 자신의 대리점으로 설정
-            if ($w == "" && empty($selected_owner_type)) {
-                $selected_owner_type = DMK_OWNER_TYPE_AGENCY;
-                $selected_owner_id = $current_ag_id; // 대리점 ID
-            }
-        } else if ($current_mb_type == DMK_MB_TYPE_BRANCH) {
-            // 지점은 자신의 지점만 소유 가능
-            $selected_owner_type = DMK_OWNER_TYPE_BRANCH;
-            $selected_owner_id = $current_br_id;
-            // 지점 관리자는 선택 UI를 숨기거나 자신의 정보만 표시
-        }
-        ?>
-
-        <?php if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= DMK_MB_TYPE_AGENCY) { ?>
-        <tr>
-            <th scope="row">카테고리 소유 계층</th>
-            <td>
-                <?php if ($dmk_auth['is_super'] && $w == '') { ?>
-                    <!-- 본사 관리자 신규 등록 시 체인 선택박스 -->
-                    <?php 
-                    echo dmk_render_chain_select([
-                        'page_type' => DMK_CHAIN_SELECT_FULL,
-                        'page_mode' => DMK_CHAIN_MODE_FORM_NEW,
-                        'current_values' => [
-                            'sdt_id' => $sdt_id,
-                            'sag_id' => $sag_id, 
-                            'sbr_id' => $sbr_id
-                        ],
-                        'field_names' => [
-                            'distributor' => 'sdt_id',
-                            'agency' => 'sag_id',
-                            'branch' => 'sbr_id'
-                        ],
-                        'labels' => [
-                            'distributor' => '총판',
-                            'agency' => '대리점',
-                            'branch' => '지점'
-                        ],
-                        'placeholders' => [
-                            'distributor' => '총판을 선택하세요',
-                            'agency' => '대리점을 선택하세요',
-                            'branch' => '지점을 선택하세요'
-                        ],
-                        'form_id' => 'fcategoryform',
-                        'auto_submit' => false,
-                        'show_labels' => false,
-                        'container_class' => 'dmk-owner-select'
-                    ]);
-                    ?>
-                    <div class="hierarchy_desc" style="margin-top: 10px; font-size: 11px; color: #666;">
-                        • 총판까지만 선택 시 총판 분류가 됩니다.<br>
-                        • 대리점까지 선택 시 대리점 분류가 됩니다.<br>
-                        • 지점까지 선택 시 지점 분류가 됩니다.
-                    </div>
-                <?php } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $w == '') { ?>
-                    <!-- 대리점 관리자 신규 등록 시 - 대리점 + 지점 선택 (총판 정보는 서버에서 처리) -->
-                    <?php 
-                    echo dmk_render_chain_select([
-                        'page_type' => DMK_CHAIN_SELECT_FULL,
-                        'page_mode' => DMK_CHAIN_MODE_FORM_NEW,
-                        'current_values' => [
-                            'sag_id' => $current_ag_id,
-                            'sbr_id' => $sbr_id
-                        ],
-                        'field_names' => [
-                            'agency' => 'sag_id', 
-                            'branch' => 'sbr_id'
-                        ],
-                        'labels' => [
-                            'agency' => '대리점',
-                            'branch' => '지점'
-                        ],
-                        'placeholders' => [
-                            'agency' => '대리점을 선택하세요',
-                            'branch' => '지점을 선택하세요'
-                        ],
-                        'form_id' => 'fcategoryform',
-                        'auto_submit' => false,
-                        'show_labels' => false,
-                        'container_class' => 'dmk-owner-select'
-                    ]);
-                    ?>
-                    <div class="hierarchy_desc" style="margin-top: 10px; font-size: 11px; color: #666;">
-                        • 대리점을 선택하면 대리점 분류가 됩니다.<br>
-                        • 지점을 선택하면 지점 분류가 됩니다.<br>
-                        • 총판 정보는 자동으로 설정됩니다.
-                    </div>
-                <?php } else { ?>
-                    <!-- 기존 분류 수정이거나 지점 관리자인 경우 -->
-                    <div style="padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 3px;">
-                        <strong>현재 분류 소유:</strong><br>
-                        <?php
-                        $hierarchy_info = [];
-                        if ($ca['dmk_dt_id']) {
-                            $dt_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$ca['dmk_dt_id']}'");
-                            $hierarchy_info[] = "총판: " . ($dt_info['mb_nick'] ?? $ca['dmk_dt_id']);
-                        }
-                        if ($ca['dmk_ag_id']) {
-                            $ag_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$ca['dmk_ag_id']}'");
-                            $hierarchy_info[] = "대리점: " . ($ag_info['mb_nick'] ?? $ca['dmk_ag_id']);
-                        }
-                        if ($ca['dmk_br_id']) {
-                            $br_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$ca['dmk_br_id']}'");
-                            $hierarchy_info[] = "지점: " . ($br_info['mb_nick'] ?? $ca['dmk_br_id']);
-                        }
-                        
-                        if (empty($hierarchy_info)) {
-                            echo "소유 정보 없음";
-                        } else {
-                            echo implode(" > ", $hierarchy_info);
-                        }
-                        ?>
-                    </div>
-                <?php } ?>
-            </td>
-        </tr>
-        <?php } ?>
         <tr>
             <th scope="row"><label for="ca_id">분류코드</label></th>
             <td>
             <?php if ($w == "") { ?>
                 <?php echo help("자동으로 보여지는 분류코드를 사용하시길 권해드리지만 직접 입력한 값으로도 사용할 수 있습니다.\n분류코드는 나중에 수정이 되지 않으므로 신중하게 결정하여 사용하십시오.\n\n분류코드는 2자리씩 10자리를 사용하여 5단계를 표현할 수 있습니다.\n0~z까지 입력이 가능하며 한 분류당 최대 1296가지를 표현할 수 있습니다.\n그러므로 총 3656158440062976가지의 분류를 사용할 수 있습니다."); ?>
                 <input type="text" name="ca_id" value="<?php echo $subid; ?>" id="ca_id" required class="required frm_input" size="<?php echo $sublen; ?>" maxlength="<?php echo $sublen; ?>">
+                <!-- <?php if ($default['de_code_dup_use']) { ?><a href="javascript:;" onclick="codedupcheck(document.getElementById('ca_id').value)">코드 중복검사</a><?php } ?> -->
             <?php } else { ?>
                 <input type="hidden" name="ca_id" value="<?php echo $ca['ca_id']; ?>">
                 <span class="frm_ca_id"><?php echo $ca['ca_id']; ?></span>
@@ -893,6 +635,7 @@ jQuery(function($){
     });
 });
 
+/*document.fcategoryform.ca_name.focus(); 포커스 해제*/
 </script>
 
 <?php

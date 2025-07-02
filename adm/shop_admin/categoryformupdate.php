@@ -1,52 +1,22 @@
 <?php
-
-$w = isset($_REQUEST['w']) ? trim($_REQUEST['w']) : '';
-
 $sub_menu = '400200';
 include_once('./_common.php');
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
 
-// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
-include_once(G5_PATH.'/dmk/dmk_global_settings.php');
-$dmk_auth = dmk_get_admin_auth();
-$user_type = dmk_get_current_user_type();
-
-// 디버깅: 상수와 권한 정보 확인
-if (defined('DMK_MB_TYPE_AGENCY')) {
-    error_log("DMK_MB_TYPE_AGENCY defined as: " . DMK_MB_TYPE_AGENCY);
-} else {
-    error_log("DMK_MB_TYPE_AGENCY not defined");
-}
-
-if ($dmk_auth) {
-    error_log("DMK Auth info - mb_type: " . ($dmk_auth['mb_type'] ?? 'null') . ", admin_type: " . ($dmk_auth['admin_type'] ?? 'null'));
-} else {
-    error_log("DMK Auth is false or null");
-}
-
-// DMK 권한 체크 - 대리점, 지점 관리자도 접근 가능하도록 수정
-// 임시: 모든 DMK 관리자에게 접근 허용 (디버깅용)
-if ($dmk_auth) {
-    error_log("Allowing access for DMK user with mb_type: " . ($dmk_auth['mb_type'] ?? 'null'));
-    // DMK 사용자는 모두 접근 허용
-} else {
-    // 일반 관리자는 기존 권한 체크 수행
-    auth_check_menu($auth, $sub_menu, "w");
-}
+auth_check_menu($auth, $sub_menu, "w");
 
 $ca_include_head = isset($_POST['ca_include_head']) ? trim($_POST['ca_include_head']) : '';
 $ca_include_tail = isset($_POST['ca_include_tail']) ? trim($_POST['ca_include_tail']) : '';
 $ca_id = isset($_REQUEST['ca_id']) ? preg_replace('/[^0-9a-z]/i', '', $_REQUEST['ca_id']) : '';
 
 if( ! $ca_id ){
-    // alert('', G5_SHOP_URL); // 임시 주석 처리
+    alert('', G5_SHOP_URL);
 }
 
 if ($file = $ca_include_head) {
     $file_ext = pathinfo($file, PATHINFO_EXTENSION);
 
     if (! $file_ext || ! in_array($file_ext, array('php', 'htm', 'html')) || !preg_match("/\.(php|htm[l]?)$/i", $file)) {
-        // alert("상단 파일 경로가 php, html 파일이 아닙니다."); // 임시 주석 처리
+        alert("상단 파일 경로가 php, html 파일이 아닙니다.");
     }
 }
 
@@ -54,7 +24,7 @@ if ($file = $ca_include_tail) {
     $file_ext = pathinfo($file, PATHINFO_EXTENSION);
 
     if (! $file_ext || ! in_array($file_ext, array('php', 'htm', 'html')) || !preg_match("/\.(php|htm[l]?)$/i", $file)) {
-        // alert("하단 파일 경로가 php, html 파일이 아닙니다."); // 임시 주석 처리
+        alert("하단 파일 경로가 php, html 파일이 아닙니다.");
     }
 }
 
@@ -66,7 +36,7 @@ if( $ca_id ){
         include_once(G5_CAPTCHA_PATH.'/captcha.lib.php');
 
         if (!chk_captcha()) {
-            // alert('자동등록방지 숫자가 틀렸습니다.'); // 임시 주석 처리
+            alert('자동등록방지 숫자가 틀렸습니다.');
         }
     }
 }
@@ -98,7 +68,7 @@ $check_str_keys = array(
 
 for($i=0;$i<=10;$i++){
     $check_str_keys['ca_'.$i.'_subj'] = 'str';
-    $check_str_keys['ca_'.($i+1)] = 'str'; // Corrected index for ca_ column
+    $check_str_keys['ca_'.$i] = 'str';
 }
 
 foreach( $check_str_keys as $key=>$val ){
@@ -110,79 +80,26 @@ foreach( $check_str_keys as $key=>$val ){
     $$key = $_POST[$key] = $value;
 }
 
-// 계층 선택 데이터 처리 (chained select에서 전달)
-$sdt_id = isset($_POST['sdt_id']) ? clean_xss_tags($_POST['sdt_id'], 1, 1) : '';
-$sag_id = isset($_POST['sag_id']) ? clean_xss_tags($_POST['sag_id'], 1, 1) : '';
-$sbr_id = isset($_POST['sbr_id']) ? clean_xss_tags($_POST['sbr_id'], 1, 1) : '';
-
-// 계층 선택에 따른 dmk 필드 설정
-$dmk_dt_id = '';
-$dmk_ag_id = '';
-$dmk_br_id = '';
-
-if ($sbr_id) {
-    // 지점까지 선택된 경우 - 지점 분류
-    $br_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sbr_id)."'");
-    if ($br_info) {
-        $dmk_dt_id = $br_info['dmk_dt_id'];
-        $dmk_ag_id = $br_info['dmk_ag_id'];
-        $dmk_br_id = $br_info['dmk_br_id'];
-    }
-} elseif ($sag_id) {
-    // 대리점까지 선택된 경우 - 대리점 분류
-    $ag_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sag_id)."'");
-    if ($ag_info) {
-        $dmk_dt_id = $ag_info['dmk_dt_id'];
-        $dmk_ag_id = $ag_info['dmk_ag_id'];
-    }
-} elseif ($sdt_id) {
-    // 총판만 선택된 경우 - 총판 분류
-    $dt_info = sql_fetch("SELECT dmk_dt_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sdt_id)."'");
-    if ($dt_info) {
-        $dmk_dt_id = $dt_info['dmk_dt_id'];
-    }
-} else {
-    // 선택되지 않은 경우 현재 관리자 정보로 설정
-    if (!$dmk_auth['is_super']) {
-        if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
-            $dmk_dt_id = $dmk_auth['dt_id'];
-        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
-            $dmk_dt_id = $dmk_auth['dt_id'];
-            $dmk_ag_id = $dmk_auth['ag_id'];
-        } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_BRANCH) {
-            $dmk_dt_id = $dmk_auth['dt_id'];
-            $dmk_ag_id = $dmk_auth['ag_id'];
-            $dmk_br_id = $dmk_auth['br_id'];
-        }
-    }
-}
-
-// 대리점 관리자인 경우 총판 정보 자동 설정
-if ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY && $sag_id && !$dmk_dt_id) {
-    // 대리점이 선택되었지만 총판 정보가 없는 경우 현재 관리자의 총판 정보 사용
-    $dmk_dt_id = $dmk_auth['dt_id'];
-}
-
 $ca_head_html = isset($_POST['ca_head_html']) ? $_POST['ca_head_html'] : '';
 $ca_tail_html = isset($_POST['ca_tail_html']) ? $_POST['ca_tail_html'] : '';
 $ca_mobile_head_html = isset($_POST['ca_mobile_head_html']) ? $_POST['ca_mobile_head_html'] : '';
 $ca_mobile_tail_html = isset($_POST['ca_mobile_tail_html']) ? $_POST['ca_mobile_tail_html'] : '';
 
 if(!is_include_path_check($ca_include_head, 1)) {
-    // alert('상단 파일 경로에 포함시킬수 없는 문자열이 있습니다.'); // 임시 주석 처리
+    alert('상단 파일 경로에 포함시킬수 없는 문자열이 있습니다.');
 }
 
 if(!is_include_path_check($ca_include_tail, 1)) {
-    // alert('하단 파일 경로에 포함시킬수 없는 문자열이 있습니다.'); // 임시 주석 처리
+    alert('하단 파일 경로에 포함시킬수 없는 문자열이 있습니다.');
 }
 
 $check_keys = array('ca_skin_dir', 'ca_mobile_skin_dir', 'ca_skin', 'ca_mobile_skin'); 
 
 foreach( $check_keys as $key ){
-    if( isset($$key) && preg_match('#\.+(/|\\)#', $$key) ){
-        // alert('스킨명 또는 경로에 포함시킬수 없는 문자열이 있습니다.'); // 임시 주석 처리
+    if( isset($$key) && preg_match('#\.+(\/|\\\)#', $$key) ){
+        alert('스킨명 또는 경로에 포함시킬수 없는 문자열이 있습니다.');
     }
-} 
+}
 
 if( function_exists('filter_input_include_path') ){
     $ca_include_head = filter_input_include_path($ca_include_head);
@@ -196,40 +113,22 @@ auth_check_menu($auth, $sub_menu, "d");
 
 check_admin_token();
 
-if ($w == 'd') { // 삭제 시 도매까 권한 확인
-    if (!dmk_can_modify_category($ca_id)) {
-        // alert("삭제 할 권한이 없는 카테고리입니다."); // 임시 주석 처리
-    }
-}
+if ($w == 'd' && $is_admin != 'super')
+    alert("최고관리자만 분류를 삭제할 수 있습니다.");
 
 if ($w == "" || $w == "u")
 {
-    // 기존 ca_mb_id 확인 로직 제거 (도매까 권한 로직으로 대체)
-    /*
     if ($ca_mb_id)
     {
         $sql = " select mb_id from {$g5['member_table']} where mb_id = '$ca_mb_id' ";
         $row = sql_fetch($sql);
         if (!$row['mb_id'])
-            alert("'$ca_mb_id' 은(는) 존재하는 회원아이디가 아닙니다.");
-    }
-    */
-
-    if ($w == "") {
-        // 새로운 카테고리 생성 시 도매까 카테고리 소유 정보 기본 설정
-        if (empty($dmk_dt_id) && empty($dmk_ag_id) && empty($dmk_br_id)) {
-            $owner_info = dmk_get_category_owner_info();
-            if ($owner_info) {
-                $dmk_dt_id = $owner_info['dmk_dt_id'] ?? '';
-                $dmk_ag_id = $owner_info['dmk_ag_id'] ?? '';
-                $dmk_br_id = $owner_info['dmk_br_id'] ?? '';
-            }
-        }
+            alert("\'$ca_mb_id\' 은(는) 존재하는 회원아이디가 아닙니다.");
     }
 }
 
 if( $ca_skin && ! is_include_path_check($ca_skin) ){
-    // alert('오류 : 데이터폴더가 포함된 path 를 포함할수 없습니다.'); // 임시 주석 처리
+    alert('오류 : 데이터폴더가 포함된 path 를 포함할수 없습니다.');
 }
 
 $sql_common = " ca_order                = '$ca_order',
@@ -278,10 +177,7 @@ $sql_common = " ca_order                = '$ca_order',
                 ca_7                    = '$ca_7',
                 ca_8                    = '$ca_8',
                 ca_9                    = '$ca_9',
-                ca_10                   = '$ca_10',
-                dmk_dt_id               = '$dmk_dt_id',
-                dmk_ag_id               = '$dmk_ag_id',
-                dmk_br_id               = '$dmk_br_id' ";
+                ca_10                   = '$ca_10' ";
 
 
 if ($w == "")
@@ -296,16 +192,10 @@ if ($w == "")
                 set ca_id   = '$ca_id',
                     ca_name = '$ca_name',
                     $sql_common ";
-
-    $result = sql_query($sql);
-
-    run_event('shop_admin_category_created', $ca_id);
-} else if ($w == "u") {
-    // 도매까 권한 확인
-    if (!dmk_can_modify_category($ca_id)) {
-        // alert("수정 할 권한이 없는 카테고리입니다."); // 임시 주석 처리
-    }
-
+    sql_query($sql);
+}
+else if ($w == "u")
+{
     $sql = " update {$g5['g5_shop_category_table']}
                 set ca_name = '$ca_name',
                     $sql_common
@@ -319,10 +209,9 @@ if ($w == "")
                     set $sql_common
                   where SUBSTRING(ca_id,1,$len) = '$ca_id' ";
         if ($is_admin != 'super')
-            $sql .= " and ca_mb_id = '{$member['mb_id']}' "; // 이 조건은 유지해야 하위 분류 업데이트 시 소유권 필터링 가능
+            $sql .= " and ca_mb_id = '{$member['mb_id']}' ";
         sql_query($sql);
     }
-    run_event('shop_admin_category_updated', $ca_id);
 }
 else if ($w == "d")
 {
@@ -334,7 +223,7 @@ else if ($w == "d")
                 and ca_id <> '$ca_id' ";
     $row = sql_fetch($sql);
     if ($row['cnt'] > 0)
-        // alert("이 분류에 속한 하위 분류가 있으므로 삭제 할 수 없습니다.\n\n하위분류를 우선 삭제하여 주십시오."); // 임시 주석 처리
+        alert("이 분류에 속한 하위 분류가 있으므로 삭제 할 수 없습니다.\\n\\n하위분류를 우선 삭제하여 주십시오.");
 
     $str = $comma = "";
     $sql = " select it_id from {$g5['g5_shop_item_table']} where ca_id = '$ca_id' ";
@@ -343,50 +232,24 @@ else if ($w == "d")
     while ($row = sql_fetch_array($result))
     {
         $i++;
-        if ($i % 10 == 0) $str .= "\n";
+        if ($i % 10 == 0) $str .= "\\n";
         $str .= "$comma{$row['it_id']}";
         $comma = " , ";
     }
 
     if ($str)
-        // alert("이 분류와 관련된 상품이 총 {$i} 건 존재하므로 상품을 삭제한 후 분류를 삭제하여 주십시오.\n\n$str"); // 임시 주석 처리
+        alert("이 분류와 관련된 상품이 총 {$i} 건 존재하므로 상품을 삭제한 후 분류를 삭제하여 주십시오.\\n\\n$str");
 
     // 분류 삭제
     $sql = " delete from {$g5['g5_shop_category_table']} where ca_id = '$ca_id' ";
     sql_query($sql);
-    run_event('shop_admin_category_deleted', $ca_id);
-}
-
-// 계층 필수값 유효성 검사 (본사 관리자가 아닌 경우)
-$dmk_auth = dmk_get_admin_auth();
-if (!$dmk_auth['is_super']) {
-    // 계층 정보가 올바른지 확인
-    $valid_hierarchy = false;
-    
-    if ($dmk_dt_id && !$dmk_ag_id && !$dmk_br_id) {
-        // 총판 분류
-        $valid_hierarchy = true;
-    } elseif ($dmk_dt_id && $dmk_ag_id && !$dmk_br_id) {
-        // 대리점 분류
-        $valid_hierarchy = true;
-    } elseif ($dmk_dt_id && $dmk_ag_id && $dmk_br_id) {
-        // 지점 분류
-        $valid_hierarchy = true;
-    }
-    
-    if (!$valid_hierarchy) {
-        alert('카테고리 소유 계층 정보가 올바르지 않습니다. 총판, 대리점, 지점 중 하나를 완전히 선택해 주세요.');
-    }
 }
 
 if(function_exists('get_admin_captcha_by'))
     get_admin_captcha_by('remove');
 
-// 최종 리다이렉션 로직
-if ($w == "")
+if ($w == "" || $w == "u")
 {
-    goto_url("./categorylist.php?$qstr");
-} else if ($w == "u") {
     goto_url("./categoryform.php?w=u&amp;ca_id=$ca_id&amp;$qstr");
 } else {
     goto_url("./categorylist.php?$qstr");

@@ -29,7 +29,7 @@ class DmkChainSelect {
             autoSubmit: true,
             formId: 'fsearch',
             
-            // 콜백 함수
+            // 콜백 함수 (문자열 또는 함수)
             onDistributorChange: null,
             onAgencyChange: null,
             onBranchChange: null,
@@ -137,7 +137,7 @@ class DmkChainSelect {
             this.loadAgencies(distributorId, () => {
                 // 콜백 실행
                 if (this.options.onDistributorChange) {
-                    this.options.onDistributorChange(distributorId);
+                    this.executeCallback(this.options.onDistributorChange, distributorId);
                 }
                 
                 // 자동 폼 제출
@@ -149,7 +149,7 @@ class DmkChainSelect {
             // 총판이 선택되지 않은 경우 이미 초기화했으므로 폼만 제출
             // 콜백 실행
             if (this.options.onDistributorChange) {
-                this.options.onDistributorChange(distributorId);
+                this.executeCallback(this.options.onDistributorChange, distributorId);
             }
             
             // 자동 폼 제출
@@ -193,7 +193,7 @@ class DmkChainSelect {
         // 콜백 실행
         this.log('onAgencyChange 콜백 실행 시도');
         if (this.options.onAgencyChange) {
-            this.options.onAgencyChange(this.currentValues.agency);
+            this.executeCallback(this.options.onAgencyChange, this.currentValues.agency);
         }
         
         // 자동 폼 제출
@@ -215,7 +215,7 @@ class DmkChainSelect {
         
         // 콜백 실행
         if (this.options.onBranchChange) {
-            this.options.onBranchChange(branchId);
+            this.executeCallback(this.options.onBranchChange, branchId);
         }
         
         // 자동 폼 제출
@@ -634,6 +634,23 @@ class DmkChainSelect {
     log(...args) {
         if (this.options.debug) {
             console.log('[DmkChainSelect]', ...args);
+        }
+    }
+    
+    executeCallback(callback, ...args) {
+        try {
+            if (typeof callback === 'function') {
+                callback(...args);
+            } else if (typeof callback === 'string') {
+                // 문자열인 경우 전역 함수로 실행
+                if (typeof window[callback] === 'function') {
+                    window[callback](...args);
+                } else {
+                    this.log('콜백 함수를 찾을 수 없습니다:', callback);
+                }
+            }
+        } catch (error) {
+            this.log('콜백 함수 실행 중 오류:', error);
         }
     }
     

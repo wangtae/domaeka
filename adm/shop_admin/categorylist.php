@@ -2,38 +2,10 @@
 $sub_menu = '400200';
 include_once('./_common.php');
 
-// DMK 라이브러리 포함
-include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
-include_once(G5_PATH.'/dmk/adm/lib/chain-select.lib.php');
-
-// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
-include_once(G5_PATH.'/dmk/dmk_global_settings.php');
-$dmk_auth = dmk_get_admin_auth();
-$user_type = dmk_get_current_user_type();
-
-// DMK main 관리자는 DMK 설정에 정의된 메뉴에 최고관리자처럼 접근 가능
-if ($dmk_auth && $dmk_auth['admin_type'] === 'main' && dmk_is_menu_allowed('400200', $user_type)) {
-    // DMK main 관리자는 auth_check_menu 우회
-} else {
-    // 일반 관리자는 기존 권한 체크 수행
-    auth_check_menu($auth, $sub_menu, "r");
-}
-
-// 추가 DMK 권한 체크
-if (!dmk_is_menu_allowed('400200', $user_type)) {
-    alert('분류관리에 접근 권한이 없습니다.', G5_ADMIN_URL);
-}
-
-// 계층별 필터링 파라미터 처리
-$sdt_id = isset($_GET['sdt_id']) ? clean_xss_tags($_GET['sdt_id']) : '';
-$sag_id = isset($_GET['sag_id']) ? clean_xss_tags($_GET['sag_id']) : '';
-$sbr_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
+auth_check_menu($auth, $sub_menu, "r");
 
 $g5['title'] = '분류관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
-
-// 체인 선택박스 에셋 포함
-echo dmk_include_chain_select_assets();
 
 $where = " where ";
 $sql_search = "";
@@ -49,48 +21,9 @@ if ($stx != "") {
         $page = 1;
 }
 
-// 계층별 필터링 추가 (새로운 필드 구조 사용)
-if (!$dmk_auth['is_super']) {
-    // 일반 관리자는 자신의 계층에 속한 분류만 볼 수 있음
-    $member_hierarchy = array();
-    if ($member['dmk_dt_id']) $member_hierarchy[] = "dmk_dt_id = '".sql_escape_string($member['dmk_dt_id'])."'";
-    if ($member['dmk_ag_id']) $member_hierarchy[] = "dmk_ag_id = '".sql_escape_string($member['dmk_ag_id'])."'";
-    if ($member['dmk_br_id']) $member_hierarchy[] = "dmk_br_id = '".sql_escape_string($member['dmk_br_id'])."'";
-    
-    if (!empty($member_hierarchy)) {
-        $sql_search .= " $where (" . implode(" AND ", $member_hierarchy) . ") ";
-        $where = " and ";
-    }
-} else {
-    // 본사 관리자는 계층 선택에 따른 필터링
-    if ($sbr_id) {
-        // 지점이 선택된 경우 해당 지점의 분류만
-        $br_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sbr_id)."'");
-        if ($br_info) {
-            $sql_search .= " $where dmk_dt_id = '".sql_escape_string($br_info['dmk_dt_id'])."' 
-                             AND dmk_ag_id = '".sql_escape_string($br_info['dmk_ag_id'])."' 
-                             AND dmk_br_id = '".sql_escape_string($br_info['dmk_br_id'])."' ";
-            $where = " and ";
-        }
-    } elseif ($sag_id) {
-        // 대리점이 선택된 경우 해당 대리점과 산하 지점들의 분류
-        $ag_info = sql_fetch("SELECT dmk_dt_id, dmk_ag_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sag_id)."'");
-        if ($ag_info) {
-            $sql_search .= " $where dmk_dt_id = '".sql_escape_string($ag_info['dmk_dt_id'])."' 
-                             AND dmk_ag_id = '".sql_escape_string($ag_info['dmk_ag_id'])."' ";
-            $where = " and ";
-        }
-    } elseif ($sdt_id) {
-        // 총판이 선택된 경우 해당 총판의 모든 분류
-        $dt_info = sql_fetch("SELECT dmk_dt_id FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($sdt_id)."'");
-        if ($dt_info) {
-            $sql_search .= " $where dmk_dt_id = '".sql_escape_string($dt_info['dmk_dt_id'])."' ";
-            $where = " and ";
-        }
-    }
-}
-
 $sql_common = " from {$g5['g5_shop_category_table']} ";
+if ($is_admin != 'super')
+    $sql_search .= " $where ca_mb_id = '{$member['mb_id']}' ";
 $sql_common .= $sql_search;
 
 
@@ -126,55 +59,15 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <span class="btn_ov01"><span class="ov_txt">생성된  분류 수</span><span class="ov_num">  <?php echo number_format($total_count); ?>개</span></span>
 </div>
 
-
-
-<form name="flist" class="local_sch01 local_sch" method="get">
+<form name="flist" class="local_sch01 local_sch">
 <input type="hidden" name="page" value="<?php echo $page; ?>">
 <input type="hidden" name="save_stx" value="<?php echo $stx; ?>">
-<?php if ($dmk_auth['is_super']) { ?>
-<input type="hidden" name="sdt_id" value="<?php echo $sdt_id; ?>">
-<input type="hidden" name="sag_id" value="<?php echo $sag_id; ?>">
-<input type="hidden" name="sbr_id" value="<?php echo $sbr_id; ?>">
-<?php } ?>
-
-<input type="hidden" name="sfl" value="<?php echo $sfl; ?>">
-    <input type="hidden" name="stx" value="<?php echo $stx; ?>">
-    <input type="hidden" name="page" value="1">
-    
-    <?php 
-    echo dmk_render_chain_select([
-        'page_type' => DMK_CHAIN_SELECT_FULL,    
-        'current_values' => [
-            'sdt_id' => $sdt_id,
-            'sag_id' => $sag_id, 
-            'sbr_id' => $sbr_id
-        ],
-        'field_names' => [
-            'distributor' => 'sdt_id',
-            'agency' => 'sag_id',
-            'branch' => 'sbr_id'
-        ],
-        'labels' => [
-            'distributor' => '총판',
-            'agency' => '대리점',
-            'branch' => '지점'
-        ],
-        'placeholders' => [
-            'distributor' => '전체 총판',
-            'agency' => '전체 대리점',
-            'branch' => '전체 지점'
-        ],
-        'form_id' => 'flist',
-        'auto_submit' => true
-    ]);
-    ?>
-
 
 <label for="sfl" class="sound_only">검색대상</label>
 <select name="sfl" id="sfl">
-    <option value="ca_name"<?php echo get_selected($sfl, "ca_name"); ?>>분류명</option>
-    <option value="ca_id"<?php echo get_selected($sfl, "ca_id"); ?>>분류코드</option>
-    <option value="ca_mb_id"<?php echo get_selected($sfl, "ca_mb_id"); ?>>회원아이디</option>
+    <option value="ca_name"<?php echo get_selected($sfl, "ca_name", true); ?>>분류명</option>
+    <option value="ca_id"<?php echo get_selected($sfl, "ca_id", true); ?>>분류코드</option>
+    <option value="ca_mb_id"<?php echo get_selected($sfl, "ca_mb_id", true); ?>>회원아이디</option>
 </select>
 
 <label for="stx" class="sound_only">검색어<strong class="sound_only"> 필수</strong></label>
@@ -189,11 +82,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <input type="hidden" name="sfl" value="<?php echo $sfl; ?>">
 <input type="hidden" name="stx" value="<?php echo $stx; ?>">
 <input type="hidden" name="page" value="<?php echo $page; ?>">
-<?php if ($dmk_auth['is_super']) { ?>
-<input type="hidden" name="sdt_id" value="<?php echo $sdt_id; ?>">
-<input type="hidden" name="sag_id" value="<?php echo $sag_id; ?>">
-<input type="hidden" name="sbr_id" value="<?php echo $sbr_id; ?>">
-<?php } ?>
 
 <div id="sct" class="tbl_head01 tbl_wrap">
     <table>
@@ -201,14 +89,13 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <thead>
     <tr>
         <th scope="col" rowspan="2"><?php echo subject_sort_link("ca_id"); ?>분류코드</a></th>
-        <th scope="col" id="sct_cate"><?php echo subject_sort_link("ca_name"); ?>분류명</a></th>        
+        <th scope="col" id="sct_cate"><?php echo subject_sort_link("ca_name"); ?>분류명</a></th>
         <th scope="col" id="sct_amount">상품수</th>
         <th scope="col" id="sct_hpcert">본인인증</th>
         <th scope="col" id="sct_imgw">이미지 폭</th>
         <th scope="col" id="sct_imgcol">1행이미지수</th>
         <th scope="col" id="sct_mobileimg">모바일<br>1행이미지수</th>
         <th scope="col" id="sct_pcskin">PC스킨지정</th>
-        <th scope="col" id="sct_hierarchy" rowspan="2">소유 계층</th>
         <th scope="col" rowspan="2">관리</th>
     </tr>
     <tr>
@@ -284,7 +171,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <a href="<?php echo shop_category_url($row['ca_id']); ?>"><?php echo $row['ca_id']; ?></a>
         </td>
         <td headers="sct_cate" class="sct_name<?php echo $level; ?>"><?php echo $s_level; ?> <input type="text" name="ca_name[<?php echo $i; ?>]" value="<?php echo get_text($row['ca_name']); ?>" id="ca_name_<?php echo $i; ?>" required class="tbl_input full_input required"></td>
-        
         <td headers="sct_amount" class="td_amount"><a href="./itemlist.php?sca=<?php echo $row['ca_id']; ?>"><?php echo $row1['cnt']; ?></a></td>
         <td headers="sct_hpcert" class="td_possible">
             <input type="checkbox" name="ca_cert_use[<?php echo $i; ?>]" value="1" id="ca_cert_use_yes<?php echo $i; ?>" <?php if($row['ca_cert_use']) echo 'checked="checked"'; ?>>
@@ -311,38 +197,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
                 <?php echo get_list_skin_options("^list.[0-9]+\.skin\.php", $g5_shop_skin_path, $row['ca_skin']); ?>
             </select>
         </td>
-        <td headers="sct_hierarchy" class="td_hierarchy" rowspan="2">
-            <?php
-            // 계층 정보 표시
-            $hierarchy_parts = [];
-            $owner_type = '';
-            if ($row['dmk_dt_id']) {
-                $dt_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_dt_id']}'");
-                $hierarchy_parts[] = ($dt_info['mb_nick'] ?? $row['dmk_dt_id']);
-                $owner_type = '총판';
-            }
-            if ($row['dmk_ag_id']) {
-                $ag_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_ag_id']}'");
-                $hierarchy_parts[] = ($ag_info['mb_nick'] ?? $row['dmk_ag_id']);
-                $owner_type = '대리점';
-            }
-            if ($row['dmk_br_id']) {
-                $br_info = sql_fetch("SELECT mb_nick FROM {$g5['member_table']} WHERE mb_id = '{$row['dmk_br_id']}'");
-                $hierarchy_parts[] = ($br_info['mb_nick'] ?? $row['dmk_br_id']);
-                $owner_type = '지점';
-            }
-
-            if ( $owner_type ) {
-                echo $owner_type.'<br>';
-            }
-            
-            if (!empty($hierarchy_parts)) {
-                echo '<small>(' . implode(' > ', $hierarchy_parts) . ')</small>';
-            } else {
-                echo '<small style="color: #999;">(미설정)</small>';
-            }
-            ?>
-        </td>
         <td class="td_mng td_mng_s" rowspan="2">
             <?php echo $s_add; ?>
             <?php echo $s_vie; ?>
@@ -360,7 +214,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <?php echo $row['ca_mb_id']; ?>
             <?php } ?>
         </td>
-    
         <td headers="sct_sell" class="td_possible">
             <input type="checkbox" name="ca_use[<?php echo $i; ?>]" value="1" id="ca_use<?php echo $i; ?>" <?php echo ($row['ca_use'] ? "checked" : ""); ?>>
             <label for="ca_use<?php echo $i; ?>">판매</label>
@@ -392,7 +245,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         </td>
     </tr>
     <?php }
-    if ($i == 0) echo "<tr><td colspan=\"10\" class=\"empty_table\">자료가 한 건도 없습니다.</td></tr>\n";
+    if ($i == 0) echo "<tr><td colspan=\"9\" class=\"empty_table\">자료가 한 건도 없습니다.</td></tr>\n";
     ?>
     </tbody>
     </table>
@@ -401,15 +254,8 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <div class="btn_fixed_top">
     <input type="submit" value="일괄수정" class="btn_02 btn">
 
-    <?php 
-    // 본사 관리자 또는 DMK 권한이 있는 관리자에게 분류 추가 버튼 표시
-    if ($is_admin == 'super' || ($dmk_auth && dmk_is_menu_allowed('400200', dmk_get_current_user_type()))) {
-        $add_url = './categoryform.php';
-        if ($dmk_auth['is_super'] && ($sdt_id || $sag_id || $sbr_id)) {
-            $add_url .= '?sdt_id=' . urlencode($sdt_id) . '&sag_id=' . urlencode($sag_id) . '&sbr_id=' . urlencode($sbr_id);
-        }
-    ?>
-    <a href="<?php echo $add_url; ?>" id="cate_add" class="btn btn_01">분류 추가</a>
+    <?php if ($is_admin == 'super') {?>
+    <a href="./categoryform.php" id="cate_add" class="btn btn_01">분류 추가</a>
     <?php } ?>
 </div>
 
@@ -438,7 +284,6 @@ $(function() {
         );
     });
 });
-
 </script>
 
 <?php

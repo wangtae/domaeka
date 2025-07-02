@@ -476,6 +476,19 @@ function dmk_render_chain_select($options = []) {
             'debug' => $options['debug']
         ];
         
+        // 콜백 함수 추가
+        if (isset($options['callbacks'])) {
+            if (isset($options['callbacks']['onDistributorChange'])) {
+                $js_config['onDistributorChange'] = $options['callbacks']['onDistributorChange'];
+            }
+            if (isset($options['callbacks']['onAgencyChange'])) {
+                $js_config['onAgencyChange'] = $options['callbacks']['onAgencyChange'];
+            }
+            if (isset($options['callbacks']['onBranchChange'])) {
+                $js_config['onBranchChange'] = $options['callbacks']['onBranchChange'];
+            }
+        }
+        
         // 디버깅을 위해 autoSubmit 값 출력
         $html .= '<!-- DEBUG: autoSubmit value in js_config: ' . json_encode($js_config['autoSubmit']) . ' -->';
         $html .= '<!-- DEBUG: AJAX endpoints: ' . json_encode($js_config['agencyEndpoint']) . ', ' . json_encode($js_config['branchEndpoint']) . ' -->';

@@ -45,7 +45,8 @@
           "@playwright/mcp@latest",
           "--browser=chrome",
           "--save-trace",
-          "--output-dir=/home/wangt/cursor/projects/playwright-trace"
+          "--output-dir=/home/wangt/cursor/projects/playwright-trace",
+          "--headless=false"
       ]
     },
     "memory": {
