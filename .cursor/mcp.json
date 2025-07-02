@@ -43,11 +43,13 @@
         "command": "npx",
         "args": [
           "@playwright/mcp@latest",
-          "--browser=chrome",
           "--save-trace",
-          "--output-dir=/home/wangt/cursor/projects/playwright-trace",
-          "--headless=false"
-      ]
+          "--output-dir=/home/wangt/cursor/projects/playwright-trace"
+        ], 
+        "env": {
+          "LIBGL_ALWAYS_SOFTWARE": "1",
+          "PLAYWRIGHT_CHROMIUM_ARGS": "--no-sandbox --disable-gpu --disable-software-rasterizer"
+        }
     },
     "memory": {
       "command": "npx", 
