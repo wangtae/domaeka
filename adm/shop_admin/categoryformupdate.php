@@ -2,25 +2,18 @@
 $sub_menu = '400200';
 include_once('./_common.php');
 
+// 도매까 소유자 유형 상수 정의
+if (!defined('DMK_OWNER_TYPE_SUPER_ADMIN')) define('DMK_OWNER_TYPE_SUPER_ADMIN', 'super_admin');
+if (!defined('DMK_OWNER_TYPE_DISTRIBUTOR')) define('DMK_OWNER_TYPE_DISTRIBUTOR', 'distributor');
+if (!defined('DMK_OWNER_TYPE_AGENCY')) define('DMK_OWNER_TYPE_AGENCY', 'agency');
+if (!defined('DMK_OWNER_TYPE_BRANCH')) define('DMK_OWNER_TYPE_BRANCH', 'branch');
 
-// DMK 관리자에게 임시 최고 관리자 권한 부여
-dmk_override_super_admin_if_needed($sub_menu);
+dmk_auth_check_menu($auth, $sub_menu, 'r');
 
-// DMK 권한 확인
-$dmk_auth = dmk_get_admin_auth();
-
-// DMK 관리자인 경우 메뉴 접근 권한 확인
-if ($dmk_auth && $dmk_auth['mb_type']) {
-    if (!dmk_can_access_menu($sub_menu)) {
-        alert('이 메뉴에는 접근 권한이 없습니다.', G5_ADMIN_URL);
-    }
-} else {
-    // DMK 인증이 없는 경우, 기존 영카트 권한 확인
-    if (!$is_admin) {
-        alert('접근 권한이 없습니다.', G5_ADMIN_URL);
-    }
-    auth_check_menu($auth, $sub_menu, "w");
+if ( $member['mb_level'] >= 8 ) {
+    $is_admin = 'super';
 }
+
 
 $ca_include_head = isset($_POST['ca_include_head']) ? trim($_POST['ca_include_head']) : '';
 $ca_include_tail = isset($_POST['ca_include_tail']) ? trim($_POST['ca_include_tail']) : '';
@@ -65,9 +58,6 @@ $check_str_keys = array(
 'ca_img_height'=>'int',
 'ca_name'=>'str',
 'ca_mb_id'=>'str',
-'ca_mb_id_dt'=>'str',
-'ca_mb_id_ag'=>'str',
-'ca_mb_id_br'=>'str',
 'ca_nocoupon'=>'str',
 'ca_mobile_skin_dir'=>'str',
 'ca_skin'=>'str',
@@ -139,40 +129,18 @@ if ($w == 'd' && $is_admin != 'super')
 
 if ($w == "" || $w == "u")
 {
-    // DMK 계층 정보 처리
-    $final_ca_mb_id = '';
-    
-    // 새로운 계층 필드에서 최종 관리자 ID 결정
-    if ($ca_mb_id_br) {
-        $final_ca_mb_id = $ca_mb_id_br; // 지점 관리자
-    } elseif ($ca_mb_id_ag) {
-        $final_ca_mb_id = $ca_mb_id_ag; // 대리점 관리자
-    } elseif ($ca_mb_id_dt) {
-        $final_ca_mb_id = $ca_mb_id_dt; // 총판 관리자
-    } elseif ($ca_mb_id) {
-        $final_ca_mb_id = $ca_mb_id; // 기존 필드 (호환성)
-    }
-    
-    // 최종 관리자 ID 검증
-    if ($final_ca_mb_id) {
-        $sql = " select mb_id from {$g5['member_table']} where mb_id = '$final_ca_mb_id' ";
+    if ($ca_mb_id)
+    {
+        $sql = " select mb_id from {$g5['member_table']} where mb_id = '$ca_mb_id' ";
         $row = sql_fetch($sql);
-        if (!$row['mb_id']) {
-            alert("'$final_ca_mb_id' 은(는) 존재하는 회원아이디가 아닙니다.");
-        }
-        // 최종 결정된 ID를 ca_mb_id에 설정
-        $ca_mb_id = $final_ca_mb_id;
+        if (!$row['mb_id'])
+            alert("\'$ca_mb_id\' 은(는) 존재하는 회원아이디가 아닙니다.");
     }
 }
 
 if( $ca_skin && ! is_include_path_check($ca_skin) ){
     alert('오류 : 데이터폴더가 포함된 path 를 포함할수 없습니다.');
 }
-
-// DMK 계층 필드 처리
-$dmk_dt_id = $ca_mb_id_dt ? $ca_mb_id_dt : '';
-$dmk_ag_id = $ca_mb_id_ag ? $ca_mb_id_ag : '';
-$dmk_br_id = $ca_mb_id_br ? $ca_mb_id_br : '';
 
 $sql_common = " ca_order                = '$ca_order',
                 ca_skin_dir             = '$ca_skin_dir',
@@ -198,9 +166,6 @@ $sql_common = " ca_order                = '$ca_order',
                 ca_include_head         = '$ca_include_head',
                 ca_include_tail         = '$ca_include_tail',
                 ca_mb_id                = '$ca_mb_id',
-                dmk_dt_id               = '$dmk_dt_id',
-                dmk_ag_id               = '$dmk_ag_id',
-                dmk_br_id               = '$dmk_br_id',
                 ca_cert_use             = '$ca_cert_use',
                 ca_adult_use            = '$ca_adult_use',
                 ca_nocoupon             = '$ca_nocoupon',
@@ -290,7 +255,6 @@ else if ($w == "d")
     $sql = " delete from {$g5['g5_shop_category_table']} where ca_id = '$ca_id' ";
     sql_query($sql);
 }
-
 
 if(function_exists('get_admin_captcha_by'))
     get_admin_captcha_by('remove');

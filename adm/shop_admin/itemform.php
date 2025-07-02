@@ -264,15 +264,12 @@ include_once (G5_ADMIN_PATH.'/admin.head.php');
 echo dmk_include_chain_select_assets();
 
 
-
-
 // 분류리스트
 $category_select = '';
 $script = '';
 $sql = " select * from {$g5['g5_shop_category_table']} ";
-if ($is_admin != 'super')
-    $sql .= " where ca_mb_id = '{$member['mb_id']}' ";
 $sql .= " order by ca_order, ca_id ";
+
 $result = sql_query($sql);
 for ($i=0; $row=sql_fetch_array($result); $i++)
 {
@@ -289,6 +286,8 @@ for ($i=0; $row=sql_fetch_array($result); $i++)
     //$script .= "ca_explan_html['$row[ca_id]'] = $row[ca_explan_html];\n";
     $script .= "ca_sell_email['{$row['ca_id']}'] = '{$row['ca_sell_email']}';\n";
 }
+
+
 
 // 재입고알림 설정 필드 추가
 if(!sql_query(" select it_stock_sms from {$g5['g5_shop_item_table']} limit 1 ", false)) {
@@ -677,6 +676,8 @@ if(!sql_query(" select it_skin from {$g5['g5_shop_item_table']} limit 1", false)
         </table>
     </div>
 </section>
+
+<?php print_r($category_select); ?><?php echo conv_selected_option($category_select, $it['ca_id']); ?>
 
 <section id="anc_sitfrm_cate">
     <h2 class="h2_frm">상품분류</h2>
@@ -2781,6 +2782,29 @@ function initializeDatepickers() {
         var targetInputId = $(this).attr('id').replace('_btn', '');
         $('#' + targetInputId).datepicker('show');
     });
+    
+    // 계층 선택 시 분류 업데이트 함수
+    function updateCategoriesByHierarchy() {
+        var dmk_dt_id = $('select[name="dmk_dt_id"]').val() || $('input[name="dmk_dt_id"]').val() || '';
+        var dmk_ag_id = $('select[name="dmk_ag_id"]').val() || $('input[name="dmk_ag_id"]').val() || '';
+        var dmk_br_id = $('select[name="dmk_br_id"]').val() || $('input[name="dmk_br_id"]').val() || '';
+        
+        // 사용안함
+    }
+    
+    // 계층 선택박스 변경 이벤트 핸들러
+    $(document).on('change', 'select[name="dmk_dt_id"], select[name="dmk_ag_id"], select[name="dmk_br_id"]', function() {
+        updateCategoriesByHierarchy();
+    });
+    
+    // 페이지 로드 시 초기 분류 업데이트 (값이 이미 선택되어 있는 경우)
+    var initialDtId = $('select[name="dmk_dt_id"]').val() || $('input[name="dmk_dt_id"]').val();
+    var initialAgId = $('select[name="dmk_ag_id"]').val() || $('input[name="dmk_ag_id"]').val();
+    var initialBrId = $('select[name="dmk_br_id"]').val() || $('input[name="dmk_br_id"]').val();
+    
+    if (initialDtId || initialAgId || initialBrId) {
+        updateCategoriesByHierarchy();
+    }
 }
 </script>
 

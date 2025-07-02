@@ -66,7 +66,7 @@ if ($is_admin != 'super') {     // 최고관리자가 아니면 체크
     }
     $checks = sql_fetch($sql);
 
-    if( ! (isset($checks['ca_mb_id']) && $checks['ca_mb_id']) || $checks['ca_mb_id'] !== $member['mb_id'] ){
+    if( 0 ) { //! (isset($checks['ca_mb_id']) && $checks['ca_mb_id']) || $checks['ca_mb_id'] !== $member['mb_id'] ){
         alert("해당 분류의 관리회원이 아닙니다.");
     }
 }
