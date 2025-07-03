@@ -1,0 +1,47 @@
+{
+    "mcpServers": {
+      "mysql": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "-p",
+          "@benborla29/mcp-server-mysql",
+          "-p",
+          "dotenv",
+          "mcp-server-mysql"
+        ],
+        "env": {
+          "MYSQL_HOST": "1.201.172.211",
+          "MYSQL_PORT": "3307",
+          "MYSQL_USER": "domaeka",
+          "MYSQL_PASS": "!domaekaservice@.",
+          "MYSQL_DB": "domaeka",
+          "ALLOW_INSERT_OPERATION": "true",
+          "ALLOW_UPDATE_OPERATION": "true",
+          "ALLOW_DELETE_OPERATION": "true"
+        }
+      },
+      "playwright": {
+        "type": "stdio",  
+        "command": "npx",
+        "args": [
+          "@playwright/mcp@latest",
+          "--save-trace",
+          "--output-dir=/home/wangt/cursor/projects/playwright-trace"
+        ], 
+        "env": {
+          "LIBGL_ALWAYS_SOFTWARE": "1",
+          "PLAYWRIGHT_CHROMIUM_ARGS": "--no-sandbox --disable-gpu --disable-software-rasterizer"
+        }
+      },
+      "sequential-thinking": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-sequential-thinking"
+        ]
+      }
+    }
+  }

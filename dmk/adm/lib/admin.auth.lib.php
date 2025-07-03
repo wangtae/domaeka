@@ -280,13 +280,17 @@ function dmk_get_agency_branch_ids($ag_id) {
  * @return bool 권한 보유 여부
  */
 function dmk_can_modify_item($it_id) {
-    global $g5;
+    global $member, $is_admin, $g5;
     
     $auth = dmk_get_admin_auth();
+
+    
     
     if (!$auth) {
         return false;
     }
+
+    
     
     // 최고 관리자는 모든 권한 보유 (영카트 최고 관리자)
     if ($auth['is_super']) {
@@ -294,7 +298,7 @@ function dmk_can_modify_item($it_id) {
     }
     
     // 상품 정보 조회
-    $sql = " SELECT dmk_it_owner_type, dmk_it_owner_id FROM {$g5['g5_shop_item_table']} WHERE it_id = '" . sql_escape_string($it_id) . "' ";
+    $sql = " SELECT dmk_dt_id, dmk_ag_id, dmk_br_id FROM {$g5['g5_shop_item_table']} WHERE it_id = '" . sql_escape_string($it_id) . "' ";
     $item = sql_fetch($sql);
     
     if (!$item) {
@@ -302,24 +306,24 @@ function dmk_can_modify_item($it_id) {
     }
     
     // 소유권 확인
-    switch ($auth['mb_level']) {
-        case DMK_MB_LEVEL_DISTRIBUTOR:
-            // 총판 관리자는 총판 소유 상품만 수정 가능
-            return $item['dmk_it_owner_type'] === DMK_OWNER_TYPE_DISTRIBUTOR;
-            
-        case DMK_MB_LEVEL_AGENCY:
-            // 대리점 관리자는 대리점 소유 상품만 수정 가능
-            return $item['dmk_it_owner_type'] === DMK_OWNER_TYPE_AGENCY && 
-                   $item['dmk_it_owner_id'] === $auth['ag_id'];
-            
-        case DMK_MB_LEVEL_BRANCH:
-            // 지점 관리자는 지점 소유 상품만 수정 가능
-            return $item['dmk_it_owner_type'] === DMK_OWNER_TYPE_BRANCH && 
-                   $item['dmk_it_owner_id'] === $auth['br_id'];
-            
-        default:
-            return false; // 일반 회원 또는 비회원은 상품 수정 불가
+    if ( $auth['mb_level'] == DMK_MB_LEVEL_BRANCH ) {
+        if ( $item['dmk_br_id'] == $auth['br_id'] ) {
+            return true;
+        }
+        return false;
+    } else if ( $auth['mb_level'] == DMK_MB_LEVEL_AGENCY ) {
+        if ( $item['dmk_ag_id'] == $auth['ag_id'] ) {
+            return true;
+        }
+        return false;
+    } else if ( $auth['mb_level'] == DMK_MB_LEVEL_DISTRIBUTOR ) {
+        if ( $item['dmk_dt_id'] == $auth['dt_id'] ) {
+            return true;
+        }
+        return false;
     }
+
+    return false;
 }
 
 /**
