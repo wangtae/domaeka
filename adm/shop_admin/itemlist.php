@@ -52,14 +52,29 @@ $sql_search = "";
 if ($filter_dt_id) {
     $sql_search .= " $where (a.dmk_dt_id = '".sql_escape_string($filter_dt_id)."') ";
     $where = " and ";
+} else {
+    if ( $dmk_auth['mb_level'] == 8 OR $dmk_auth['mb_level'] == 6 OR $dmk_auth['mb_level'] == 4 ) {
+        $sql_search .= " $where (a.dmk_dt_id = '".$dmk_auth['dt_id']."') ";
+        $where = " and ";
+    }
 }
 if ($filter_ag_id) {
     $sql_search .= " $where (a.dmk_ag_id = '".sql_escape_string($filter_ag_id)."') ";
     $where = " and ";
+} else {
+    if ( $dmk_auth['mb_level'] == 6 OR $dmk_auth['mb_level'] == 4 ) {
+        $sql_search .= " $where (a.dmk_ag_id = '".$dmk_auth['ag_id']."') ";
+        $where = " and ";
+    }
 }
 if ($filter_br_id) {
     $sql_search .= " $where (a.dmk_br_id = '".sql_escape_string($filter_br_id)."') ";
     $where = " and ";
+} else {
+    if ($dmk_auth['mb_level'] == 4 ) {
+        $sql_search .= " $where (a.dmk_br_id = '".$dmk_auth['br_id']."') ";
+        $where = " and ";
+    }
 }
 
 if ($stx != "") {
@@ -85,7 +100,7 @@ $sql_common .= $sql_search;
 $sql = " select count(*) as cnt " . $sql_common;
 $row = sql_fetch($sql);
 $total_count = $row ? (int)$row['cnt'] : 0;
-
+echo $sql;
 $rows = $config['cf_page_rows'];
 $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
 if ($page < 1) { $page = 1; } // 페이지가 없으면 첫 페이지 (1 페이지)
@@ -102,7 +117,7 @@ $sql  = " select *
            $sql_common
            $sql_order
            limit $from_record, $rows ";
-           
+
 $result = sql_query($sql);
 
 // URL 쿼리 스트링 생성 (계층 필터 포함) <i class="fa fa-link dmk-new-icon" title="NEW"></i>
