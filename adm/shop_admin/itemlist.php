@@ -356,7 +356,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <?php
     }
     if ($i == 0)
-        echo '<tr><td colspan="10" class="empty_table">자료가 한건도 없습니다.</td></tr>';
+        echo '<tr><td colspan="13" class="empty_table">자료가 한건도 없습니다.</td></tr>';
     ?>
     </tbody>
     </table>
