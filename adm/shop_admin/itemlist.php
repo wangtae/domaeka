@@ -290,23 +290,23 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             if ($row['dmk_br_id']) {
                 // 지점 상품
                 $hierarchy_info = '지점';
-                $sql = "SELECT br_name FROM dmk_branch WHERE br_id = '" . sql_escape_string($row['dmk_br_id']) . "'";
+                $sql = "SELECT mb_name, mb_nick FROM dmk_branch JOIN g5_member ON br_id = mb_id WHERE br_id = '" . sql_escape_string($row['dmk_br_id']) . "'";
                 $owner_row = sql_fetch($sql);
-                $hierarchy_name = $owner_row ? $owner_row['br_name'] : '';
+                $hierarchy_name = $owner_row ? $owner_row['mb_name'] : '';
                 $hierarchy_id = $row['dmk_br_id'];
             } elseif ($row['dmk_ag_id']) {
                 // 대리점 상품
                 $hierarchy_info = '대리점';
-                $sql = "SELECT ag_name FROM dmk_agency WHERE ag_id = '" . sql_escape_string($row['dmk_ag_id']) . "'";
+                $sql = "SELECT mb_name, mb_nick FROM dmk_agency JOIN g5_member ON ag_id = mb_id WHERE ag_id = '" . sql_escape_string($row['dmk_ag_id']) . "'";
                 $owner_row = sql_fetch($sql);
-                $hierarchy_name = $owner_row ? $owner_row['ag_name'] : '';
+                $hierarchy_name = $owner_row ? $owner_row['mb_name'] : '';
                 $hierarchy_id = $row['dmk_ag_id'];
             } elseif ($row['dmk_dt_id']) {
                 // 총판 상품
                 $hierarchy_info = '총판';
-                $sql = "SELECT dt_name FROM dmk_distributor WHERE dt_id = '" . sql_escape_string($row['dmk_dt_id']) . "'";
+                $sql = "SELECT mb_name, mb_nick FROM dmk_distributor JOIN g5_member ON dt_id = mb_id WHERE dt_id = '" . sql_escape_string($row['dmk_dt_id']) . "'";
                 $owner_row = sql_fetch($sql);
-                $hierarchy_name = $owner_row ? $owner_row['dt_name'] : '';
+                $hierarchy_name = $owner_row ? $owner_row['mb_name'] : '';
                 $hierarchy_id = $row['dmk_dt_id'];
             } else {
                 // 본사 상품
