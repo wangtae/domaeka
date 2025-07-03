@@ -2,9 +2,43 @@
 $sub_menu = '400300';
 include_once('./_common.php');
 
-check_demo();
+include_once(G5_DMK_PATH.'/adm/lib/admin.log.lib.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+include_once(G5_PATH.'/dmk/dmk_global_settings.php');
 
-check_admin_token();
+//check_admin_token();
+
+$dmk_auth = dmk_get_admin_auth();
+$user_type = dmk_get_current_user_type();
+
+// 도매까 관리자 유형 상수 정의
+if (!defined('DMK_MB_TYPE_SUPER_ADMIN')) define('DMK_MB_TYPE_SUPER_ADMIN', 0);
+if (!defined('DMK_MB_TYPE_DISTRIBUTOR')) define('DMK_MB_TYPE_DISTRIBUTOR', 1);
+if (!defined('DMK_MB_TYPE_AGENCY')) define('DMK_MB_TYPE_AGENCY', 2);
+if (!defined('DMK_MB_TYPE_BRANCH')) define('DMK_MB_TYPE_BRANCH', 3);
+
+// 도매까 소유자 유형 상수 정의
+if (!defined('DMK_OWNER_TYPE_SUPER_ADMIN')) define('DMK_OWNER_TYPE_SUPER_ADMIN', 'super_admin');
+if (!defined('DMK_OWNER_TYPE_DISTRIBUTOR')) define('DMK_OWNER_TYPE_DISTRIBUTOR', 'distributor');
+if (!defined('DMK_OWNER_TYPE_AGENCY')) define('DMK_OWNER_TYPE_AGENCY', 'agency');
+if (!defined('DMK_OWNER_TYPE_BRANCH')) define('DMK_OWNER_TYPE_BRANCH', 'branch');
+
+// 메뉴 접근 권한 확인
+if (!dmk_can_access_menu($sub_menu)) {
+    alert('접근 권한이 없습니다.');
+}
+
+// 1. 관리자 로그인 여부 확인 및 권한 정보 가져오기
+if (!$dmk_auth || empty($dmk_auth['mb_id'])) {
+    alert("관리자 권한이 필요합니다.", G5_ADMIN_URL);
+    exit;
+}
+
+// 2. 최고 관리자 (영카트 최고 관리자)는 모든 관리자 폼에 접근 가능
+if ($dmk_auth['is_super']) {
+    return; // 접근 허용, 함수 종료
+}
+
 
 $count_post_chk = (isset($_POST['chk']) && is_array($_POST['chk'])) ? count($_POST['chk']) : 0;
 $post_act_button = isset($_POST['act_button']) ? $_POST['act_button'] : '';
@@ -15,20 +49,13 @@ if (! $count_post_chk) {
 
 if ($post_act_button == "선택수정") {
 
-    auth_check_menu($auth, $sub_menu, 'w');
+    //auth_check_menu($auth, $sub_menu, 'w');
 
     for ($i=0; $i< $count_post_chk; $i++) {
 
         // 실제 번호를 넘김
         $k = isset($_POST['chk'][$i]) ? (int) $_POST['chk'][$i] : 0;
 
-        if( ! (isset($_POST['ca_id'][$k]) && $_POST['ca_id'][$k])) {
-            alert("기본분류는 반드시 선택해야 합니다.");
-        }
-
-        $p_ca_id = (isset($_POST['ca_id']) && is_array($_POST['ca_id'])) ? strip_tags($_POST['ca_id'][$k]) : '';
-        $p_ca_id2 = (isset($_POST['ca_id2']) && is_array($_POST['ca_id2'])) ? strip_tags($_POST['ca_id2'][$k]) : '';
-        $p_ca_id3 = (isset($_POST['ca_id3']) && is_array($_POST['ca_id3'])) ? strip_tags($_POST['ca_id3'][$k]) : '';
         $p_it_name = (isset($_POST['it_name']) && is_array($_POST['it_name'])) ? strip_tags(clean_xss_attributes($_POST['it_name'][$k])) : '';
         $p_it_cust_price = (isset($_POST['it_cust_price']) && is_array($_POST['it_cust_price'])) ? strip_tags($_POST['it_cust_price'][$k]) : '';
         $p_it_price = (isset($_POST['it_price']) && is_array($_POST['it_price'])) ? strip_tags($_POST['it_price'][$k]) : '';
@@ -50,9 +77,7 @@ if ($post_act_button == "선택수정") {
         }
 
         $sql = "update {$g5['g5_shop_item_table']}
-                   set ca_id          = '".sql_real_escape_string($p_ca_id)."',
-                       ca_id2         = '".sql_real_escape_string($p_ca_id2)."',
-                       ca_id3         = '".sql_real_escape_string($p_ca_id3)."',
+                   set 
                        it_name        = '".$p_it_name."',
                        it_cust_price  = '".sql_real_escape_string($p_it_cust_price)."',
                        it_price       = '".sql_real_escape_string($p_it_price)."',

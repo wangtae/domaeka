@@ -340,7 +340,7 @@ function dmk_render_chain_select($options = []) {
                     }
                 }
             }
-            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly>';
+            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly style="margin-right:3px;display:none;">';
             $html .= '<input type="hidden" name="' . $field_name . '" id="' . $field_name . '" value="' . htmlspecialchars($selected_dt_id) . '">';
         } else {
             // 기존 select 박스 렌더링
@@ -392,7 +392,7 @@ function dmk_render_chain_select($options = []) {
                         '대리점';
                 }
             }
-            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly>';
+            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly  style="margin-right:3px;display:none;">';
             $html .= '<input type="hidden" name="' . $field_name . '" id="' . $field_name . '" value="' . htmlspecialchars($selected_ag_id) . '">';
         } else {
             // 기존 select 박스 렌더링
@@ -446,7 +446,7 @@ function dmk_render_chain_select($options = []) {
                         '지점';
                 }
             }
-            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly>';
+            $html .= '<input type="text" name="' . $field_name . '_display" id="' . $field_name . '_display" class="' . $options['css_classes']['select'] . '" value="' . htmlspecialchars($display_value) . '" readonly  style="margin-right:3px;display:none;">';
             $html .= '<input type="hidden" name="' . $field_name . '" id="' . $field_name . '" value="' . htmlspecialchars($selected_br_id) . '">';
         } else {
             // 기존 select 박스 렌더링

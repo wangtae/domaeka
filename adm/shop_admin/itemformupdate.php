@@ -1,7 +1,15 @@
 <?php
 $sub_menu = '400300';
 include_once('./_common.php');
+
+include_once(G5_DMK_PATH.'/adm/lib/admin.log.lib.php');
 include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+include_once(G5_PATH.'/dmk/dmk_global_settings.php');
+
+//check_admin_token();
+
+$dmk_auth = dmk_get_admin_auth();
+$user_type = dmk_get_current_user_type();
 
 // 도매까 관리자 유형 상수 정의
 if (!defined('DMK_MB_TYPE_SUPER_ADMIN')) define('DMK_MB_TYPE_SUPER_ADMIN', 0);
@@ -9,13 +17,34 @@ if (!defined('DMK_MB_TYPE_DISTRIBUTOR')) define('DMK_MB_TYPE_DISTRIBUTOR', 1);
 if (!defined('DMK_MB_TYPE_AGENCY')) define('DMK_MB_TYPE_AGENCY', 2);
 if (!defined('DMK_MB_TYPE_BRANCH')) define('DMK_MB_TYPE_BRANCH', 3);
 
+// 도매까 소유자 유형 상수 정의
+if (!defined('DMK_OWNER_TYPE_SUPER_ADMIN')) define('DMK_OWNER_TYPE_SUPER_ADMIN', 'super_admin');
+if (!defined('DMK_OWNER_TYPE_DISTRIBUTOR')) define('DMK_OWNER_TYPE_DISTRIBUTOR', 'distributor');
+if (!defined('DMK_OWNER_TYPE_AGENCY')) define('DMK_OWNER_TYPE_AGENCY', 'agency');
+if (!defined('DMK_OWNER_TYPE_BRANCH')) define('DMK_OWNER_TYPE_BRANCH', 'branch');
+
+// 메뉴 접근 권한 확인
+if (!dmk_can_access_menu($sub_menu)) {
+    alert('접근 권한이 없습니다.');
+}
+
+// 1. 관리자 로그인 여부 확인 및 권한 정보 가져오기
+if (!$dmk_auth || empty($dmk_auth['mb_id'])) {
+    alert("관리자 권한이 필요합니다.", G5_ADMIN_URL);
+    exit;
+}
+
+// 2. 최고 관리자 (영카트 최고 관리자)는 모든 관리자 폼에 접근 가능
+if ($dmk_auth['is_super']) {
+    return; // 접근 허용, 함수 종료
+}
+
+
+
 if ($w == "u" || $w == "d")
     check_demo();
 
-// 도매까 권한 확인 - DMK 설정에 따른 메뉴 접근 권한 체크
-include_once(G5_PATH.'/dmk/dmk_global_settings.php');
-$dmk_auth = dmk_get_admin_auth();
-$user_type = dmk_get_current_user_type();
+
 
 // DMK 권한 체크 - 대리점, 지점 관리자도 접근 가능하도록 수정
 if ($dmk_auth && $dmk_auth['admin_type'] === 'main') {

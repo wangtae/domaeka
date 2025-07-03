@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mysql": {
+      "type": "stdio",
+      "command": "/home/wangt/cursor/projects/web/domaeka",
+      "args": [],
+      "env": {}
+    }
+  }
+}
