@@ -350,7 +350,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <div class="btn_fixed_top">
 
     <a href="./itemform.php" class="btn btn_01">상품등록</a>
-    <a href="./itemexcel.php" onclick="return excelform(this.href);" target="_blank" class="btn btn_02">상품일괄등록</a>
+    <!--<a href="./itemexcel.php" onclick="return excelform(this.href);" target="_blank" class="btn btn_02">상품일괄등록</a>-->
     <input type="submit" name="act_button" value="선택수정" onclick="document.pressed=this.value" class="btn btn_02">
     <?php if ($is_admin == 'super') { ?>
     <input type="submit" name="act_button" value="선택삭제" onclick="document.pressed=this.value" class="btn btn_02">
