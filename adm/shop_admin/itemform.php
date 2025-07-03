@@ -1283,43 +1283,7 @@ $(function(){
             </td>
         </tr>
 
-        <!-- 도매까 지점별 재고 관리 -->
-        <?php
-        $dmk_auth = dmk_get_admin_auth();
-        if ($dmk_auth['is_super'] || $dmk_auth['mb_type'] <= 2) { // 최고관리자, 총판, 대리점만 지점별 재고 설정 가능
-        ?>
-        <tr>
-            <th scope="row" colspan="3" style="background:#e3f2fd; text-align:center; font-weight:bold; color:#1976d2; padding:15px;">
-                <i class="fa fa-cubes"></i> 지점별 재고 관리
-                <button type="button" onclick="toggleBranchStock()" style="margin-left:10px; padding:5px 10px; background:#2196f3; color:white; border:none; border-radius:3px; cursor:pointer;">
-                    <span id="branch-stock-toggle-text">펼치기</span>
-                </button>
-            </th>
-        </tr>
-        <tr id="branch-stock-section" style="display:none;">
-            <td colspan="3" style="padding:20px; background:#f8f9fa;">
-                <div style="margin-bottom:15px; color:#6c757d; font-size:0.9em;">
-                    <strong>안내:</strong> 각 지점별로 다른 재고 수량을 설정할 수 있습니다.
-                </div>
-                
-                <div id="branch-stock-list">
-                    <div style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
-                        <div><strong>지점명</strong></div>
-                        <div><strong>재고수량</strong></div>
-                        <div><strong>안전재고</strong></div>
-                        <div><strong>관리</strong></div>
-                    </div>
-                </div>
-                
-                <div style="margin-top:15px;">
-                    <select id="new-branch-select" class="frm_input" style="width:200px;">
-                        <option value="">지점을 선택하세요</option>
-                    </select>
-                    <button type="button" onclick="addBranchStock()" style="margin-left:10px; padding:5px 10px; background:#28a745; color:white; border:none; border-radius:3px;">지점 추가</button>
-                </div>
-            </td>
-        </tr>
-        <?php } ?>
+        
 
         <tr>
             <th scope="row"><label for="it_noti_qty">재고 통보수량</label></th>
