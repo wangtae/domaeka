@@ -62,6 +62,8 @@ h2{font-size: 1.083em;font-weight: bold;margin:10px 0}
 #gnb .on .btn_op{background:url(../img/menu_default_on.png) 50% 50% no-repeat #fff}
 #gnb .gnb_li .btn_op.menu-100{background:url(../img/menu-1-1.png) 50% 50% no-repeat #ebebeb }
 #gnb .on .btn_op.menu-100{background:url(../img/menu-1.png) 50% 50% no-repeat #fff}
+#gnb .gnb_li .btn_op.menu-180{background:url(../img/menu-5-1.png) 50% 50% no-repeat #ebebeb }
+#gnb .on .btn_op.menu-180{background:url(../img/menu-5.png) 50% 50% no-repeat #fff}
 #gnb .gnb_li .btn_op.menu-200{background:url(../img/menu-2-1.png) 50% 50% no-repeat #ebebeb }
 #gnb .on .btn_op.menu-200{background:url(../img/menu-2.png) 50% 50% no-repeat #fff}
 #gnb .gnb_li .btn_op.menu-300{background:url(../img/menu-3-1.png) 50% 50% no-repeat #ebebeb }

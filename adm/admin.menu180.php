@@ -3,7 +3,7 @@ if (!defined('_GNUBOARD_')) exit;
 
 // 봇 관리 메뉴
 $menu['menu180'] = array(
-    array('180000', '<i class="fa fa-rocket"></i><span class="sound_only">봇 관리</span>', G5_ADMIN_URL.'/dmk/adm/bot/bot_server_status.php', 'bot_manage'),
+    array('180000', '<span>봇 관리</span>', G5_ADMIN_URL.'/dmk/adm/bot/bot_server_status.php', 'bot_manage'),
     array('180100', '서버 관리', G5_ADMIN_URL.'/dmk/adm/bot/bot_server_status.php', 'bot_server'),
     array('180200', '클라이언트 봇 관리', G5_ADMIN_URL.'/dmk/adm/bot/bot_client_list.php', 'bot_client'),
     array('180300', '스케줄링 발송 관리', G5_ADMIN_URL.'/dmk/adm/bot/bot_schedule_list.php', 'bot_schedule'),
