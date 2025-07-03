@@ -36,6 +36,7 @@ if (!$dmk_auth || empty($dmk_auth['mb_id'])) {
 
 // 2. 최고 관리자 (영카트 최고 관리자)는 모든 관리자 폼에 접근 가능
 if ($dmk_auth['is_super']) {
+    alert("관리자 권한이 없습니다.", G5_ADMIN_URL);
     return; // 접근 허용, 함수 종료
 }
 
@@ -49,9 +50,13 @@ if (! $count_post_chk) {
 
 if ($post_act_button == "선택수정") {
 
+
+    
     //auth_check_menu($auth, $sub_menu, 'w');
 
     for ($i=0; $i< $count_post_chk; $i++) {
+
+
 
         // 실제 번호를 넘김
         $k = isset($_POST['chk'][$i]) ? (int) $_POST['chk'][$i] : 0;
@@ -67,14 +72,6 @@ if ($post_act_button == "선택수정") {
         $p_it_order = (isset($_POST['it_order']) && is_array($_POST['it_order'])) ? strip_tags($_POST['it_order'][$k]) : '';
         $p_it_id = isset($_POST['it_id'][$k]) ? preg_replace('/[^a-z0-9_\-]/i', '', $_POST['it_id'][$k]) : '';
 
-        if ($is_admin != 'super') {     // 최고관리자가 아니면 체크
-            $sql = "select a.it_id, b.ca_mb_id from {$g5['g5_shop_item_table']} a , {$g5['g5_shop_category_table']} b where (a.ca_id = b.ca_id) and a.it_id = '$p_it_id'";
-            $checks = sql_fetch($sql);
-
-            if( ! $checks['ca_mb_id'] || $checks['ca_mb_id'] !== $member['mb_id'] ){
-                continue;
-            }
-        }
 
         $sql = "update {$g5['g5_shop_item_table']}
                    set 
@@ -91,6 +88,8 @@ if ($post_act_button == "선택수정") {
                  where it_id   = '".$p_it_id."' ";
 
         sql_query($sql);
+
+        
 
 		if( function_exists('shop_seo_title_update') ) shop_seo_title_update($p_it_id, true);
     }
