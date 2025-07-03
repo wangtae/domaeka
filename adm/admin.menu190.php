@@ -19,6 +19,7 @@ if (isset($member['mb_id'])) {
             array('190400', '통계분석 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/statistics/statistics_dashboard.php', 'dmk_statistics'),
             array('190600', '서브관리자관리 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/admin_manager/admin_list.php', 'dmk_admin'),
             array('190700', '서브관리자권한설정 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/admin_manager/dmk_auth_list.php', 'dmk_auth'),
+            array('190900', '관리자엑션로그 <i class="fa fa-history" title="LOG"></i>', G5_URL . '/dmk/adm/logs/action_log_list.php', 'dmk_action_log'),
             array('190800', '계층별메뉴권한설정 <i class="fa fa-cog" title="설정"></i>', G5_URL . '/dmk/adm/admin_manager/menu_config.php', 'dmk_menu_config'),
         );
     } else {
