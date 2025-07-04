@@ -12,6 +12,13 @@ require_once '../../../adm/_common.php';
 // 도매까 권한 라이브러리를 포함합니다.
 require_once G5_DMK_PATH . '/adm/lib/admin.auth.lib.php';
 
+// dmk_get_admin_auth 함수가 정의되었는지 확인
+if (!function_exists('dmk_get_admin_auth')) {
+    error_log('Error: dmk_get_admin_auth function not found in ' . __FILE__);
+    alert('권한 라이브러리 로드 실패: dmk_get_admin_auth 함수를 찾을 수 없습니다.');
+    exit;
+}
+
 // 현재 로그인한 관리자의 권한을 확인합니다.
 $auth = dmk_get_admin_auth();
 

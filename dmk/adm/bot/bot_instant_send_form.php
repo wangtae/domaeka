@@ -1,6 +1,6 @@
 <?php
 $sub_menu = '180400';
-include_once('../../_common.php');
+include_once('./_common.php');
 
 auth_check($auth[$sub_menu], "r");
 

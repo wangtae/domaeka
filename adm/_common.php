@@ -6,12 +6,25 @@ define('G5_IS_ADMIN', true);
  * $_SERVER['DOCUMENT_ROOT']를 사용하여 웹 서버의 문서 루트를 기준으로 경로를 구성합니다.
  * 이 파일이 로드된 후 G5_PATH, G5_URL, G5_ADMIN_PATH 등 모든 핵심 상수가 정의됩니다.
  */
-$gnuboard_main_common_path = $_SERVER['DOCUMENT_ROOT'] . '/common.php';
+// 웹서버와 명령줄 둘 다 지원하는 경로 설정
+$possible_paths = [
+    $_SERVER['DOCUMENT_ROOT'] . '/common.php',  // 웹서버에서 실행
+    dirname(__FILE__) . '/../common.php',       // 명령줄에서 실행
+    dirname(dirname(__FILE__)) . '/common.php'  // 대안 경로
+];
 
-if (file_exists($gnuboard_main_common_path)) {
+$gnuboard_main_common_path = null;
+foreach ($possible_paths as $path) {
+    if (file_exists($path)) {
+        $gnuboard_main_common_path = $path;
+        break;
+    }
+}
+
+if ($gnuboard_main_common_path) {
     require_once $gnuboard_main_common_path;
 } else {
-    die('그누보드5 common.php를 찾을 수 없습니다. 경로: ' . $gnuboard_main_common_path);
+    die('그누보드5 common.php를 찾을 수 없습니다. 확인된 경로들: ' . implode(', ', $possible_paths));
 }
 
 // 도매까 전역 설정을 포함합니다.

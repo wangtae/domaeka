@@ -1,5 +1,5 @@
 <?php
-include_once('../../_common.php');
+include_once('./_common.php');
 
 auth_check($auth[$sub_menu], "w");
 
