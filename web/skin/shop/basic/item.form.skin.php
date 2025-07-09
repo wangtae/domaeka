@@ -20,9 +20,11 @@ add_stylesheet('<link rel="stylesheet" href="'.G5_SHOP_CSS_URL.'/style.css">', 0
 	        for($i=1; $i<=10; $i++) {
 	            if(!$it['it_img'.$i])
 	                continue;
-	
-	            $img = get_it_thumbnail($it['it_img'.$i], $default['de_mimg_width'], $default['de_mimg_height']);
-	
+
+	            // 원본 이미지 경로를 직접 사용하도록 수정
+                $img_url = G5_DATA_URL.'/item/'.$it['it_img'.$i];
+                $img = '<img src="'.$img_url.'" alt="'.$it['it_name'].' - 이미지 '.$i.'" class="img-fluid">';
+
 	            if($img) {
 	                // 썸네일
 	                $thumb = get_it_thumbnail($it['it_img'.$i], 70, 70);

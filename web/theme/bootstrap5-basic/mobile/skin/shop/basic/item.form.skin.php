@@ -31,7 +31,13 @@ add_javascript('<script src="'.G5_JS_URL.'/jquery.bxslider.js"></script>', 10);
         if(!$it['it_img'.$i])
             continue;
 
-        $thumb = get_it_thumbnail($it['it_img'.$i], $thumb_img_w, $thumb_img_h);
+        // 개발 환경에서는 실 서버 이미지 직접 사용
+        if (strpos($_SERVER['HTTP_HOST'], 'domaeka.local') !== false) {
+            $img_url = 'https://domaeka.com/data/item/' . $it['it_img'.$i];
+            $thumb = '<img src="' . $img_url . '" style="width: ' . $thumb_img_w . 'px; height: ' . $thumb_img_h . 'px; object-fit: cover;" alt="">';
+        } else {
+            $thumb = get_it_thumbnail($it['it_img'.$i], $thumb_img_w, $thumb_img_h);
+        }
 
         if(!$thumb)
             continue;

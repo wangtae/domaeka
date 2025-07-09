@@ -28,14 +28,25 @@ add_stylesheet('<link rel="stylesheet" href="' . BB_ASSETS_URL . '/css/skin/shop
 								continue;
 							}
 
-							$img = get_it_thumbnail($it['it_img' . $i], $default['de_mimg_width'], $default['de_mimg_height']);
+							                                                        // 개발 환경에서는 실 서버 이미지 직접 사용
+                                                        if (strpos($_SERVER['HTTP_HOST'], 'domaeka.local') !== false) {
+                                                                $img_url = 'https://domaeka.com/data/item/' . $it['it_img' . $i];
+                                                                $img = '<img src="' . $img_url . '" style="max-width: ' . $default['de_mimg_width'] . 'px; max-height: ' . $default['de_mimg_height'] . 'px;" alt="">';
+                                                                
+                                                                // 썸네일도 원본 이미지 사용 (작은 크기로)
+                                                                $thumb = '<img src="' . $img_url . '" style="width: 40px; height: 30px; object-fit: cover;" alt="">';
+                                                        } else {
+                                                                $img = get_it_thumbnail($it['it_img' . $i], $default['de_mimg_width'], $default['de_mimg_height']);
+                                                                // 썸네일
+                                                                $thumb = get_it_thumbnail($it['it_img' . $i], 40, 30);
+                                                        }
 
-							if ($img) {
-								$item_image[$i] = $img;
-								// 썸네일
-								$thumb = get_it_thumbnail($it['it_img' . $i], 40, 30);
-								$thumbnails[] = $thumb;
-								$big_img_count++;
+                                                        if ($img) {
+                                                                $item_image[$i] = $img;
+                                                                if (isset($thumb)) {
+                                                                        $thumbnails[] = $thumb;
+                                                                }
+                                                                $big_img_count++;
 
 								echo '<a href="' . G5_SHOP_URL . '/largeimage.php?it_id=' . $it['it_id'] . '#slide' . $i . '" target="_blank" class="popup_item_image big-image flex-wrap justify-content-center mb-1">' . $img . '</a>';
 							}

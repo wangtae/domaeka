@@ -83,7 +83,7 @@ docs/old/
 _tools/
 
 # temp
-theme/
-skin/
-mobile/
+#theme/
+#skin/
+#mobile/
 youngcart-origin/
