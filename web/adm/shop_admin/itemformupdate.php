@@ -34,11 +34,6 @@ if (!$dmk_auth || empty($dmk_auth['mb_id'])) {
     exit;
 }
 
-// 2. 최고 관리자 (영카트 최고 관리자)는 모든 관리자 폼에 접근 가능
-if ($dmk_auth['is_super']) {
-    return; // 접근 허용, 함수 종료
-}
-
 
 
 if ($w == "u" || $w == "d")
