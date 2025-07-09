@@ -5,7 +5,7 @@
         "args": [
           "-y",
           "@modelcontextprotocol/server-filesystem",
-          "/home/wangt/cursor/projects/web/domaeka"
+          "/home/wangt/projects/client/domaeka/domaeka.dev"
         ],
         "env": {
           "WSL_DISTRO_NAME": "Ubuntu"
