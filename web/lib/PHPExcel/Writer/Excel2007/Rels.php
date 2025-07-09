@@ -49,7 +49,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
 
         // Relationships
         $objWriter->startElement('Relationships');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/package/2006/relationships');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/package/2006/relationships');
 
         $customPropertyList = $pPHPExcel->getProperties()->getCustomProperties();
         if (!empty($customPropertyList)) {
@@ -57,7 +57,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
             $this->writeRelationship(
                 $objWriter,
                 4,
-                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties',
+                'https://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties',
                 'docProps/custom.xml'
             );
 
@@ -67,7 +67,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
         $this->writeRelationship(
             $objWriter,
             3,
-            'http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties',
+            'https://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties',
             'docProps/app.xml'
         );
 
@@ -75,7 +75,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
         $this->writeRelationship(
             $objWriter,
             2,
-            'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties',
+            'https://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties',
             'docProps/core.xml'
         );
 
@@ -83,7 +83,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
         $this->writeRelationship(
             $objWriter,
             1,
-            'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument',
+            'https://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument',
             'xl/workbook.xml'
         );
         // a custom UI in workbook ?
@@ -123,13 +123,13 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
 
         // Relationships
         $objWriter->startElement('Relationships');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/package/2006/relationships');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/package/2006/relationships');
 
         // Relationship styles.xml
         $this->writeRelationship(
             $objWriter,
             1,
-            'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles',
+            'https://schemas.openxmlformats.org/officeDocument/2006/relationships/styles',
             'styles.xml'
         );
 
@@ -137,7 +137,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
         $this->writeRelationship(
             $objWriter,
             2,
-            'http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme',
+            'https://schemas.openxmlformats.org/officeDocument/2006/relationships/theme',
             'theme/theme1.xml'
         );
 
@@ -145,7 +145,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
         $this->writeRelationship(
             $objWriter,
             3,
-            'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings',
+            'https://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings',
             'sharedStrings.xml'
         );
 
@@ -155,7 +155,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
             $this->writeRelationship(
                 $objWriter,
                 ($i + 1 + 3),
-                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet',
+                'https://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet',
                 'worksheets/sheet' . ($i + 1) . '.xml'
             );
         }
@@ -204,7 +204,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
 
         // Relationships
         $objWriter->startElement('Relationships');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/package/2006/relationships');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/package/2006/relationships');
 
         // Write drawing relationships?
         $d = 0;
@@ -218,7 +218,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
             $this->writeRelationship(
                 $objWriter,
                 ++$d,
-                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing',
+                'https://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing',
                 '../drawings/drawing' . $pWorksheetId . '.xml'
             );
         }
@@ -232,7 +232,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
 //                    $this->writeRelationship(
 //                        $objWriter,
 //                        ++$d,
-//                        'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart',
+//                        'https://schemas.openxmlformats.org/officeDocument/2006/relationships/chart',
 //                        '../charts/chart' . ++$chartCount . '.xml'
 //                    );
 //                }
@@ -245,7 +245,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
                 $this->writeRelationship(
                     $objWriter,
                     '_hyperlink_' . $i,
-                    'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
+                    'https://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
                     $hyperlink->getUrl(),
                     'External'
                 );
@@ -260,14 +260,14 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
             $this->writeRelationship(
                 $objWriter,
                 '_comments_vml' . $i,
-                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing',
+                'https://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing',
                 '../drawings/vmlDrawing' . $pWorksheetId . '.vml'
             );
 
             $this->writeRelationship(
                 $objWriter,
                 '_comments' . $i,
-                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments',
+                'https://schemas.openxmlformats.org/officeDocument/2006/relationships/comments',
                 '../comments' . $pWorksheetId . '.xml'
             );
         }
@@ -278,7 +278,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
             $this->writeRelationship(
                 $objWriter,
                 '_headerfooter_vml' . $i,
-                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing',
+                'https://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing',
                 '../drawings/vmlDrawingHF' . $pWorksheetId . '.vml'
             );
         }
@@ -312,7 +312,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
 
         // Relationships
         $objWriter->startElement('Relationships');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/package/2006/relationships');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/package/2006/relationships');
 
         // Loop through images and write relationships
         $i = 1;
@@ -324,7 +324,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
                 $this->writeRelationship(
                     $objWriter,
                     $i,
-                    'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
+                    'https://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
                     '../media/' . str_replace(' ', '', $iterator->current()->getIndexedFilename())
                 );
             }
@@ -341,7 +341,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
                     $this->writeRelationship(
                         $objWriter,
                         $i++,
-                        'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart',
+                        'https://schemas.openxmlformats.org/officeDocument/2006/relationships/chart',
                         '../charts/chart' . ++$chartRef . '.xml'
                     );
                 }
@@ -375,7 +375,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
 
         // Relationships
         $objWriter->startElement('Relationships');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/package/2006/relationships');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/package/2006/relationships');
 
         // Loop through images and write relationships
         foreach ($pWorksheet->getHeaderFooter()->getImages() as $key => $value) {
@@ -383,7 +383,7 @@ class PHPExcel_Writer_Excel2007_Rels extends PHPExcel_Writer_Excel2007_WriterPar
             $this->writeRelationship(
                 $objWriter,
                 $key,
-                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
+                'https://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
                 '../media/' . $value->getIndexedFilename()
             );
         }

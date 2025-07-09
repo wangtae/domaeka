@@ -61,7 +61,7 @@ class PHPExcel_Writer_Excel2007_Comments extends PHPExcel_Writer_Excel2007_Write
 
         // comments
         $objWriter->startElement('comments');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/spreadsheetml/2006/main');
 
         // Loop through authors
         $objWriter->startElement('authors');

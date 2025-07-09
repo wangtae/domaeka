@@ -99,7 +99,7 @@ class PHPExcel_Writer_Excel2007_StringTable extends PHPExcel_Writer_Excel2007_Wr
 
             // String table
             $objWriter->startElement('sst');
-            $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/spreadsheetml/2006/main');
             $objWriter->writeAttribute('uniqueCount', count($pStringTable));
 
             // Loop through string table

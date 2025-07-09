@@ -50,7 +50,7 @@ class PHPExcel_Writer_Excel2007_ContentTypes extends PHPExcel_Writer_Excel2007_W
 
         // Types
         $objWriter->startElement('Types');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/package/2006/content-types');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/package/2006/content-types');
 
         // Theme
         $this->writeOverrideContentType($objWriter, '/xl/theme/theme1.xml', 'application/vnd.openxmlformats-officedocument.theme+xml');

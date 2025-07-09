@@ -53,9 +53,9 @@ class PHPExcel_Writer_OpenDocument_Settings extends PHPExcel_Writer_OpenDocument
         // Settings
         $objWriter->startElement('office:document-settings');
             $objWriter->writeAttribute('xmlns:office', 'urn:oasis:names:tc:opendocument:xmlns:office:1.0');
-            $objWriter->writeAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+            $objWriter->writeAttribute('xmlns:xlink', 'https://www.w3.org/1999/xlink');
             $objWriter->writeAttribute('xmlns:config', 'urn:oasis:names:tc:opendocument:xmlns:config:1.0');
-            $objWriter->writeAttribute('xmlns:ooo', 'http://openoffice.org/2004/office');
+            $objWriter->writeAttribute('xmlns:ooo', 'https://openoffice.org/2004/office');
             $objWriter->writeAttribute('office:version', '1.2');
 
             $objWriter->startElement('office:settings');

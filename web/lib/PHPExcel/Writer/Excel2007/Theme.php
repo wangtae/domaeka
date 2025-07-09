@@ -151,7 +151,7 @@ class PHPExcel_Writer_Excel2007_Theme extends PHPExcel_Writer_Excel2007_WriterPa
 
         // a:theme
         $objWriter->startElement('a:theme');
-        $objWriter->writeAttribute('xmlns:a', 'http://schemas.openxmlformats.org/drawingml/2006/main');
+        $objWriter->writeAttribute('xmlns:a', 'https://schemas.openxmlformats.org/drawingml/2006/main');
         $objWriter->writeAttribute('name', 'Office Theme');
 
             // a:themeElements

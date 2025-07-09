@@ -54,11 +54,11 @@ class PHPExcel_Writer_OpenDocument_Meta extends PHPExcel_Writer_OpenDocument_Wri
         $objWriter->startElement('office:document-meta');
 
         $objWriter->writeAttribute('xmlns:office', 'urn:oasis:names:tc:opendocument:xmlns:office:1.0');
-        $objWriter->writeAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-        $objWriter->writeAttribute('xmlns:dc', 'http://purl.org/dc/elements/1.1/');
+        $objWriter->writeAttribute('xmlns:xlink', 'https://www.w3.org/1999/xlink');
+        $objWriter->writeAttribute('xmlns:dc', 'https://purl.org/dc/elements/1.1/');
         $objWriter->writeAttribute('xmlns:meta', 'urn:oasis:names:tc:opendocument:xmlns:meta:1.0');
-        $objWriter->writeAttribute('xmlns:ooo', 'http://openoffice.org/2004/office');
-        $objWriter->writeAttribute('xmlns:grddl', 'http://www.w3.org/2003/g/data-view#');
+        $objWriter->writeAttribute('xmlns:ooo', 'https://openoffice.org/2004/office');
+        $objWriter->writeAttribute('xmlns:grddl', 'https://www.w3.org/2003/g/data-view#');
         $objWriter->writeAttribute('office:version', '1.2');
 
         $objWriter->startElement('office:meta');

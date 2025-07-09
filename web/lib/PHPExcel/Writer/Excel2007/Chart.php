@@ -58,9 +58,9 @@ class PHPExcel_Writer_Excel2007_Chart extends PHPExcel_Writer_Excel2007_WriterPa
 
         // c:chartSpace
         $objWriter->startElement('c:chartSpace');
-        $objWriter->writeAttribute('xmlns:c', 'http://schemas.openxmlformats.org/drawingml/2006/chart');
-        $objWriter->writeAttribute('xmlns:a', 'http://schemas.openxmlformats.org/drawingml/2006/main');
-        $objWriter->writeAttribute('xmlns:r', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+        $objWriter->writeAttribute('xmlns:c', 'https://schemas.openxmlformats.org/drawingml/2006/chart');
+        $objWriter->writeAttribute('xmlns:a', 'https://schemas.openxmlformats.org/drawingml/2006/main');
+        $objWriter->writeAttribute('xmlns:r', 'https://schemas.openxmlformats.org/officeDocument/2006/relationships');
 
         $objWriter->startElement('c:date1904');
         $objWriter->writeAttribute('val', 0);
@@ -1468,10 +1468,10 @@ class PHPExcel_Writer_Excel2007_Chart extends PHPExcel_Writer_Excel2007_WriterPa
     private function writeAlternateContent($objWriter)
     {
         $objWriter->startElement('mc:AlternateContent');
-        $objWriter->writeAttribute('xmlns:mc', 'http://schemas.openxmlformats.org/markup-compatibility/2006');
+        $objWriter->writeAttribute('xmlns:mc', 'https://schemas.openxmlformats.org/markup-compatibility/2006');
 
         $objWriter->startElement('mc:Choice');
-        $objWriter->writeAttribute('xmlns:c14', 'http://schemas.microsoft.com/office/drawing/2007/8/2/chart');
+        $objWriter->writeAttribute('xmlns:c14', 'https://schemas.microsoft.com/office/drawing/2007/8/2/chart');
         $objWriter->writeAttribute('Requires', 'c14');
 
         $objWriter->startElement('c14:style');

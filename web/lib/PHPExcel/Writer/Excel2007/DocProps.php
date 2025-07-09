@@ -49,8 +49,8 @@ class PHPExcel_Writer_Excel2007_DocProps extends PHPExcel_Writer_Excel2007_Write
 
         // Properties
         $objWriter->startElement('Properties');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/officeDocument/2006/extended-properties');
-        $objWriter->writeAttribute('xmlns:vt', 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/officeDocument/2006/extended-properties');
+        $objWriter->writeAttribute('xmlns:vt', 'https://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes');
 
         // Application
         $objWriter->writeElement('Application', 'Microsoft Excel');
@@ -146,11 +146,11 @@ class PHPExcel_Writer_Excel2007_DocProps extends PHPExcel_Writer_Excel2007_Write
 
         // cp:coreProperties
         $objWriter->startElement('cp:coreProperties');
-        $objWriter->writeAttribute('xmlns:cp', 'http://schemas.openxmlformats.org/package/2006/metadata/core-properties');
-        $objWriter->writeAttribute('xmlns:dc', 'http://purl.org/dc/elements/1.1/');
-        $objWriter->writeAttribute('xmlns:dcterms', 'http://purl.org/dc/terms/');
-        $objWriter->writeAttribute('xmlns:dcmitype', 'http://purl.org/dc/dcmitype/');
-        $objWriter->writeAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+        $objWriter->writeAttribute('xmlns:cp', 'https://schemas.openxmlformats.org/package/2006/metadata/core-properties');
+        $objWriter->writeAttribute('xmlns:dc', 'https://purl.org/dc/elements/1.1/');
+        $objWriter->writeAttribute('xmlns:dcterms', 'https://purl.org/dc/terms/');
+        $objWriter->writeAttribute('xmlns:dcmitype', 'https://purl.org/dc/dcmitype/');
+        $objWriter->writeAttribute('xmlns:xsi', 'https://www.w3.org/2001/XMLSchema-instance');
 
         // dc:creator
         $objWriter->writeElement('dc:creator', $pPHPExcel->getProperties()->getCreator());
@@ -218,8 +218,8 @@ class PHPExcel_Writer_Excel2007_DocProps extends PHPExcel_Writer_Excel2007_Write
 
         // cp:coreProperties
         $objWriter->startElement('Properties');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties');
-        $objWriter->writeAttribute('xmlns:vt', 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/officeDocument/2006/custom-properties');
+        $objWriter->writeAttribute('xmlns:vt', 'https://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes');
 
 
         foreach ($customPropertyList as $key => $customProperty) {

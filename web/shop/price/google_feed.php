@@ -25,7 +25,7 @@ $sql =" SELECT a.*, IFNULL((SELECT MAX(`io_stock_qty`) FROM `{$g5['g5_shop_item_
 $result = sql_query($sql);
 
 $xml = new SimpleXMLElement("<rss/>");
-$xml->addAttribute("xmlns:xmlns:g", "http://base.google.com/ns/1.0");
+$xml->addAttribute("xmlns:xmlns:g", "https://base.google.com/ns/1.0");
 $xml->addAttribute("version", "2.0");
 $channel = $xml->addChild("channel");
 $title = $channel->addChild("title", "쇼핑몰피드");

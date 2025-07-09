@@ -50,7 +50,7 @@ class PHPExcel_Writer_Excel2007_Style extends PHPExcel_Writer_Excel2007_WriterPa
         // styleSheet
         $objWriter->startElement('styleSheet');
         $objWriter->writeAttribute('xml:space', 'preserve');
-        $objWriter->writeAttribute('xmlns', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $objWriter->writeAttribute('xmlns', 'https://schemas.openxmlformats.org/spreadsheetml/2006/main');
 
         // numFmts
         $objWriter->startElement('numFmts');

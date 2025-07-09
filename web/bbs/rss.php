@@ -45,7 +45,7 @@ $subj1 = specialchars_replace($row['gr_subject'], 255);
 
 echo '<?xml version="1.0" encoding="utf-8" ?>'."\n";
 ?>
-<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<rss version="2.0" xmlns:dc="https://purl.org/dc/elements/1.1/">
 <channel>
 <title><?php echo specialchars_replace($config['cf_title'].' &gt; '.$subj1.' &gt; '.$subj2); ?></title>
 <link><?php echo specialchars_replace(get_pretty_url($bo_table)); ?></link>
