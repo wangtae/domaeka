@@ -18,9 +18,12 @@ if (!defined('_GNUBOARD_')) {
                     <?php
                     $image = array();
                     for ($i = 1; $i <= 10; $i++) {
-                        $image[$i]['file'] = G5_DATA_PATH . '/item/' . $row['it_img' . $i];
-                        $image[$i]['url'] = G5_DATA_URL . '/item/' . $row['it_img' . $i];
-                        $image[$i]['size'] = file_exists($image[$i]['file']) ? @getimagesize($image[$i]['file']) : array();
+                        if ( $row['it_img' . $i] ) {
+                            $image[$i]['file'] = G5_DATA_PATH . '/item/' . $row['it_img' . $i];
+                            $image[$i]['url'] = G5_DATA_URL . '/item/' . $row['it_img' . $i];
+                            $image[$i]['size'] = file_exists($image[$i]['file']) ? @getimagesize($image[$i]['file']) : array();
+                        }
+                        
                     }
                     //print_t($image);
                     ?>

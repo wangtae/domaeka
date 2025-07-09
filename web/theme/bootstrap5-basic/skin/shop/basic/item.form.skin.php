@@ -28,14 +28,14 @@ add_stylesheet('<link rel="stylesheet" href="' . BB_ASSETS_URL . '/css/skin/shop
 								continue;
 							}
 
-							                                                        $img = get_it_thumbnail($it['it_img' . $i], $default['de_mimg_width'], $default['de_mimg_height']);
+							 $img = get_it_thumbnail($it['it_img' . $i], $default['de_mimg_width'], $default['de_mimg_height']);
 
-                                                        if ($img) {
-                                                                $item_image[$i] = $img;
-                                                                // 썸네일
-                                                                $thumb = get_it_thumbnail($it['it_img' . $i], 40, 30);
-                                                                $thumbnails[] = $thumb;
-                                                                $big_img_count++;
+											if ($img) {
+													$item_image[$i] = $img;
+													// 썸네일
+													$thumb = get_it_thumbnail($it['it_img' . $i], 40, 30);
+													$thumbnails[] = $thumb;
+													$big_img_count++;
 
 								echo '<a href="' . G5_SHOP_URL . '/largeimage.php?it_id=' . $it['it_id'] . '#slide' . $i . '" target="_blank" class="popup_item_image big-image flex-wrap justify-content-center mb-1">' . $img . '</a>';
 							}

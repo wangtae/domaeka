@@ -136,3 +136,75 @@ body {
     background: #fff !important;
     box-shadow: 0 4px 15px rgba(0,0,0,0.15);
 }
+
+/* 상품 상세보기 - 이미지 미리보기 */
+#sit_pvi {
+    position: relative;
+}
+
+/* PC 환경에서 이미지 영역을 세로로 배치하도록 수정 */
+@media (min-width: 992px) {
+    .item-image-wrap.d-lg-flex {
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+}
+
+#sit_pvi_big {
+    text-align: center;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+/* 기본적으로 큰 이미지를 보이도록 수정 */
+#sit_pvi_big a {
+    display: block !important;
+}
+
+#sit_pvi_big a.visible {
+    display: block !important;
+}
+
+#sit_pvi_big img {
+    width: 100%;
+    height: auto;
+    max-width: 500px;
+}
+
+#sit_pvi_thumb {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-align: center;
+    width: 100%;
+}
+
+@media (min-width: 992px) {
+    #sit_pvi_thumb {
+        display: flex !important;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+}
+
+#sit_pvi_thumb:after {
+    display: block;
+    visibility: hidden;
+    clear: both;
+    content: "";
+}
+
+#sit_pvi_thumb li {
+    display: inline-block;
+    margin: 0 2px;
+}
+
+#sit_pvi_thumb img {
+    border: 1px solid #dbdbdb;
+    transition: border-color 0.3s ease;
+}
+
+#sit_pvi_thumb img:hover {
+    border: 1px solid #007bff;
+}
