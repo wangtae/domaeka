@@ -43,6 +43,8 @@ error.log
 
 # mcp
 .cursor/mcp.json
+.claude/.mcp.json
+.claude/mcp.json
 .vscode/mcp.json
 .gemini/settings.json
 
@@ -58,3 +60,7 @@ error.log
 /web/install/
 /web/data/db_config-domaeka.php
 /web/_tools/
+
+.cfg/
+
+web/PMA/5.2.2/config.inc.php

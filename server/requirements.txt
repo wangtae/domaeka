@@ -1,0 +1,4 @@
+# server-lite 최소 의존성
+aiomysql==0.2.0
+cryptography==45.0.3
+PyMySQL>=1.0.2
