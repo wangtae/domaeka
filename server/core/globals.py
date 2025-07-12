@@ -16,6 +16,9 @@ clients = {}  # {(ip, port): writer}
 server = None  # TCP 서버 인스턴스
 shutdown_event = asyncio.Event()  # 종료 이벤트
 
+# 서버 프로세스 관리
+process_name = None  # 현재 서버 프로세스 이름
+
 # 클라이언트 관리
 client_connections = defaultdict(dict)  # {bot_name: {(ip, port): connection_info}}
 

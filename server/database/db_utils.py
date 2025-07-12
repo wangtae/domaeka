@@ -276,3 +276,148 @@ async def create_tables():
                 
     except Exception as e:
         logger.error(f"[DB] 테이블 생성 실패: {e}")
+
+
+async def get_server_process_config(process_name: str) -> Dict[str, Any]:
+    """
+    서버 프로세스 설정 조회
+    
+    Args:
+        process_name: 프로세스 이름
+        
+    Returns:
+        Dict: 서버 프로세스 설정 정보
+        
+    Raises:
+        ValueError: 프로세스가 존재하지 않는 경우
+    """
+    if not g.db_pool:
+        raise ValueError("데이터베이스 연결이 없습니다")
+    
+    try:
+        async with g.db_pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                sql = """
+                SELECT process_id, server_id, process_name, process_type, 
+                       port, type, status, created_at, updated_at
+                FROM kb_server_processes 
+                WHERE process_name = %s
+                """
+                
+                await cursor.execute(sql, (process_name,))
+                result = await cursor.fetchone()
+                
+                if not result:
+                    raise ValueError(f"서버 프로세스 '{process_name}'을 찾을 수 없습니다")
+                
+                # 결과를 딕셔너리로 변환
+                config = {
+                    'process_id': result[0],
+                    'server_id': result[1],
+                    'process_name': result[2],
+                    'process_type': result[3],
+                    'port': result[4],
+                    'type': result[5],
+                    'status': result[6],
+                    'created_at': result[7],
+                    'updated_at': result[8]
+                }
+                
+                logger.info(f"[DB] 서버 프로세스 설정 조회: {process_name} (포트: {config['port']}, 타입: {config['type']})")
+                return config
+                
+    except Exception as e:
+        logger.error(f"[DB] 서버 프로세스 설정 조회 실패: {e}")
+        raise
+
+
+async def update_server_process_status(process_name: str, status: str, pid: int = None):
+    """
+    서버 프로세스 상태 업데이트
+    
+    Args:
+        process_name: 프로세스 이름
+        status: 상태 (starting, running, stopping, stopped, error, crashed)
+        pid: 프로세스 ID (선택사항)
+    """
+    if not g.db_pool:
+        logger.debug("[DB] DB 풀이 없어 프로세스 상태 업데이트 건너뜀")
+        return
+    
+    try:
+        async with g.db_pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                if pid is not None:
+                    sql = """
+                    UPDATE kb_server_processes 
+                    SET status = %s, pid = %s, last_heartbeat = %s, updated_at = %s
+                    WHERE process_name = %s
+                    """
+                    values = (status, pid, datetime.now(), datetime.now(), process_name)
+                else:
+                    sql = """
+                    UPDATE kb_server_processes 
+                    SET status = %s, last_heartbeat = %s, updated_at = %s
+                    WHERE process_name = %s
+                    """
+                    values = (status, datetime.now(), datetime.now(), process_name)
+                
+                await cursor.execute(sql, values)
+                await conn.commit()
+                
+                logger.info(f"[DB] 서버 프로세스 상태 업데이트: {process_name} -> {status}")
+                
+    except Exception as e:
+        logger.error(f"[DB] 서버 프로세스 상태 업데이트 실패: {e}")
+        raise
+
+
+async def list_server_processes():
+    """
+    서버 프로세스 목록 조회
+    
+    Returns:
+        List[Dict]: 서버 프로세스 목록
+    """
+    if not g.db_pool:
+        raise ValueError("데이터베이스 연결이 없습니다")
+    
+    try:
+        async with g.db_pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                sql = """
+                SELECT process_id, server_id, process_name, process_type, 
+                       port, type, status, pid, last_heartbeat, 
+                       cpu_usage, memory_usage, created_at, updated_at
+                FROM kb_server_processes 
+                ORDER BY process_name
+                """
+                
+                await cursor.execute(sql)
+                results = await cursor.fetchall()
+                
+                # 결과를 딕셔너리 리스트로 변환
+                processes = []
+                for row in results:
+                    process = {
+                        'process_id': row[0],
+                        'server_id': row[1],
+                        'process_name': row[2],
+                        'process_type': row[3],
+                        'port': row[4],
+                        'type': row[5],
+                        'status': row[6],
+                        'pid': row[7],
+                        'last_heartbeat': row[8],
+                        'cpu_usage': row[9],
+                        'memory_usage': row[10],
+                        'created_at': row[11],
+                        'updated_at': row[12]
+                    }
+                    processes.append(process)
+                
+                return processes
+                
+    except Exception as e:
+        logger.error(f"[DB] 서버 프로세스 목록 조회 실패: {e}")
+        raise
