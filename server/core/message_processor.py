@@ -3,21 +3,26 @@
 """
 import json
 import asyncio
+import time
 from typing import Dict, Any, Optional
 from core.logger import logger
 from core.response_utils import send_message_response, send_json_response
+from core.auth_utils import validate_client_auth
+from core.client_status import client_status_manager
 from services.echo_service import handle_echo_command
+from services.client_info_service import handle_client_info_command
 from database.db_utils import save_chat_to_db
 import core.globals as g
 
 
-async def process_message(raw_message: str, writer: asyncio.StreamWriter):
+async def process_message(raw_message: str, writer: asyncio.StreamWriter, client_addr: Optional[str] = None):
     """
     메시지 처리 및 응답
     
     Args:
         raw_message: 클라이언트로부터 받은 원시 메시지
         writer: 응답을 보낼 스트림 라이터
+        client_addr: 클라이언트 주소
     """
     try:
         # JSON 파싱
@@ -29,10 +34,10 @@ async def process_message(raw_message: str, writer: asyncio.StreamWriter):
         
         if event == 'analyze':
             # 메시지 분석 및 명령어 처리
-            await handle_analyze_event(message_data, writer)
+            await handle_analyze_event(message_data, writer, client_addr)
         elif event == 'ping':
             # 핑 응답
-            await handle_ping_event(message_data, writer)
+            await handle_ping_event(message_data, writer, client_addr)
         else:
             logger.warning(f"[MSG] 알 수 없는 이벤트: {event}")
             
@@ -42,13 +47,14 @@ async def process_message(raw_message: str, writer: asyncio.StreamWriter):
         logger.error(f"[MSG] 메시지 처리 오류: {e}")
 
 
-async def handle_analyze_event(data: Dict[str, Any], writer: asyncio.StreamWriter):
+async def handle_analyze_event(data: Dict[str, Any], writer: asyncio.StreamWriter, client_addr: Optional[str] = None):
     """
     analyze 이벤트 처리 (메시지 분석)
     
     Args:
         data: 메시지 데이터
         writer: 응답 스트림 라이터
+        client_addr: 클라이언트 주소
     """
     text = data.get('text', '')
     room = data.get('room', '')
@@ -56,6 +62,17 @@ async def handle_analyze_event(data: Dict[str, Any], writer: asyncio.StreamWrite
     bot_name = data.get('botName', '')
     channel_id = data.get('channelId', '')
     user_hash = data.get('userHash', '')
+    
+    # 인증 정보 검증
+    auth_data = data.get('auth', {})
+    if auth_data:
+        is_valid, error_msg, client_info = validate_client_auth(auth_data)
+        if not is_valid:
+            logger.warning(f"[ANALYZE] 인증 실패: {error_msg}")
+        else:
+            # 클라이언트 정보 업데이트
+            if client_addr:
+                client_status_manager.update_auth_info(client_addr, auth_data)
     
     logger.info(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text}")
     
@@ -78,24 +95,55 @@ async def handle_analyze_event(data: Dict[str, Any], writer: asyncio.StreamWrite
     if g.db_pool:
         await save_chat_to_db(context)
     
-    # echo 명령어 체크
+    # 명령어 체크
     if text.startswith('# echo '):
         await handle_echo_command(context, text)
     elif text.strip() == '# echo':
         await send_message_response(writer, room, "사용법: # echo {내용}", channel_id)
+    elif text.startswith('# client_info'):
+        await handle_client_info_command(context, text)
 
 
-async def handle_ping_event(data: Dict[str, Any], writer: asyncio.StreamWriter):
+async def handle_ping_event(data: Dict[str, Any], writer: asyncio.StreamWriter, client_addr: Optional[str] = None):
     """
     ping 이벤트 처리
     
     Args:
         data: 핑 데이터
         writer: 응답 스트림 라이터
+        client_addr: 클라이언트 주소
     """
     logger.info("[PING] 핑 수신")
     
-    # 핑 응답
+    # 클라이언트 상태 정보 처리
+    client_status = data.get("client_status", {})
+    monitoring_info = data.get("monitoring", {})
+    auth_data = data.get("auth", {})
+    
+    # 클라이언트 정보 업데이트
+    if client_addr:
+        # 핑 시간 업데이트
+        client_status_manager.update_ping_time(client_addr)
+        
+        # 상태 정보 업데이트
+        if client_status:
+            client_status_manager.update_client_status(client_addr, client_status)
+        
+        # 모니터링 정보 업데이트
+        if monitoring_info:
+            client_status_manager.update_monitoring_info(client_addr, monitoring_info)
+            logger.info(f"[PING] 모니터링 정보 업데이트: uptime={monitoring_info.get('uptime')}, "
+                       f"messages={monitoring_info.get('messageCount')}")
+        
+        # 인증 정보 검증 및 업데이트
+        if auth_data:
+            is_valid, error_msg, client_info = validate_client_auth(auth_data)
+            if not is_valid:
+                logger.warning(f"[PING] 인증 실패: {error_msg}")
+            else:
+                client_status_manager.update_auth_info(client_addr, auth_data)
+    
+    # 핑 응답 (서버 상태 정보 포함)
     response = {
         "event": "ping",
         "data": {
@@ -103,13 +151,14 @@ async def handle_ping_event(data: Dict[str, Any], writer: asyncio.StreamWriter):
             "channel_id": data.get("channel_id", ""),
             "room": data.get("room", ""),
             "user_hash": data.get("user_hash", ""),
-            "server_timestamp": data.get("server_timestamp", ""),
-            "client_status": {
-                "cpu": None,
-                "ram": None,
-                "temp": None
-            },
-            "is_manual": False
+            "server_timestamp": int(time.time() * 1000),  # 현재 서버 시간
+            "client_status": client_status,
+            "monitoring": monitoring_info,
+            "is_manual": data.get("is_manual", False),
+            "server_info": {
+                "total_clients": len(g.clients),
+                "timestamp": int(time.time() * 1000)
+            }
         }
     }
     

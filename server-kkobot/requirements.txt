@@ -1,0 +1,28 @@
+# 기존 의존성 목록 (기존 항목은 유지)
+PyMySQL>=1.0.2
+python-dotenv>=0.15.0
+aiofiles>=0.6.0
+asyncio>=3.4.3
+
+shortuuid>=1.0.1
+lxml>=4.6.3
+zoneinfo>=0.2.1; python_version < '3.9'
+
+# pipreqs
+aiohttp==3.12.2
+aiomysql==0.2.0
+beautifulsoup4==4.13.4
+cryptography==45.0.3
+emoji==2.14.1
+g==0.0.7
+httpx==0.28.1
+numpy==2.2.6
+openai==1.84.0
+Pillow==11.2.1
+psutil==7.0.0
+python_dateutil==2.9.0.post0
+pytz==2025.2
+Requests==2.32.3
+youtube_transcript_api==1.0.3
+watchdog>=2.1.0
+

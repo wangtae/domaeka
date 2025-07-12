@@ -7,6 +7,9 @@ MessengerBotR 클라이언트와 통신하는 경량 카카오톡 봇 서버
 - TCP 서버로 클라이언트 연결 처리
 - 데이터베이스 연결 (원본 server와 동일한 방식)
 - '# echo {내용}' 명령어 처리
+- '# client_info summary' 클라이언트 상태 조회
+- 강화된 인증 시스템 (HMAC 서명 검증)
+- 클라이언트 모니터링 정보 처리
 - 채팅 로그 저장
 
 사용법:
@@ -78,9 +81,10 @@ async def main():
     # 데이터베이스 이름 설정
     g.DB_NAME = "kkobot_test" if args.mode == "test" else "kkobot_prod"
     
-    logger.info(f"[STARTUP] server-lite 시작 - 버전: {g.VERSION}")
+    logger.info(f"[STARTUP] Domaeka 카카오봇 서버 시작 - 버전: {g.VERSION}")
     logger.info(f"[STARTUP] 모드: {args.mode}, 포트: {args.port}")
     logger.info(f"[STARTUP] 데이터베이스: {g.DB_NAME}")
+    logger.info("[STARTUP] 지원 기능: Echo, 클라이언트 모니터링, HMAC 인증")
     
     # 시그널 핸들러 등록
     loop = asyncio.get_running_loop()

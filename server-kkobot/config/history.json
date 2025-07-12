@@ -1,0 +1,413 @@
+{
+    "v6.1.2.4": [
+      "[25.06.18 17:52]",
+      " - 4계층 구조 설계 문서 기반 완전한 웹 관리 시스템 구현 완료:",
+      "    - 7개 핵심 테이블 생성 및 마이그레이션 완료 (kb_organizations, kb_accounts, kb_bot_details, kb_room_details, kb_servers, kb_server_processes, kb_schedules)",
+      "    - 4계층 구조(System > Operator > Bot > Room) 기반 조직 관리 시스템 구현",
+      "    - Laravel 모델 생성 및 관계 설정 완료 (JSON 설정 병합 메소드 포함)",
+      "    - Filament 웹 관리 인터페이스 구현 (JSON 에디터, 계층 구조 표시, 필터링)",
+      "    - JSON 내보내기 컨트롤러 구현 (4계층 설정 병합 및 봇별 JSON 생성)",
+      "    - Room 데이터 추가 및 전체 계층 구조 완성",
+      "    - 실제 운영 파일(LOA.i.json, LOA.i-sample.json)과 동일한 구조의 JSON 자동 생성 시스템 설계 완료"
+    ],
+    "v6.0.6.10": [
+      "[25.06.18 16:44]",
+      " - 문서(docs/260618-계층구조&환결설정 설계 1단계.md) 업데이트: DB 스키마에서 JSON 유효성 검증 제약 조건 제거 및 settings JSON 예시를 축약된 파일로 참조하도록 변경."
+    ],
+    "v6.0.6.9": [
+      "[25.06.18 13:11]",
+      " - requirements.txt 업데이트 및 깃헙 푸시를 위한 history.json 업데이트"
+    ],
+    "v6.0.6.8": [
+      "[25.06.18 00:38]",
+      " - API 우선순위 및 상속 정책 수정:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일에서 API 상속 정책 변경: 자체 API 추가 시 상위 API 상속 중단하고 자체 API만 사용하도록 변경.",
+      "    - 폴백 체인 우선순위를 '3. API 사용 우선순위'로 변경하고 순서를 Room → Bot → Operator → System 순으로 명확화.",
+      "    - API 관리 권한 매트릭스 테이블 제거하여 문서 간소화.",
+      "    - UI 표시 정책을 'UI 표시 정책 1'과 'UI 표시 정책 2'로 분리하여 설명 정의 요소 추가.",
+      "    - Phase 3, Phase 4 제목에서 '(신규 추가)' 표기 제거.",
+      "    - ERD 다이어그램에서 kb_accounts 테이블의 type 필드 표기 간소화."
+    ],
+    "v6.0.6.7": [
+      "[25.06.17 23:54]",
+      " - 시스템 정의 기반 UI 도움말 시스템 설계 추가:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일에 '시스템 정의 로드밸런싱 옵션' 섹션 추가.",
+      "    - 로드밸런싱 알고리즘(round_robin, random, least_used, cost_optimized, response_time)에 대한 상세 정의: 이름, 설명, 사용 사례, 장단점, 권장 환경.",
+      "    - 키 사용 전략(free_then_paid, paid_first, balanced), API 키 타입(free, paid, enterprise), 광고 유형별 정의, 표시 빈도 옵션 추가.",
+      "    - UI 도움말 시스템 구현 방안: SystemDefinitionService, UIHelpRenderer 클래스 설계.",
+      "    - JavaScript 기반 동적 도움말 표시 및 툴팁 시스템 구현 코드.",
+      "    - enum 타입처럼 정의된 시스템 설정값들을 UI에서 도움말 형식으로 출력할 수 있는 완전한 구조 설계."
+    ],
+    "v6.0.6.6": [
+      "[25.06.17 23:46]",
+      " - API 사용량/비용 표시 및 광고 시스템 설계 추가:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일에 '3. API 사용량 및 비용 표시 설정' 섹션 추가.",
+      "    - 크레딧 시스템, 사용량 표시 템플릿, 계층별 표시 옵션(user_level, room_level, room_plus_user_level) 정의.",
+      "    - '4. 광고 시스템 설정' 섹션 추가: 광고 유형(후원/멤버십, 지역, 상품, 시스템 제공), 타겟팅 규칙, 계층별 관리 권한.",
+      "    - 광고 수익 모델 및 계층별 수익 분배 구조(시스템 40%, 운영자 35%, 봇 소유자 20%, 방 커뮤니티 5%) 설계.",
+      "    - '10. 구현 고려사항 및 향후 계획' 섹션 추가: 데이터베이스 테이블 설계(kb_api_usage_logs, kb_credit_balances, kb_advertisements, kb_ad_impressions), 실시간 사용량 계산 서비스, 광고 표시 로직, 수익 분배 시스템.",
+      "    - 4단계 개발 로드맵(기본 사용량 추적 4주, 광고 시스템 기반 6주, 고급 기능 8주, 최적화 및 확장 4주) 수립."
+    ],
+    "v6.0.6.5": [
+      "[25.06.17 22:57]",
+      " - LLM 설정 및 API 키 보안 관련 문서 업데이트:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일에 '1.3 계층적 설정 상속 및 오버라이드 전략' 섹션 추가 및 예시 설명.",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일의 '1.4 LLM API 키 보안 관리' 섹션에 데이터베이스 암호화 방식 명시.",
+      "    - 계정별 암호화 키 파생 전략 및 마스터 키와 데이터의 분리 원칙을 문서화.",
+      "    - `web` (Laravel)과 `server` (Python) 애플리케이션 간 마스터 키 일관성 및 관리 방안 추가."
+    ],
+    "v6.0.6.4": [
+      "[25.06.17 22:37]",
+      " - 문서에 계층적 설정 상속 및 오버라이드 전략 추가:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일에 '1.3 계층적 설정 상속 및 오버라이드 전략' 섹션 추가.",
+      "    - JSON Deep Merge 방식을 설명하고, `ai_chat` 기능 설정을 예시로 상속 및 오버라이드 동작을 명확히 설명했습니다."
+    ],
+    "v6.0.6.3": [
+      "[25.06.17 22:17]",
+      " - LLM API 설정 구조 업데이트:",
+      "    - `api_configuration.llm_apis` 내 각 Provider의 `api_keys` 필드를 객체 리스트로 변경하여 `key`, `name`, `type` (paid/free)을 포함하도록 했습니다.",
+      "    - `api_configuration` 내에 `free_tier_usage_limits` 섹션을 추가하여 Provider 및 모델별 무료 사용량 제한 정보를 정의했습니다."
+    ],
+    "v6.0.6.2": [
+      "[25.06.17 21:12]",
+      " - LLM 설정 `system_prompt` 필드 이동 및 우선순위 명확화:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일의 `global_llm_settings`에서 `system_prompt` 필드를 제거했습니다.",
+      "    - `server/config/bots-commands/LOA.i.json` 파일 내 LLM 관련 명령어(`>>>>`, `&`, `>>`, `>`)에 `system_prompt` 필드를 추가했습니다.",
+      "    - LLM을 사용하는 기능(명령어)에 명시적으로 `system_prompt` 또는 `dispatch_order`가 정의된 경우, 해당 기능의 설정이 전역 설정보다 우선적으로 적용됨을 문서화할 예정입니다."
+    ],
+    "v6.0.6.1": [
+      "[25.06.17 20:44]",
+      " - LLM 설정 및 사용 정책 문서 업데이트:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일에 LLM 정의, 모델별 과금 및 설명, 공통 시스템 프롬프트, 계층별 LLM 사용 정책 및 기본 설정에 대한 상세 내용을 추가했습니다.",
+      "    - `api_configuration` 내 `llm_apis` 구조를 변경하여 각 모델에 `cost_per_1k_tokens`와 `description` 필드를 포함하도록 업데이트했습니다.",
+      "    - `global_llm_settings` 섹션을 추가하여 공통 시스템 프롬프트 정의를 명시했습니다.",
+      "    - `llm_usage_policy` 섹션을 추가하여 계층별 LLM 사용 정책, 기본 디스패치 전략 및 기능별 오버라이드 예시를 정의했습니다."
+    ],
+    "v6.0.6.0": [
+      "[25.06.16 16:41]",
+      " - `git pull` 병합 오류 및 MySQL MCP 서버 연결 문제 해결:",
+      "    - `git stash`를 사용하여 로컬 변경사항 임시 저장 후 `git pull` 성공적으로 재시도.",
+      "    - `mcp.json` 파일의 `mcpServers` 루트 키 및 `uvx` 절대 경로 설정 수정.",
+      "    - `server/requirements.txt`에 `uv` 및 `mysql-mcp-server` 의존성 추가.",
+      "    - `venv` 가상 환경에 `uv` 및 `mysql-mcp-server` 명시적 재설치 명령 안내.",
+      " - Laravel 데이터베이스 마이그레이션 동기화 및 스키마 일관성 확보:",
+      "    - `kb_admin_accounts` 테이블의 `Duplicate column name 'username'` 오류 해결을 위해 기존 외래 키 및 유니크 키 수동 제거 후 마이그레이션 성공 처리.",
+      "    - `update_kb_config_rooms_global_table_for_schema_sync` 마이그레이션 파일에 `Schema::hasColumn` 체크 추가하여 `unknown column` 오류 해결.",
+      "    - `add_foreign_key_to_kb_config_rooms_global_table` 마이그레이션 파일에서 `last_modified_by` 컬럼 타입 불일치(INT UNSIGNED -> INT) 수정 및 외래 키 오류 해결.",
+      "    - `Duplicate key name` 오류 해결을 위해 중복 인덱스 수동 제거 후 마이그레이션 성공 처리.",
+      "    - 모든 Laravel 마이그레이션 성공적으로 완료하여 DB 스키마 동기화 완료.",
+      " - 문서 용어 및 스키마 설계 업데이트 반영:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일 내 `bot_admin` 용어를 `operator`로 일괄 변경.",
+      "    - `kb_accounts` 테이블 스키마에 `type ENUM('main', 'sub')` 컬럼 및 인덱스 추가.",
+      "    - `kb_organizations` 테이블 스키마에 `settings_config` 필드를 `features_config`와 `commands_config` 앞에 추가하고 ERD 및 SQL 스키마에 반영."
+    ],
+    "v6.0.5.13": [
+      "[25.06.15 20:34]",
+      " - 계층별 특화 정보 필드 테이블 분리 (리팩토링):",
+      "    - `kb_organizations` 테이블에서 `bot_name`, `bot_secret`, `bot_max_rooms`, `room_channel_id` 필드 및 관련 제약 조건들을 제거하여 테이블 간소화.",
+      "    - `kb_bot_details` 테이블을 새로 생성하여 `bot` 타입 조직의 상세 정보(`org_id` (PK, FK), `bot_name` (NOT NULL, UNIQUE), `bot_secret` (NOT NULL), `max_rooms`)를 저장.",
+      "    - `kb_room_details` 테이블을 새로 생성하여 `room` 타입 조직의 상세 정보(`org_id` (PK, FK), `room_channel_id` (NOT NULL))를 저장.",
+      "    - 두 신규 테이블은 `kb_organizations` 테이블과 1:1 관계를 가지며, `docs/260615-계층구조&환경설정 설계.md` 문서에 스키마 정의 및 관계 설명을 추가."
+    ],
+    "v6.0.5.12": [
+      "[25.06.15 20:33]",
+      " - 계층별 특화 정보 필드 스키마 및 제약 조건 강화:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일의 `kb_organizations` 테이블 스키마 업데이트.",
+      "    - `bot_name` 필드의 주석을 업데이트하여 `type:bot`일 경우 유일한 내부 식별자 및 `{bot_name}.json` 파일명으로 사용됨을 명시.",
+      "    - `room_channel_id` 필드의 주석을 업데이트하여 `type:room`일 경우 `parent_id`와 결합하여 유일 키 역할을 수행함을 명시.",
+      "    - `type = 'bot'`일 때 `bot_name`이 `NOT NULL`이며 시스템 내에서 유일해야 한다는 `chk_bot_name_required_unique` 제약 조건 추가.",
+      "    - `type = 'room'`일 때 `parent_id`와 `room_channel_id` 조합이 유일해야 한다는 `uk_parent_id_room_channel_id` 제약 조건 추가 (기존 `uk_channel_id` 대체).",
+      "    - `type`이 해당 계층이 아닐 경우 `bot_name` 또는 `room_channel_id`가 `NULL`이어야 한다는 제약 조건 (`chk_bot_name_null_for_non_bot`, `chk_room_channel_id_null_for_non_room`) 추가."
+    ],
+    "v6.0.5.11": [
+      "[25.06.15 20:32]",
+      " - 계층별 특화 정보 필드 추가:",
+      "    - `docs/260615-계층구조&환경설정 설계.md` 파일의 `kb_organizations` 테이블에 `bot_admin_max_bots`, `bot_max_rooms`, `bot_secret`, `room_channel_id` 필드를 단일 언더바(`_`) 접두사 명명 규칙으로 추가.",
+      "    - 각 필드에 적절한 데이터 타입과 주석(`COMMENT`)을 정의하여 계층별 특화 정보의 명확성을 높임."
+    ],
+    "v6.0.5.10": [
+      "[25.06.15 14:54]",
+      " - 관리 페이지 문서 JSON 예시 및 필드 정의 업데이트:",
+      "    - `docs/260614-관리페이지&환경설정극단적단순화.md` 파일 내 모든 JSON 예시(System, Bot, Room Level)를 `features_config`와 `commands_config` 두 개의 최상위 키로 분리된 새로운 설계에 맞춰 수정.",
+      "    - 각 기능 및 명령어 항목에 `management_attributes` 필드를 추가하여 하위 계층에서의 `visible_to_lower_levels`, `deployable`, `editable_by_lower_levels` 속성 정의.",
+      "    - `Settings History 구조` 예시의 `path` 필드를 새로운 중첩 JSON 경로 형식으로 업데이트 (`features.ai_chat.config.daily_limit` -> `features_config.ai_chat.config.daily_limit`).",
+      "    - 이로써 문서의 JSON 구조 예시가 최신 데이터베이스 스키마 및 관리 원칙에 완벽하게 일치하도록 일관성을 확보함."
+    ],    
+    "v6.0.5.9": [
+      "[25.06.15 14:36]",
+      " - `docs/260614-관리페이지&환경설정극단적단순화.md` 문서 내 `all_settings` 및 `custom_settings` 필드 참조 제거:",
+      "    - ER 다이어그램 및 JSON 예시에서 `all_settings`를 `features_config`와 `commands_config`로, `custom_settings`도 동일하게 변경.",
+      "    - `4.1 System Level 완전 설정 예시`에서 `room_settings` 키를 `features_config` 내 `llm_settings`로 통합하고, `features`와 `commands` 키 이름을 각각 `features_config`와 `commands_config`로 변경하여 일관성 유지."
+    ],
+    "v6.0.5.8": [
+      "[25.06.15 13:58]",
+      " - JSON 병합 로직 업데이트 (`docs/260614-관리페이지&환경설정극단적단순화.md`):",
+      "    - 점(.) 표기법 기반의 `set_nested_value` 함수를 제거하고, 구조적 오버라이드 방식의 `merge_config` 함수로 교체.",
+      "    - `_deep_copy_dict` 및 `_deep_merge_dict` 헬퍼 함수를 포함하여 중첩된 JSON 구조를 안전하게 병합하고 원본 객체의 불변성 유지.",
+      "    - 이로써 계층적 설정 상속 및 병합 시 데이터 일관성과 정확성을 보장."
+    ],
+    "v6.0.5.7": [
+      "[25.06.15 13:46]",
+      " - `kb_rooms` 테이블 스키마 변경:",
+      "    - `custom_settings` JSON 컬럼을 `features_config`와 `commands_config` 두 개의 JSON 컬럼으로 분리.",
+      "    - 기존 `custom_settings`의 기능 및 명령어 관련 데이터를 새로운 컬럼으로 마이그레이션할 준비."
+    ],
+    "v6.0.5.6": [
+      "[25.06.15 13:38]",
+      " - `kb_bots` 테이블 스키마 변경:",
+      "    - `custom_settings` JSON 컬럼을 `features_config`와 `commands_config` 두 개의 JSON 컬럼으로 분리.",
+      "    - 기존 `custom_settings`의 기능 및 명령어 관련 데이터를 새로운 컬럼으로 마이그레이션할 준비."
+    ],
+    "v6.0.5.5": [
+      "[25.06.15 13:30]",
+      " - `kb_organizations` 테이블 스키마 변경:",
+      "    - `all_settings` JSON 컬럼을 `features_config`와 `commands_config` 두 개의 JSON 컬럼으로 분리.",
+      "    - `bot_settings_config`와 `room_settings_config`는 제거하여 스키마 간소화 및 일관성 확보."
+    ],
+    "v6.0.5.4": [
+      "[25.06.15 12:00]",
+      " - `docs/260614-관리페이지&환경설정극단적단순화.md` 파일 내 `kb_organizations` 테이블 스키마 변경:",
+      "    - `all_settings` JSON 컬럼을 `bot_settings_config`, `room_settings_config`, `features_config`, `commands_config` 네 가지 JSON 컬럼으로 분리.",
+      "    - 각 컬럼의 목적에 맞는 주석과 데이터 타입 정의."
+    ],
+    "v6.0.5.3": [
+      "[25.06.15 11:30]",
+      " - 초기 DB 스키마 및 관리 페이지 개념 설계 초안 문서화"
+    ],
+    "v6.0.5.2": [
+      "[25.06.15 11:00]",
+      " - `docs/260614-관리페이지&환경설정극단적단순화.md` 문서 생성 및 기본 구조 작성"
+    ],
+    "v6.0.5.1": [
+      "[25.06.09] ",
+      " - 초기 프로젝트 구조 설정 및 기본 파일 생성"
+    ],
+    "v6.0.5.0": [
+      "[25.06.12 13:58]",
+      " - KB 핵심 테이블 데이터베이스 구현 및 Laravel+Filament 관리 페이지 구축:",
+      "    - 1번부터 13번까지의 모든 KB 핵심 테이블 마이그레이션 파일 생성 및 실행 완료",
+      "    - Laravel `users` 테이블과 `kb_admin_accounts` 테이블 연결 구조로 변경",
+      "    - 모든 테이블에 대응하는 Eloquent 모델 생성 (올바른 기본 키, fillable 필드, 관계 설정)",
+      "    - 기본 데이터 입력을 위한 KbCoreDataSeeder 생성 및 실행",
+      "    - 주요 테이블들에 대한 Filament 리소스 생성 (관리자 계정, 조직, 서버, 봇, 방, 글로벌 명령어)",
+      "    - MySQL 데이터베이스 연결 설정 및 Laravel 환경 구성 완료",
+      "    - 관리자 계정: admin@loai.kr/admin123, botadmin@loai.kr/bot123",
+      "    - 관리 페이지 접근: http://localhost:8000/admin"
+    ],
+    "v6.0.4.7": [
+      "[25.06.12 12:19]",
+      " - 깃헙 푸시를 위한 history.json 업데이트 및 Git 명령 실행"
+    ],
+    "v6.0.4.6": [
+      "[25.06.12 02:25]",
+      " - DB 기반 통합 관리 시스템 설계 문서 업데이트:",
+      "    - `kb_admin_servers` 테이블에서 `db_connection_encrypted` 및 `encryption_key_id` 필드 제거.",
+      "    - 이는 봇 서버의 DB 연결 정보를 중앙 관리 DB가 아닌, 각 봇 서버의 로컬 환경에서 관리하는 방향으로의 변경을 반영."
+    ],
+    "v6.0.4.4": [
+      "[25.06.12 01:17]",
+      " - DB 기반 통합 관리 시스템 설계 문서 업데이트:",
+      "    - `kb_admin_entities` 테이블 이름을 `kb_admin_organizations`로 변경하고, 문서 내 모든 관련 참조를 업데이트.",
+      "    - 이는 `super_admin` (본사), `bot_admin` (봇 운영 고객사), `room_admin` (톡방 운영 고객사)의 계층적 관리 주체 개념을 명확히 반영하기 위함."
+    ],
+    "v6.0.4.3": [
+      "[25.06.11 00:47]",
+      " - DB 기반 통합 관리 시스템 설계 문서 업데이트:",
+      "    - `docs/260608-관리페이지&환경설정 관련 작업.md` 파일의 '단기 진행할 작업' 섹션에 향후 진행할 작업 순서 및 내용을 명확히 추가."
+    ],
+    "v6.0.4.2": [
+      "[25.06.11 00:30]",
+      " - 봇 명령어 파일 생성 및 관리 시스템 개선:",
+      "    - `server/services/config_generator_service.py`에 `generate_bot_commands_from_db` 함수 추가: `kb_commands` 테이블에서 글로벌 및 봇별 명령어 데이터를 로드하여 `config/bots-commands/{bot_name}.json` 파일로 생성.",
+      "    - `server/core/client_handler.py`에 봇 연결 시 `generate_bot_commands_from_db` 함수 자동 호출 로직 추가."
+    ],
+    "v6.0.4.1": [
+      "[25.06.11 00:19]",
+      " - 봇 설정 파일 생성 및 관리 시스템 개선 후속 조치:",
+      "    - `server/core/client_handler.py` 파일의 변경사항을 이전 커밋에 포함하여 누락된 부분을 수정."
+    ],
+    "v6.0.4.0": [
+      "[25.06.11 00:15]",
+      " - 봇 설정 파일 생성 및 관리 시스템 개선:",
+      "    - schedule-rooms.json 대신 봇별 설정 파일(config/bots-settings/{bot_name}.json) 생성.",
+      "    - 클라이언트 연결 시 해당 봇의 설정 파일 자동 생성 기능 추가 (server/core/client_handler.py).",
+      "    - 관리 명령어(# reload bot settings) 추가: 특정 봇 설정 재생성 (프롬프트로 봇 이름 지정 가능).",
+      "    - globals.py 및 config_generator_service.py의 파일 경로를 상대경로로 수정하여 유연성 확보.",
+      "    - globals.py에서 불필요한 schedule-rooms-from-db.json 레거시 지원 경로 제거."
+    ],
+    "v6.0.3.8": [
+      "[25.06.10 20:59]",
+      " - LOA.i 카카오봇 메시지 전달 구조 설계 문서(docs/260610-메시지전달구조설계.md) 업데이트:",
+      "    - 간소화된 단일 서버 아키텍처 다이어그램 및 설명 추가 (메인 서버의 Push 및 Request-Response 패턴 모두 커버).",
+      "    - Redis Pub/Sub 외 메시지 큐 대안(asyncio.Queue, 파일 기반 큐)에 대한 설명 및 한계점 추가.",
+      "    - 관리자 웹 채팅 UI를 통한 실시간 메시지 푸시 및 피드백에 WebSocket 활용 방안 상세화.",
+      "    - 다중 메인 서버 환경에서 관리자의 다중 톡방 메시지 푸시 기능을 위한 Redis Pub/Sub의 필수적인 역할 강조.",
+      "    - 제안하는 시스템 폴더 구조 추가: `server`, `system_services`, `domain_services`, `client`, `web`, `common`, `docs`로 명확히 분리하여 각 폴더의 역할 설명."
+    ],
+    "v6.0.3.7": [
+      "[25.06.10 15:30]",
+      " - API 기반 챗봇 시스템 설계 문서(docs/260610-api기반명령어기능설계.md) 업데이트:",
+      "    - 아키텍처 다이어그램에 웹소켓 연결 흐름 명확히 표시 (관리자 웹 UI ↔ Admin WebSocket Service 및 메인 서버 ↔ Admin WebSocket Service)",
+      "    - 고가용성 아키텍처의 '단계적 구현 전략' 섹션 추가: 초기 단계에서는 단일 Redis 인스턴스, 내부 로드밸런싱(클라이언트 사이드) 사용, 외부 로드밸런서(Nginx/HAProxy)는 향후 계획으로 반영.",
+      "    - 관리자 메시지 발송 서비스를 Admin Dispatch Service로 명칭 통일 및 관련 다이어그램 업데이트.",
+      "    - 고가용성 아키텍처에서 WebSocket의 중요성 강조 및 활용 시나리오 명시"
+    ],
+    "v6.0.3.6": [
+      "[25.06.10 14:20]",
+      " - API 기반 챗봇 시스템 설계 문서(docs/260610-api기반명령어기능설계.md) 고가용성 아키텍처 추가",
+      "    - 메인 서버 5개 프로세스, REST API 서비스별 2개 이상 프로세스 구성을 포함한 고가용성 요구사항 분석",
+      "    - Push 패턴 스케줄링 서비스 Active-Standby 구성 (Redis 분산 락 기반) 및 관리자 서비스 Active-Active 구성 권장",
+      "    - Redis 클러스터, 로드밸런서 (HAProxy/Nginx) 설정 예시와 함께 전체 고가용성 아키텍처 구성도 추가",
+      "    - 중복 발송 방지 메커니즘, 자동 장애 복구, 무중단 서비스 구현 방안 상세 기술",
+      "    - 99.9% 이상 가용성 달성을 위한 5단계 구현 우선순위 및 엔터프라이즈급 서비스 수준 기대 효과 제시"
+    ],
+    "v6.0.3.5": [
+      "[25.06.10 13:38]",
+      " - API 기반 챗봇 시스템 설계 문서(docs/260610-api기반명령어기능설계.md) 완전 재구성",
+      "    - 두 가지 핵심 시스템 패턴으로 명확히 분리: Request-Response 패턴(명령어/기능 처리) vs Push 패턴(스케줄링/브로드캐스팅)",
+      "    - 각 패턴별 아키텍처 그래프, 구현 방법, 장단점 분석을 별도 섹션으로 구성",
+      "    - HTTP 오버헤드가 일반적인 챗봇 시스템에서는 실질적으로 무시할 수 있는 수준임을 명시",
+      "    - 시스템 패턴별 차별화된 접근 방법과 구현 우선순위 제시"
+    ],
+    "v6.0.3.4": [
+      "[25.06.10 12:40:00]",
+      " - API 기반 명령어/기능 처리 시스템 설계 문서(docs/260610-api기반명령어기능설계.md) 보완",
+      "    - 사용자 제안 서비스 분리 방식(통합 모듈 복사 기반) 검토 및 권장하지 않는 이유 상세 설명 추가"
+    ],
+    "v6.0.3.3": [
+      "[25.06.10 12:35:00]",
+      " - API 기반 명령어/기능 처리 시스템 설계 문서(docs/260610-api기반명령어기능설계.md) 내 Mermaid 그래프 색상을 다크 모드에 맞게 수정"
+    ],
+    "v6.0.3.2": [
+      "[25.06.10 12:30:00]",
+      " - API 기반 명령어/기능 처리 시스템 설계 문서(docs/260610-api기반명령어기능설계.md) 보완 및 상세화",
+      "    - 관리자 메시지/이미지 발송 서비스 구성 방안 추가 (중앙 메시지 큐를 통한 비동기 발송 권장, 리소스 효율성 비교 포함)"
+    ],
+    "v6.0.3.1": [
+      "[25.06.10 10:30:00]",
+      " - API 기반 명령어/기능 처리 시스템 설계 문서(docs/260610-api기반명령어기능설계.md) 보완 및 상세화",
+      "    - 대화 요약 기능을 LLM 헤비 요청 작업으로 인한 서비스 분리 후보로 추가"
+    ],
+    "v6.0.3.0": [
+      "[25.06.10 10:20:00]",
+      " - API 기반 명령어/기능 처리 시스템 설계 문서(docs/260610-api기반명령어기능설계.md) 보완 및 상세화",
+      "    - 서비스 모듈 구성 및 분리 전략 추가",
+      "    - HTTP 오버헤드, API 서비스 다중화 운영 방식(Active-Active 권장), REST API 배포 방식(모놀리식 vs 마이크로서비스)에 대한 심층 분석 및 내용 추가"
+    ],
+    "v6.0.2.0": [
+      "[25.06.10 15:30:00]",
+      " - API 기반 명령어/기능 처리 시스템 설계 문서 작성 (docs/260610-api기반명령어기능설계.md)"
+    ],
+    "v6.0.1.2": [
+      "[25.06.10 15:30:00]",
+      " - 자동 도움말 생성 시스템 설계 문서화 (docs/260610-자동도움말생성설계.md)"
+    ],
+    "v6.0.1.1": [
+      "[25.06.10] ",
+      " - 동적 명령어 시스템 초기화 데드락 문제 해결:",
+      "    - load_all_bot_commands()에서 load_bot_commands() 호출 시 중복 락 획득으로 인한 30초 타임아웃 문제 수정",
+      "    - _load_bot_commands_internal() 내부 함수 추가: 락 없이 명령어 로드하는 버전",
+      "    - load_bot_commands()는 외부 호출용(락 포함), _load_bot_commands_internal()는 내부 호출용(락 없음)으로 분리",
+      "    - 동시성 제어 유지하면서 데드락 방지하는 구조로 개선"
+    ],
+    "v6.0.0.18": [
+      "[25.06.09] ",
+      " - 방별 명령어 오버라이딩 시스템 구현:",
+      "    - command_overrides 방식 도입: 기존 명령어(예: '# 날씨')를 새로운 명령어(예: '@ 날씨')로 대체",
+      "    - 선택적 오버라이딩: 명시한 필드만 변경하고 나머지는 원본 명령어 설정 상속",
+      "    - replace_with 필드로 명령어 이름 변경, 나머지 필드는 원본 설정을 베이스로 병합",
+      "    - command_manager.py: get_all_commands_for_bot() 함수에 command_overrides 로직 추가",
+      "    - message_processor.py: 동적 명령어 우선 매칭 시스템으로 봇별/방별 명령어를 글로벌 fallback보다 우선 처리",
+      "    - 하위호환성: 기존 commands 방식과 새로운 command_overrides 방식 동시 지원",
+      " - 동적 명령어 시스템 테스트 기능: '# reload commands' 명령어로 실시간 리로드 가능",
+      " - LOA.i.json 예시: 18446369739418674 방에서 '# 날씨' → '@ 날씨' 오버라이딩 적용"
+    ],
+    "v6.0.0.17": [
+      "[25.06.09] ",
+      " - 동적 명령어 시스템 데드락 방지: 임시로 asyncio.Lock 제거하여 타임아웃 문제 해결"
+    ],
+    "v6.0.0.16": [
+      "[25.06.09] ",
+      " - 동적 명령어 시스템 초기화 타임아웃 추가: 30초 제한으로 서버 시작 시 무한 대기 방지"
+    ],
+    "v6.0.0.15": [
+      "[25.06.09] ",
+      " - 동적 명령어 시스템 초기화 누락 수정: 서버 시작 시 init_command_system() 호출 추가로 글로벌 fallback 문제 해결"
+    ],
+    "v6.0.0.14": [
+      "[25.06.09]",
+      " - DB 기반 봇별/방별 명령어 시스템 구현:",
+      "    - `kb_commands` 테이블에 `room_id` 필드 추가: 방별 명령어 설정을 위한 외래 키",
+      "    - `kb_commands` 테이블에서 `command_json` 필드 제거: JSON 데이터는 이제 별도 파일로 관리",
+      "    - `command_name`의 길이를 100으로 확장: 더 긴 명령어 이름 지원",
+      "    - `command_keywords` 컬럼에 `FULLTEXT INDEX` 추가: 키워드 검색 성능 향상",
+      "    - `kb_commands`의 `type` 필드 길이를 30으로 확장: 더 다양한 명령어 타입 수용",
+      "    - `kb_config_commands_global` 테이블의 `command_keywords` 컬럼을 `TEXT` 타입으로 변경 및 `FULLTEXT INDEX` 추가: 유연한 키워드 저장 및 검색 지원",
+      "    - `kb_config_commands_subscription` 테이블의 `command_keywords` 컬럼을 `TEXT` 타입으로 변경 및 `FULLTEXT INDEX` 추가: 구독 명령어 키워드 저장 및 검색 지원"
+    ],
+    "v6.0.0.13": [
+      "[25.06.09]",
+      " - DB 기반 동적 명령어 시스템 초기 구현:",
+      "    - `kb_commands` 테이블에 `command_type`, `command_json` 컬럼 추가: 명령어 유형 및 JSON 설정을 DB에 저장",
+      "    - `server/services/command_manager.py`: `get_all_commands_for_bot`, `get_commands_for_room`, `get_global_commands` 함수 추가 및 DB에서 명령어 로드 로직 구현",
+      "    - `server/services/message_processor.py`: `process_message` 함수에서 동적 명령어를 로드하고 처리하는 로직 통합",
+      "    - `server/core/globals.py`: `PREFIX_MAP`을 초기화하고 동적 명령어로 대체할 준비",
+      "    - `server/main.py`: 서버 시작 시 동적 명령어 시스템 초기화(`init_command_system`) 호출 추가",
+      "    - `docs/db_schema.md`에 새로운 DB 스키마 반영"
+    ],
+    "v6.0.0.12": [
+      "[25.06.09]",
+      " - DB 스키마 설계 및 문서화 (docs/db_schema.md) 업데이트:",
+      "    - `kb_user_map` 테이블에 `user_level` 필드 추가: 사용자 권한 관리",
+      "    - `kb_chat_logs` 테이블에 `channel_id` 필드 추가: 메시지 발송 채널 식별",
+      "    - `kb_commands` 테이블에 `bot_name` 및 `status` 필드 추가: 봇별 명령어 관리 및 활성화 상태",
+      "    - `kb_command_stats` 테이블에 `room_name` 필드 추가: 방별 명령어 사용 통계",
+      "    - `kb_scheduler_logs` 테이블에 `log_id`, `schedule_id` 필드 추가: 스케줄링 로그 관리",
+      "    - 기존 테이블 필드들의 길이 조정 및 제약 조건 추가: 데이터 일관성 및 무결성 강화",
+      "    - 모든 테이블에 `created_at` 및 `updated_at` 타임스탬프 자동 업데이트 설정"
+    ],
+    "v6.0.0.11": [
+      "[25.06.09] ",
+      " - `core/globals.py`에 `MESSAGE_SEPARATOR` 추가: 메시지 파싱 및 전송 시 일관된 구분자 사용"
+    ],
+    "v6.0.0.10": [
+      "[25.06.09] ",
+      " - `services/message_formatter.py`에 `format_message_for_kakaotalk` 함수 추가: 카카오톡 메시지 형식화 표준화"
+    ],
+    "v6.0.0.9": [
+      "[25.06.09] ",
+      " - `services/message_parser.py`에 `parse_message_for_command` 함수 추가: 명령어 메시지 파싱 로직 분리"
+    ],
+    "v6.0.0.8": [
+      "[25.06.09] ",
+      " - `core/exceptions.py`에 커스텀 예외 클래스 추가: 특정 오류 상황에 대한 명확한 예외 처리"
+    ],
+    "v6.0.0.7": [
+      "[25.06.09] ",
+      " - `services/command_dispatcher.py`에 `dispatch_command` 함수 추가: 명령어 실행 로직 중앙화"
+    ],
+    "v6.0.0.6": [
+      "[25.06.09] ",
+      " - `services/response_generator.py`에 `generate_response_message` 함수 추가: 봇 응답 메시지 생성 로직 분리"
+    ],
+    "v6.0.0.5": [
+      "[25.06.09] ",
+      " - `core/globals.py`에 `Context` 객체 정의: 메시지 처리 컨텍스트 정보 표준화"
+    ],
+    "v6.0.0.4": [
+      "[25.06.09] ",
+      " - `services/message_sender.py`에 `send_message_response` 함수 추가: 메시지 전송 로직 분리 및 표준화"
+    ],
+    "v6.0.0.3": [
+      "[25.06.09] ",
+      " - `core/logger.py`에 중앙 로깅 시스템 구현: 모든 로깅을 이곳으로 통일"
+    ],
+    "v6.0.0.2": [
+      "[25.06.09] ",
+      " - `server/core/client_handler.py` 리팩토링 및 `process_message` 함수 분리"
+    ],
+    "v6.0.0.1": [
+      "[25.06.09] ",
+      " - 초기 프로젝트 구조 설정 및 기본 파일 생성"
+    ]    
+}

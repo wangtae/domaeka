@@ -1,0 +1,453 @@
+{
+    "18446369739418674": {
+      "room_name": "LOA.i",
+      "bot_nickname": "로아",
+      "schedules": [
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금",
+            "토"
+          ],
+          "times": [
+            "18:00"
+          ],
+          "messages": [
+            "# 오늘의 대화 요약!"
+          ],
+          "tts": {
+            "enabled": true,
+            "config": {
+              "language": "auto",
+              "gender": "F",
+              "voice": "auto",
+              "intro": [
+                "음성으로 녹음해 보았어요! 🧏",
+                "내용을 녹음해 보았어요. 🔔",
+                "직접 읽어봤어요! 🎙️",
+                "이 내용을 들려드릴게요. 🎧",
+                "음성으로 정리해 드릴게요! 📋",
+                "제가 읽어볼게요~ 🎤",
+                "짧게 녹음해봤어요! 🎙️",
+                "핵심만 콕! 읽어드릴게요. 🧠",
+                "요약된 내용을 들어보세요. 📝",
+                "들어보는 게 더 편하죠? 👂",
+                "말로 전해드릴게요! 🗣️"
+              ]
+            }
+          }
+        },
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금"
+          ],
+          "times": [
+            "17:30"
+          ],
+          "messages": [
+            "# 환율"
+          ]
+        },
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금"
+          ],
+          "times": [
+            "10:30"
+          ],
+          "messages": [
+            "# [블룸버그 오늘의 5가지 이슈]"
+          ]
+        },
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금",
+            "토",
+            "일"
+          ],
+          "times": [
+            "01:10"
+          ],
+          "messages": [
+            "# [오늘의 성경묵상]"
+          ],
+          "tts": {
+            "enabled": true
+          }
+        },
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금",
+            "토",
+            "일"
+          ],
+          "times": [
+            "01:21"
+          ],
+          "messages": [
+            "# [매일성경]"
+          ],
+          "tts": {
+            "enabled": true
+          }
+        },
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금",
+            "토",
+            "일"
+          ],
+          "times": [
+            "14:20"
+          ],
+          "messages": [
+            "# echo (꺄아) 개역한글\n\n새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 - 요 13장 34절",
+            "# echo (꺄아) 개역한글\n\n우리가 형제를 사랑함으로 사망에서 옮겨 생명으로 들어간 줄을 알거니와 사랑치 아니하는 자는 사망에 거하느니라 - 요일 3.14"
+          ]
+        },
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금"
+          ],
+          "times": [
+            "18:15"
+          ],
+          "messages": [
+            "# [오늘의 투자격언]"
+          ]
+        },
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금",
+            "토",
+            "일"
+          ],
+          "times": [
+            "23:49"
+          ],
+          "messages": [
+            "# echo (꺄아) 개역한글: 요한복음 13장 34절\n\n새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라"
+          ]
+        },
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금",
+            "토",
+            "일"
+          ],
+          "times": [
+            "07:00",
+            "00:21"
+          ],
+          "messages": [
+            "# [자동응답] 오늘날씨"
+          ]
+        }
+      ],
+      "allowed_categories": [
+        "관리",
+        "일반",
+        "성경",
+        "주식",
+        "AI(일반)",
+        "AI(프로필분석)",
+        "뉴스",
+        "유틸리티",
+        "채팅",
+        "날씨",
+        "봇 자동응답",
+        "게임(오목)",
+        "법률"
+      ],
+      "chat_sessions": {
+        "private_chat": {
+          "enabled": true,
+          "session_timeout_minutes": 10,
+          "daily_limit_per_user": 1,
+          "offer_extension": true
+        },
+        "group_chat": {
+          "enabled": true,
+          "session_timeout_minutes": 15,
+          "daily_limit_per_room": 1,
+          "offer_extension": true
+        }
+      },
+      "default_bibles": "111111111",
+      "enable_investment_news": {
+        "TradingView": [
+          "주식",
+          "ETFs",
+          "크립토",
+          "외환",
+          "지수",
+          "선물",
+          "국채",
+          "경제"
+        ]
+      },
+      "ignored_users": [
+        {
+          "user_hash": "e1e3634ea711568c5b2721dbd936046368cb488a4f6bb9f82e5c5558eaa03bd7",
+          "nickname": "드리고-O",
+          "is_bot": true,
+          "no_response": true,
+          "no_logging": true
+        }
+      ],
+      "log_settings": {
+        "disable_chat_logs": false,
+        "disable_command_logs": false,
+        "log_level": "DEBUG"
+      },
+      "omok_settings": {
+        "enabled": true,
+        "ai_mode": [
+          "기본",
+          "고급"
+        ],
+        "default_ai_mode": "기본",
+        "default_ai_level": 5,
+        "ban_spot": true,
+        "move_timeout_seconds": 60,
+        "start_timeout_seconds": 300,
+        "debug_allowed": false,
+        "board_style": "wood",
+        "board_style_description": "기본 나무 색상의 심플한 디자인",
+        "available_rule_sets": [
+          "freestyle",
+          "standard",
+          "pro",
+          "longpro",
+          "renju"
+        ],
+        "default_rule_set": "freestyle"
+      },
+      "room_concurrency": "2",
+      "webpage_summary": {
+        "enabled": true,
+        "auto_detection": {
+          "enabled": true,
+          "daily_limit": 100,
+          "cooldown_seconds": 5,
+          "show_waiting_message": false
+        },
+        "command": {
+          "enabled": true,
+          "room_daily_limit": 100,
+          "user_daily_limit": 10
+        },
+        "kakao_readmore": {
+          "type": "chars",
+          "value": 17
+        }
+      },
+      "youtube_summary": {
+        "enabled": true,
+        "auto_detection": {
+          "enabled": true,
+          "daily_limit": 100,
+          "cooldown_seconds": 5,
+          "show_waiting_message": false
+        },
+        "command": {
+          "enabled": true,
+          "room_daily_limit": 100,
+          "user_daily_limit": 10
+        },
+        "transcription": {
+          "enabled": true,
+          "max_duration_minutes": 10,
+          "provider": "whisper",
+          "model": "whisper-1",
+          "daily_limit": 50
+        },
+        "kakao_readmore": {
+          "type": "lines",
+          "value": 1
+        }
+      }
+    },
+    "18445682959392711": {
+      "room_name": "mybot",
+      "bot_nickname": "로아",
+      "schedules": [
+        {
+          "days": [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금",
+            "토",
+            "일"
+          ],
+          "times": [
+            "23:37",
+            "13:50"
+          ],
+          "messages": [
+            "# echo (꺄아) 개역한글\n\n새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 - 요 13.34"
+          ]
+        }
+      ],
+      "allowed_categories": [
+        "관리",
+        "일반",
+        "성경",
+        "주식",
+        "AI(일반)",
+        "AI(프로필분석)",
+        "뉴스",
+        "유틸리티",
+        "채팅",
+        "날씨",
+        "봇 자동응답",
+        "게임(오목)",
+        "법률"
+      ],
+      "chat_sessions": {
+        "private_chat": {
+          "enabled": true,
+          "session_timeout_minutes": 10,
+          "daily_limit_per_user": 1,
+          "offer_extension": true
+        },
+        "group_chat": {
+          "enabled": true,
+          "session_timeout_minutes": 15,
+          "daily_limit_per_room": 1,
+          "offer_extension": true
+        }
+      },
+      "default_bibles": "111111111",
+      "enable_investment_news": {
+        "TradingView": [
+          "주식",
+          "ETFs",
+          "크립토",
+          "외환",
+          "지수",
+          "선물",
+          "국채",
+          "경제"
+        ]
+      },
+      "ignored_users": [
+        {
+          "user_hash": "e1e3634ea711568c5b2721dbd936046368cb488a4f6bb9f82e5c5558eaa03bd7",
+          "nickname": "드리고-O",
+          "is_bot": true,
+          "no_response": true,
+          "no_logging": true
+        }
+      ],
+      "log_settings": {
+        "disable_chat_logs": false,
+        "disable_command_logs": false,
+        "log_level": "DEBUG"
+      },
+      "omok_settings": {
+        "enabled": true,
+        "ai_mode": [
+          "기본",
+          "고급"
+        ],
+        "default_ai_mode": "기본",
+        "default_ai_level": 5,
+        "ban_spot": true,
+        "move_timeout_seconds": 60,
+        "start_timeout_seconds": 300,
+        "debug_allowed": false,
+        "board_style": "wood",
+        "board_style_description": "기본 나무 색상의 심플한 디자인",
+        "available_rule_sets": [
+          "freestyle",
+          "standard",
+          "pro",
+          "longpro",
+          "renju"
+        ],
+        "default_rule_set": "freestyle"
+      },
+      "room_concurrency": "2",
+      "webpage_summary": {
+        "enabled": true,
+        "auto_detection": {
+          "enabled": true,
+          "daily_limit": 100,
+          "cooldown_seconds": 5,
+          "show_waiting_message": false
+        },
+        "command": {
+          "enabled": true,
+          "room_daily_limit": 100,
+          "user_daily_limit": 10
+        },
+        "kakao_readmore": {
+          "type": "chars",
+          "value": 17
+        }
+      },
+      "youtube_summary": {
+        "enabled": true,
+        "auto_detection": {
+          "enabled": true,
+          "daily_limit": 100,
+          "cooldown_seconds": 5,
+          "show_waiting_message": false
+        },
+        "command": {
+          "enabled": true,
+          "room_daily_limit": 100,
+          "user_daily_limit": 10
+        },
+        "transcription": {
+          "enabled": true,
+          "max_duration_minutes": 10,
+          "provider": "whisper",
+          "model": "whisper-1",
+          "daily_limit": 50
+        },
+        "kakao_readmore": {
+          "type": "lines",
+          "value": 1
+        }
+      }
+    }
+  }
