@@ -17,11 +17,13 @@ Domaeka 공동구매 시스템을 위한 카카오톡 봇 서버입니다. Messe
 - 클라이언트와 서버 간 연결 관리 방식과 메시지 구조 kkobot과 호환성 유지
 - 기존 kkobot 서버 참조용으로 `@server-kkobot` 폴더에 소스 복사 보관
 
-### 클라이언트 업데이트 사항 (v2.9.0c)
-- **핸드셰이크 프로토콜 변경**: `deviceId` 필드 추가 (서버 대응 필요)
-- **ping 이벤트 확장**: `monitoring` 필드 추가로 클라이언트 상태 모니터링 강화
-- **인증 시스템 개선**: `deviceUUID`, `macAddress`, `ipAddress` 등 추가 인증 정보
-- **미디어 전송 통합**: MEDIA_ 프로토콜과 IMAGE_BASE64 레거시 호환성
+### 클라이언트 업데이트 사항 (v3.1.4)
+- **핸드셰이크 프로토콜 변경**: `deviceID` 필드 추가 (Android ID 기반)
+- **ping 이벤트 확장**: `monitoring` 필드 추가로 클라이언트 상태 모니터링 강화 (메모리, 큐 크기, 활성 방 수)
+- **인증 시스템 개선**: `deviceUUID`, `deviceID`, `macAddress`, `ipAddress` 등 추가 인증 정보
+- **미디어 전송 통합**: MEDIA_URL 및 IMAGE_BASE64 프로토콜 지원
+- **장기 실행 안정성**: 무한 재연결, TTL 기반 메시지 큐, 주기적 정리 작업
+- **파일 전송 최적화**: 동적 대기시간 계산, 용량 기반 전송 제어
 
 ## 🏗️ 프로젝트 구조
 
@@ -61,6 +63,8 @@ server/
 ### 2. 메시지 처리
 - **analyze 이벤트**: 클라이언트로부터 받은 메시지 분석 및 명령어 처리
 - **ping 이벤트**: 클라이언트 상태 확인 및 헬스체크
+  - 클라이언트 모니터링 정보 수집 (메모리 사용량, 큐 크기, 활성 방 수 등)
+  - `kb_ping_monitor` 테이블에 자동 저장하여 장기 모니터링 지원
 - JSON 기반 프로토콜로 구조화된 데이터 교환
 
 ### 3. 기본 명령어 시스템
@@ -70,6 +74,7 @@ server/
 ### 4. 데이터베이스 연동
 - MySQL 데이터베이스 연결 (aiomysql 사용)
 - 채팅 로그 자동 저장 (`kb_chat_logs` 테이블)
+- 클라이언트 모니터링 정보 저장 (`kb_ping_monitor` 테이블)
 - 비동기 데이터베이스 처리
 
 ### 5. 보안 기능
@@ -142,6 +147,7 @@ python main.py --port=1500
 #### analyze 이벤트 (클라이언트 → 서버)
 카카오톡 메시지를 서버로 전송하여 분석 및 명령어 처리를 요청합니다.
 
+**onMessage에서 전송하는 구조:**
 ```json
 {
   "event": "analyze",
@@ -161,10 +167,42 @@ python main.py --port=1500
       "clientType": "MessengerBotR",
       "botName": "봇 이름",
       "deviceUUID": "디바이스 UUID",
+      "deviceID": "Android ID",
       "macAddress": "MAC 주소",
       "ipAddress": "IP 주소",
       "timestamp": 1234567890123,
-      "version": "2.9.0c",
+      "version": "3.1.4",
+      "signature": "HMAC 서명"
+    }
+  }
+}
+```
+
+**response 함수에서 전송하는 구조:**
+```json
+{
+  "event": "analyze",
+  "data": {
+    "room": "채팅방 이름",
+    "text": "메시지 내용",
+    "sender": "발신자 이름",
+    "isGroupChat": true,
+    "channelId": "채널 ID",
+    "timestamp": "2024-01-01 12:00:00",
+    "botName": "봇 이름",
+    "packageName": "com.kakao.talk",
+    "threadId": "스레드 ID",
+    "userHash": "생성된 고유 ID",
+    "isMention": false,
+    "auth": {
+      "clientType": "MessengerBotR",
+      "botName": "봇 이름",
+      "deviceUUID": "디바이스 UUID",
+      "deviceID": "Android ID",
+      "macAddress": "MAC 주소",
+      "ipAddress": "IP 주소",
+      "timestamp": 1234567890123,
+      "version": "3.1.4",
       "signature": "HMAC 서명"
     }
   }
@@ -174,6 +212,7 @@ python main.py --port=1500
 #### messageResponse 이벤트 (서버 → 클라이언트)
 처리된 메시지를 클라이언트로 전송하여 카카오톡 채팅방에 메시지를 보내도록 합니다.
 
+**일반 텍스트 메시지:**
 ```json
 {
   "event": "messageResponse",
@@ -185,39 +224,67 @@ python main.py --port=1500
 }
 ```
 
+**미디어 메시지 (URL):**
+```json
+{
+  "event": "messageResponse",
+  "data": {
+    "room": "채팅방 이름",
+    "text": "MEDIA_URL:http://example.com/image1.jpg|||http://example.com/image2.jpg",
+    "channel_id": "채널 ID"
+  }
+}
+```
+
+**미디어 메시지 (Base64):**
+```json
+{
+  "event": "messageResponse",
+  "data": {
+    "room": "채팅방 이름",
+    "text": "IMAGE_BASE64:iVBORw0KGgoAAAANSUhEUgAA...|||aVBORw0KGgoAAAANSUhEUgAA...",
+    "channel_id": "채널 ID"
+  }
+}
+```
+
 #### ping 이벤트 (양방향)
 클라이언트와 서버 간 연결 상태를 확인합니다.
 
+**서버에서 클라이언트로 전송하는 ping 요청:**
 ```json
 {
   "event": "ping",
   "data": {
     "bot_name": "봇 이름",
-    "channel_id": "채널 ID",
-    "room": "채팅방 이름",
-    "user_hash": "사용자 해시",
+    "server_timestamp": "서버 타임스탬프"
+  }
+}
+```
+
+**클라이언트에서 서버로 전송하는 ping 응답:**
+```json
+{
+  "event": "ping",
+  "data": {
+    "bot_name": "봇 이름",
     "server_timestamp": "서버 타임스탬프",
-    "client_status": {
-      "cpu": null,
-      "ram": {
-        "used": 134217728,
-        "max": 536870912,
-        "usedMB": 128,
-        "maxMB": 512
-      },
-      "temp": null
-    },
     "monitoring": {
-      "uptime": 3600000,
-      "messageCount": 125,
-      "lastActivity": "2024-01-01T12:00:00Z"
+      "total_memory": 512.0,
+      "memory_usage": 128.5,
+      "memory_percent": 25.1,
+      "message_queue_size": 3,
+      "active_rooms": 5
     },
-    "is_manual": false,
     "auth": {
+      "clientType": "MessengerBotR",
+      "botName": "봇 이름",
       "deviceUUID": "디바이스 UUID",
+      "deviceID": "Android ID",
       "macAddress": "MAC 주소",
       "ipAddress": "IP 주소",
       "timestamp": 1234567890123,
+      "version": "3.1.4",
       "signature": "HMAC 서명"
     }
   }
@@ -252,33 +319,114 @@ python main.py --port=1500
 | is_our_bot_response | TINYINT(1) | 우리 봇이 생성한 응답 여부 |
 | is_scheduled | TINYINT(1) | 스케줄링된 메시지 여부 |
 
-### 구현 예정 테이블
+#### kb_ping_monitor 테이블
+클라이언트 ping 응답 및 모니터링 정보를 저장하는 테이블입니다. (kkobot 시스템 호환)
 
-#### 봇 정의 테이블 (kb_bots) - 추천안
 | 컬럼명 | 타입 | 설명 |
 |--------|------|------|
 | id | INT AUTO_INCREMENT | 기본키 |
-| bot_name | VARCHAR(50) | 봇 이름 (고유값) |
-| display_name | VARCHAR(100) | 표시용 봇 이름 |
-| description | TEXT | 봇 설명 |
-| is_active | TINYINT(1) | 활성화 상태 |
+| bot_name | VARCHAR(50) | 봇 이름 |
+| device_id | VARCHAR(100) | 디바이스 ID (Android ID) |
+| device_uuid | VARCHAR(100) | 디바이스 UUID |
+| mac_address | VARCHAR(50) | MAC 주소 |
+| ip_address | VARCHAR(50) | IP 주소 |
+| client_version | VARCHAR(20) | 클라이언트 버전 |
+| total_memory | DECIMAL(10,2) | 총 메모리 (MB) |
+| memory_usage | DECIMAL(10,2) | 사용 중인 메모리 (MB) |
+| memory_percent | DECIMAL(5,2) | 메모리 사용률 (%) |
+| message_queue_size | INT | 메시지 큐 크기 |
+| active_rooms | INT | 활성 채팅방 수 |
+| ping_timestamp | DATETIME | ping 수신 시간 |
+| server_timestamp | DATETIME | 서버 기록 시간 |
+
+### 추가 구현된 테이블
+
+#### kb_bot_devices 테이블
+봇 디바이스 인증 및 승인 시스템을 위한 테이블입니다.
+
+| 컬럼명 | 타입 | 설명 |
+|--------|------|------|
+| id | BIGINT AUTO_INCREMENT | 기본키 |
+| bot_name | VARCHAR(64) | 봇 이름 |
+| device_id | VARCHAR(128) | 디바이스 ID (Android ID) |
+| ip_address | VARCHAR(64) | IP 주소 |
+| status | ENUM | pending, approved, denied, revoked, blocked |
+| client_type | VARCHAR(64) | 클라이언트 타입 (MessengerBotR 등) |
+| client_version | VARCHAR(32) | 클라이언트 버전 |
+| created_at | DATETIME | 생성 시간 |
+| updated_at | DATETIME | 수정 시간 |
+
+**승인 시스템 작동 방식:**
+- 봇 서버 접속 시 해당 디바이스가 테이블에 없으면 `status='pending'`으로 자동 등록
+- `pending` 상태의 봇은 메시지를 `kb_chat_logs`에 기록하지만 응답하지 않음
+- 관리자가 `status='approved'`로 변경하면 정상적인 봇 기능 활성화
+
+#### kb_rooms 테이블
+채팅방별 봇 승인 및 설정 관리를 위한 테이블입니다.
+
+| 컬럼명 | 타입 | 설명 |
+|--------|------|------|
+| room_id | VARCHAR(50) | 채팅방 ID (기본키) |
+| bot_name | VARCHAR(30) | 봇 이름 |
+| room_name | VARCHAR(255) | 채팅방 이름 |
+| room_concurrency | INT | 동시 처리 수 (기본값: 2) |
+| room_owners | LONGTEXT | 방 관리자 정보 (JSON) |
+| log_settings | LONGTEXT | 로그 설정 (JSON) |
+| status | ENUM | pending, approved, denied, revoked, blocked |
+| descryption | TEXT | 방 설명 |
+| created_at | DATETIME | 생성 시간 |
+| updated_at | DATETIME | 수정 시간 |
+
+**승인 시스템 작동 방식:**
+- 새로운 채팅방에서 봇 호출 시 해당 방이 테이블에 없으면 `status='pending'`으로 자동 등록
+- `pending` 상태의 방에서는 메시지를 `kb_chat_logs`에 기록하지만 봇이 응답하지 않음
+- 관리자가 `status='approved'`로 변경하면 해당 방에서 봇 기능 활성화
+
+**봇 활성화 조건:**
+특정 방에서 봇이 올바르게 작동하려면 다음 두 조건을 모두 만족해야 함:
+1. `kb_bot_devices`에서 해당 디바이스가 `approved` 상태
+2. `kb_rooms`에서 해당 방이 `approved` 상태
+
+#### kb_servers 테이블
+서버 정보 및 상태 관리를 위한 테이블입니다.
+
+| 컬럼명 | 타입 | 설명 |
+|--------|------|------|
+| server_id | INT AUTO_INCREMENT | 기본키 |
+| server_name | VARCHAR(100) | 서버 이름 |
+| server_host | VARCHAR(45) | 서버 호스트 |
+| priority | INT | 우선순위 (기본값: 100) |
+| status | ENUM | healthy, degraded, maintenance, failed |
+| max_bots | INT | 최대 봇 수 |
+| current_bots | INT | 현재 봇 수 (기본값: 0) |
+| description | TEXT | 서버 설명 |
 | created_at | TIMESTAMP | 생성 시간 |
 | updated_at | TIMESTAMP | 수정 시간 |
-| settings | JSON | 봇별 설정 (JSON 형태) |
 
-#### 방 정의 테이블 (kb_rooms) - 추천안
+#### kb_server_processes 테이블
+서버 프로세스 관리 및 모니터링을 위한 테이블입니다.
+
 | 컬럼명 | 타입 | 설명 |
 |--------|------|------|
-| id | INT AUTO_INCREMENT | 기본키 |
-| channel_id | VARCHAR(50) | 카카오톡 채널 ID (고유값) |
-| room_name | VARCHAR(255) | 채팅방 이름 |
-| bot_id | INT | 연결된 봇 ID (kb_bots.id) |
-| is_group_chat | TINYINT(1) | 그룹채팅 여부 |
-| is_active | TINYINT(1) | 봇 활성화 상태 |
-| permissions | JSON | 방별 권한 설정 |
-| created_at | TIMESTAMP | 등록 시간 |
+| process_id | INT AUTO_INCREMENT | 기본키 |
+| server_id | INT | 서버 ID (kb_servers 참조) |
+| process_name | VARCHAR(100) | 프로세스 이름 |
+| process_type | ENUM | main, backup, load_balancer, worker |
+| pid | INT | 프로세스 ID |
+| port | INT | 사용 포트 |
+| type | ENUM | live, test |
+| status | ENUM | starting, running, stopping, stopped, error, crashed |
+| last_heartbeat | TIMESTAMP | 마지막 하트비트 |
+| cpu_usage | DECIMAL(5,2) | CPU 사용률 (%) |
+| memory_usage | DECIMAL(10,2) | 메모리 사용량 (MB) |
+| created_at | TIMESTAMP | 생성 시간 |
 | updated_at | TIMESTAMP | 수정 시간 |
-| last_activity | TIMESTAMP | 마지막 활동 시간 |
+
+**프로세스 관리 시스템:**
+- 기존: `python main.py --mode=test --port=1481`
+- 신규: `python main.py --process-name=server-test-01`
+- `kb_server_processes` 테이블에서 프로세스별 포트, DB, 설정 관리
+- 웹 관리자에서 supervisor를 통한 프로세스 실행/중지/상태확인
 
 ## 🎯 명령어 시스템
 
@@ -344,7 +492,7 @@ PyMySQL>=1.0.2
 
 ### 버전 정보
 - **현재 버전**: v1.0.0-lite
-- **호환 클라이언트**: MessengerBotR v2.9.0c
+- **호환 클라이언트**: MessengerBotR v3.1.4
 
 ## 🤝 클라이언트 연동
 
@@ -426,6 +574,33 @@ ALTER TABLE `kb_chat_logs`
 --
 ALTER TABLE `kb_chat_logs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '기본키';
+
+-- kb_ping_monitor 테이블 생성 SQL
+CREATE TABLE `kb_ping_monitor` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '기본키',
+  `bot_name` varchar(50) NOT NULL COMMENT '봇 이름',
+  `device_id` varchar(100) DEFAULT NULL COMMENT '디바이스 ID (Android ID)',
+  `device_uuid` varchar(100) DEFAULT NULL COMMENT '디바이스 UUID',
+  `mac_address` varchar(50) DEFAULT NULL COMMENT 'MAC 주소',
+  `ip_address` varchar(50) DEFAULT NULL COMMENT 'IP 주소',
+  `client_version` varchar(20) DEFAULT NULL COMMENT '클라이언트 버전',
+  `total_memory` decimal(10,2) DEFAULT NULL COMMENT '총 메모리 (MB)',
+  `memory_usage` decimal(10,2) DEFAULT NULL COMMENT '사용 중인 메모리 (MB)',
+  `memory_percent` decimal(5,2) DEFAULT NULL COMMENT '메모리 사용률 (%)',
+  `message_queue_size` int(11) DEFAULT NULL COMMENT '메시지 큐 크기',
+  `active_rooms` int(11) DEFAULT NULL COMMENT '활성 채팅방 수',
+  `ping_timestamp` datetime DEFAULT NULL COMMENT 'ping 수신 시간',
+  `server_timestamp` datetime DEFAULT current_timestamp() COMMENT '서버 기록 시간'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='클라이언트 ping 모니터링 테이블';
+
+ALTER TABLE `kb_ping_monitor`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_bot_device` (`bot_name`,`device_id`),
+  ADD KEY `idx_ping_time` (`ping_timestamp`);
+
+ALTER TABLE `kb_ping_monitor`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '기본키';
+
 COMMIT;
 
 ---
@@ -444,11 +619,16 @@ COMMIT;
 4. **공동구매 전용 서비스** - domaeka 비즈니스 로직 구현
 5. **스케줄링 시스템** - domaeka 맞춤형 자동 알림
 
-### 클라이언트 변경사항 대응 필요
-- **핸드셰이크**: `deviceId` 필드 처리를 위한 서버 코드 수정
-- **ping 이벤트**: `monitoring` 필드와 강화된 `auth` 정보 처리
-- **인증 시스템**: HMAC 서명 검증 및 추가 디바이스 정보 활용
-- **에러 처리**: 새로운 필드들에 대한 검증 로직 추가
+### 핸드셰이크 프로토콜 (연결 시)
+클라이언트가 서버에 처음 연결할 때 전송하는 정보입니다.
+
+```json
+{
+  "botName": "LOA.i",
+  "version": "3.1.4",
+  "deviceID": "Android ID"
+}
+```
 
 ### 테이블 추천안
 위에서 제시한 `kb_bots`와 `kb_rooms` 테이블 구조를 검토하여 domaeka 요구사항에 맞게 수정 후 구현 예정입니다.
@@ -460,7 +640,7 @@ COMMIT;
 - **프로젝트**: domaeka 공동구매 시스템
 - **기반 기술**: kkobot 시스템 호환
 - **버전**: v1.0.0-domaeka
-- **호환성**: MessengerBotR v2.9.0c
+- **호환성**: MessengerBotR v3.1.4
 
 
 
