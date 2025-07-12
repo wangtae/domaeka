@@ -47,6 +47,7 @@ error.log
 .claude/mcp.json
 .vscode/mcp.json
 .gemini/settings.json
+.mcp.json
 
 # Domaeka 프로젝트 관련 무시할 파일/폴더
 
@@ -64,3 +65,4 @@ error.log
 .cfg/
 
 web/PMA/5.2.2/config.inc.php
+
