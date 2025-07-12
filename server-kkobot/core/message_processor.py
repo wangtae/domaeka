@@ -97,6 +97,9 @@ async def process_message(received_message: dict):
         received_message.get('data', {}).get('data', {}).get('auth')
     )
     client_info = None
+    device_id = None
+    is_device_approved = True  # 기본값
+    
     if auth_data:
         success, msg, client_info = auth_service.validate_auth(auth_data)
         if not success:
@@ -104,10 +107,23 @@ async def process_message(received_message: dict):
             await block_bot_device(bot_name)
             return  # 인증 실패 시 즉시 종료(응답 없음)
         received_message['client_info'] = client_info
+        
+        # 개별 디바이스 승인 상태 확인
+        device_id = auth_data.get('deviceID')
+        if device_id and bot_name:
+            from database.device_manager import is_device_approved as check_device_approved
+            is_device_approved = await check_device_approved(bot_name, device_id)
+            
+            if not is_device_approved:
+                logger.info(f"[ANALYZE] 승인되지 않은 디바이스: {bot_name}@{device_id} - 제한 모드")
 
     #logger.debug(f"[DEBUG] process_messenger_bot_message 호출 직전 message: {received_message}")
     if not disable_chat_logs:
         logger.debug(f"[DEBUG] client_info: {client_info}, client_type: {client_info.client_type if client_info else 'unknown'}")
+
+    # 승인 상태를 메시지에 추가
+    received_message['is_device_approved'] = is_device_approved
+    received_message['device_id'] = device_id
 
     # 2단계: 클라이언트 유형별 메시지 처리 분기
     client_type = client_info.client_type if client_info else 'unknown'
@@ -149,6 +165,8 @@ async def process_messenger_bot_message(message: dict):
         'client_info': message.get('client_info'),
         'auth': auth,
         'writer': message.get('writer'),  # 메시지를 보낸 클라이언트의 writer 포함
+        'is_device_approved': message.get('is_device_approved', True),  # 디바이스 승인 상태
+        'device_id': message.get('device_id'),  # 디바이스 ID
     }
     if not disable_chat_logs:
         logger.debug(f"[DEBUG] context 생성: {context}")
@@ -184,8 +202,26 @@ async def handle_analyze_event(context: dict):
     if "user_id" not in context and "userHash" in context:
         context["user_id"] = context["userHash"]
 
-    # 디바이스 승인 상태 체크
+    # 개별 디바이스 승인 상태 확인
+    is_device_approved = context.get('is_device_approved', True)
+    device_id = context.get('device_id')
     bot_name = context.get('bot_name')
+    
+    if not is_device_approved:
+        logger.info(f"[ANALYZE] 승인되지 않은 디바이스 - 로깅만 수행: {bot_name}@{device_id}")
+        # 승인되지 않은 디바이스는 로깅만 하고 응답하지 않음
+        # 채팅 로그는 저장하지만 명령어 처리나 응답은 하지 않음
+        text = context.get('text', '')
+        sender = context.get('sender', '')
+        room = context.get('room', '')
+        logger.info(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text} (승인상태: pending)")
+        
+        # 데이터베이스에 채팅 로그만 저장
+        if g.db_pool:
+            await save_chat_to_db(context)
+        return  # 승인되지 않은 디바이스는 여기서 종료
+
+    # 기존 디바이스 승인 상태 체크 (봇 전체)
     if bot_name:
         status = await get_bot_device_status(bot_name)
         if status != 'approved':

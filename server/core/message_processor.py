@@ -12,7 +12,8 @@ from core.client_status import client_status_manager
 from services.echo_service import handle_echo_command
 from services.client_info_service import handle_client_info_command
 from services.image_multi_service import handle_imgext_command
-from database.db_utils import save_chat_to_db
+from database.db_utils import save_chat_to_db, save_ping_to_db
+from core.ping_scheduler import ping_manager
 import core.globals as g
 
 
@@ -29,6 +30,7 @@ async def process_message(received_message: dict):
         data = received_message.get('data', {})
         
         logger.info(f"[MSG] 이벤트: {event}")
+        logger.debug(f"[MSG] 전체 메시지: {received_message}")  # 디버깅용
         
         # 빈 이벤트인 경우 메시지 내용 로깅
         if not event:
@@ -52,6 +54,9 @@ async def process_message(received_message: dict):
                 'client_addr': str(received_message.get('client_addr', '')),
             }
             await handle_analyze_event(context)
+            
+            # analyze 메시지 처리 후 ping 카운터 체크
+            await ping_manager.check_and_send_ping()
             
         elif event == 'ping':
             # ping 이벤트 처리
@@ -79,26 +84,43 @@ async def handle_analyze_event(context: Dict[str, Any]):
     channel_id = context.get('channel_id', '')
     user_hash = context.get('user_hash', '')
     writer = context.get('writer')
+    client_addr = context.get('client_addr')
     
     # 인증 정보 검증
     auth_data = context.get('auth', {})
+    device_id = None
+    is_device_approved = True  # 기본값
+    
     if auth_data:
         is_valid, error_msg, client_info = validate_client_auth(auth_data)
         if not is_valid:
             logger.warning(f"[ANALYZE] 인증 실패: {error_msg}")
         else:
-            # 클라이언트 정보 업데이트 (client_addr가 있는 경우)
-            client_addr = context.get('client_addr')
+            # 클라이언트 정보 업데이트
             if client_addr:
                 client_status_manager.update_auth_info(client_addr, auth_data)
+            
+            # 디바이스 승인 상태 확인
+            device_id = auth_data.get('deviceID')
+            if device_id and bot_name:
+                from database.device_manager import is_device_approved as check_device_approved
+                is_device_approved = await check_device_approved(bot_name, device_id)
+                
+                if not is_device_approved:
+                    logger.info(f"[ANALYZE] 승인되지 않은 디바이스: {bot_name}@{device_id} - 제한 모드")
     
-    logger.info(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text}")
+    logger.info(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text} (승인상태: {'approved' if is_device_approved else 'pending'})")
     
-    # 데이터베이스에 채팅 로그 저장
+    # 데이터베이스에 채팅 로그 저장 (승인 상태와 관계없이 항상 저장)
     if g.db_pool:
         await save_chat_to_db(context)
     
-    # 명령어 체크
+    # 승인되지 않은 디바이스는 로깅만 하고 응답하지 않음
+    if not is_device_approved:
+        logger.info(f"[ANALYZE] 승인 대기 중인 디바이스 - 응답 없이 로깅만 수행: {bot_name}@{device_id}")
+        return
+    
+    # 승인된 디바이스만 명령어 처리
     if text.startswith('# echo '):
         await handle_echo_command(context, text)
     elif text.strip() == '# echo':
@@ -116,16 +138,28 @@ async def handle_ping_event(received_message: Dict[str, Any]):
     Args:
         received_message: 클라이언트로부터 받은 ping 메시지
     """
-    logger.info("[PING] 핑 수신")
-    
     data = received_message.get('data', {})
     writer = received_message.get('writer')
     client_addr = received_message.get('client_addr')
+    
+    logger.info(f"[PING] 핑 수신 - 클라이언트: {client_addr}")
+    
+    # ping 데이터 상세 로깅
+    bot_name = data.get('bot_name', '')
+    monitoring = data.get('monitoring', {})
+    logger.info(f"[PING] 데이터: bot={bot_name}, monitoring={bool(monitoring)}")
+    if monitoring:
+        logger.info(f"[PING] 모니터링: memory={monitoring.get('memory_usage', 0):.1f}MB/"
+                   f"{monitoring.get('total_memory', 0):.1f}MB ({monitoring.get('memory_percent', 0):.1f}%), "
+                   f"queue={monitoring.get('message_queue_size', 0)}, rooms={monitoring.get('active_rooms', 0)}")
     
     # 클라이언트 상태 정보 처리
     client_status = data.get("client_status", {})
     monitoring_info = data.get("monitoring", {})
     auth_data = data.get("auth", {})
+    
+    # server_timestamp 존재 여부로 ping 응답인지 확인
+    is_ping_response = "server_timestamp" in data
     
     # 클라이언트 정보 업데이트
     if client_addr:
@@ -150,7 +184,16 @@ async def handle_ping_event(received_message: Dict[str, Any]):
             else:
                 client_status_manager.update_auth_info(client_addr, auth_data)
     
-    # 핑 응답 (서버 상태 정보 포함)
+    # ping 응답인 경우 추가 응답하지 않고 데이터베이스에만 저장
+    if is_ping_response:
+        logger.info(f"[PING] ping 응답 수신 - 저장만 수행: {client_addr}")
+        # ping 모니터링 정보를 데이터베이스에 저장
+        if g.db_pool:
+            await save_ping_to_db(received_message)
+            logger.info(f"[PING] 모니터링 정보 DB 저장 완료 - {auth_data.get('botName', '')}")
+        return  # 추가 응답 없이 종료
+    
+    # 새로운 ping 요청인 경우에만 응답 전송
     response = {
         "event": "ping",
         "data": {
@@ -170,5 +213,6 @@ async def handle_ping_event(received_message: Dict[str, Any]):
     }
     
     await send_json_response(writer, response)
+    logger.info(f"[PING] 새로운 ping - 응답 전송 완료: {client_addr}")
 
 

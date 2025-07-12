@@ -162,16 +162,35 @@ async def save_device_history(device_id, device_uuid, mac_address, ip_address, c
         await conn.commit()
 
 async def get_bot_device_status(bot_name):
+    """
+    봇의 디바이스 승인 상태를 확인 (새로운 디바이스 인증 시스템 연동)
+    """
     db_pool = g.db_pool
     async with db_pool.acquire() as conn:
         await conn.set_charset('utf8mb4')
         async with conn.cursor(aiomysql.DictCursor) as cur:
+            # 해당 봇의 모든 디바이스를 확인하여 하나라도 approved면 승인
+            await cur.execute(
+                "SELECT status FROM kb_bot_devices WHERE bot_name = %s",
+                (bot_name,)
+            )
+            rows = await cur.fetchall()
+            
+            if not rows:
+                return None  # 등록된 디바이스 없음
+            
+            # 하나라도 approved 상태면 승인된 것으로 처리
+            for row in rows:
+                if row['status'] == 'approved':
+                    return 'approved'
+            
+            # approved가 없으면 최신 디바이스의 상태 반환
             await cur.execute(
                 "SELECT status FROM kb_bot_devices WHERE bot_name = %s ORDER BY id DESC LIMIT 1",
                 (bot_name,)
             )
-            row = await cur.fetchone()
-            return row['status'] if row else None
+            latest_row = await cur.fetchone()
+            return latest_row['status'] if latest_row else None
 
 async def block_bot_device(bot_name):
     db_pool = g.db_pool

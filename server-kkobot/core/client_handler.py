@@ -84,11 +84,41 @@ async def handle_client(reader, writer):
     bot_version = None
 
     try:
-        # ✅ 핸드셰이크 수신
+        # ✅ 강화된 핸드셰이크 수신 및 디바이스 등록
         handshake = await reader.readline()
-        data = json.loads(handshake.decode().strip())
-        bot_name = data.get('botName')
-        bot_version = data.get('version')
+        handshake_data = json.loads(handshake.decode().strip())
+        
+        # 필수 필드 확인 (구 버전 호환성 지원)
+        bot_name = handshake_data.get('botName', '')
+        bot_version = handshake_data.get('version', '')
+        device_id = handshake_data.get('deviceID', '')
+        
+        # v3.2.0 이상의 확장 필드 (선택 사항)
+        client_type = handshake_data.get('clientType', 'MessengerBotR')  # 기본값 설정
+        device_ip = handshake_data.get('deviceIP', str(addr).split(':')[0] if ':' in str(addr) else 'unknown')
+        device_info = handshake_data.get('deviceInfo', '')
+        
+        # 핵심 필드 검증 (구 버전 호환)
+        required_fields = ['botName', 'version', 'deviceID']
+        for field in required_fields:
+            if not handshake_data.get(field):
+                logger.error(f"[HANDSHAKE] {field} 필드 누락: {addr}")
+                writer.close()
+                await writer.wait_closed()
+                return
+        
+        logger.info(f"[HANDSHAKE] 수신: {addr} - {client_type} {bot_name} v{bot_version}")
+        logger.info(f"[HANDSHAKE] Device: {device_id}, IP: {device_ip}, Info: {device_info}")
+        
+        # kb_bot_devices 테이블과 연동하여 승인 상태 확인
+        from database.device_manager import validate_and_register_device
+        is_approved, status_message = await validate_and_register_device(handshake_data, str(addr))
+        
+        if not is_approved:
+            logger.warning(f"[HANDSHAKE] 승인되지 않은 디바이스: {addr} - {status_message}")
+            # 승인되지 않았어도 연결은 허용하되, 제한 모드로 동작
+        
+        logger.info(f"[HANDSHAKE] 성공: {addr} - {bot_name} v{bot_version} (상태: {'approved' if is_approved else 'pending'})")
 
         if not bot_name:
             logger.error(f"[ERROR] 핸드셰이크 실패 → {addr}")

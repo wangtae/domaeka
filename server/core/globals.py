@@ -24,3 +24,7 @@ LOG_LEVEL = 'DEBUG'
 
 # 클라이언트 타임아웃 (초)
 CLIENT_TIMEOUT = 300
+
+# ping 관련 설정
+PING_MESSAGE_INTERVAL = 10  # 몇 개 메시지마다 ping 전송할지
+ping_message_counter = 0    # 현재 메시지 카운터

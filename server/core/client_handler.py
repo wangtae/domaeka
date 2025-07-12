@@ -72,7 +72,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
 async def handle_handshake(message: str, client_addr) -> bool:
     """
-    클라이언트 핸드셰이크 처리
+    클라이언트 핸드셰이크 처리 및 kb_bot_devices 테이블 연동
     
     Args:
         message: 핸드셰이크 메시지
@@ -85,21 +85,40 @@ async def handle_handshake(message: str, client_addr) -> bool:
         # 핸드셰이크 메시지는 JSON 형태여야 함
         handshake_data = json.loads(message)
         
-        # 필수 필드 확인
+        # 필수 필드 확인 (구 버전 호환성 지원)
         bot_name = handshake_data.get('botName', '')
         version = handshake_data.get('version', '')
-        device_id = handshake_data.get('deviceId', '')  # 새로 추가된 필드
+        device_id = handshake_data.get('deviceID', '')
         
-        if not bot_name:
-            logger.error(f"[HANDSHAKE] botName 누락: {client_addr}")
-            return False
+        # v3.2.0 이상의 확장 필드 (선택 사항)
+        client_type = handshake_data.get('clientType', 'MessengerBotR')  # 기본값 설정
+        device_ip = handshake_data.get('deviceIP', str(client_addr).split(':')[0] if ':' in str(client_addr) else 'unknown')
+        device_info = handshake_data.get('deviceInfo', '')
         
-        # 클라이언트 상태 관리자에 등록
+        # 핵심 필드 검증 (구 버전 호환)
+        required_fields = ['botName', 'version', 'deviceID']
+        for field in required_fields:
+            if not handshake_data.get(field):
+                logger.error(f"[HANDSHAKE] {field} 필드 누락: {client_addr}")
+                return False
+        
+        logger.info(f"[HANDSHAKE] 수신: {client_addr} - {client_type} {bot_name} v{version}")
+        logger.info(f"[HANDSHAKE] Device: {device_id}, IP: {device_ip}, Info: {device_info}")
+        
+        # kb_bot_devices 테이블과 연동하여 승인 상태 확인
+        from database.device_manager import validate_and_register_device
+        is_approved, status_message = await validate_and_register_device(handshake_data, str(client_addr))
+        
+        if not is_approved:
+            logger.warning(f"[HANDSHAKE] 승인되지 않은 디바이스: {client_addr} - {status_message}")
+            # 승인되지 않았어도 연결은 허용하되, 제한 모드로 동작
+        
+        # 클라이언트 상태 관리자에 등록 (승인 상태 포함)
+        handshake_data['approval_status'] = 'approved' if is_approved else 'pending'
+        handshake_data['status_message'] = status_message
         client_info = client_status_manager.register_client(str(client_addr), handshake_data)
         
-        logger.info(f"[HANDSHAKE] 성공: {client_addr} - {bot_name} v{version}")
-        if device_id:
-            logger.info(f"[HANDSHAKE] Device ID: {device_id}")
+        logger.info(f"[HANDSHAKE] 성공: {client_addr} - {bot_name} v{version} (상태: {handshake_data['approval_status']})")
         
         return True
         
