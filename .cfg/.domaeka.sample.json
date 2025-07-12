@@ -1,25 +1,19 @@
 {
-    "SERVER": {
-      "server_ip": "0.0.0.0",
-      "server_port": 37888,
-      "client_timeout": 300
+  "DBs": { 
+    "live": {
+      "HOST": "",
+      "USER": "",
+      "PASS": "",
+      "NAME": "",
+      "PORT": 3336
     },
-  
-    "DBs": { 
-      "live": {
-        "HOST": "",
-        "USER": "",
-        "PASS": "",
-        "NAME": "",
-        "PORT": 3336
-      },
-      "test": {
-        "HOST": "",
-        "USER": "",
-        "PASS": "",
-        "NAME": "",
-        "PORT": 3336
-      }
+    "test": {
+      "HOST": "",
+      "USER": "",
+      "PASS": "",
+      "NAME": "",
+      "PORT": 3336
     }
   }
+}
   
