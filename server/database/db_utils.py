@@ -21,22 +21,37 @@ async def save_chat_to_db(context: Dict[str, Any]):
     try:
         async with g.db_pool.acquire() as conn:
             async with conn.cursor() as cursor:
-                # kb_chat_logs 테이블에 삽입
+                # kb_chat_logs 테이블에 삽입 (실제 테이블 스키마 기준)
                 sql = """
                 INSERT INTO kb_chat_logs 
-                (channel_id, user_hash, room_name, sender, message, bot_name, log_id, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (channel_id, user_hash, room_name, sender, message, directive, message_type, 
+                 is_meaningful, bot_name, is_mention, is_group_chat, log_id, client_timestamp, 
+                 is_bot, is_our_bot_response, is_scheduled)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
+                
+                # 메시지 타입 결정
+                text = context.get('text', '')
+                message_type = 'command' if text.startswith('#') else 'text'
+                directive = text.split()[0] if text.startswith('#') else None
                 
                 values = (
                     context.get('channel_id', ''),
                     context.get('user_hash', ''),
                     context.get('room', ''),
                     context.get('sender', ''),
-                    context.get('message', ''),
+                    text,  # 'message' 필드는 'text'를 사용
+                    directive,
+                    message_type,
+                    1 if text.startswith('#') else 0,  # 명령어면 meaningful
                     context.get('bot_name', ''),
+                    1 if context.get('is_mention') else 0,
+                    1 if context.get('is_group_chat') else 0,
                     context.get('log_id', ''),
-                    datetime.now()
+                    datetime.now(),  # client_timestamp
+                    0,  # is_bot (일반 사용자 메시지)
+                    0,  # is_our_bot_response
+                    0   # is_scheduled
                 )
                 
                 await cursor.execute(sql, values)

@@ -39,7 +39,7 @@ def init_logger(level: str = 'INFO') -> logging.Logger:
     
     # 콘솔 핸들러 (컬러 지원)
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(getattr(logging, level.upper()))
     
     # 컬러 포맷터
     color_formatter = ColoredFormatter(
@@ -70,4 +70,4 @@ class ColoredFormatter(logging.Formatter):
 
 
 # 기본 로거 인스턴스
-logger = init_logger()
+logger = init_logger('DEBUG')

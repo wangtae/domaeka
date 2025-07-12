@@ -43,11 +43,13 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 # 핸드셰이크 처리 (첫 번째 메시지)
                 if not handshake_completed:
                     handshake_completed = await handle_handshake(message, client_addr)
-                    if not handshake_completed:
-                        continue
+                    continue  # 핸드셰이크 메시지는 여기서 처리 종료
                 
-                # 일반 메시지 처리
-                await process_message(message, writer, client_addr)
+                # 일반 메시지 처리 (핸드셰이크 완료 후에만)
+                json_message = json.loads(message)
+                json_message['writer'] = writer
+                json_message['client_addr'] = client_addr
+                await process_message(json_message)
                 
             except json.JSONDecodeError as e:
                 logger.error(f"[CLIENT] JSON 파싱 실패: {e}")

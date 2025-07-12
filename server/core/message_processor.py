@@ -30,6 +30,10 @@ async def process_message(received_message: dict):
         
         logger.info(f"[MSG] 이벤트: {event}")
         
+        # 빈 이벤트인 경우 메시지 내용 로깅
+        if not event:
+            logger.debug(f"[MSG] 빈 이벤트 메시지 내용: {received_message}")
+        
         if event == 'analyze':
             # analyze 이벤트 처리
             context = {

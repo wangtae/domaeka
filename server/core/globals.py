@@ -8,7 +8,7 @@ from collections import defaultdict
 VERSION = "v1.0.0-lite"
 
 # 데이터베이스 설정
-DB_NAME = "kkobot_test"  # 기본값
+DB_NAME = "test"  # 기본값 (설정 파일의 DBs.test와 일치)
 
 # 전역 변수
 db_pool = None  # 데이터베이스 커넥션 풀
@@ -20,4 +20,7 @@ shutdown_event = asyncio.Event()  # 종료 이벤트
 client_connections = defaultdict(dict)  # {bot_name: {(ip, port): connection_info}}
 
 # 로그 레벨
-LOG_LEVEL = 'INFO'
+LOG_LEVEL = 'DEBUG'
+
+# 클라이언트 타임아웃 (초)
+CLIENT_TIMEOUT = 300
