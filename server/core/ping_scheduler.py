@@ -48,13 +48,16 @@ class PingManager:
                     del g.clients[client_addr]
                     continue
                     
+                from core.client_status import client_status_manager
+                client_info = client_status_manager.get_client_info(str(client_addr))
+
                 ping_data = {
                     "event": "ping",
                     "data": {
-                        "bot_name": "",  # 클라이언트에서 설정
-                        "channel_id": "",
-                        "room": "",
-                        "user_hash": "",
+                        "bot_name": client_info.bot_name if client_info else "",
+                        "channel_id": client_info.channel_id if client_info else "",
+                        "room": client_info.room if client_info else "",
+                        "user_hash": client_info.user_hash if client_info else "",
                         "server_timestamp": current_time,
                         "is_manual": False,
                         "server_info": {

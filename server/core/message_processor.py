@@ -86,6 +86,9 @@ async def handle_analyze_event(context: Dict[str, Any]):
     writer = context.get('writer')
     client_addr = context.get('client_addr')
     
+    if client_addr:
+        client_status_manager.update_chat_context(client_addr, context)
+
     # 인증 정보 검증
     auth_data = context.get('auth', {})
     device_id = None
@@ -204,6 +207,7 @@ async def handle_ping_event(received_message: Dict[str, Any]):
             "server_timestamp": int(time.time() * 1000),  # 현재 서버 시간
             "client_status": client_status,
             "monitoring": monitoring_info,
+            "auth": auth_data,
             "is_manual": data.get("is_manual", False),
             "server_info": {
                 "total_clients": len(g.clients),

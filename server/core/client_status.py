@@ -44,6 +44,11 @@ class ClientInfo:
     connected_at: float = 0.0
     last_ping: float = 0.0
     
+    # 마지막 채팅 컨텍스트
+    room: str = ""
+    channel_id: str = ""
+    user_hash: str = ""
+    
     # 상태 정보
     status: Optional[ClientStatus] = None
     monitoring: Optional[ClientMonitoring] = None
@@ -86,6 +91,22 @@ class ClientStatusManager:
         logger.info(f"[CLIENT_STATUS] 클라이언트 등록: {client_addr} - {client_info.bot_name}")
         
         return client_info
+    
+    def update_chat_context(self, client_addr: str, context: Dict[str, Any]):
+        """
+        클라이언트의 마지막 채팅 컨텍스트 업데이트
+        
+        Args:
+            client_addr: 클라이언트 주소
+            context: 채팅 컨텍스트
+        """
+        if client_addr not in self.clients:
+            return
+        
+        client = self.clients[client_addr]
+        client.room = context.get('room', client.room)
+        client.channel_id = context.get('channel_id', client.channel_id)
+        client.user_hash = context.get('user_hash', client.user_hash)
     
     def update_auth_info(self, client_addr: str, auth_data: Dict[str, Any]):
         """

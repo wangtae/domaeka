@@ -77,57 +77,47 @@ async def save_ping_to_db(ping_data: Dict[str, Any]):
             async with conn.cursor() as cursor:
                 import json
                 data = ping_data.get('data', {})
+                auth_data = data.get('auth', {})
                 monitoring_info = data.get('monitoring', {})
-                
-                # client_status에 클라이언트 모니터링 정보 저장
-                client_status = {
-                    'monitoring': monitoring_info,
-                    'total_memory': monitoring_info.get('total_memory', 0),
-                    'memory_usage': monitoring_info.get('memory_usage', 0),
-                    'memory_percent': monitoring_info.get('memory_percent', 0),
-                    'message_queue_size': monitoring_info.get('message_queue_size', 0),
-                    'active_rooms': monitoring_info.get('active_rooms', 0)
-                }
-                
-                # server_status에 서버 정보 저장
-                server_status = {
-                    'client_addr': ping_data.get('client_addr', ''),
-                    'total_clients': data.get('server_info', {}).get('total_clients', 0),
-                    'server_timestamp': data.get('server_timestamp', int(datetime.now().timestamp() * 1000))
-                }
-                
-                # RTT 계산 (서버 타임스탬프 기준)
+                client_addr = ping_data.get('client_addr', '')
+
+                # RTT 계산
                 client_timestamp_ms = data.get('server_timestamp', 0)
                 server_timestamp_ms = int(datetime.now().timestamp() * 1000)
                 rtt_ms = max(0, server_timestamp_ms - client_timestamp_ms) if client_timestamp_ms > 0 else None
-                
+
                 # kb_ping_monitor 테이블에 삽입
                 sql = """
                 INSERT INTO kb_ping_monitor 
-                (bot_name, channel_id, room_name, user_hash, client_status, server_status, 
-                 is_manual, server_timestamp, client_timestamp, rtt_ms)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (bot_name, device_id, client_ip, total_memory, memory_usage, memory_percent, 
+                 message_queue_size, active_rooms, client_status, server_status, is_manual, 
+                 server_timestamp, client_timestamp, rtt_ms)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 values = (
                     data.get('bot_name', ''),
-                    data.get('channel_id', ''),
-                    data.get('room', ''),
-                    data.get('user_hash', ''),
-                    json.dumps(client_status, ensure_ascii=False),
-                    json.dumps(server_status, ensure_ascii=False),
+                    auth_data.get('deviceID', ''),
+                    client_addr.split(':')[0] if client_addr else '',
+                    monitoring_info.get('total_memory'),
+                    monitoring_info.get('memory_usage'),
+                    monitoring_info.get('memory_percent'),
+                    monitoring_info.get('message_queue_size'),
+                    monitoring_info.get('active_rooms'),
+                    json.dumps(data.get('client_status', {}), ensure_ascii=False),
+                    json.dumps(data.get('server_info', {}), ensure_ascii=False),
                     1 if data.get('is_manual') else 0,
-                    datetime.now(),  # server_timestamp
-                    datetime.fromtimestamp(client_timestamp_ms / 1000) if client_timestamp_ms > 0 else datetime.now(),
+                    datetime.now(),
+                    datetime.fromtimestamp(client_timestamp_ms / 1000) if client_timestamp_ms > 0 else None,
                     rtt_ms
                 )
                 
                 await cursor.execute(sql, values)
-                logger.debug(f"[DB] ping 모니터링 저장: {data.get('bot_name')} / {ping_data.get('client_addr')} (RTT: {rtt_ms}ms)")
+                logger.debug(f"[DB] ping 모니터링 저장: {data.get('bot_name')} (RTT: {rtt_ms}ms)")
                 
     except Exception as e:
         logger.error(f"[DB] ping 모니터링 저장 실패: {e}")
-        logger.error(f"[DB] ping_data: {ping_data}")  # 디버깅용
+        logger.error(f"[DB] ping_data: {ping_data}")
 
 
 async def create_tables():
