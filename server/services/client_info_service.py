@@ -22,8 +22,6 @@ async def handle_client_info_command(context: Dict[str, Any], text: str):
             logger.error("[CLIENT_INFO] Writer not found in context")
             return
             
-        room = context.get("room", "")
-        channel_id = context.get("channel_id", "")
         
         # 명령어 파싱
         command_parts = text.strip().split()
@@ -63,7 +61,7 @@ async def handle_client_info_command(context: Dict[str, Any], text: str):
                     uptime_hours = uptime // 3600000 if uptime else 0
                     response_text += f"\n   가동시간: {uptime_hours}시간, 메시지: {message_count}개"
             
-            await send_message_response(writer, room, response_text, channel_id)
+            await send_message_response(context, response_text)
             
         else:
             # 사용법 안내
@@ -71,7 +69,7 @@ async def handle_client_info_command(context: Dict[str, Any], text: str):
 
 # client_info summary - 클라이언트 요약 정보 조회"""
             
-            await send_message_response(writer, room, usage_text, channel_id)
+            await send_message_response(context, usage_text)
         
         logger.info(f"[CLIENT_INFO] 명령어 처리 완료: {text}")
         
@@ -79,9 +77,4 @@ async def handle_client_info_command(context: Dict[str, Any], text: str):
         logger.error(f"[CLIENT_INFO] 명령어 처리 오류: {e}")
         writer = context.get("writer")
         if writer:
-            await send_message_response(
-                writer, 
-                context.get("room", ""), 
-                f"클라이언트 정보 조회 중 오류가 발생했습니다: {str(e)}", 
-                context.get("channel_id", "")
-            )
+            await send_message_response(context, f"클라이언트 정보 조회 중 오류가 발생했습니다: {str(e)}")

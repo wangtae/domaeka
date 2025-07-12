@@ -23,7 +23,7 @@ async def handle_echo_command(context: Dict[str, Any], text: str):
     
     if echo_content:
         response_text = f"에코: {echo_content}"
-        await send_message_response(writer, room, response_text, channel_id)
+        await send_message_response(context, response_text)
         logger.info(f"[ECHO] 처리 완료: {echo_content}")
     else:
-        await send_message_response(writer, room, "에코할 내용을 입력하세요.", channel_id)
+        await send_message_response(context, "에코할 내용을 입력하세요.")

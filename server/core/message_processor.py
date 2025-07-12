@@ -11,85 +11,84 @@ from core.auth_utils import validate_client_auth
 from core.client_status import client_status_manager
 from services.echo_service import handle_echo_command
 from services.client_info_service import handle_client_info_command
+from services.image_multi_service import handle_imgext_command
 from database.db_utils import save_chat_to_db
 import core.globals as g
 
 
-async def process_message(raw_message: str, writer: asyncio.StreamWriter, client_addr: Optional[str] = None):
+async def process_message(received_message: dict):
     """
-    메시지 처리 및 응답
+    메시지 처리 및 응답 - kkobot 호환 구조
     
     Args:
-        raw_message: 클라이언트로부터 받은 원시 메시지
-        writer: 응답을 보낼 스트림 라이터
-        client_addr: 클라이언트 주소
+        received_message: 클라이언트로부터 받은 메시지 딕셔너리
     """
     try:
-        # JSON 파싱
-        data = json.loads(raw_message)
-        event = data.get('event', '')
-        message_data = data.get('data', {})
+        # 이벤트별 처리 분기
+        event = received_message.get('event', '')
+        data = received_message.get('data', {})
         
         logger.info(f"[MSG] 이벤트: {event}")
         
         if event == 'analyze':
-            # 메시지 분석 및 명령어 처리
-            await handle_analyze_event(message_data, writer, client_addr)
+            # analyze 이벤트 처리
+            context = {
+                'room': data.get('room'),
+                'sender': data.get('sender'),
+                'text': data.get('text'),
+                'is_group_chat': data.get('isGroupChat'),
+                'channel_id': str(data.get('channelId', '')),
+                'log_id': data.get('logId'),
+                'user_hash': data.get('userHash'),
+                'is_mention': data.get('isMention'),
+                'timestamp': data.get('timestamp'),
+                'bot_name': data.get('botName'),
+                'auth': data.get('auth'),
+                'writer': received_message.get('writer'),
+                'client_addr': str(received_message.get('client_addr', '')),
+            }
+            await handle_analyze_event(context)
+            
         elif event == 'ping':
-            # 핑 응답
-            await handle_ping_event(message_data, writer, client_addr)
+            # ping 이벤트 처리
+            ping_message = received_message.copy()
+            ping_message['client_addr'] = str(received_message.get('client_addr', ''))
+            await handle_ping_event(ping_message)
         else:
             logger.warning(f"[MSG] 알 수 없는 이벤트: {event}")
             
-    except json.JSONDecodeError as e:
-        logger.error(f"[MSG] JSON 파싱 실패: {e}")
     except Exception as e:
         logger.error(f"[MSG] 메시지 처리 오류: {e}")
 
 
-async def handle_analyze_event(data: Dict[str, Any], writer: asyncio.StreamWriter, client_addr: Optional[str] = None):
+async def handle_analyze_event(context: Dict[str, Any]):
     """
     analyze 이벤트 처리 (메시지 분석)
     
     Args:
-        data: 메시지 데이터
-        writer: 응답 스트림 라이터
-        client_addr: 클라이언트 주소
+        context: 메시지 컨텍스트 (kkobot 호환 구조)
     """
-    text = data.get('text', '')
-    room = data.get('room', '')
-    sender = data.get('sender', '')
-    bot_name = data.get('botName', '')
-    channel_id = data.get('channelId', '')
-    user_hash = data.get('userHash', '')
+    text = context.get('text', '')
+    room = context.get('room', '')
+    sender = context.get('sender', '')
+    bot_name = context.get('bot_name', '')
+    channel_id = context.get('channel_id', '')
+    user_hash = context.get('user_hash', '')
+    writer = context.get('writer')
     
     # 인증 정보 검증
-    auth_data = data.get('auth', {})
+    auth_data = context.get('auth', {})
     if auth_data:
         is_valid, error_msg, client_info = validate_client_auth(auth_data)
         if not is_valid:
             logger.warning(f"[ANALYZE] 인증 실패: {error_msg}")
         else:
-            # 클라이언트 정보 업데이트
+            # 클라이언트 정보 업데이트 (client_addr가 있는 경우)
+            client_addr = context.get('client_addr')
             if client_addr:
                 client_status_manager.update_auth_info(client_addr, auth_data)
     
     logger.info(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text}")
-    
-    # Context 객체 생성
-    context = {
-        "bot_name": bot_name,
-        "channel_id": str(channel_id) if channel_id else "",
-        "room": room,
-        "user_hash": user_hash,
-        "sender": sender,
-        "is_group_chat": data.get('isGroupChat', False),
-        "is_mention": data.get('isMention', False),
-        "message": text,
-        "timestamp": data.get('timestamp', ''),
-        "log_id": data.get('logId', ''),
-        "writer": writer
-    }
     
     # 데이터베이스에 채팅 로그 저장
     if g.db_pool:
@@ -99,21 +98,25 @@ async def handle_analyze_event(data: Dict[str, Any], writer: asyncio.StreamWrite
     if text.startswith('# echo '):
         await handle_echo_command(context, text)
     elif text.strip() == '# echo':
-        await send_message_response(writer, room, "사용법: # echo {내용}", channel_id)
+        await send_message_response(context, "사용법: # echo {내용}")
     elif text.startswith('# client_info'):
         await handle_client_info_command(context, text)
+    elif text.startswith('# IMGEXT'):
+        await handle_imgext_command(context, text)
 
 
-async def handle_ping_event(data: Dict[str, Any], writer: asyncio.StreamWriter, client_addr: Optional[str] = None):
+async def handle_ping_event(received_message: Dict[str, Any]):
     """
     ping 이벤트 처리
     
     Args:
-        data: 핑 데이터
-        writer: 응답 스트림 라이터
-        client_addr: 클라이언트 주소
+        received_message: 클라이언트로부터 받은 ping 메시지
     """
     logger.info("[PING] 핑 수신")
+    
+    data = received_message.get('data', {})
+    writer = received_message.get('writer')
+    client_addr = received_message.get('client_addr')
     
     # 클라이언트 상태 정보 처리
     client_status = data.get("client_status", {})
