@@ -112,18 +112,31 @@ async def handle_analyze_event(context: Dict[str, Any]):
                 if not is_device_approved:
                     logger.info(f"[ANALYZE] 승인되지 않은 디바이스: {bot_name}@{device_id} - 제한 모드")
     
-    logger.info(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text} (승인상태: {'approved' if is_device_approved else 'pending'})")
+    # 방 승인 상태 확인
+    from database.db_utils import check_room_approval
+    is_room_approved = await check_room_approval(room, channel_id, bot_name)
+    
+    # 전체 승인 상태 확인 (디바이스 승인 AND 방 승인)
+    is_fully_approved = is_device_approved and is_room_approved
+    
+    logger.info(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text} "
+               f"(디바이스 승인: {'approved' if is_device_approved else 'pending'}, "
+               f"방 승인: {'approved' if is_room_approved else 'pending'}, "
+               f"전체 승인: {'approved' if is_fully_approved else 'pending'})")
     
     # 데이터베이스에 채팅 로그 저장 (승인 상태와 관계없이 항상 저장)
     if g.db_pool:
         await save_chat_to_db(context)
     
-    # 승인되지 않은 디바이스는 로깅만 하고 응답하지 않음
-    if not is_device_approved:
-        logger.info(f"[ANALYZE] 승인 대기 중인 디바이스 - 응답 없이 로깅만 수행: {bot_name}@{device_id}")
+    # 승인되지 않은 디바이스 또는 방은 로깅만 하고 응답하지 않음
+    if not is_fully_approved:
+        if not is_device_approved:
+            logger.info(f"[ANALYZE] 승인 대기 중인 디바이스 - 응답 없이 로깅만 수행: {bot_name}@{device_id}")
+        if not is_room_approved:
+            logger.info(f"[ANALYZE] 승인 대기 중인 방 - 응답 없이 로깅만 수행: {room}")
         return
     
-    # 승인된 디바이스만 명령어 처리
+    # 승인된 디바이스 및 방에서만 명령어 처리
     if text.startswith('# echo '):
         await handle_echo_command(context, text)
     elif text.strip() == '# echo':
