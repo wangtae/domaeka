@@ -15,13 +15,13 @@ def load_config():
 
     # 현재 파일(loader.py)의 절대 경로를 기준으로 상대 경로 설정
     current_file_path = Path(__file__).resolve()
-    # server-lite/config/loader.py에서 프로젝트 루트(kkobot.dev)로 이동
+    # server-lite/config/loader.py에서 프로젝트 루트(domaeka.dev)로 이동
     project_root = current_file_path.parent.parent
 
-    # .kakao-bot.key와 .kakao-bot.enc 파일이 있는 'configs' 디렉토리 경로 (프로젝트 루트의 상위 폴더인 py 폴더에 있다고 가정)
+    # .domaeka.key와 .domaeka.enc 파일이 있는 'configs' 디렉토리 경로 (프로젝트 루트의 상위 폴더인 py 폴더에 있다고 가정)
     configs_dir = project_root.parent / '.cfg'
-    key_file = configs_dir / '.kkobot.key'
-    enc_file = configs_dir / '.kkobot.enc'
+    key_file = configs_dir / '.domaeka.key'
+    enc_file = configs_dir / '.domaeka.enc'
 
     try:
         if not key_file.exists():
