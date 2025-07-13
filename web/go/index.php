@@ -286,12 +286,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             animation: modalSlideIn 0.3s ease;
         }
         
-        /* 메인 컨테이너 최대 너비 제한 */
-        .main-container {
-            max-width: 768px;
-            margin: 0 auto;
-            width: 100%;
-        }
+        /* 메인 컨테이너 최대 너비 제한 - 삭제 */
         
         @media (max-width: 768px) {
             .product-card {
@@ -304,26 +299,28 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
     <div class="bg-white min-h-screen">
         <!-- Navigation -->
         <nav class="flex z-40 w-full h-auto items-center justify-center sticky top-0 inset-x-0 border-b border-gray-200 backdrop-blur-lg bg-white/70" style="--navbar-height: 4rem;">
-            <header class="main-container z-40 flex px-6 gap-4 w-full flex-row relative flex-nowrap items-center justify-between h-16">
-                <div class="flex gap-4 h-full flex-row flex-nowrap items-center flex-grow">
-                    <div class="flex flex-row flex-grow flex-nowrap justify-start bg-transparent items-center">
+            <header class="z-40 flex px-6 gap-4 w-full flex-row relative flex-nowrap items-center justify-between h-16">
+                <div class="flex gap-4 h-full flex-row flex-nowrap items-center">
+                    <div class="flex flex-row flex-nowrap justify-start bg-transparent items-center">
                         <?php /*<img src="<?php echo G5_URL; ?>/theme/bootstrap5-basic/img/logo.png" alt="Logo" class="h-[30px] mr-2" />*/ ?>
                         <p class="font-bold text-inherit"><i class="fa-solid fa-store"></i> <?php echo htmlspecialchars($branch['br_name']) ?></p>
                     </div>
                 </div>
-                <div class="flex gap-4 h-full flex-row flex-nowrap items-center">
-                    <a href="#info" class="btn-default">매장 정보</a>
+                <div class="flex gap-2 h-full flex-row flex-nowrap items-center">
+                    <button type="button" onclick="showStoreMap()" class="btn-default flex items-center">
+                        <i class="fas fa-map-marker-alt mr-1"></i> <span class="hidden sm:inline">매장 위치</span>
+                    </button>
                     <?php if ($branch['br_phone']) { ?>
-                    <a href="tel:<?php echo str_replace('-', '', $branch['br_phone']) ?>" class="btn-default">전화 문의</a>
+                    <a href="tel:<?php echo str_replace('-', '', $branch['br_phone']) ?>" class="btn-default flex items-center">
+                        <i class="fas fa-phone mr-1"></i> <span class="hidden sm:inline">전화 문의</span>
+                    </a>
                     <?php } ?>
                 </div>
             </header>
         </nav>
 
-        <!-- Main Content Container -->
-        <div class="main-container">
-            <!-- Date Selection -->
-            <div class="flex flex-col">
+        <!-- Date Selection -->
+        <div class="flex flex-col">
                 <div class="py-3 px-6 border-b overflow-x-auto scrollbar-hide">
                 <div class="flex items-center space-x-3">
                     <?php
@@ -551,14 +548,10 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 </div>
             </footer>
 
-            <!-- Fixed Bottom Bar -->
-            <div class="fixed-footer py-2 px-3 flex space-x-3">
-                <div class="main-container flex space-x-3">
-                    <a href="<?php echo G5_DMK_URL ?>/adm/branch_admin/orderlist.php?br_id=<?php echo $br_id ?>" class="btn-outline">주문내역</a>
-                    <button type="submit" form="orderForm" class="btn-primary flex-1" id="submitOrder">주문하기</button>
-                </div>
-            </div>
-            </div> <!-- End Main Content Container -->
+        <!-- Fixed Bottom Bar -->
+        <div class="fixed-footer py-2 px-3 flex space-x-3">
+            <a href="/go/orderlist.php?br_id=<?php echo $br_id ?>" class="btn-outline">주문내역</a>
+            <button type="submit" form="orderForm" class="btn-primary flex-1" id="submitOrder">주문하기</button>
         </div>
     </div>
 
@@ -598,6 +591,53 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             </div>
         </div>
     </div>
+
+    <!-- Store Map Modal -->
+    <div id="mapModal" class="fixed inset-0 z-50 hidden">
+        <!-- Backdrop -->
+        <div class="modal-backdrop fixed inset-0 bg-black/50" onclick="closeMapModal()"></div>
+        
+        <!-- Modal Content -->
+        <div class="fixed inset-0 flex items-center justify-center p-4 md:p-8">
+            <div class="modal-content bg-white rounded-lg max-w-2xl w-full max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-4rem)] flex flex-col relative shadow-xl">
+                <!-- Close Button -->
+                <button onclick="closeMapModal()" class="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 z-10">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                
+                <!-- Header -->
+                <div class="py-4 px-6 border-b">
+                    <h3 class="text-lg font-semibold">매장 위치</h3>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto px-6 py-4">
+                    <div class="mb-4">
+                        <h4 class="font-bold text-lg mb-2"><?php echo htmlspecialchars($branch['br_name']) ?></h4>
+                        <p class="text-gray-600 mb-2"><?php echo htmlspecialchars($branch['br_address']) ?></p>
+                        <?php if ($branch['br_phone']) { ?>
+                        <p class="text-gray-600"><i class="fas fa-phone mr-1"></i> <?php echo htmlspecialchars($branch['br_phone']) ?></p>
+                        <?php } ?>
+                    </div>
+                    
+                    <!-- Map Container -->
+                    <div id="mapContainer" class="w-full h-96 bg-gray-100 rounded-lg">
+                        <!-- 카카오맵 API를 사용하여 지도 표시 -->
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="flex justify-end gap-2 px-6 py-4 border-t">
+                    <button onclick="closeMapModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kakao Map API -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_APP_KEY&libraries=services"></script>
 
     <!-- JavaScript -->
     <script>
@@ -802,6 +842,93 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     footer.classList.remove('hidden');
                 }
             }, 300);
+        }
+
+        // Show store map modal
+        function showStoreMap() {
+            // 하단 바 숨기기
+            const footer = document.querySelector('.fixed-footer');
+            if (footer) {
+                footer.classList.add('hidden');
+            }
+            
+            // 모달 표시
+            const modal = document.getElementById('mapModal');
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            // 애니메이션 트리거
+            setTimeout(() => {
+                modal.querySelector('.modal-backdrop').style.opacity = '1';
+                modal.querySelector('.modal-content').style.opacity = '1';
+                modal.querySelector('.modal-content').style.transform = 'translateY(0) scale(1)';
+                
+                // 지도 초기화
+                initializeMap();
+            }, 10);
+        }
+        
+        // Close map modal
+        function closeMapModal() {
+            const modal = document.getElementById('mapModal');
+            const backdrop = modal.querySelector('.modal-backdrop');
+            const content = modal.querySelector('.modal-content');
+            
+            // 애니메이션
+            backdrop.style.opacity = '0';
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(20px) scale(0.95)';
+            
+            // 애니메이션 완료 후 숨기기
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+                
+                // 하단 바 다시 표시
+                const footer = document.querySelector('.fixed-footer');
+                if (footer) {
+                    footer.classList.remove('hidden');
+                }
+            }, 300);
+        }
+        
+        // Initialize map
+        function initializeMap() {
+            const container = document.getElementById('mapContainer');
+            
+            // 주소 정보가 있는 경우에만 지도 표시
+            const address = '<?php echo addslashes($branch['br_address']) ?>';
+            
+            if (address && typeof kakao !== 'undefined') {
+                const options = {
+                    center: new kakao.maps.LatLng(37.566826, 126.9786567), // 기본 위치 (서울시청)
+                    level: 3
+                };
+                
+                const map = new kakao.maps.Map(container, options);
+                
+                // 주소-좌표 변환 객체를 생성
+                const geocoder = new kakao.maps.services.Geocoder();
+                
+                // 주소로 좌표를 검색
+                geocoder.addressSearch(address, function(result, status) {
+                    if (status === kakao.maps.services.Status.OK) {
+                        const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+                        
+                        // 결과값으로 받은 위치를 마커로 표시
+                        const marker = new kakao.maps.Marker({
+                            map: map,
+                            position: coords
+                        });
+                        
+                        // 지도의 중심을 결과값으로 받은 위치로 이동
+                        map.setCenter(coords);
+                    }
+                });
+            } else {
+                // 카카오맵을 사용할 수 없는 경우 대체 컨텐츠 표시
+                container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500"><p>지도를 표시할 수 없습니다.</p></div>';
+            }
         }
 
         // Handle form submission
