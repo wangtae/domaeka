@@ -22,6 +22,8 @@ if (!$url_code) {
     alert('유효하지 않은 URL 코드입니다.', G5_URL);
 }
 
+// get_yoil 함수는 common.lib.php에 이미 정의되어 있음
+
 // dmk_branch 테이블에서 br_shortcut_code 또는 br_id로 지점 정보 조회
 $url_code_safe = sql_real_escape_string($url_code);
 $branch_sql = " SELECT b.*, 
@@ -31,9 +33,9 @@ $branch_sql = " SELECT b.*,
                     COALESCE(br_m.mb_addr1, '') AS br_address, 
                     COALESCE(ag_m.mb_nick, '') AS ag_name 
                 FROM dmk_branch b 
-                JOIN {$g5['member_table']} br_m ON b.br_id = br_m.mb_id 
+                JOIN g5_member br_m ON b.br_id = br_m.mb_id 
                 LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id 
-                LEFT JOIN {$g5['member_table']} ag_m ON a.ag_id = ag_m.mb_id
+                LEFT JOIN g5_member ag_m ON a.ag_id = ag_m.mb_id
                 WHERE (b.br_shortcut_code = '$url_code_safe' OR b.br_id = '$url_code_safe') 
                 AND b.br_status = 1 
                 ORDER BY 
@@ -48,15 +50,15 @@ if (!$branch) {
 $br_id = $branch['br_id']; // 실제 br_id
 
 // 상품 조회 (권한에 따른 필터링)
-$items_sql = " SELECT it_id, it_name, it_cust_price as it_price, it_img1, it_stock_qty, ca_id
-               FROM {$g5['g5_shop_item_table']} 
+$items_sql = " SELECT it_id, it_name, it_cust_price as it_price, it_img1, it_stock_qty, ca_id, it_basic, it_explan
+               FROM g5_shop_item 
                WHERE it_use = '1' AND it_soldout != '1' 
                ORDER BY it_order, it_id DESC ";
 $items_result = sql_query($items_sql);
 
 // 카테고리 조회
 $categories_sql = " SELECT ca_id, ca_name 
-                   FROM {$g5['g5_shop_category_table']} 
+                   FROM g5_shop_category 
                    WHERE ca_use = '1' 
                    ORDER BY ca_order, ca_id ";
 $categories_result = sql_query($categories_sql);
@@ -291,7 +293,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 $category_counts = [];
                 while ($cat = sql_fetch_array($categories_result)) {
                     $count_sql = " SELECT COUNT(*) as cnt 
-                                  FROM {$g5['g5_shop_item_table']} 
+                                  FROM g5_shop_item 
                                   WHERE ca_id = '{$cat['ca_id']}' AND it_use = '1' AND it_soldout != '1' ";
                     $count_result = sql_fetch($count_sql);
                     $count = $count_result['cnt'];
@@ -316,7 +318,17 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     $has_products = false;
                     while ($item = sql_fetch_array($items_result)) {
                         $has_products = true;
-                        $item_img = $item['it_img1'] ? G5_DATA_URL.'/item/'.$item['it_img1'] : '';
+                        // 상품 이미지 경로 설정
+                        if ($item['it_img1']) {
+                            // it_img1이 전체 경로인 경우와 파일명만 있는 경우 처리
+                            if (strpos($item['it_img1'], '/') !== false) {
+                                $item_img = G5_DATA_URL.'/item/'.$item['it_img1'];
+                            } else {
+                                $item_img = G5_DATA_URL.'/item/'.$item['it_id'].'/'.$item['it_img1'];
+                            }
+                        } else {
+                            $item_img = '';
+                        }
                     ?>
                     <div class="product-card" data-category="<?php echo $item['ca_id'] ?>">
                         <div class="flex gap-x-5 items-center">
@@ -349,7 +361,13 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                         <div class="flex flex-col space-y-1 mt-5">
                             <div class="w-full flex space-x-3">
                                 <button type="button" class="border flex items-center justify-center rounded-lg font-medium px-4 text-sm" 
-                                        onclick="showProductDetail('<?php echo $item['it_id'] ?>')">상세보기</button>
+                                        onclick="showProductDetail('<?php echo $item['it_id'] ?>')"
+                                        data-product-id="<?php echo $item['it_id'] ?>"
+                                        data-product-name="<?php echo htmlspecialchars($item['it_name']) ?>"
+                                        data-product-price="<?php echo number_format($item['it_price']) ?>"
+                                        data-product-img="<?php echo $item_img ?>"
+                                        data-product-basic="<?php echo htmlspecialchars($item['it_basic']) ?>"
+                                        data-product-explan="<?php echo htmlspecialchars($item['it_explan']) ?>">상세보기</button>
                                 <div class="border flex-1 flex items-center justify-center rounded-lg">
                                     <button type="button" 
                                             class="quantity-btn" 
@@ -478,6 +496,43 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
         </div>
     </div>
 
+    <!-- Product Detail Modal -->
+    <div id="productModal" class="fixed inset-0 z-50 hidden">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/50" onclick="closeProductModal()"></div>
+        
+        <!-- Modal Content -->
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col relative">
+                <!-- Close Button -->
+                <button onclick="closeProductModal()" class="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                
+                <!-- Header -->
+                <div class="py-4 px-6 border-b">
+                    <h3 class="text-lg font-semibold">상품 상세 정보</h3>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto px-6 py-4">
+                    <div id="modalProductImage" class="w-full mb-4"></div>
+                    <h4 id="modalProductName" class="text-xl font-bold mb-2"></h4>
+                    <p class="mb-2">가격: <span id="modalProductPrice" class="font-medium"></span>원</p>
+                    <div id="modalProductBasic" class="mb-4 text-gray-600"></div>
+                    <div id="modalProductExplan" class="prose max-w-none"></div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="flex justify-end gap-2 px-6 py-4 border-t">
+                    <button onclick="closeProductModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript -->
     <script>
         let cart = {};
@@ -494,7 +549,9 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             echo "        name: '" . addslashes($item['it_name']) . "',\n";
             echo "        price: {$item['it_price']},\n";
             echo "        stock: {$item['it_stock_qty']},\n";
-            echo "        category: '{$item['ca_id']}'\n";
+            echo "        category: '{$item['ca_id']}',\n";
+            echo "        basic: '" . addslashes($item['it_basic']) . "',\n";
+            echo "        explan: '" . addslashes($item['it_explan']) . "'\n";
             echo "    },\n";
         }
         echo "};\n";
@@ -604,12 +661,49 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             event.target.className = event.target.className.replace('btn-default', 'btn-outline');
         }
 
-        // Show product detail
+        // Show product detail modal
         function showProductDetail(productId) {
-            const product = products[productId];
-            if (product) {
-                alert(`${product.name}\n가격: ${product.price.toLocaleString()}원\n재고: ${product.stock}개`);
+            const button = event.target;
+            const productData = {
+                id: button.getAttribute('data-product-id'),
+                name: button.getAttribute('data-product-name'),
+                price: button.getAttribute('data-product-price'),
+                img: button.getAttribute('data-product-img'),
+                basic: button.getAttribute('data-product-basic'),
+                explan: button.getAttribute('data-product-explan')
+            };
+            
+            // 모달에 데이터 채우기
+            const modalImage = document.getElementById('modalProductImage');
+            if (productData.img) {
+                modalImage.innerHTML = `<img src="${productData.img}" alt="${productData.name}" class="w-full rounded-lg object-cover">`;
+            } else {
+                modalImage.innerHTML = `<div class="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-image text-gray-400 text-4xl"></i>
+                </div>`;
             }
+            
+            document.getElementById('modalProductName').textContent = productData.name;
+            document.getElementById('modalProductPrice').textContent = productData.price;
+            document.getElementById('modalProductBasic').textContent = productData.basic || '';
+            
+            // HTML 콘텐츠 처리
+            const explanElement = document.getElementById('modalProductExplan');
+            if (productData.explan) {
+                explanElement.innerHTML = productData.explan;
+            } else {
+                explanElement.innerHTML = '<p class="text-gray-500">상품 설명이 없습니다.</p>';
+            }
+            
+            // 모달 표시
+            document.getElementById('productModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close product modal
+        function closeProductModal() {
+            document.getElementById('productModal').classList.add('hidden');
+            document.body.style.overflow = '';
         }
 
         // Handle form submission
