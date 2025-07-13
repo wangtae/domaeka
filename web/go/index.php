@@ -55,7 +55,7 @@ $current_date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 $current_datetime = $current_date . ' ' . date('H:i:s');
 
 // 상품 조회 (지점별 필터링 및 조건 적용)
-$items_sql = " SELECT i.it_id, i.it_name, i.it_cust_price as it_price, i.it_img1, i.it_stock_qty, i.ca_id, i.it_basic, i.it_explan
+$items_sql = " SELECT i.it_id, i.it_name, i.it_cust_price as it_price, i.it_img1, i.it_stock_qty, i.ca_id, i.it_basic, i.it_explan, c.dmk_delivery_type
                FROM g5_shop_item i
                INNER JOIN g5_shop_category c ON i.ca_id = c.ca_id
                WHERE i.dmk_br_id = '$br_id'
@@ -76,7 +76,7 @@ $items_sql = " SELECT i.it_id, i.it_name, i.it_cust_price as it_price, i.it_img1
 $items_result = sql_query($items_sql);
 
 // 카테고리 조회 (해당 지점의 상품이 있는 카테고리만)
-$categories_sql = " SELECT DISTINCT c.ca_id, c.ca_name 
+$categories_sql = " SELECT DISTINCT c.ca_id, c.ca_name, c.dmk_delivery_type
                    FROM g5_shop_category c
                    INNER JOIN g5_shop_item i ON c.ca_id = i.ca_id
                    WHERE c.ca_use = '1' 
@@ -404,10 +404,61 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
         <!-- Event Header -->
         <div class="pb-10">
-            <div class="pt-5 px-5 pb-3 flex items-center">
+            <div class="pt-5 px-5 pb-3 flex items-center justify-between">
                 <div>
                     <h1 class="text-xl font-bold" id="orderTitle"><?php echo date('n.j', strtotime($selected_date)) . '.' . get_yoil($selected_date) ?>요일 주문</h1>
                     <span class="text-sm font-normal text-gray-500" id="orderDate">주문일 <?php echo date('Y년 m월 d일', strtotime($selected_date)) ?></span>
+                </div>
+                <?php
+                // 배송 타입별 상품 수 계산
+                $pickup_count = 0;
+                $delivery_count = 0;
+                
+                // 모든 상품의 배송 타입 확인
+                $delivery_type_sql = " SELECT COUNT(DISTINCT i.it_id) as cnt, c.dmk_delivery_type
+                                      FROM g5_shop_item i
+                                      INNER JOIN g5_shop_category c ON i.ca_id = c.ca_id
+                                      WHERE i.dmk_br_id = '$br_id'
+                                      AND i.it_use = '1'
+                                      AND i.it_soldout = '0'
+                                      AND i.it_stock_qty > 0
+                                      AND c.ca_use = '1'
+                                      AND (
+                                          (i.dmk_it_valid_start_date IS NULL AND i.dmk_it_valid_end_date IS NULL)
+                                          OR 
+                                          (
+                                              (i.dmk_it_valid_start_date IS NULL OR i.dmk_it_valid_start_date <= '$current_date')
+                                              AND 
+                                              (i.dmk_it_valid_end_date IS NULL OR i.dmk_it_valid_end_date >= '$current_date')
+                                          )
+                                      )
+                                      GROUP BY c.dmk_delivery_type ";
+                $type_result = sql_query($delivery_type_sql);
+                while ($type_row = sql_fetch_array($type_result)) {
+                    $types = explode(',', $type_row['dmk_delivery_type']);
+                    if (in_array('pickup', $types)) {
+                        $pickup_count += $type_row['cnt'];
+                    }
+                    if (in_array('delivery', $types)) {
+                        $delivery_count += $type_row['cnt'];
+                    }
+                }
+                ?>
+                <div class="flex gap-2">
+                    <button type="button" 
+                            id="btnPickup"
+                            onclick="filterByDeliveryType('pickup')" 
+                            class="btn-outline whitespace-nowrap text-sm <?php echo $pickup_count == 0 ? 'opacity-50 cursor-not-allowed' : '' ?>"
+                            <?php echo $pickup_count == 0 ? 'disabled' : '' ?>>
+                        <i class="fas fa-store mr-1"></i>픽업상품(<?php echo $pickup_count ?>)
+                    </button>
+                    <button type="button" 
+                            id="btnDelivery"
+                            onclick="filterByDeliveryType('delivery')" 
+                            class="btn-outline whitespace-nowrap text-sm <?php echo $delivery_count == 0 ? 'opacity-50 cursor-not-allowed' : '' ?>"
+                            <?php echo $delivery_count == 0 ? 'disabled' : '' ?>>
+                        <i class="fas fa-truck mr-1"></i>배송상품(<?php echo $delivery_count ?>)
+                    </button>
                 </div>
             </div>
 
@@ -438,7 +489,9 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     if ($count > 0) {
                         $category_counts[$cat['ca_id']] = $count;
                 ?>
-                <button class="btn-default whitespace-nowrap" onclick="filterProducts('<?php echo $cat['ca_id'] ?>')"><?php echo htmlspecialchars($cat['ca_name']) ?>(<?php echo $count ?>)</button>
+                <button class="btn-default whitespace-nowrap" 
+                        onclick="filterProducts('<?php echo $cat['ca_id'] ?>')"
+                        data-delivery-type="<?php echo htmlspecialchars($cat['dmk_delivery_type']) ?>"><?php echo htmlspecialchars($cat['ca_name']) ?>(<?php echo $count ?>)</button>
                 <?php
                     }
                 }
@@ -468,7 +521,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                             $item_img = '';
                         }
                     ?>
-                    <div class="product-card" data-category="<?php echo $item['ca_id'] ?>">
+                    <div class="product-card" data-category="<?php echo $item['ca_id'] ?>" data-delivery-type="<?php echo htmlspecialchars($item['dmk_delivery_type']) ?>">
                         <div class="flex gap-x-5 items-center">
                             <div class="min-w-[100px] min-h-[100px] relative">
                                 <?php if ($item_img) { ?>

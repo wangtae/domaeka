@@ -96,6 +96,19 @@ $ca_tail_html = isset($_POST['ca_tail_html']) ? $_POST['ca_tail_html'] : '';
 $ca_mobile_head_html = isset($_POST['ca_mobile_head_html']) ? $_POST['ca_mobile_head_html'] : '';
 $ca_mobile_tail_html = isset($_POST['ca_mobile_tail_html']) ? $_POST['ca_mobile_tail_html'] : '';
 
+// 배송 타입 처리
+$dmk_delivery_type = '';
+if (isset($_POST['dmk_delivery_type']) && is_array($_POST['dmk_delivery_type'])) {
+    $delivery_types = array_filter($_POST['dmk_delivery_type'], function($type) {
+        return in_array($type, array('pickup', 'delivery'));
+    });
+    $dmk_delivery_type = implode(',', $delivery_types);
+}
+// 기본값 설정 (아무것도 선택하지 않은 경우)
+if (empty($dmk_delivery_type)) {
+    $dmk_delivery_type = 'delivery';
+}
+
 if(!is_include_path_check($ca_include_head, 1)) {
     alert('상단 파일 경로에 포함시킬수 없는 문자열이 있습니다.');
 }
@@ -169,6 +182,7 @@ $sql_common = " ca_order                = '$ca_order',
                 ca_cert_use             = '$ca_cert_use',
                 ca_adult_use            = '$ca_adult_use',
                 ca_nocoupon             = '$ca_nocoupon',
+                dmk_delivery_type       = '$dmk_delivery_type',
                 ca_1_subj               = '$ca_1_subj',
                 ca_2_subj               = '$ca_2_subj',
                 ca_3_subj               = '$ca_3_subj',

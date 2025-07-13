@@ -111,6 +111,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         <th scope="col" id="sct_imgcol">1행이미지수</th>
         <th scope="col" id="sct_mobileimg">모바일<br>1행이미지수</th>
         <th scope="col" id="sct_pcskin">PC스킨지정</th>
+        <th scope="col" id="sct_delivery_type" rowspan="2">배송타입</th>
         <th scope="col" rowspan="2">관리</th>
     </tr>
     <tr>
@@ -212,6 +213,15 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
                 <?php echo get_list_skin_options("^list.[0-9]+\.skin\.php", $g5_shop_skin_path, $row['ca_skin']); ?>
             </select>
         </td>
+        <td headers="sct_delivery_type" class="td_possible" rowspan="2">
+            <?php
+            $delivery_types = isset($row['dmk_delivery_type']) ? explode(',', $row['dmk_delivery_type']) : array('delivery');
+            $delivery_display = array();
+            if (in_array('pickup', $delivery_types)) $delivery_display[] = '픽업';
+            if (in_array('delivery', $delivery_types)) $delivery_display[] = '배송';
+            echo implode(', ', $delivery_display);
+            ?>
+        </td>
         <td class="td_mng td_mng_s" rowspan="2">
             <?php echo $s_add; ?>
             <?php echo $s_vie; ?>
@@ -260,7 +270,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
         </td>
     </tr>
     <?php }
-    if ($i == 0) echo "<tr><td colspan=\"9\" class=\"empty_table\">자료가 한 건도 없습니다.</td></tr>\n";
+    if ($i == 0) echo "<tr><td colspan=\"10\" class=\"empty_table\">자료가 한 건도 없습니다.</td></tr>\n";
     ?>
     </tbody>
     </table>

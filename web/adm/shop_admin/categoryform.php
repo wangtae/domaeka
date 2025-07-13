@@ -34,6 +34,7 @@ $ca = array(
 'ca_tail_html'=>'',
 'ca_mobile_head_html'=>'',
 'ca_mobile_tail_html'=>'',
+'dmk_delivery_type'=>'delivery',
 );
 
 for($i=0;$i<=10;$i++){
@@ -144,6 +145,12 @@ if(!sql_query(" select ca_order from {$g5['g5_shop_category_table']} limit 1 ", 
 if(!sql_query(" select ca_mobile_list_row from {$g5['g5_shop_category_table']} limit 1 ", false)) {
     sql_query(" ALTER TABLE `{$g5['g5_shop_category_table']}`
                     ADD `ca_mobile_list_row` int(11) NOT NULL DEFAULT '0' AFTER `ca_mobile_list_mod` ", true);
+}
+
+// 배송 타입 필드 추가
+if(!sql_query(" select dmk_delivery_type from {$g5['g5_shop_category_table']} limit 1 ", false)) {
+    sql_query(" ALTER TABLE `{$g5['g5_shop_category_table']}`
+                    ADD `dmk_delivery_type` SET('pickup', 'delivery') NOT NULL DEFAULT 'delivery' COMMENT '배송 타입 (pickup: 픽업, delivery: 배송)' AFTER `ca_nocoupon` ", true);
 }
 
 // 스킨 Path
@@ -361,6 +368,20 @@ else {
                 예
             </td>
         </tr>
+        <tr>
+            <th scope="row"><label for="dmk_delivery_type">배송 타입</label></th>
+            <td>
+                <?php echo help("픽업 상품, 배송 상품 또는 둘 다 선택할 수 있습니다. 기본값은 배송 상품입니다."); ?>
+                <?php
+                $delivery_types = isset($ca['dmk_delivery_type']) ? explode(',', $ca['dmk_delivery_type']) : array('delivery');
+                ?>
+                <input type="checkbox" name="dmk_delivery_type[]" value="pickup" id="dmk_delivery_type_pickup" <?php echo in_array('pickup', $delivery_types) ? 'checked' : ''; ?>>
+                <label for="dmk_delivery_type_pickup">픽업 상품</label>
+                &nbsp;&nbsp;
+                <input type="checkbox" name="dmk_delivery_type[]" value="delivery" id="dmk_delivery_type_delivery" <?php echo in_array('delivery', $delivery_types) ? 'checked' : ''; ?>>
+                <label for="dmk_delivery_type_delivery">배송 상품</label>
+            </td>
+        </tr>
         </tbody>
         </table>
     </div>
@@ -569,6 +590,21 @@ function fcategoryformcheck(f)
     <?php echo get_editor_js('ca_tail_html'); ?>
     <?php echo get_editor_js('ca_mobile_head_html'); ?>
     <?php echo get_editor_js('ca_mobile_tail_html'); ?>
+
+    // 배송 타입 체크박스 검증
+    var delivery_type_checked = false;
+    var delivery_checkboxes = document.querySelectorAll('input[name="dmk_delivery_type[]"]');
+    for (var i = 0; i < delivery_checkboxes.length; i++) {
+        if (delivery_checkboxes[i].checked) {
+            delivery_type_checked = true;
+            break;
+        }
+    }
+    
+    if (!delivery_type_checked) {
+        alert('배송 타입을 하나 이상 선택해주세요.');
+        return false;
+    }
 
     return true;
 }
