@@ -203,7 +203,37 @@ function imageview(id, w, h)
 
                 $current_class = "";
                 $is_active = false;
-                if (isset($sub_menu) && (substr($sub_menu, 0, 3) == substr($menu['menu'.$key][0][0], 0, 3))) {
+                // 현재 메뉴 활성화 감지 개선
+                $current_menu_prefix = substr($menu['menu'.$key][0][0], 0, 3);
+                $current_sub_menu_prefix = isset($sub_menu) ? substr($sub_menu, 0, 3) : '';
+                
+                // 현재 URL 기반 메뉴 감지 (더 정확한 감지를 위해)
+                $current_script_path = $_SERVER['SCRIPT_NAME'];
+                $is_current_menu = false;
+                
+                if ($current_menu_prefix == $current_sub_menu_prefix) {
+                    $is_current_menu = true;
+                } else {
+                    // URL 기반으로도 체크
+                    switch($current_menu_prefix) {
+                        case '180': // 봇 관리
+                            if (strpos($current_script_path, '/dmk/adm/bot/') !== false) {
+                                $is_current_menu = true;
+                            }
+                            break;
+                        case '190': // 프랜차이즈 관리
+                            if (strpos($current_script_path, '/dmk/adm/distributor_admin/') !== false ||
+                                strpos($current_script_path, '/dmk/adm/agency_admin/') !== false ||
+                                strpos($current_script_path, '/dmk/adm/branch_admin/') !== false ||
+                                strpos($current_script_path, '/dmk/adm/statistics/') !== false ||
+                                strpos($current_script_path, '/dmk/adm/admin_manager/') !== false) {
+                                $is_current_menu = true;
+                            }
+                            break;
+                    }
+                }
+                
+                if ($is_current_menu) {
                     $current_class = " on";
                     $is_active = true;
                 }

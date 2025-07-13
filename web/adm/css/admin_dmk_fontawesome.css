@@ -182,9 +182,90 @@
     }
 }
 
+/* 서브 메뉴 활성화 스타일 (기존 방식으로 복원) */
+#gnb .gnb_oparea li a.on {
+    color: #007bff !important;
+    font-weight: normal !important;
+}
+
+/* 서브 메뉴 FontAwesome 아이콘 스타일 */
+#gnb .gnb_oparea li a .fa {
+    margin-right: 4px;
+    font-size: 11px;
+}
+
+#gnb .gnb_oparea li a.on .fa {
+    color: #007bff;
+}
+
+#gnb .gnb_oparea li a:hover .fa {
+    color: #0056b3;
+}
+
+/* NEW 아이콘 스타일 개선 */
+#gnb .gnb_oparea li a .fa-star {
+    color: #ff6b6b;
+    animation: dmk-star-twinkle 2s ease-in-out infinite alternate;
+}
+
+@keyframes dmk-star-twinkle {
+    0% { opacity: 0.7; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.1); }
+}
+
+/* FLAG 아이콘 스타일 개선 */
+#gnb .gnb_oparea li a .fa-flag {
+    color: #4834d4;
+}
+
+/* 서브 메뉴 제목 스타일 */
+#gnb .gnb_oparea h3 {
+    color: #333 !important;
+    font-weight: 700;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e9ecef;
+    font-size: 14px;
+}
+
+/* 작은 화면에서 서브 메뉴 스타일 */
+#gnb.gnb_small .gnb_oparea li a.on {
+    border-left: 2px solid #007bff;
+    padding: 3px 6px;
+}
+
 /* 프린트 모드에서 숨김 */
 @media print {
     #gnb .gnb_li .btn_op.dmk-fontawesome-menu {
         display: none;
     }
+}
+
+/* btn_fixed_top 등록 버튼 핑크색 스타일 */
+.btn_fixed_top .btn_01 {
+    background-color: #e91e63 !important; /* 핑크색 */
+    border-color: #e91e63 !important;
+    color: #fff !important;
+    transition: all 0.3s ease;
+}
+
+.btn_fixed_top .btn_01:hover {
+    background-color: #c2185b !important; /* 더 진한 핑크색 */
+    border-color: #c2185b !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(233, 30, 99, 0.3);
+}
+
+.btn_fixed_top .btn_01:active {
+    background-color: #ad1457 !important;
+    border-color: #ad1457 !important;
+    transform: translateY(0);
+}
+
+/* 등록 버튼 아이콘 추가 */
+.btn_fixed_top .btn_01:before {
+    content: "\f067"; /* FontAwesome plus 아이콘 */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    margin-right: 5px;
 }
