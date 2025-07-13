@@ -28,6 +28,12 @@ if (defined('G5_DMK_PATH')) {
         include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
         echo dmk_include_chain_select_assets();
     }
+    
+    // 도매까 메뉴 아이콘 시스템 포함
+    include_once(G5_ADMIN_PATH.'/dmk/include/dmk_menu_icons.php');
+    
+    // FontAwesome 메뉴 스타일 추가
+    add_stylesheet('<link rel="stylesheet" href="'.G5_ADMIN_URL.'/css/admin_dmk_fontawesome.css">', 999);
 }
 
 function print_menu1($key, $no='')
@@ -191,13 +197,24 @@ function imageview(id, w, h)
                 }
 
                 $current_class = "";
-                if (isset($sub_menu) && (substr($sub_menu, 0, 3) == substr($menu['menu'.$key][0][0], 0, 3)))
+                $is_active = false;
+                if (isset($sub_menu) && (substr($sub_menu, 0, 3) == substr($menu['menu'.$key][0][0], 0, 3))) {
                     $current_class = " on";
+                    $is_active = true;
+                }
 
                 $button_title = $menu['menu'.$key][0][1];
+                
+                // FontAwesome 아이콘 시스템 사용
+                $menu_icon_html = '';
+                if (function_exists('dmk_render_menu_button_content')) {
+                    $menu_icon_html = dmk_render_menu_button_content($key, $is_active, $button_title);
+                } else {
+                    $menu_icon_html = $button_title; // 폴백
+                }
             ?>
             <li class="gnb_li<?php echo $current_class;?>">
-                <button type="button" class="btn_op menu-<?php echo $key; ?> menu-order-<?php echo $jj; ?>" title="<?php echo $button_title; ?>"><?php echo $button_title;?></button>
+                <button type="button" class="btn_op dmk-fontawesome-menu menu-<?php echo $key; ?> menu-order-<?php echo $jj; ?>" title="<?php echo $button_title; ?>"><?php echo $menu_icon_html;?></button>
                 <div class="gnb_oparea_wr">
                     <div class="gnb_oparea">
                         <h3><?php echo $menu['menu'.$key][0][1];?></h3>

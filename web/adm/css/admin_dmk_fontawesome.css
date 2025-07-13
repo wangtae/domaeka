@@ -1,0 +1,201 @@
+/**
+ * 도매까 FontAwesome 메뉴 아이콘 시스템
+ * 기존 이미지 기반 아이콘을 FontAwesome으로 교체
+ */
+
+/* 기존 이미지 기반 아이콘 스타일 비활성화 */
+#gnb .gnb_li .btn_op.menu-100,
+#gnb .gnb_li .btn_op.menu-180,
+#gnb .gnb_li .btn_op.menu-190,
+#gnb .gnb_li .btn_op.menu-200,
+#gnb .gnb_li .btn_op.menu-300,
+#gnb .gnb_li .btn_op.menu-400,
+#gnb .gnb_li .btn_op.menu-500,
+#gnb .gnb_li .btn_op.menu-900,
+#gnb .on .btn_op.menu-100,
+#gnb .on .btn_op.menu-180,
+#gnb .on .btn_op.menu-190,
+#gnb .on .btn_op.menu-200,
+#gnb .on .btn_op.menu-300,
+#gnb .on .btn_op.menu-400,
+#gnb .on .btn_op.menu-500,
+#gnb .on .btn_op.menu-900 {
+    background-image: none !important;
+}
+
+/* FontAwesome 메뉴 버튼 기본 스타일 */
+#gnb .gnb_li .btn_op.dmk-fontawesome-menu {
+    background: none !important; /* 기존 배경 이미지 제거 */
+    background-color: #ebebeb !important;
+    text-indent: 0 !important; /* 텍스트 숨김 해제 */
+    overflow: visible !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+    padding: 4px;
+    transition: all 0.3s ease;
+}
+
+/* 활성 상태 메뉴 */
+#gnb .on .btn_op.dmk-fontawesome-menu {
+    background: none !important; /* 기존 배경 이미지 제거 */
+    background-color: #fff !important;
+    box-shadow: inset 2px 0 0 #007bff;
+}
+
+/* FontAwesome 아이콘 스타일 */
+.dmk-menu-icon {
+    font-size: 18px !important;
+    margin-bottom: 2px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+/* 메뉴 텍스트 스타일 */
+.dmk-menu-text {
+    font-size: 10px;
+    font-weight: 400;
+    color: #666;
+    display: block;
+    line-height: 1.2;
+    text-align: center;
+    max-width: 46px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 활성 상태에서 텍스트 색상 */
+#gnb .on .btn_op.dmk-fontawesome-menu .dmk-menu-text {
+    color: #333;
+    font-weight: 500;
+}
+
+/* 호버 효과 */
+#gnb .gnb_li .btn_op.dmk-fontawesome-menu:hover {
+    background-color: #f8f9fa !important;
+    transform: translateY(-1px);
+}
+
+#gnb .gnb_li .btn_op.dmk-fontawesome-menu:hover .dmk-menu-icon {
+    transform: scale(1.1);
+}
+
+#gnb .gnb_li .btn_op.dmk-fontawesome-menu:hover .dmk-menu-text {
+    color: #007bff;
+}
+
+/* 작은 화면 모드 스타일 */
+#gnb.gnb_small .gnb_li .btn_op.dmk-fontawesome-menu {
+    padding: 8px 2px;
+}
+
+#gnb.gnb_small .dmk-menu-icon {
+    font-size: 16px !important;
+    margin-bottom: 1px;
+}
+
+#gnb.gnb_small .dmk-menu-text {
+    font-size: 9px;
+    max-width: 42px;
+}
+
+/* 메뉴별 고유 색상 유지를 위한 기본 설정 */
+.dmk-menu-icon {
+    /* 색상은 PHP에서 인라인 스타일로 설정됨 */
+}
+
+/* 활성 상태에서 아이콘 효과 */
+#gnb .on .btn_op.dmk-fontawesome-menu .dmk-menu-icon {
+    animation: dmk-menu-pulse 2s infinite;
+}
+
+@keyframes dmk-menu-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* 특정 아이콘별 추가 스타일 (필요시) */
+.dmk-menu-icon.fa-robot {
+    /* 봇 아이콘 특별 효과 */
+}
+
+.dmk-menu-icon.fa-sitemap {
+    /* 프랜차이즈 아이콘 특별 효과 */
+}
+
+.dmk-menu-icon.fa-chart-line {
+    /* 통계 아이콘 특별 효과 */
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    #gnb .gnb_li .btn_op.dmk-fontawesome-menu {
+        padding: 6px 2px;
+    }
+    
+    .dmk-menu-icon {
+        font-size: 16px !important;
+    }
+    
+    .dmk-menu-text {
+        font-size: 9px;
+    }
+}
+
+/* 접근성 개선 */
+#gnb .gnb_li .btn_op.dmk-fontawesome-menu:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* 메뉴가 비활성화된 경우 */
+#gnb .gnb_li .btn_op.dmk-fontawesome-menu:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#gnb .gnb_li .btn_op.dmk-fontawesome-menu:disabled:hover {
+    transform: none;
+    background-color: #ebebeb !important;
+}
+
+/* 로딩 상태 표시 */
+.dmk-menu-loading .dmk-menu-icon {
+    animation: dmk-loading-spin 1s linear infinite;
+}
+
+@keyframes dmk-loading-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 다크 모드 지원 (미래 확장용) */
+@media (prefers-color-scheme: dark) {
+    #gnb .gnb_li .btn_op.dmk-fontawesome-menu {
+        background-color: #2d3748 !important;
+    }
+    
+    #gnb .on .btn_op.dmk-fontawesome-menu {
+        background-color: #4a5568 !important;
+    }
+    
+    .dmk-menu-text {
+        color: #a0aec0;
+    }
+    
+    #gnb .on .btn_op.dmk-fontawesome-menu .dmk-menu-text {
+        color: #e2e8f0;
+    }
+}
+
+/* 프린트 모드에서 숨김 */
+@media print {
+    #gnb .gnb_li .btn_op.dmk-fontawesome-menu {
+        display: none;
+    }
+}
