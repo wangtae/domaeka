@@ -1,8 +1,17 @@
 <?php
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+// 필요한 함수들이 정의되었는지 확인
+if (defined('G5_DMK_PATH') && file_exists(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php')) {
+    include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+}
+if (defined('G5_PATH') && file_exists(G5_PATH . '/dmk/dmk_global_settings.php')) {
+    include_once(G5_PATH . '/dmk/dmk_global_settings.php');
+}
 
-// 최고관리자 또는 총판 관리자만 SMS 관리 메뉴에 접근 가능
-if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
+// 사용자 타입 확인
+$user_type = function_exists('dmk_get_current_user_type') ? dmk_get_current_user_type() : null;
+
+// 최고관리자만 SMS 관리 메뉴에 접근 가능 (DMK 설정에 따르면 총판도 SMS 접근 불가)
+if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
     $menu["menu900"] = array(
         array('900000', 'SMS 관리', '' . G5_SMS5_ADMIN_URL . '/config.php', 'sms5'),
         array('900100', 'SMS 기본설정', '' . G5_SMS5_ADMIN_URL . '/config.php', 'sms5_config'),

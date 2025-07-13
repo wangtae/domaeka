@@ -1,15 +1,18 @@
 <?php
-include_once(G5_PATH.'/dmk/dmk_global_settings.php');
+// 필요한 함수들이 정의되었는지 확인
+if (defined('G5_PATH') && file_exists(G5_PATH . '/dmk/dmk_global_settings.php')) {
+    include_once(G5_PATH . '/dmk/dmk_global_settings.php');
+}
 
 if (!defined('G5_USE_SHOP') || !G5_USE_SHOP) {
     return;
 }
 
 // 현재 사용자 타입 가져오기
-$current_user_type = dmk_get_current_user_type();
+$current_user_type = function_exists('dmk_get_current_user_type') ? dmk_get_current_user_type() : null;
 
 // 동적 메뉴 타이틀 가져오기 (DMK 설정에서)
-$menu_title = dmk_get_menu_title('500000', $current_user_type);
+$menu_title = function_exists('dmk_get_menu_title') ? dmk_get_menu_title('500000', $current_user_type) : null;
 if (!$menu_title) {
     $menu_title = '쇼핑몰현황/기타'; // 기본 타이틀
 }
@@ -20,13 +23,13 @@ $menu['menu500'] = array();
 $menu['menu500'][] = array('500000', $menu_title, G5_ADMIN_URL . '/shop_admin/itemsellrank.php', 'shop_stats');
 
 // 개조된 메뉴들 - DMK 권한 체크 적용
-if (dmk_is_menu_allowed('500110', $current_user_type)) {
+if (function_exists('dmk_is_menu_allowed') && dmk_is_menu_allowed('500110', $current_user_type)) {
     $menu['menu500'][] = array('500110', '매출현황 <i class="fa fa-flag" title="개조"></i>', G5_ADMIN_URL . '/shop_admin/sale1.php', 'sst_order_stats');
 }
-if (dmk_is_menu_allowed('500100', $current_user_type)) {
+if (function_exists('dmk_is_menu_allowed') && dmk_is_menu_allowed('500100', $current_user_type)) {
     $menu['menu500'][] = array('500100', '상품판매순위 <i class="fa fa-flag" title="개조"></i>', G5_ADMIN_URL . '/shop_admin/itemsellrank.php', 'sst_rank');
 }
-if (dmk_is_menu_allowed('500120', $current_user_type)) {
+if (function_exists('dmk_is_menu_allowed') && dmk_is_menu_allowed('500120', $current_user_type)) {
     $menu['menu500'][] = array('500120', '주문내역출력 <i class="fa fa-flag" title="개조"></i>', G5_ADMIN_URL . '/shop_admin/orderprint.php', 'sst_print_order', 1);
 }
 
@@ -37,7 +40,7 @@ $menu['menu500'][] = array('500310', '이벤트일괄처리', G5_ADMIN_URL . '/s
 $menu['menu500'][] = array('500500', '배너관리', G5_ADMIN_URL . '/shop_admin/bannerlist.php', 'scf_banner', 1);
 
 // 개조된 메뉴들 - DMK 권한 체크 적용
-if (dmk_is_menu_allowed('500140', $current_user_type)) {
+if (function_exists('dmk_is_menu_allowed') && dmk_is_menu_allowed('500140', $current_user_type)) {
     $menu['menu500'][] = array('500140', '보관함현황 <i class="fa fa-flag" title="개조"></i>', G5_ADMIN_URL . '/shop_admin/wishlist.php', 'sst_wish');
 }
 

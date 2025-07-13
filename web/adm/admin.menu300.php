@@ -1,12 +1,17 @@
 <?php
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+// 필요한 함수들이 정의되었는지 확인
+if (defined('G5_DMK_PATH') && file_exists(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php')) {
+    include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
+}
+if (defined('G5_PATH') && file_exists(G5_PATH . '/dmk/dmk_global_settings.php')) {
+    include_once(G5_PATH . '/dmk/dmk_global_settings.php');
+}
 
-// 도매까 권한 확인
-$dmk_auth = dmk_get_admin_auth();
+// 사용자 타입 확인
+$user_type = function_exists('dmk_get_current_user_type') ? dmk_get_current_user_type() : null;
 
-// 게시판 관리 메뉴 (원래 그누보드 기본 메뉴)
-// 최고관리자와 총판 관리자만 접근 가능
-if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
+// 게시판 관리 메뉴 - 본사 관리자만 접근 가능 (DMK 설정에 따르면 총판도 게시판 접근 불가)
+if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
     $menu['menu300'] = array(
         array('300000', '게시판관리', G5_ADMIN_URL . '/board_list.php', 'board'),
         array('300100', '게시판관리', G5_ADMIN_URL . '/board_list.php', 'bbs_board'),

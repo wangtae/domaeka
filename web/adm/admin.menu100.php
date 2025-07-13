@@ -1,6 +1,14 @@
 <?php
 // 환경설정 메뉴 - 본사 관리자만 접근 가능
-$user_type = dmk_get_current_user_type();
+// 필요한 함수들이 정의되었는지 확인
+if (!function_exists('dmk_get_current_user_type')) {
+    // 도매까 전역 설정 포함
+    if (defined('G5_PATH') && file_exists(G5_PATH . '/dmk/dmk_global_settings.php')) {
+        include_once(G5_PATH . '/dmk/dmk_global_settings.php');
+    }
+}
+
+$user_type = function_exists('dmk_get_current_user_type') ? dmk_get_current_user_type() : null;
 if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
     $menu['menu100'] = array(
         array('100000', '환경설정', G5_ADMIN_URL . '/config_form.php',   'config'),

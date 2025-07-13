@@ -1,6 +1,14 @@
 <?php
 // 프랜차이즈 관리 메뉴 - 권한에 따른 메뉴 구성
-$user_type = dmk_get_current_user_type();
+// 필요한 함수들이 정의되었는지 확인
+if (!function_exists('dmk_get_current_user_type')) {
+    // 도매까 전역 설정 포함
+    if (defined('G5_PATH') && file_exists(G5_PATH . '/dmk/dmk_global_settings.php')) {
+        include_once(G5_PATH . '/dmk/dmk_global_settings.php');
+    }
+}
+
+$user_type = function_exists('dmk_get_current_user_type') ? dmk_get_current_user_type() : null;
 
 if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
     // 본사 관리자 - 모든 프랜차이즈 관리 메뉴 접근 가능
