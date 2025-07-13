@@ -65,7 +65,7 @@ function print_menu2($key, $no='')
         $menu_key = isset($menu[$key][$i][3]) ? $menu[$key][$i][3] : '';
         
         // 모든 메뉴에 대해 통합된 dmk_auth_check_menu_display 함수를 사용하여 권한을 확인
-        if (!dmk_auth_check_menu_display($menu_code, $menu_key)) {
+        if (function_exists('dmk_auth_check_menu_display') && !dmk_auth_check_menu_display($menu_code, $menu_key)) {
             continue;
         }
         
@@ -192,12 +192,12 @@ function imageview(id, w, h)
                     continue;
                 }
 
-                // 메인 메뉴 아이콘에 대한 권한 검사 추가
+                // 메인 메뉴 아이콘에 대한 권한 검사 추가 (임시로 비활성화)
                 $menu_code = $menu['menu'.$key][0][0];
                 $menu_key = isset($menu['menu'.$key][0][3]) ? $menu['menu'.$key][0][3] : '';
                 
                 // DMK 권한 검사 - 메인 메뉴 아이콘 표시 여부 확인
-                if (!dmk_auth_check_menu_display($menu_code, $menu_key)) {
+                if (function_exists('dmk_auth_check_menu_display') && !dmk_auth_check_menu_display($menu_code, $menu_key)) {
                     continue;
                 }
 

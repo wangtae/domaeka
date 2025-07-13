@@ -1,8 +1,7 @@
 <?php
-include_once(G5_DMK_PATH.'/adm/lib/admin.auth.lib.php');
-
-// 최고관리자 또는 총판 관리자만 환경설정 메뉴에 접근 가능
-if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
+// 환경설정 메뉴 - 본사 관리자만 접근 가능
+$user_type = dmk_get_current_user_type();
+if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
     $menu['menu100'] = array(
         array('100000', '환경설정', G5_ADMIN_URL . '/config_form.php',   'config'),
         array('100100', '기본환경설정', G5_ADMIN_URL . '/config_form.php',   'cf_basic'),
@@ -26,5 +25,6 @@ if (is_super_admin($member['mb_id']) || dmk_is_distributor($member['mb_id'])) {
     $menu['menu100'][] = array('100410', 'DB업그레이드', G5_ADMIN_URL . '/dbupgrade.php', 'db_upgrade');
     $menu['menu100'][] = array('100400', '부가서비스', G5_ADMIN_URL . '/service.php', 'cf_service');
 } else {
-    $menu['menu100'] = array(); // 권한이 없으면 빈 배열로 설정하여 메뉴를 숨김
+    // 총판/대리점/지점은 환경설정 메뉴 접근 불가
+    $menu['menu100'] = array();
 }

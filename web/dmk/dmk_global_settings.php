@@ -443,11 +443,11 @@ function dmk_get_current_user_type() {
     
     // 도매까 타입에 따라 문자열 반환
     switch ($dmk_mb_type) {
-        case 2: // distributor
+        case 1: // distributor (총판)
             return 'distributor';
-        case 3: // agency
+        case 2: // agency (대리점)
             return 'agency';
-        case 4: // branch
+        case 3: // branch (지점)
             return 'branch';
         default:
             return null; // 일반 회원 또는 정의되지 않은 타입

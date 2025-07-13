@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-// 총판 관리자 로그인 정보 (실제 정보로 대체 필요)
+// 총판 관리자 로그인 정보
 const DISTRIBUTOR_ADMIN = {
-  id: 'your_distributor_id', // 실제 총판 ID로 대체
-  password: 'your_distributor_password', // 실제 총판 비밀번호로 대체
-  loginUrl: 'http://your-domaeka-admin-url/adm/' // 실제 관리자 로그인 URL로 대체
+  id: 'domaeka', 
+  password: '!domaeka$',
+  loginUrl: 'http://localhost/adm/' 
 };
 
 test.describe('Distributor Admin Functionality', () => {
