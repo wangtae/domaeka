@@ -13,6 +13,7 @@ if (!$br_id) {
 $branch_sql = " SELECT b.*, 
                     COALESCE(br_m.mb_name, '') AS br_name, 
                     COALESCE(br_m.mb_tel, '') AS br_phone, 
+                    COALESCE(br_m.mb_hp, '') AS br_hp, 
                     COALESCE(br_m.mb_addr1, '') AS br_address
                 FROM dmk_branch b 
                 JOIN g5_member br_m ON b.br_id = br_m.mb_id 

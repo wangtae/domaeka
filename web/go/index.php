@@ -30,6 +30,7 @@ $branch_sql = " SELECT b.*,
                     COALESCE(br_m.mb_name, '') AS br_name, 
                     COALESCE(br_m.mb_nick, '') AS br_nick_from_member, 
                     COALESCE(br_m.mb_tel, '') AS br_phone, 
+                    COALESCE(br_m.mb_hp, '') AS br_hp, 
                     COALESCE(br_m.mb_addr1, '') AS br_address, 
                     COALESCE(ag_m.mb_nick, '') AS ag_name 
                 FROM dmk_branch b 
@@ -101,6 +102,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             --divider: #e2e8f0;
             --danger: #ef4444;
             --focus: #3b82f6;
+            --h-divider: 1px;
         }
         
         body {
@@ -288,6 +290,33 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
         
         /* 메인 컨테이너 최대 너비 제한 - 삭제 */
         
+        /* Radio button custom styles for Tailwind peer */
+        input[type="radio"]:checked ~ div {
+            border-color: rgb(34 197 94);
+            background-color: rgb(240 253 244);
+        }
+        
+        input[type="radio"]:checked ~ div i {
+            color: rgb(22 163 74);
+        }
+        
+        input[type="radio"]:checked ~ div span {
+            color: rgb(21 128 61);
+        }
+        
+        /* Divider and text styles */
+        .bg-divider {
+            background-color: var(--divider);
+        }
+        
+        .h-divider {
+            height: var(--h-divider);
+        }
+        
+        .text-default-500 {
+            color: var(--default-500);
+        }
+        
         @media (max-width: 768px) {
             .product-card {
                 padding: 1.25rem 1rem;
@@ -310,8 +339,11 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     <button type="button" onclick="showStoreMap()" class="btn-default flex items-center">
                         <i class="fas fa-map-marker-alt mr-1"></i> <span class="hidden sm:inline">매장 위치</span>
                     </button>
-                    <?php if ($branch['br_phone']) { ?>
-                    <a href="tel:<?php echo str_replace('-', '', $branch['br_phone']) ?>" class="btn-default flex items-center">
+                    <?php 
+                    $phone_number = $branch['br_hp'] ?: $branch['br_phone'];
+                    if ($phone_number) { 
+                    ?>
+                    <a href="tel:<?php echo str_replace('-', '', $phone_number) ?>" class="btn-default flex items-center">
                         <i class="fas fa-phone mr-1"></i> <span class="hidden sm:inline">전화 문의</span>
                     </a>
                     <?php } ?>
@@ -478,19 +510,29 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
                 <!-- Delivery Method -->
                 <div class="mx-8 py-5 border-b">
-                    <div class="flex flex-col space-y-1 w-full">
-                        <div class="relative flex flex-col gap-2">
-                            <span class="text-gray-500">수령 방식</span>
-                            <div class="flex flex-col flex-wrap gap-2">
-                                <label class="flex items-center cursor-pointer">
-                                    <input type="radio" name="delivery_type" value="PICKUP" checked class="mr-2">
-                                    <span>매장 픽업</span>
-                                </label>
-                                <label class="flex items-center cursor-pointer">
-                                    <input type="radio" name="delivery_type" value="DELIVERY" class="mr-2">
-                                    <span>배송 수령</span>
-                                </label>
-                            </div>
+                    <div class="flex flex-col space-y-3 w-full">
+                        <h3 class="text-sm font-medium text-gray-700">수령 방식</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative flex items-center justify-center cursor-pointer group">
+                                <input type="radio" name="delivery_type" value="PICKUP" checked class="peer sr-only">
+                                <div class="w-full py-4 px-4 border-2 rounded-lg transition-all
+                                           peer-checked:border-green-500 peer-checked:bg-green-50
+                                           group-hover:border-gray-300 text-center">
+                                    <i class="fas fa-store text-2xl mb-2 block
+                                       peer-checked:text-green-600"></i>
+                                    <span class="font-medium peer-checked:text-green-700">매장 픽업</span>
+                                </div>
+                            </label>
+                            <label class="relative flex items-center justify-center cursor-pointer group">
+                                <input type="radio" name="delivery_type" value="DELIVERY" class="peer sr-only">
+                                <div class="w-full py-4 px-4 border-2 rounded-lg transition-all
+                                           peer-checked:border-green-500 peer-checked:bg-green-50
+                                           group-hover:border-gray-300 text-center">
+                                    <i class="fas fa-truck text-2xl mb-2 block
+                                       peer-checked:text-green-600"></i>
+                                    <span class="font-medium peer-checked:text-green-700">배송 수령</span>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -517,21 +559,19 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                         <input type="text" name="customer_message" class="input-field" placeholder="요청사항을 입력해주세요">
                     </div>
 
-                    <!-- Branch Info -->
-                    <div class="mt-5 flex flex-col gap-y-5" id="info">
-                        <hr class="border-gray-200">
-                        <div class="flex flex-col gap-2">
-                            <p class="font-medium">📍 매장 정보</p>
-                            <div class="text-gray-500 text-sm space-y-1">
-                                <p><strong>매장:</strong> <?php echo htmlspecialchars($branch['br_name']) ?></p>
-                                <p><strong>소속:</strong> <?php echo htmlspecialchars($branch['ag_name'] ?: '직영') ?></p>
-                                <?php if ($branch['br_phone']) { ?>
-                                <p><strong>전화:</strong> <?php echo htmlspecialchars($branch['br_phone']) ?></p>
-                                <?php } ?>
-                                <?php if ($branch['br_address']) { ?>
-                                <p><strong>주소:</strong> <?php echo htmlspecialchars($branch['br_address']) ?></p>
-                                <?php } ?>
-                            </div>
+                    <!-- Privacy Policy -->
+                    <div class="mt-5 flex flex-col gap-y-5">
+                        <div class="px-[30px]">
+                            <hr class="shrink-0 bg-divider border-none w-full h-divider" role="separator">
+                        </div>
+                        <div class="flex flex-col gap-2 mx-[30px]">
+                            <p class="font-medium">주문 시, 개인정보 수집 및 이용 동의 처리</p>
+                            <p class="text-default-500 text-sm">
+                                입력해주신 개인정보를 활용합니다.<br>
+                                1. 수집 목적: 공동구매 서비스 제공 및 주문 접수<br>
+                                2. 수집 항목: 이름, 전화번호, 주소 등 주문 관련 정보<br>
+                                3. 보유 및 이용기간 : 수집일로부터 2년까지
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -617,8 +657,11 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     <div class="mb-4">
                         <h4 class="font-bold text-lg mb-2"><?php echo htmlspecialchars($branch['br_name']) ?></h4>
                         <p class="text-gray-600 mb-2"><?php echo htmlspecialchars($branch['br_address']) ?></p>
-                        <?php if ($branch['br_phone']) { ?>
-                        <p class="text-gray-600"><i class="fas fa-phone mr-1"></i> <?php echo htmlspecialchars($branch['br_phone']) ?></p>
+                        <?php 
+                        $display_phone = $branch['br_hp'] ?: $branch['br_phone'];
+                        if ($display_phone) { 
+                        ?>
+                        <p class="text-gray-600"><i class="fas fa-phone mr-1"></i> <?php echo htmlspecialchars($display_phone) ?></p>
                         <?php } ?>
                     </div>
                     
