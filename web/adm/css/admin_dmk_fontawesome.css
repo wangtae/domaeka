@@ -23,7 +23,7 @@
     background-image: none !important;
 }
 
-/* FontAwesome 메뉴 버튼 기본 스타일 */
+/* FontAwesome 메뉴 버튼 기본 스타일 - 아이콘 전용 모드 */
 #gnb .gnb_li .btn_op.dmk-fontawesome-menu {
     background: none !important; /* 기존 배경 이미지 제거 */
     background-color: #ebebeb !important;
@@ -35,7 +35,7 @@
     justify-content: center;
     font-size: 12px;
     line-height: 1;
-    padding: 4px;
+    padding: 12px 8px;
     transition: all 0.3s ease;
 }
 
@@ -46,32 +46,22 @@
     box-shadow: inset 2px 0 0 #007bff;
 }
 
-/* FontAwesome 아이콘 스타일 */
+/* FontAwesome 아이콘 스타일 - 아이콘 전용 모드 */
 .dmk-menu-icon {
-    font-size: 18px !important;
-    margin-bottom: 2px;
+    font-size: 22px !important;
     display: block;
     transition: all 0.3s ease;
+    margin: 0 auto;
 }
 
-/* 메뉴 텍스트 스타일 */
+/* 메뉴 텍스트 스타일 - 아이콘 전용 모드 */
 .dmk-menu-text {
-    font-size: 10px;
-    font-weight: 400;
-    color: #666;
-    display: block;
-    line-height: 1.2;
-    text-align: center;
-    max-width: 46px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: none; /* 아이콘만 표시하기 위해 텍스트 숨김 */
 }
 
-/* 활성 상태에서 텍스트 색상 */
+/* 활성 상태에서 텍스트 색상 - 아이콘 전용 모드에서는 불필요 */
 #gnb .on .btn_op.dmk-fontawesome-menu .dmk-menu-text {
-    color: #333;
-    font-weight: 500;
+    display: none;
 }
 
 /* 호버 효과 */
@@ -85,7 +75,7 @@
 }
 
 #gnb .gnb_li .btn_op.dmk-fontawesome-menu:hover .dmk-menu-text {
-    color: #007bff;
+    display: none;
 }
 
 /* 작은 화면 모드 스타일 */
@@ -99,8 +89,7 @@
 }
 
 #gnb.gnb_small .dmk-menu-text {
-    font-size: 9px;
-    max-width: 42px;
+    display: none;
 }
 
 /* 메뉴별 고유 색상 유지를 위한 기본 설정 */
@@ -143,7 +132,7 @@
     }
     
     .dmk-menu-text {
-        font-size: 9px;
+        display: none;
     }
 }
 
@@ -185,11 +174,11 @@
     }
     
     .dmk-menu-text {
-        color: #a0aec0;
+        display: none;
     }
     
     #gnb .on .btn_op.dmk-fontawesome-menu .dmk-menu-text {
-        color: #e2e8f0;
+        display: none;
     }
 }
 

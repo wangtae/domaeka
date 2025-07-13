@@ -22,8 +22,8 @@ $dmk_menu_icons = [
     
     // 봇 관리 (카카오톡 봇)
     '180' => [
-        'icon' => 'fa-robot',
-        'active_icon' => 'fa-robot', 
+        'icon' => 'fa-android',
+        'active_icon' => 'fa-android', 
         'color' => '#28a745',
         'active_color' => '#20c997',
         'title' => '봇 관리'
@@ -67,17 +67,17 @@ $dmk_menu_icons = [
     
     // 쇼핑몰관리 2부 (통계)
     '500' => [
-        'icon' => 'fa-chart-bar',
-        'active_icon' => 'fa-chart-line',
+        'icon' => 'fa-bar-chart',
+        'active_icon' => 'fa-line-chart',
         'color' => '#20c997',
         'active_color' => '#17a2b8',
-        'title' => '매출/통계'
+        'title' => '쇼핑몰현황/기타'
     ],
     
     // SMS관리
     '900' => [
-        'icon' => 'fa-sms',
-        'active_icon' => 'fa-sms',
+        'icon' => 'fa-mobile',
+        'active_icon' => 'fa-comment',
         'color' => '#e83e8c',
         'active_color' => '#dc3545',
         'title' => 'SMS관리'
@@ -135,7 +135,7 @@ function dmk_render_menu_icon($menu_code, $is_active = false, $additional_classe
 }
 
 /**
- * 메뉴 버튼용 아이콘 HTML 생성 (텍스트 숨김 없이)
+ * 메뉴 버튼용 아이콘 HTML 생성 (아이콘 전용 모드)
  * @param string $menu_code 메뉴 코드
  * @param bool $is_active 활성 상태 여부
  * @param string $menu_title 메뉴 제목
@@ -147,9 +147,11 @@ function dmk_render_menu_button_content($menu_code, $is_active = false, $menu_ti
     $icon_classes = 'fa ' . $icon_info['icon'] . ' dmk-menu-icon';
     $icon_style = 'color: ' . $icon_info['color'] . ';';
     
-    $html = '<i class="' . $icon_classes . '" style="' . $icon_style . '"></i>';
+    // 접근성을 위한 title 속성 추가
+    $title = $menu_title ?: $icon_info['title'];
+    $html = '<i class="' . $icon_classes . '" style="' . $icon_style . '" title="' . htmlspecialchars($title) . '"></i>';
     
-    // 작은 화면에서는 텍스트 표시
+    // 텍스트는 CSS에서 숨김 처리되지만 접근성을 위해 유지
     if ($menu_title) {
         $html .= '<span class="dmk-menu-text">' . $menu_title . '</span>';
     }
