@@ -3,16 +3,27 @@ if (!defined('_GNUBOARD_')) exit; // 개별 페이지 접근 불가
 
 // add_stylesheet('css 구문', 출력순서); 숫자가 작을 수록 먼저 출력됨
 add_stylesheet('<link rel="stylesheet" href="'.$member_skin_url.'/style.css">', 0);
-add_stylesheet('<link rel="preconnect" href="https://fonts.googleapis.com">', 0);
-add_stylesheet('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>', 0);
-add_stylesheet('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">', 0);
-add_stylesheet('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', 0);
 ?>
 
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-
-<!-- Custom Styles -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?php echo $g5['title'] ?> - <?php echo $config['cf_title'] ?></title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Styles -->
     <style>
         :root {
             --primary: #10b981;
@@ -28,10 +39,12 @@ add_stylesheet('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/l
             --focus: #3b82f6;
         }
         
-        .login-wrapper {
+        body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--default-100);
             color: var(--foreground);
+            margin: 0;
+            padding: 0;
         }
         
         .input-field {
@@ -118,9 +131,8 @@ add_stylesheet('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/l
             margin: 0 auto;
         }
     </style>
-    
-<!-- 로그인 시작 { -->
-<div class="login-wrapper">
+</head>
+<body>
     <div class="min-h-screen flex items-center justify-center p-4">
         <div class="login-card">
             <!-- Logo/Title -->
@@ -323,5 +335,5 @@ add_stylesheet('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/l
         return false;
     }
     </script>
-</div>
-<!-- } 로그인 끝 -->
+</body>
+</html>

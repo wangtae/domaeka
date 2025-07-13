@@ -50,18 +50,50 @@ if (!$branch) {
 
 $br_id = $branch['br_id']; // 실제 br_id
 
-// 상품 조회 (권한에 따른 필터링)
-$items_sql = " SELECT it_id, it_name, it_cust_price as it_price, it_img1, it_stock_qty, ca_id, it_basic, it_explan
-               FROM g5_shop_item 
-               WHERE it_use = '1' AND it_soldout != '1' 
-               ORDER BY it_order, it_id DESC ";
+// 현재 날짜 가져오기
+$current_date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+$current_datetime = $current_date . ' ' . date('H:i:s');
+
+// 상품 조회 (지점별 필터링 및 조건 적용)
+$items_sql = " SELECT i.it_id, i.it_name, i.it_cust_price as it_price, i.it_img1, i.it_stock_qty, i.ca_id, i.it_basic, i.it_explan
+               FROM g5_shop_item i
+               INNER JOIN g5_shop_category c ON i.ca_id = c.ca_id
+               WHERE i.dmk_br_id = '$br_id'
+               AND i.it_use = '1'                    -- 판매 상태
+               AND i.it_soldout = '0'                -- 품절이 아닌 상품
+               AND i.it_stock_qty > 0                -- 재고가 있는 상품
+               AND c.ca_use = '1'                    -- 카테고리 판매가능 상태
+               AND (
+                   (i.dmk_it_valid_start_date IS NULL AND i.dmk_it_valid_end_date IS NULL) -- 기간 설정 없음
+                   OR 
+                   (
+                       (i.dmk_it_valid_start_date IS NULL OR i.dmk_it_valid_start_date <= '$current_date')
+                       AND 
+                       (i.dmk_it_valid_end_date IS NULL OR i.dmk_it_valid_end_date >= '$current_date')
+                   )
+               )
+               ORDER BY i.it_order, i.it_id DESC ";
 $items_result = sql_query($items_sql);
 
-// 카테고리 조회
-$categories_sql = " SELECT ca_id, ca_name 
-                   FROM g5_shop_category 
-                   WHERE ca_use = '1' 
-                   ORDER BY ca_order, ca_id ";
+// 카테고리 조회 (해당 지점의 상품이 있는 카테고리만)
+$categories_sql = " SELECT DISTINCT c.ca_id, c.ca_name 
+                   FROM g5_shop_category c
+                   INNER JOIN g5_shop_item i ON c.ca_id = i.ca_id
+                   WHERE c.ca_use = '1' 
+                   AND i.dmk_br_id = '$br_id'
+                   AND i.it_use = '1'
+                   AND i.it_soldout = '0'
+                   AND i.it_stock_qty > 0
+                   AND (
+                       (i.dmk_it_valid_start_date IS NULL AND i.dmk_it_valid_end_date IS NULL)
+                       OR 
+                       (
+                           (i.dmk_it_valid_start_date IS NULL OR i.dmk_it_valid_start_date <= '$current_date')
+                           AND 
+                           (i.dmk_it_valid_end_date IS NULL OR i.dmk_it_valid_end_date >= '$current_date')
+                       )
+                   )
+                   ORDER BY c.ca_order, c.ca_id ";
 $categories_result = sql_query($categories_sql);
 
 $g5['title'] = $branch['br_name'] . ' 주문페이지';
@@ -356,11 +388,12 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 <div class="py-3 px-6 border-b overflow-x-auto scrollbar-hide">
                 <div class="flex items-center space-x-3">
                     <?php
+                    $selected_date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
                     for ($i = 0; $i < 5; $i++) {
                         $date = date('Y-m-d', strtotime("+$i days"));
                         $display_date = date('n월j일', strtotime($date));
                         $yoil = get_yoil($date);
-                        $is_active = $i === 0;
+                        $is_active = ($date === $selected_date);
                         $btn_class = $is_active ? 'btn-outline' : 'btn-default';
                     ?>
                     <button class="<?php echo $btn_class ?> whitespace-nowrap" onclick="selectDate('<?php echo $date ?>')"><?php echo $display_date ?> (<?php echo $yoil ?>)</button>
@@ -373,8 +406,8 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
         <div class="pb-10">
             <div class="pt-5 px-5 pb-3 flex items-center">
                 <div>
-                    <h1 class="text-xl font-bold" id="orderTitle"><?php echo date('n.j.') . get_yoil(date('Y-m-d')) ?>요일 주문</h1>
-                    <span class="text-sm font-normal text-gray-500" id="orderDate">주문일 <?php echo date('Y년 m월 d일') ?></span>
+                    <h1 class="text-xl font-bold" id="orderTitle"><?php echo date('n.j', strtotime($selected_date)) . '.' . get_yoil($selected_date) ?>요일 주문</h1>
+                    <span class="text-sm font-normal text-gray-500" id="orderDate">주문일 <?php echo date('Y년 m월 d일', strtotime($selected_date)) ?></span>
                 </div>
             </div>
 
@@ -386,7 +419,20 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 while ($cat = sql_fetch_array($categories_result)) {
                     $count_sql = " SELECT COUNT(*) as cnt 
                                   FROM g5_shop_item 
-                                  WHERE ca_id = '{$cat['ca_id']}' AND it_use = '1' AND it_soldout != '1' ";
+                                  WHERE ca_id = '{$cat['ca_id']}' 
+                                  AND dmk_br_id = '$br_id'
+                                  AND it_use = '1' 
+                                  AND it_soldout = '0'
+                                  AND it_stock_qty > 0
+                                  AND (
+                                      (dmk_it_valid_start_date IS NULL AND dmk_it_valid_end_date IS NULL)
+                                      OR 
+                                      (
+                                          (dmk_it_valid_start_date IS NULL OR dmk_it_valid_start_date <= '$current_date')
+                                          AND 
+                                          (dmk_it_valid_end_date IS NULL OR dmk_it_valid_end_date >= '$current_date')
+                                      )
+                                  )";
                     $count_result = sql_fetch($count_sql);
                     $count = $count_result['cnt'];
                     if ($count > 0) {
@@ -402,7 +448,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             <!-- Product List -->
             <form class="flex flex-col" id="orderForm" method="post" action="<?php echo G5_DMK_URL ?>/adm/branch_admin/order_process.php">
                 <input type="hidden" name="br_id" value="<?php echo $br_id ?>">
-                <input type="hidden" name="order_date" value="<?php echo date('Y-m-d') ?>" id="selectedDate">
+                <input type="hidden" name="order_date" value="<?php echo $selected_date ?>" id="selectedDate">
                 
                 <!-- Products will be populated by JavaScript -->
                 <div id="productList">
@@ -485,8 +531,8 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     <div class="product-card text-center py-10">
                         <div class="text-gray-500">
                             <i class="fas fa-box-open text-4xl mb-4"></i>
-                            <p class="text-lg font-medium">등록된 상품이 없습니다</p>
-                            <p class="text-sm">상품 등록 후 주문이 가능합니다</p>
+                            <p class="text-lg font-medium">해당 날짜에 주문 가능한 상품이 없습니다</p>
+                            <p class="text-sm">다른 날짜를 선택하시거나 나중에 다시 확인해주세요</p>
                         </div>
                     </div>
                     <?php } ?>
@@ -549,9 +595,9 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                         <input type="tel" name="customer_phone" class="input-field" placeholder="연락 가능한 전화번호를 입력해주세요" required>
                     </div>
                     
-                    <div class="flex flex-col space-y-1 w-full">
-                        <label class="text-sm font-medium text-gray-700">배송주소</label>
-                        <input type="text" name="customer_address" class="input-field" placeholder="배송 수령 시 주소를 입력해주세요">
+                    <div class="flex flex-col space-y-1 w-full" id="addressField" style="display: none;">
+                        <label class="text-sm font-medium text-gray-700">배송주소 <span id="addressRequired" style="display: none;">*</span></label>
+                        <input type="text" name="customer_address" id="customerAddress" class="input-field" placeholder="배송 수령 시 주소를 입력해주세요">
                     </div>
                     
                     <div class="flex flex-col space-y-1 w-full">
@@ -561,28 +607,37 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
                     <!-- Privacy Policy -->
                     <div class="mt-5 flex flex-col gap-y-5">
-                        <div class="px-[30px]">
+                        <div class="px-[5px]">
                             <hr class="shrink-0 bg-divider border-none w-full h-divider" role="separator">
                         </div>
-                        <div class="flex flex-col gap-2 mx-[30px]">
-                            <p class="font-medium">주문 시, 개인정보 수집 및 이용 동의 처리</p>
-                            <p class="text-default-500 text-sm">
-                                입력해주신 개인정보를 활용합니다.<br>
-                                1. 수집 목적: 공동구매 서비스 제공 및 주문 접수<br>
-                                2. 수집 항목: 이름, 전화번호, 주소 등 주문 관련 정보<br>
-                                3. 보유 및 이용기간 : 수집일로부터 2년까지
-                            </p>
+                        <div class="flex flex-col gap-2 mx-[5px]">
+                            <p class="font-medium">개인정보 수집·이용 동의</p>
+                            <div class="text-default-500 text-sm">
+                                <p class="mb-2">도매까는 주문 처리를 위해 아래와 같이 개인정보를 수집·이용합니다.</p>
+                                <ul class="list-decimal list-inside space-y-1 ml-2">
+                                    <li><span class="ml-1">수집 목적: 공동구매 서비스 제공 및 주문 처리</span></li>
+                                    <li><span class="ml-1">수집 항목: 성명, 연락처, 배송지 주소</span></li>
+                                    <li><span class="ml-1">보유 기간: 서비스 제공 완료 후 2년</span></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </form>
 
             <!-- Footer -->
-            <footer class="mt-10 bg-gray-50">
+            <footer class="mt-5 bg-gray-50">
                 <div class="w-full mx-auto max-w-4xl px-5 py-10">
                     <div class="text-gray-500 text-xs">
-                        도매까 지점 주문 시스템 <br>
-                        <?php echo htmlspecialchars($branch['br_name']) ?> <br><br>
+                        <strong>도매까 주문 시스템</strong> / 제휴문의 : 02-1234-5679 <br> (주)강성에프엔비 / 대표 이지애<br>
+                        <br>
+
+                        <div class="flex gap-x-2">
+                            <a target="_blank" class="underline" href="#">사업자 정보</a>
+                            <a target="_blank" class="underline" href="#">개인정보 처리방침</a>
+                            <a target="_blank" class="underline" href="#">서비스 이용약관</a>
+                        </div>
+     
                         Copyright © <?php echo date('Y') ?> 도매까 All Rights Reserved.
                     </div>
                 </div>
@@ -674,6 +729,45 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 <!-- Footer -->
                 <div class="flex justify-end gap-2 px-6 py-4 border-t">
                     <button onclick="closeMapModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Confirmation Modal -->
+    <div id="orderConfirmModal" class="fixed inset-0 z-50 hidden">
+        <!-- Backdrop -->
+        <div class="modal-backdrop fixed inset-0 bg-black/50" onclick="closeOrderConfirmModal()"></div>
+        
+        <!-- Modal Content -->
+        <div class="fixed inset-0 flex items-center justify-center p-4 md:p-8">
+            <div class="modal-content bg-white rounded-lg max-w-md w-full max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-4rem)] flex flex-col relative shadow-xl">
+                <!-- Header -->
+                <div class="py-4 px-6 border-b">
+                    <h3 class="text-lg font-semibold">주문 확인</h3>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto px-6 py-4">
+                    <div id="orderSummaryContent"></div>
+                    
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <div class="flex justify-between items-center text-lg font-bold">
+                            <span>총 주문금액</span>
+                            <span id="orderTotalAmount" class="text-green-600"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 text-sm text-gray-600">
+                        <p class="font-medium mb-2">주문자 정보</p>
+                        <div id="orderCustomerInfo"></div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="flex justify-end gap-2 px-6 py-4 border-t">
+                    <button onclick="closeOrderConfirmModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">취소</button>
+                    <button onclick="confirmOrder()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">주문하기</button>
                 </div>
             </div>
         </div>
@@ -793,21 +887,9 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
         // Select date
         function selectDate(date) {
-            document.getElementById('selectedDate').value = date;
-            
-            const dateObj = new Date(date);
-            const month = dateObj.getMonth() + 1;
-            const day = dateObj.getDate();
-            const yoil = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
-            
-            document.getElementById('orderTitle').textContent = `${month}.${day}.${yoil}요일 주문`;
-            document.getElementById('orderDate').textContent = `주문일 ${dateObj.getFullYear()}년 ${String(month).padStart(2, '0')}월 ${String(day).padStart(2, '0')}일`;
-            
-            // Update button styles
-            document.querySelectorAll('[onclick^="selectDate"]').forEach(btn => {
-                btn.className = btn.className.replace('btn-outline', 'btn-default');
-            });
-            event.target.className = event.target.className.replace('btn-default', 'btn-outline');
+            // 페이지를 새로운 날짜 파라미터와 함께 리로드
+            const currentUrl = window.location.pathname;
+            window.location.href = currentUrl + '?date=' + date;
         }
 
         // Show product detail modal
@@ -976,41 +1058,115 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
         // Handle form submission
         document.getElementById('orderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
             const customerName = document.querySelector('[name="customer_name"]').value;
             const customerPhone = document.querySelector('[name="customer_phone"]').value;
             
             if (!customerName || !customerPhone) {
-                e.preventDefault();
                 alert('주문자명과 전화번호를 입력해주세요.');
                 return;
             }
             
             if (Object.keys(cart).length === 0) {
-                e.preventDefault();
                 alert('주문할 상품을 선택해주세요.');
                 return;
             }
             
-            // Confirm order
-            let orderSummary = '주문 내역:\n';
+            // Show order confirmation modal
+            showOrderConfirmModal();
+        });
+        
+        // Show order confirmation modal
+        function showOrderConfirmModal() {
+            // Prepare order summary
+            let orderSummaryHTML = '<div class="space-y-3">';
+            let totalAmount = 0;
+            
             Object.keys(cart).forEach(productId => {
                 const product = products[productId];
                 if (product && cart[productId] > 0) {
-                    orderSummary += `- ${product.name}: ${cart[productId]}개 (${(product.price * cart[productId]).toLocaleString()}원)\n`;
+                    const itemTotal = product.price * cart[productId];
+                    totalAmount += itemTotal;
+                    orderSummaryHTML += `
+                        <div class="flex justify-between items-center py-2 border-b">
+                            <div class="flex-1">
+                                <p class="font-medium">${product.name}</p>
+                                <p class="text-sm text-gray-500">${cart[productId]}개 × ${product.price.toLocaleString()}원</p>
+                            </div>
+                            <div class="font-medium">${itemTotal.toLocaleString()}원</div>
+                        </div>
+                    `;
                 }
             });
             
-            const totalAmount = Object.keys(cart).reduce((total, productId) => {
-                const product = products[productId];
-                return total + (product ? product.price * cart[productId] : 0);
-            }, 0);
+            orderSummaryHTML += '</div>';
             
-            orderSummary += `\n총 주문금액: ${totalAmount.toLocaleString()}원`;
+            // Get customer info
+            const customerName = document.querySelector('input[name="customer_name"]').value;
+            const customerPhone = document.querySelector('input[name="customer_phone"]').value;
+            const customerAddress = document.querySelector('input[name="customer_address"]').value;
+            const deliveryType = document.querySelector('input[name="delivery_type"]:checked').value;
+            const deliveryTypeText = deliveryType === 'PICKUP' ? '매장 픽업' : '배송 수령';
             
-            if (!confirm(orderSummary + '\n\n주문을 진행하시겠습니까?')) {
-                e.preventDefault();
+            const customerInfoHTML = `
+                <p>이름: ${customerName}</p>
+                <p>연락처: ${customerPhone}</p>
+                <p>수령방식: ${deliveryTypeText}</p>
+                ${deliveryType === 'DELIVERY' ? `<p>배송주소: ${customerAddress}</p>` : ''}
+            `;
+            
+            // Update modal content
+            document.getElementById('orderSummaryContent').innerHTML = orderSummaryHTML;
+            document.getElementById('orderTotalAmount').textContent = totalAmount.toLocaleString() + '원';
+            document.getElementById('orderCustomerInfo').innerHTML = customerInfoHTML;
+            
+            // Hide footer and show modal
+            const footer = document.querySelector('.fixed-footer');
+            if (footer) {
+                footer.classList.add('hidden');
             }
-        });
+            
+            const modal = document.getElementById('orderConfirmModal');
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            // Animation
+            setTimeout(() => {
+                modal.querySelector('.modal-backdrop').style.opacity = '1';
+                modal.querySelector('.modal-content').style.opacity = '1';
+                modal.querySelector('.modal-content').style.transform = 'translateY(0) scale(1)';
+            }, 10);
+        }
+        
+        // Close order confirmation modal
+        function closeOrderConfirmModal() {
+            const modal = document.getElementById('orderConfirmModal');
+            const backdrop = modal.querySelector('.modal-backdrop');
+            const content = modal.querySelector('.modal-content');
+            
+            // Animation
+            backdrop.style.opacity = '0';
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(20px) scale(0.95)';
+            
+            // Hide after animation
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+                
+                // Show footer
+                const footer = document.querySelector('.fixed-footer');
+                if (footer) {
+                    footer.classList.remove('hidden');
+                }
+            }, 300);
+        }
+        
+        // Confirm order
+        function confirmOrder() {
+            document.getElementById('orderForm').submit();
+        }
 
         // Handle scroll for sticky elements
         window.addEventListener('scroll', function() {
@@ -1019,6 +1175,38 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 stickyHeader.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
             } else {
                 stickyHeader.style.boxShadow = 'none';
+            }
+        });
+
+        // Handle delivery method change
+        document.addEventListener('DOMContentLoaded', function() {
+            const deliveryRadios = document.querySelectorAll('input[name="delivery_type"]');
+            const addressField = document.getElementById('addressField');
+            const addressInput = document.getElementById('customerAddress');
+            const addressRequired = document.getElementById('addressRequired');
+            
+            deliveryRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'DELIVERY') {
+                        // 배송 수령 선택 시
+                        addressField.style.display = 'block';
+                        addressInput.setAttribute('required', 'required');
+                        addressRequired.style.display = 'inline';
+                    } else {
+                        // 매장 픽업 선택 시
+                        addressField.style.display = 'none';
+                        addressInput.removeAttribute('required');
+                        addressRequired.style.display = 'none';
+                        addressInput.value = ''; // 주소 입력값 초기화
+                    }
+                });
+            });
+            
+            // 초기 상태 설정 (매장 픽업이 기본값)
+            const checkedRadio = document.querySelector('input[name="delivery_type"]:checked');
+            if (checkedRadio && checkedRadio.value === 'PICKUP') {
+                addressField.style.display = 'none';
+                addressInput.removeAttribute('required');
             }
         });
     </script>
