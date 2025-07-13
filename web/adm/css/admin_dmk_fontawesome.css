@@ -182,6 +182,87 @@
     }
 }
 
+/* 서브 메뉴 활성화 스타일 개선 */
+#gnb .gnb_oparea li a.on {
+    color: #007bff !important;
+    background-color: #e7f3ff !important;
+    font-weight: 600 !important;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: 2px 0;
+    display: block;
+    transition: all 0.3s ease;
+    border-left: 3px solid #007bff;
+}
+
+/* 서브 메뉴 호버 효과 */
+#gnb .gnb_oparea li a:hover {
+    color: #0056b3 !important;
+    background-color: #f0f8ff !important;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: 2px 0;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+/* 서브 메뉴 일반 상태 */
+#gnb .gnb_oparea li a {
+    color: #555 !important;
+    text-decoration: none;
+    padding: 4px 8px;
+    margin: 2px 0;
+    display: block;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+/* 서브 메뉴 FontAwesome 아이콘 스타일 */
+#gnb .gnb_oparea li a .fa {
+    margin-right: 4px;
+    font-size: 11px;
+}
+
+#gnb .gnb_oparea li a.on .fa {
+    color: #007bff;
+}
+
+#gnb .gnb_oparea li a:hover .fa {
+    color: #0056b3;
+}
+
+/* NEW 아이콘 스타일 개선 */
+#gnb .gnb_oparea li a .fa-star {
+    color: #ff6b6b;
+    animation: dmk-star-twinkle 2s ease-in-out infinite alternate;
+}
+
+@keyframes dmk-star-twinkle {
+    0% { opacity: 0.7; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.1); }
+}
+
+/* FLAG 아이콘 스타일 개선 */
+#gnb .gnb_oparea li a .fa-flag {
+    color: #4834d4;
+}
+
+/* 서브 메뉴 제목 스타일 */
+#gnb .gnb_oparea h3 {
+    color: #333 !important;
+    font-weight: 700;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e9ecef;
+    font-size: 14px;
+}
+
+/* 작은 화면에서 서브 메뉴 스타일 */
+#gnb.gnb_small .gnb_oparea li a.on {
+    border-left: 2px solid #007bff;
+    padding: 3px 6px;
+}
+
 /* 프린트 모드에서 숨김 */
 @media print {
     #gnb .gnb_li .btn_op.dmk-fontawesome-menu {
