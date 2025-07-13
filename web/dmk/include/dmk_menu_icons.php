@@ -22,8 +22,8 @@ $dmk_menu_icons = [
     
     // 봇 관리 (카카오톡 봇)
     '180' => [
-        'icon' => 'fa-android',
-        'active_icon' => 'fa-android', 
+        'icon' => 'fa-robot',
+        'active_icon' => 'fa-robot', 
         'color' => '#28a745',
         'active_color' => '#20c997',
         'title' => '봇 관리'
