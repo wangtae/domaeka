@@ -134,11 +134,18 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
+            transform: translateY(0);
         }
         
         .btn-primary:hover {
             opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
         }
         
         .btn-outline {
@@ -148,11 +155,18 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
+            transform: translateY(0);
         }
         
         .btn-outline:hover {
             opacity: 0.8;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-outline:active {
+            transform: translateY(0);
         }
         
         .btn-default {
@@ -162,11 +176,12 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
         }
         
         .btn-default:hover {
             opacity: 0.8;
+            background-color: var(--default-100);
         }
         
         .input-field {
@@ -189,6 +204,11 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
         .product-card {
             border-bottom: 1px solid var(--divider);
             padding: 1.25rem 1.875rem;
+            transition: background-color 0.2s ease;
+        }
+        
+        .product-card:hover {
+            background-color: rgba(0, 0, 0, 0.02);
         }
         
         .quantity-btn {
@@ -230,6 +250,47 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             z-index: 1001;
             background: white;
             border-top: 1px solid var(--divider);
+            transition: transform 0.3s ease;
+        }
+        
+        .fixed-footer.hidden {
+            transform: translateY(100%);
+        }
+        
+        /* Modal animation */
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(20px) scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .modal-backdrop {
+            animation: modalFadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        /* 메인 컨테이너 최대 너비 제한 */
+        .main-container {
+            max-width: 768px;
+            margin: 0 auto;
+            width: 100%;
         }
         
         @media (max-width: 768px) {
@@ -243,7 +304,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
     <div class="bg-white min-h-screen">
         <!-- Navigation -->
         <nav class="flex z-40 w-full h-auto items-center justify-center sticky top-0 inset-x-0 border-b border-gray-200 backdrop-blur-lg bg-white/70" style="--navbar-height: 4rem;">
-            <header class="z-40 flex px-6 gap-4 w-full flex-row relative flex-nowrap items-center justify-between h-16 max-w-4xl">
+            <header class="main-container z-40 flex px-6 gap-4 w-full flex-row relative flex-nowrap items-center justify-between h-16">
                 <div class="flex gap-4 h-full flex-row flex-nowrap items-center flex-grow">
                     <div class="flex flex-row flex-grow flex-nowrap justify-start bg-transparent items-center">
                         <?php /*<img src="<?php echo G5_URL; ?>/theme/bootstrap5-basic/img/logo.png" alt="Logo" class="h-[30px] mr-2" />*/ ?>
@@ -259,9 +320,11 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             </header>
         </nav>
 
-        <!-- Date Selection -->
-        <div class="flex flex-col">
-            <div class="py-3 px-6 border-b overflow-x-auto scrollbar-hide">
+        <!-- Main Content Container -->
+        <div class="main-container">
+            <!-- Date Selection -->
+            <div class="flex flex-col">
+                <div class="py-3 px-6 border-b overflow-x-auto scrollbar-hide">
                 <div class="flex items-center space-x-3">
                     <?php
                     for ($i = 0; $i < 5; $i++) {
@@ -490,20 +553,23 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
             <!-- Fixed Bottom Bar -->
             <div class="fixed-footer py-2 px-3 flex space-x-3">
-                <a href="<?php echo G5_DMK_URL ?>/adm/branch_admin/orderlist.php?br_id=<?php echo $br_id ?>" class="btn-outline">주문내역</a>
-                <button type="submit" form="orderForm" class="btn-primary flex-1" id="submitOrder">주문하기</button>
+                <div class="main-container flex space-x-3">
+                    <a href="<?php echo G5_DMK_URL ?>/adm/branch_admin/orderlist.php?br_id=<?php echo $br_id ?>" class="btn-outline">주문내역</a>
+                    <button type="submit" form="orderForm" class="btn-primary flex-1" id="submitOrder">주문하기</button>
+                </div>
             </div>
+            </div> <!-- End Main Content Container -->
         </div>
     </div>
 
     <!-- Product Detail Modal -->
     <div id="productModal" class="fixed inset-0 z-50 hidden">
         <!-- Backdrop -->
-        <div class="fixed inset-0 bg-black/50" onclick="closeProductModal()"></div>
+        <div class="modal-backdrop fixed inset-0 bg-black/50" onclick="closeProductModal()"></div>
         
         <!-- Modal Content -->
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col relative">
+        <div class="fixed inset-0 flex items-center justify-center p-4 md:p-8">
+            <div class="modal-content bg-white rounded-lg max-w-md w-full max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-4rem)] flex flex-col relative shadow-xl">
                 <!-- Close Button -->
                 <button onclick="closeProductModal()" class="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -695,15 +761,47 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 explanElement.innerHTML = '<p class="text-gray-500">상품 설명이 없습니다.</p>';
             }
             
-            // 모달 표시
-            document.getElementById('productModal').classList.remove('hidden');
+            // 하단 바 숨기기
+            const footer = document.querySelector('.fixed-footer');
+            if (footer) {
+                footer.classList.add('hidden');
+            }
+            
+            // 모달 표시 (애니메이션을 위한 약간의 지연)
+            const modal = document.getElementById('productModal');
+            modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            
+            // 애니메이션 트리거
+            setTimeout(() => {
+                modal.querySelector('.modal-backdrop').style.opacity = '1';
+                modal.querySelector('.modal-content').style.opacity = '1';
+                modal.querySelector('.modal-content').style.transform = 'translateY(0) scale(1)';
+            }, 10);
         }
         
         // Close product modal
         function closeProductModal() {
-            document.getElementById('productModal').classList.add('hidden');
-            document.body.style.overflow = '';
+            const modal = document.getElementById('productModal');
+            const backdrop = modal.querySelector('.modal-backdrop');
+            const content = modal.querySelector('.modal-content');
+            
+            // 애니메이션
+            backdrop.style.opacity = '0';
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(20px) scale(0.95)';
+            
+            // 애니메이션 완료 후 숨기기
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+                
+                // 하단 바 다시 표시
+                const footer = document.querySelector('.fixed-footer');
+                if (footer) {
+                    footer.classList.remove('hidden');
+                }
+            }, 300);
         }
 
         // Handle form submission
