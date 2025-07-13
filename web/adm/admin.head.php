@@ -37,6 +37,9 @@ if (defined('G5_DMK_PATH')) {
     // 도매까 메뉴 아이콘 시스템 포함
     include_once(G5_PATH.'/dmk/include/dmk_menu_icons.php');
     
+    // FontAwesome CDN 추가
+    add_stylesheet('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">', 100);
+    
     // FontAwesome 메뉴 스타일 추가
     add_stylesheet('<link rel="stylesheet" href="'.G5_ADMIN_URL.'/css/admin_dmk_fontawesome.css">', 999);
 }
@@ -203,6 +206,7 @@ function imageview(id, w, h)
 
                 $current_class = "";
                 $is_active = false;
+                
                 // 현재 메뉴 활성화 감지 개선
                 $current_menu_prefix = substr($menu['menu'.$key][0][0], 0, 3);
                 $current_sub_menu_prefix = isset($sub_menu) ? substr($sub_menu, 0, 3) : '';
@@ -230,6 +234,25 @@ function imageview(id, w, h)
                                 $is_current_menu = true;
                             }
                             break;
+                        case '200': // 회원관리
+                            if (strpos($current_script_path, 'member') !== false) {
+                                $is_current_menu = true;
+                            }
+                            break;
+                        case '400': // 상품/주문관리
+                            if (strpos($current_script_path, 'item') !== false ||
+                                strpos($current_script_path, 'order') !== false ||
+                                strpos($current_script_path, 'category') !== false) {
+                                $is_current_menu = true;
+                            }
+                            break;
+                        case '500': // 매출/통계
+                            if (strpos($current_script_path, 'sale') !== false ||
+                                strpos($current_script_path, 'stats') !== false ||
+                                strpos($current_script_path, 'chart') !== false) {
+                                $is_current_menu = true;
+                            }
+                            break;
                     }
                 }
                 
@@ -246,6 +269,11 @@ function imageview(id, w, h)
                     $menu_icon_html = dmk_render_menu_button_content($key, $is_active, $button_title);
                 } else {
                     $menu_icon_html = $button_title; // 폴백
+                }
+                
+                // 디버깅 정보 (개발 환경에서만)
+                if (defined('G5_IS_ADMIN') && G5_IS_ADMIN && isset($_GET['debug_menu'])) {
+                    echo "<!-- DEBUG: Menu $key, sub_menu: ".($sub_menu ?? 'none').", script: $current_script_path, active: ".($is_current_menu ? 'yes' : 'no')." -->";
                 }
             ?>
             <li class="gnb_li<?php echo $current_class;?>">
@@ -298,19 +326,115 @@ jQuery(function($){
         $(this).parent().addClass("on").siblings().removeClass("on");
     });
     
-    // 페이지 로드시 첫 번째 메뉴를 자동으로 선택된 상태로 표시
+    // 서브 메뉴 클릭 이벤트
+    $(document).on('click', '.gnb_oparea a', function(e) {
+        // 모든 서브 메뉴에서 on 클래스 제거
+        $('.gnb_oparea a').removeClass('on');
+        // 클릭한 서브 메뉴에 on 클래스 추가
+        $(this).addClass('on');
+    });
+    
+    // 페이지 로드시 현재 URL 기반으로 올바른 메뉴 활성화
     $(document).ready(function() {
-        // 현재 선택된 메뉴가 있는지 확인
-        var hasActiveMenu = $(".gnb_ul li.on").length > 0;
+        var currentPath = window.location.pathname;
+        var currentMenu = null;
         
-        // 선택된 메뉴가 없으면 첫 번째 보이는 메뉴를 선택
-        if (!hasActiveMenu) {
-            var firstVisibleMenu = $(".gnb_ul li:visible:first");
-            if (firstVisibleMenu.length > 0) {
-                firstVisibleMenu.addClass("on");
+        // URL 기반으로 메뉴 감지
+        if (currentPath.indexOf('/dmk/adm/bot/') !== -1) {
+            currentMenu = '.menu-180'; // 봇 관리
+        } else if (currentPath.indexOf('/dmk/adm/distributor_admin/') !== -1 ||
+                   currentPath.indexOf('/dmk/adm/agency_admin/') !== -1 ||
+                   currentPath.indexOf('/dmk/adm/branch_admin/') !== -1 ||
+                   currentPath.indexOf('/dmk/adm/statistics/') !== -1 ||
+                   currentPath.indexOf('/dmk/adm/admin_manager/') !== -1) {
+            currentMenu = '.menu-190'; // 프랜차이즈 관리
+        } else if (currentPath.indexOf('member') !== -1) {
+            currentMenu = '.menu-200'; // 회원관리
+        } else if (currentPath.indexOf('board') !== -1 || currentPath.indexOf('bbs') !== -1) {
+            currentMenu = '.menu-300'; // 게시판관리
+        } else if (currentPath.indexOf('item') !== -1 || currentPath.indexOf('order') !== -1 || currentPath.indexOf('category') !== -1) {
+            currentMenu = '.menu-400'; // 상품/주문관리
+        } else if (currentPath.indexOf('sale') !== -1 || currentPath.indexOf('chart') !== -1 || currentPath.indexOf('stats') !== -1) {
+            currentMenu = '.menu-500'; // 매출/통계
+        } else if (currentPath.indexOf('sms') !== -1) {
+            currentMenu = '.menu-900'; // SMS관리
+        } else {
+            currentMenu = '.menu-100'; // 기본값: 환경설정
+        }
+        
+        // 모든 메뉴에서 on 클래스 제거
+        $(".gnb_ul li").removeClass("on");
+        
+        // 감지된 메뉴에 on 클래스 추가
+        if (currentMenu) {
+            var targetMenuButton = $(".gnb_ul .btn_op" + currentMenu);
+            if (targetMenuButton.length > 0) {
+                var targetMenuLi = targetMenuButton.closest('li');
+                targetMenuLi.addClass("on");
+                
+                // 디버깅용 로그
+                console.log('Menu activated: ' + currentMenu + ' for path: ' + currentPath);
+            } else {
+                // 폴백: PHP에서 설정된 on 클래스가 있으면 그대로 유지, 없으면 첫 번째 메뉴
+                var hasActiveMenu = $(".gnb_ul li.on").length > 0;
+                if (!hasActiveMenu) {
+                    var firstVisibleMenu = $(".gnb_ul li:visible:first");
+                    if (firstVisibleMenu.length > 0) {
+                        firstVisibleMenu.addClass("on");
+                    }
+                }
+                console.log('Menu fallback activated for path: ' + currentPath);
             }
         }
+        
+        // 서브 메뉴 활성화 (더 구체적인 URL 매칭)
+        activateSubmenu(currentPath);
     });
+    
+    // 서브 메뉴 활성화 함수
+    function activateSubmenu(currentPath) {
+        // 모든 서브 메뉴에서 on 클래스 제거
+        $('.gnb_oparea a').removeClass('on');
+        
+        var submenuMap = {
+            // 봇 관리 서브 메뉴
+            '/bot/server_list.php': '180100',
+            '/bot/server_process_list.php': '180200', 
+            '/bot/bot_device_list.php': '180300',
+            '/bot/ping_monitor_list.php': '180400',
+            '/bot/room_list.php': '180500',
+            '/bot/schedule_list.php': '180600',
+            '/bot/chat_log_list.php': '180700',
+            
+            // 프랜차이즈 관리 서브 메뉴
+            '/distributor_admin/distributor_list.php': '190100',
+            '/agency_admin/agency_list.php': '190200',
+            '/branch_admin/branch_list.php': '190300',
+            '/statistics/statistics_dashboard.php': '190400',
+            '/admin_manager/admin_list.php': '190600',
+            '/admin_manager/dmk_auth_list.php': '190700',
+            '/logs/action_log_list.php': '190900',
+            '/admin_manager/menu_config.php': '190800'
+        };
+        
+        // 현재 경로에 해당하는 서브 메뉴 찾기
+        var activeSubmenuId = null;
+        for (var path in submenuMap) {
+            if (currentPath.indexOf(path) !== -1) {
+                activeSubmenuId = submenuMap[path];
+                break;
+            }
+        }
+        
+        // 해당하는 서브 메뉴에 on 클래스 추가
+        if (activeSubmenuId) {
+            var submenuLink = $('.gnb_oparea a[href*="' + activeSubmenuId + '"], .gnb_oparea li[data-menu="' + activeSubmenuId + '"] a');
+            if (submenuLink.length > 0) {
+                submenuLink.addClass('on');
+                console.log('Submenu activated: ' + activeSubmenuId + ' for path: ' + currentPath);
+            }
+        }
+    }
 
 });
 </script>

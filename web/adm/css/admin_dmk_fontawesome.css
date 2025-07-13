@@ -182,10 +182,39 @@
     }
 }
 
-/* 서브 메뉴 활성화 스타일 (기존 방식으로 복원) */
+/* 서브 메뉴 활성화 스타일 개선 */
 #gnb .gnb_oparea li a.on {
     color: #007bff !important;
-    font-weight: normal !important;
+    background-color: #e7f3ff !important;
+    font-weight: 600 !important;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: 2px 0;
+    display: block;
+    transition: all 0.3s ease;
+    border-left: 3px solid #007bff;
+}
+
+/* 서브 메뉴 호버 효과 */
+#gnb .gnb_oparea li a:hover {
+    color: #0056b3 !important;
+    background-color: #f0f8ff !important;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: 2px 0;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+/* 서브 메뉴 일반 상태 */
+#gnb .gnb_oparea li a {
+    color: #555 !important;
+    text-decoration: none;
+    padding: 4px 8px;
+    margin: 2px 0;
+    display: block;
+    border-radius: 4px;
+    transition: all 0.3s ease;
 }
 
 /* 서브 메뉴 FontAwesome 아이콘 스타일 */
@@ -241,6 +270,7 @@
     }
 }
 
+<<<<<<< HEAD
 /* btn_fixed_top 등록 버튼 핑크색 스타일 */
 .btn_fixed_top .btn_01 {
     background-color: #e91e63 !important; /* 핑크색 */
@@ -268,4 +298,41 @@
     font-family: "Font Awesome 5 Free";
     font-weight: 900;
     margin-right: 5px;
+=======
+/* 타이틀 영역 등록 버튼 스타일 */
+#container_title {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.title_btn_area {
+    margin-left: auto;
+}
+
+.title_btn_area .btn_register {
+    background-color: #e91e63 !important;
+    color: #fff !important;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.title_btn_area .btn_register:hover {
+    background-color: #c2185b !important;
+    text-decoration: none;
+    color: #fff !important;
+}
+
+.title_btn_area .btn_register i {
+    font-size: 12px;
+>>>>>>> 1b78be4e05d9071d6b3e8e2dce02c4be897303cc
 }

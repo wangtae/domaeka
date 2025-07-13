@@ -102,8 +102,12 @@ $result = sql_query($sql);
     <p>카카오봇 서버 프로세스를 관리합니다. 각 프로세스의 상태와 리소스 사용량을 모니터링할 수 있습니다.</p>
 </div>
 
+<<<<<<< HEAD
 <div class="btn_fixed_top">
     <a href="./server_process_form.php" id="process_add" class="btn btn_01">프로세스 등록</a>
+=======
+<div class="btn_add01 btn_add">
+>>>>>>> 1b78be4e05d9071d6b3e8e2dce02c4be897303cc
 </div>
 
 <form name="fprocesslist" id="fprocesslist">
@@ -221,8 +225,9 @@ $result = sql_query($sql);
     </table>
 </div>
 
-<div class="btn_list01 btn_list">
+<div class="btn_fixed_top">
     <input type="button" name="btn_submit" value="선택삭제" onclick="btn_check(this.form, 'delete')" class="btn btn_02">
+    <a href="./server_process_form.php" id="process_add" class="btn btn_01">프로세스 등록</a>
 </div>
 
 </form>

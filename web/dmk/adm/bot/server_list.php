@@ -67,8 +67,12 @@ $result = sql_query($sql);
     <p>카카오봇 서버 목록을 관리합니다. 서버의 상태와 연결된 봇 수를 모니터링할 수 있습니다.</p>
 </div>
 
+<<<<<<< HEAD
 <div class="btn_fixed_top">
     <a href="./server_form.php" id="server_add" class="btn btn_01">서버 등록</a>
+=======
+<div class="btn_add01 btn_add">
+>>>>>>> 1b78be4e05d9071d6b3e8e2dce02c4be897303cc
 </div>
 
 <form name="fserverlist" id="fserverlist">
@@ -155,8 +159,9 @@ $result = sql_query($sql);
     </table>
 </div>
 
-<div class="btn_list01 btn_list">
+<div class="btn_fixed_top">
     <input type="button" name="btn_submit" value="선택삭제" onclick="btn_check(this.form, 'delete')" class="btn btn_02">
+    <a href="./server_form.php" id="server_add" class="btn btn_01">서버 등록</a>
 </div>
 
 </form>
