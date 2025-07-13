@@ -4,6 +4,7 @@
  * 향후 스케줄 테이블 구현 시 사용할 예정
  */
 
+$sub_menu = "180600";
 include_once('./_common.php');
 
 auth_check('180600', 'r');

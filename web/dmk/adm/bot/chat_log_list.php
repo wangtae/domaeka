@@ -4,6 +4,7 @@
  * kb_chat_logs 테이블 기반 채팅 로그 조회
  */
 
+$sub_menu = "180700";
 include_once('./_common.php');
 
 auth_check('180700', 'r');

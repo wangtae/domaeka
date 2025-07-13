@@ -4,6 +4,7 @@
  * kb_ping_monitor 테이블 기반 실시간 봇 상태 모니터링
  */
 
+$sub_menu = "180400";
 include_once('./_common.php');
 
 auth_check('180400', 'r');

@@ -4,6 +4,7 @@
  * kb_servers 테이블 기반 서버 목록 관리
  */
 
+$sub_menu = "180100";
 include_once('./_common.php');
 
 // 권한 체크 (본사만 접근 가능)

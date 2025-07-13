@@ -4,6 +4,7 @@
  * kb_rooms 테이블 기반 채팅방 관리
  */
 
+$sub_menu = "180500";
 include_once('./_common.php');
 
 auth_check('180500', 'r');

@@ -4,6 +4,7 @@
  * kb_bot_devices 테이블 기반 봇 디바이스 관리
  */
 
+$sub_menu = "180300";
 include_once('./_common.php');
 
 auth_check('180300', 'r');

@@ -4,6 +4,7 @@
  * kb_server_processes 테이블 기반 프로세스 목록 관리
  */
 
+$sub_menu = "180200";
 include_once('./_common.php');
 
 auth_check('180200', 'r');
