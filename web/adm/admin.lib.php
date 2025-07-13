@@ -253,19 +253,30 @@ function get_member_id_select($name, $level, $selected = "", $event = "")
     return $str;
 }
 
-// php8 버전 호환 권한 검사 함수
+// php8 버전 호환 권한 검사 함수 (도매까 통합 권한 시스템 적용)
 function auth_check_menu($auth, $sub_menu, $attr, $return = false)
 {
+    // 도매까 통합 권한 시스템이 로드되어 있으면 사용
+    if (function_exists('dmk_unified_auth_check_menu')) {
+        return dmk_unified_auth_check_menu($auth, $sub_menu, $attr, $return);
+    }
 
+    // 기존 영카트 권한 시스템 (백업용)
     $check_auth = isset($auth[$sub_menu]) ? $auth[$sub_menu] : '';
     return auth_check($check_auth, $attr, $return);
 }
 
-// 권한 검사
+// 권한 검사 (도매까 통합 권한 시스템 적용)
 function auth_check($auth, $attr, $return = false)
 {
     global $is_admin;
 
+    // 도매까 통합 권한 시스템이 로드되어 있으면 사용
+    if (function_exists('dmk_unified_auth_check')) {
+        return dmk_unified_auth_check($auth, $attr, null, $return);
+    }
+
+    // 기존 영카트 권한 시스템 (백업용)
     if ($is_admin == 'super' || $is_admin == 'dmk_admin') {
         return;
     }

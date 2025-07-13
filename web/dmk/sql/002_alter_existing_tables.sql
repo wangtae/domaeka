@@ -6,13 +6,18 @@
 ALTER TABLE `g5_member` 
 ADD COLUMN `dmk_mb_type` tinyint(1) NOT NULL DEFAULT 0 COMMENT '회원 유형 (0: 일반, 1: 본사, 2: 대리점, 3: 지점)' AFTER `mb_level`,
 ADD COLUMN `dmk_ag_id` varchar(20) DEFAULT NULL COMMENT '소속 대리점 ID (대리점 관리자인 경우)' AFTER `dmk_mb_type`,
-ADD COLUMN `dmk_br_id` varchar(20) DEFAULT NULL COMMENT '소속 지점 ID (지점 관리자인 경우)' AFTER `dmk_ag_id`;
+ADD COLUMN `dmk_br_id` varchar(20) DEFAULT NULL COMMENT '소속 지점 ID (지점 관리자인 경우)' AFTER `dmk_ag_id`,
+ADD COLUMN `dmk_is_main` enum('Y','N') DEFAULT 'N' COMMENT 'main 관리자 여부 (Y: main 관리자, N: sub 관리자)' AFTER `dmk_br_id`,
+ADD COLUMN `dmk_owner_id` varchar(20) DEFAULT NULL COMMENT '소속 조직 ID (distributor, agency, branch ID)' AFTER `dmk_is_main`;
 
 -- g5_member 테이블 인덱스 추가
 ALTER TABLE `g5_member`
 ADD INDEX `idx_dmk_mb_type` (`dmk_mb_type`),
 ADD INDEX `idx_dmk_ag_id` (`dmk_ag_id`),
-ADD INDEX `idx_dmk_br_id` (`dmk_br_id`);
+ADD INDEX `idx_dmk_br_id` (`dmk_br_id`),
+ADD INDEX `idx_dmk_is_main` (`dmk_is_main`),
+ADD INDEX `idx_dmk_owner_id` (`dmk_owner_id`),
+ADD INDEX `idx_dmk_hierarchy` (`dmk_mb_type`, `dmk_owner_id`, `dmk_is_main`);
 
 -- 2. g5_shop_item 테이블에 도매까 상품 소유권 관련 컬럼 추가
 ALTER TABLE `g5_shop_item`

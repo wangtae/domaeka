@@ -413,24 +413,27 @@ function dmk_get_sub_menus($parent_menu_code, $user_type) {
  * @return string 사용자 계층 타입
  */
 function dmk_get_current_user_type() {
-    $auth = dmk_get_admin_auth(); // admin.auth.lib.php에 정의된 함수
-
-    if (!$auth) {
-        return null;
-    }
-
+    global $member, $is_admin;
+    
     // 최고 관리자는 'super'로 간주
-    if ($auth['is_super']) {
+    if ($is_admin == 'super') {
         return 'super';
     }
-
+    
+    if (!$member['mb_id']) {
+        return null;
+    }
+    
+    // 회원 정보에서 도매까 타입 확인
+    $dmk_mb_type = $member['dmk_mb_type'] ?? 0;
+    
     // 도매까 타입에 따라 문자열 반환
-    switch ($auth['mb_type']) {
-        case DMK_MB_TYPE_DISTRIBUTOR:
+    switch ($dmk_mb_type) {
+        case 2: // distributor
             return 'distributor';
-        case DMK_MB_TYPE_AGENCY:
+        case 3: // agency
             return 'agency';
-        case DMK_MB_TYPE_BRANCH:
+        case 4: // branch
             return 'branch';
         default:
             return null; // 일반 회원 또는 정의되지 않은 타입

@@ -19,6 +19,11 @@ if (is_array($files)) {
 
 include_once(G5_PATH.'/head.sub.php');
 
+// 도매까 통합 권한 시스템 로드
+if (file_exists(G5_PATH . '/dmk/include/dmk_unified_auth.php')) {
+    include_once(G5_PATH . '/dmk/include/dmk_unified_auth.php');
+}
+
 // 도매까 체인 선택박스 에셋 포함 (특정 페이지에서만)
 if (defined('G5_DMK_PATH')) {
     $current_script = basename($_SERVER['SCRIPT_NAME']);
@@ -30,7 +35,7 @@ if (defined('G5_DMK_PATH')) {
     }
     
     // 도매까 메뉴 아이콘 시스템 포함
-    include_once(G5_ADMIN_PATH.'/dmk/include/dmk_menu_icons.php');
+    include_once(G5_PATH.'/dmk/include/dmk_menu_icons.php');
     
     // FontAwesome 메뉴 스타일 추가
     add_stylesheet('<link rel="stylesheet" href="'.G5_ADMIN_URL.'/css/admin_dmk_fontawesome.css">', 999);

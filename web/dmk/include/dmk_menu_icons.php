@@ -124,9 +124,9 @@ function dmk_get_menu_icon($menu_code, $is_active = false) {
 function dmk_render_menu_icon($menu_code, $is_active = false, $additional_classes = '') {
     $icon_info = dmk_get_menu_icon($menu_code, $is_active);
     
-    $classes = 'fa ' . $icon_info['icon'];
+    $classes = "fa {$icon_info['icon']}";
     if ($additional_classes) {
-        $classes .= ' ' . $additional_classes;
+        $classes .= " {$additional_classes}";
     }
     
     $style = 'color: ' . $icon_info['color'] . ';';
@@ -144,7 +144,7 @@ function dmk_render_menu_icon($menu_code, $is_active = false, $additional_classe
 function dmk_render_menu_button_content($menu_code, $is_active = false, $menu_title = '') {
     $icon_info = dmk_get_menu_icon($menu_code, $is_active);
     
-    $icon_classes = 'fa ' . $icon_info['icon'] . ' dmk-menu-icon';
+    $icon_classes = "fa {$icon_info['icon']} dmk-menu-icon";
     $icon_style = 'color: ' . $icon_info['color'] . ';';
     
     // 접근성을 위한 title 속성 추가
@@ -167,4 +167,3 @@ function dmk_get_all_menu_icons() {
     global $dmk_menu_icons;
     return $dmk_menu_icons;
 }
-?>
