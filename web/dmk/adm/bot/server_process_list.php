@@ -102,7 +102,6 @@ $result = sql_query($sql);
 </div>
 
 <div class="btn_add01 btn_add">
-    <a href="./server_process_form.php" id="process_add">프로세스 등록</a>
 </div>
 
 <form name="fprocesslist" id="fprocesslist">
@@ -220,8 +219,9 @@ $result = sql_query($sql);
     </table>
 </div>
 
-<div class="btn_list01 btn_list">
+<div class="btn_fixed_top">
     <input type="button" name="btn_submit" value="선택삭제" onclick="btn_check(this.form, 'delete')" class="btn btn_02">
+    <a href="./server_process_form.php" id="process_add" class="btn btn_01">프로세스 등록</a>
 </div>
 
 </form>

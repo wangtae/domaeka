@@ -121,7 +121,6 @@ $stats = sql_fetch($active_bots_sql);
         <th scope="col">활성 채팅방</th>
         <th scope="col">RTT</th>
         <th scope="col">수신 시간</th>
-        <th scope="col">상태</th>
     </tr>
     </thead>
     <tbody>
@@ -203,12 +202,11 @@ $stats = sql_fetch($active_bots_sql);
         <td class="td_num"><?php echo $row['active_rooms'] ?? '-'?></td>
         <td class="td_num <?php echo $rtt_class?>"><?php echo $rtt_text?></td>
         <td class="td_datetime"><?php echo substr($row['created_at'], 5, 11)?></td>
-        <td class="<?php echo $status_class?>"><?php echo $status_text?></td>
     </tr>
     <?php
     }
     if($total_count == 0) {
-        echo '<tr><td colspan="9" class="empty_table">검색된 모니터링 데이터가 없습니다.</td></tr>';
+        echo '<tr><td colspan="8" class="empty_table">검색된 모니터링 데이터가 없습니다.</td></tr>';
     }
     ?>
     </tbody>

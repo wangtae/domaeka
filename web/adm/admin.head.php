@@ -37,6 +37,9 @@ if (defined('G5_DMK_PATH')) {
     // 도매까 메뉴 아이콘 시스템 포함
     include_once(G5_PATH.'/dmk/include/dmk_menu_icons.php');
     
+    // FontAwesome CDN 추가
+    add_stylesheet('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">', 100);
+    
     // FontAwesome 메뉴 스타일 추가
     add_stylesheet('<link rel="stylesheet" href="'.G5_ADMIN_URL.'/css/admin_dmk_fontawesome.css">', 999);
 }
