@@ -49,7 +49,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 json_message = json.loads(message)
                 json_message['writer'] = writer
                 json_message['client_addr'] = client_addr
-                await process_message(json_message)
+                await process_message(json_message) 
                 
             except json.JSONDecodeError as e:
                 logger.error(f"[CLIENT] JSON 파싱 실패: {e}")

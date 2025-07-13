@@ -40,10 +40,10 @@ var BOT_CONFIG = {
     SECRET_KEY: "8vQw!@#4kLz9^&*1pXyZ2$%6sDq7!@#8vQw!@#4kLz9^&*1pXyZ2$%6sDq7!@#8",
     BOT_SPECIFIC_SALT: "7f$kLz9^&*1pXyZ2",
     SERVER_LIST: [
-        { host: "100.69.44.56", port: 1481, priority: 2, name: "Dev.PC 2" },
-        { host: "100.73.137.47", port: 1481, priority: 3, name: "Dev.Laptop 1" },
-        { host: "100.73.137.47", port: 1482, priority: 4, name: "Dev.Laptop 2" },
-        { host: "100.69.44.56", port: 1482, priority: 5, name: "Dev.PC 1" }
+        { host: "100.69.44.56", port: 1485, priority: 2, name: "Dev.PC 2" },
+        { host: "100.73.137.47", port: 1485, priority: 3, name: "Dev.Laptop 1" },
+        { host: "100.73.137.47", port: 1486, priority: 4, name: "Dev.Laptop 2" },
+        { host: "100.69.44.56", port: 1486, priority: 5, name: "Dev.PC 1" }
     ],
 
     // 동작 설정
