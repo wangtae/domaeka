@@ -144,8 +144,8 @@ async def main():
     logger.info("[STARTUP] 에러 알림 큐 처리 태스크 시작 완료")
 
     # ✅ 뉴스 크롤링
-    if g.NEWS_DELIVERY_INTERVAL_MINUTES > 0:
-        asyncio.create_task(tradingview_news_scheduler())
+    #if g.NEWS_DELIVERY_INTERVAL_MINUTES > 0:
+    #    asyncio.create_task(tradingview_news_scheduler())
 
     # ✅ 대화 참여 모니터링 태스크 추가
     from core.conversation_joiner import conversation_join_monitor

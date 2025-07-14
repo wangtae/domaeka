@@ -160,6 +160,7 @@ async def _send_message(writer, packet):
     """
     순수하게 메시지 전송만 담당하는 내부 함수
     레거시 코드 없이 단순히 패킷을 전송하는 역할만 수행
+    Writer Lock을 사용하여 동시성 문제 해결
     """
     message = json.dumps(packet, ensure_ascii=False) + '\n'
     message = sanitize_surrogates(message)
@@ -190,18 +191,25 @@ async def _send_message(writer, packet):
         logger.warning(f"[SEND_MESSAGE_INTERNAL][WRITER_CLOSING] writer가 이미 닫혀있어 전송할 수 없음 → 타겟: {target}, writer: {writer}")
         return False
 
-    try:
-        writer.write(encoded_message)
-        await writer.drain()
-        logger.debug(f"[SEND_MESSAGE_INTERNAL][WRITER] 메시지 전송 성공 → 타겟: {target}, 메시지: {message.strip()[:100]}...")
-        return True
+    # Writer Lock 확인 및 생성
+    if writer not in g.writer_locks:
+        g.writer_locks[writer] = asyncio.Lock()
+        logger.debug(f"[WRITER_LOCK] 새로운 writer lock 생성 → writer: {writer}")
 
-    except asyncio.TimeoutError:
-        logger.error(f"[SEND_MESSAGE_INTERNAL][WRITER_TIMEOUT] writer.drain() 타임아웃 발생 → 타겟: {target}, writer: {writer}", exc_info=True)
-        return False
-    except Exception as e:
-        logger.error(f"[SEND_MESSAGE_INTERNAL][WRITER_FAIL] 메시지 전송 실패 → 타겟: {target}, writer: {writer}, 오류: {e}", exc_info=True)
-        return False
+    # Lock을 사용한 안전한 전송
+    async with g.writer_locks[writer]:
+        try:
+            writer.write(encoded_message)
+            await writer.drain()
+            logger.debug(f"[SEND_MESSAGE_INTERNAL][WRITER] 메시지 전송 성공 → 타겟: {target}, 메시지: {message.strip()[:100]}...")
+            return True
+
+        except asyncio.TimeoutError:
+            logger.error(f"[SEND_MESSAGE_INTERNAL][WRITER_TIMEOUT] writer.drain() 타임아웃 발생 → 타겟: {target}, writer: {writer}", exc_info=True)
+            return False
+        except Exception as e:
+            logger.error(f"[SEND_MESSAGE_INTERNAL][WRITER_FAIL] 메시지 전송 실패 → 타겟: {target}, writer: {writer}, 오류: {e}", exc_info=True)
+            return False
 
 
 def verify_writer_belongs_to_bot(bot_name: str, writer) -> bool:
@@ -215,16 +223,16 @@ def verify_writer_belongs_to_bot(bot_name: str, writer) -> bool:
     Returns:
         bool: writer가 해당 봇에 속하면 True, 아니면 False
     """
-    if not hasattr(g, 'clients') or bot_name not in g.clients:
+    if not hasattr(g, 'clients'):
         return False
     
-    client_sessions = g.clients[bot_name]
-    
-    # 해당 봇의 모든 writer 중에서 일치하는지 확인
-    for session_addr, session_writer in client_sessions.items():
-        if session_writer is writer:
-            logger.debug(f"[WRITER_VERIFY] writer 검증 성공 → {bot_name} / {session_addr}")
-            return True
+    # bot_name으로 모든 클라이언트 검증
+    for client_key, client_sessions in g.clients.items():
+        if client_key[0] == bot_name:  # client_key[0]은 bot_name
+            for session_addr, session_writer in client_sessions.items():
+                if session_writer is writer:
+                    logger.debug(f"[WRITER_VERIFY] writer 검증 성공 → {client_key} / {session_addr}")
+                    return True
     
     logger.warning(f"[WRITER_VERIFY] writer 불일치 → {bot_name}에 속하지 않는 writer 발견")
     return False
@@ -353,8 +361,10 @@ async def send_ping_event_to_client(context):
     channel_id = context.get('channel_id')
     user_hash = context.get('user_hash')
 
-    # bot_name으로 writer 자동 검색
-    writer = get_valid_writer(bot_name) if bot_name else None
+    # context에 writer가 있으면 우선 사용, 없으면 bot_name으로 검색
+    writer = context.get('writer')
+    if not writer:
+        writer = get_valid_writer(bot_name) if bot_name else None
 
     if not writer or not room:
         logger.warning(f"[PING_EVENT] 필수 정보 누락 → writer: {bool(writer)}, room: {room}, bot_name: {bot_name}")

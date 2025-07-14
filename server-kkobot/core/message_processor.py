@@ -6,7 +6,7 @@ import re
 import json
 
 from core.db_utils import save_chat_to_db
-from core.utils.send_message import send_message_response, send_ping_event_to_client
+from core.utils.send_message import send_message_response
 from core.logger import logger
 from core.performance import Timer
 from core.utils.auth_utils import is_admin, is_admin_or_room_owner  # 방장 권한 함수 임포트 추가
@@ -115,7 +115,7 @@ async def process_message(received_message: dict):
             is_device_approved = await check_device_approved(bot_name, device_id)
             
             if not is_device_approved:
-                logger.info(f"[ANALYZE] 승인되지 않은 디바이스: {bot_name}@{device_id} - 제한 모드")
+                logger.warning(f"[ANALYZE] 승인되지 않은 디바이스: {bot_name}@{device_id} - 제한 모드")
 
     #logger.debug(f"[DEBUG] process_messenger_bot_message 호출 직전 message: {received_message}")
     if not disable_chat_logs:
@@ -208,17 +208,29 @@ async def handle_analyze_event(context: dict):
     bot_name = context.get('bot_name')
     
     if not is_device_approved:
-        logger.info(f"[ANALYZE] 승인되지 않은 디바이스 - 로깅만 수행: {bot_name}@{device_id}")
+        logger.warning(f"[ANALYZE] 승인되지 않은 디바이스 - 로깅만 수행: {bot_name}@{device_id}")
         # 승인되지 않은 디바이스는 로깅만 하고 응답하지 않음
         # 채팅 로그는 저장하지만 명령어 처리나 응답은 하지 않음
         text = context.get('text', '')
         sender = context.get('sender', '')
         room = context.get('room', '')
-        logger.info(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text} (승인상태: pending)")
+        logger.warning(f"[ANALYZE] 방:{room} 발신자:{sender} 메시지:{text} (승인상태: pending)")
         
         # 데이터베이스에 채팅 로그만 저장
         if g.db_pool:
-            await save_chat_to_db(context)
+            await save_chat_to_db(
+                g.db_pool,
+                room,
+                sender,
+                text,
+                bot_name,
+                context.get('is_mention', False),
+                context.get('client_timestamp'),
+                context.get('is_group_chat', False),
+                context.get('channel_id'),
+                context.get('log_id'),
+                context.get('user_hash')
+            )
         return  # 승인되지 않은 디바이스는 여기서 종료
 
     # 기존 디바이스 승인 상태 체크 (봇 전체)
@@ -552,14 +564,8 @@ async def handle_analyze_event(context: dict):
 
     final_response_text = "@no-reply"
 
-    # 무응답 카운트 및 ping 트리거
-    try:
-        g.no_reply_count.setdefault(bot_name, 0)
-        g.no_reply_count[bot_name] += 1
-        if g.no_reply_count[bot_name] % g.PING_TRIGGER_COUNT == 0:
-            await send_ping_event_to_client(context)
-    except Exception as e:
-        logger.error(f"[PING_MONITOR] ping 트리거 처리 중 오류: {e}")
+    # [DEPRECATED] 메시지 기반 ping 로직 제거됨
+    # 이제 클라이언트별 독립 타이머로 ping을 전송합니다
 
     # prefix가 없는 경우 명령어 처리하지 않음
     if not prefix:

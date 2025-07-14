@@ -124,7 +124,7 @@ async def is_nickname_alert_enabled(bot_name, channel_id):
         logger.warning(f"[NICKNAME_ALERT_CHECK_ERROR] bot={bot_name}, channel_id={channel_id} → {e}")
         return False
 
-async def save_or_update_bot_device(bot_name, ip_address, client_type, client_version, status_hint=None):
+async def save_or_update_bot_device(bot_name, device_id, ip_address, client_type, client_version, status_hint=None):
     db_pool = g.db_pool
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     async with db_pool.acquire() as conn:
@@ -133,17 +133,21 @@ async def save_or_update_bot_device(bot_name, ip_address, client_type, client_ve
             await cur.execute(
                 """
                 INSERT INTO kb_bot_devices
-                    (bot_name, ip_address, status, client_type, client_version, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (bot_name, device_id, ip_address, status, client_type, client_version, client_info, descryption, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     ip_address=VALUES(ip_address),
                     client_type=VALUES(client_type),
                     client_version=VALUES(client_version),
+                    client_info=VALUES(client_info),
+                    descryption=VALUES(descryption),
                     updated_at=VALUES(updated_at)
                 """,
-                (bot_name, ip_address, status_hint or 'pending', client_type, client_version, now, now)
+                (bot_name, device_id, ip_address, status_hint or 'pending', client_type, client_version, 
+                 json.dumps({"type": client_type, "version": client_version}, ensure_ascii=False), 
+                 "", now, now)
             )
-            logger.info(f"[BOT_DEVICE_UPSERT] 등록/갱신: bot={bot_name}, ip={ip_address}, status={status_hint or 'pending'}")
+            logger.info(f"[BOT_DEVICE_UPSERT] 등록/갱신: bot={bot_name}, device_id={device_id}, ip={ip_address}, status={status_hint or 'pending'}")
         await conn.commit()
 
 async def save_device_history(device_id, device_uuid, mac_address, ip_address, changed_at):

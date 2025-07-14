@@ -96,13 +96,17 @@ except Exception as e:
 BOT_CONCURRENCY = 30  # 봇별 동시 처리 제한
 ROOM_CONCURRENCY = 3  # 방별 동시 처리 제한 
 MAX_CONCURRENT_WORKERS = 31  # 전체 워커 수
+
+# ====== Writer 동시성 보호 ======
+writer_locks = {}  # {writer: asyncio.Lock} - Writer별 Lock 관리
 # ====== (이하 기존 코드) ======
 
 no_reply_count = {}  # {bot_name: count}
-PING_TRIGGER_COUNT = 10  # 예시값, 필요시 config에서 불러오도록 개선 가능
+PING_TRIGGER_COUNT = 10  # [DEPRECATED] 메시지 기반 ping 트리거 (사용 안 함)
+PING_INTERVAL = 30  # 클라이언트별 ping 전송 간격 (초)
 
 NEWS_DELIVERY_INTERVAL_MINUTES = 240  # 국장 장마감 브리핑
-NEWS_DELIVERY_LOOKBACK_MINUTES = 480  # 발송 가능한 최근시간
+NEWS_DELIVERY_LOOKBACK_MINUTES = 0 # 480  # 발송 가능한 최근시간
 
 # 대화 참여 모듈: 메시지 시간 범위 (초 단위) - 기본값 10분
 CONVERSATION_JOIN_HISTORY_SECONDS = 600  
@@ -303,7 +307,8 @@ for key, file_path in JSON_CONFIG_FILES.items():
 db_pool = None
 http_client = httpx.AsyncClient(timeout=30)
 
-clients = {}
+clients = {}  # {(bot_name, device_id): {addr: writer}} - bot_name과 device_id로 클라이언트 추적
+clients_by_addr = {}  # {addr: (bot_name, device_id)} - 주소로 클라이언트 찾기용
 last_sent = {}
 user_map = {}
 

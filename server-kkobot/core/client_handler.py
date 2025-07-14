@@ -6,10 +6,13 @@ from core.utils.send_message import send_message_response
 from core.logger import logger
 from core.performance import Timer
 from collections import defaultdict  # [추가] 세마포어용
-from core.globals import BOT_CONCURRENCY, ROOM_CONCURRENCY, MAX_CONCURRENT_WORKERS, schedule_rooms  # [설정값 import]
+from core.globals import BOT_CONCURRENCY, ROOM_CONCURRENCY, MAX_CONCURRENT_WORKERS, schedule_rooms, PING_INTERVAL  # [설정값 import]
 
 # ====== [추가] 메시지 큐 및 워커 관련 전역 변수 ======
 message_queue = asyncio.Queue()
+
+# ====== [추가] 클라이언트별 ping 태스크 관리 ======
+client_ping_tasks = {}  # {(bot_name, addr): asyncio.Task}
 
 # [추가] 봇별 세마포어
 bot_semaphores = defaultdict(lambda: asyncio.Semaphore(BOT_CONCURRENCY))
@@ -68,7 +71,12 @@ async def message_worker():
         display_key = received_message.get("channel_id") or received_message.get("room") or "unknown"
         with Timer(f"process_message for {received_message.get('bot_name')}/{display_key}"):
             try:
-                await process_message_with_limit(received_message)
+                # 5분 타임아웃 추가
+                async with asyncio.timeout(300):  # 300초 = 5분
+                    await process_message_with_limit(received_message)
+            except asyncio.TimeoutError:
+                logger.error(f"[WORKER_TIMEOUT] 메시지 처리 타임아웃 (5분 초과) → {received_message.get('bot_name')}/{display_key}")
+                await send_message_response(received_message, "@no-reply")
             except Exception as e:
                 logger.error(f"[ERROR] 메시지 처리 실패 → {e}", exc_info=True)
                 await send_message_response(received_message, "@no-reply")
@@ -76,16 +84,73 @@ async def message_worker():
                 message_queue.task_done()
 # ====== [끝] ======
 
+async def client_ping_task(bot_name, addr, writer):
+    """
+    클라이언트별 독립 ping 태스크
+    """
+    logger.info(f"[PING_TASK] ping 태스크 시작 → {bot_name} / {addr}")
+    
+    try:
+        from core.utils.send_message import send_ping_event_to_client
+    except ImportError as e:
+        logger.error(f"[PING_TASK] import 오류 → {bot_name} / {addr}: {e}")
+        return
+    
+    try:
+        while True:
+            # writer가 여전히 유효한지 확인
+            if writer.is_closing():
+                logger.info(f"[PING_TASK] 연결이 닫혀있어 ping 태스크 종료 → {bot_name} / {addr}")
+                break
+                
+            # ping 전송을 위한 context 생성
+            context = {
+                'bot_name': bot_name,
+                'channel_id': 'ping',
+                'room': 'PING',
+                'user_hash': 'system',
+                'writer': writer  # 특정 writer를 명시적으로 전달
+            }
+            
+            try:
+                success = await send_ping_event_to_client(context)
+                if success:
+                    logger.debug(f"[PING_TASK] ping 전송 성공 → {bot_name} / {addr}")
+                else:
+                    logger.warning(f"[PING_TASK] ping 전송 실패 → {bot_name} / {addr}")
+            except Exception as e:
+                logger.error(f"[PING_TASK] ping 전송 중 오류 → {bot_name} / {addr}: {e}")
+                
+            # 지정된 간격만큼 대기
+            await asyncio.sleep(PING_INTERVAL)
+                
+    except asyncio.CancelledError:
+        logger.info(f"[PING_TASK] ping 태스크 취소됨 → {bot_name} / {addr}")
+        raise
+    except Exception as e:
+        logger.error(f"[PING_TASK] ping 태스크 오류 → {bot_name} / {addr}: {e}")
+    finally:
+        logger.info(f"[PING_TASK] ping 태스크 종료 → {bot_name} / {addr}")
+
 async def handle_client(reader, writer):
     addr = writer.get_extra_info('peername')
     logger.info(f"[CONNECT] 클라이언트 연결됨 → {addr}\n\n\n")
 
     bot_name = None
     bot_version = None
+    device_id = None
 
     try:
-        # ✅ 강화된 핸드셰이크 수신 및 디바이스 등록
-        handshake = await reader.readline()
+        # ✅ 강화된 핸드셰이크 수신 및 디바이스 등록 (10초 타임아웃)
+        try:
+            async with asyncio.timeout(10):
+                handshake = await reader.readline()
+        except asyncio.TimeoutError:
+            logger.error(f"[ERROR] 핸드셰이크 타임아웃 → {addr}")
+            writer.close()
+            await writer.wait_closed()
+            return
+        
         handshake_data = json.loads(handshake.decode().strip())
         
         # 필수 필드 확인 (구 버전 호환성 지원)
@@ -141,7 +206,22 @@ async def handle_client(reader, writer):
             await writer.wait_closed()
             return
 
-        g.clients.setdefault(bot_name, {})[addr] = writer
+        # 클라이언트 키 생성
+        client_key = (bot_name, device_id)
+        
+        # 기존 연결이 있으면 종료
+        if client_key in g.clients:
+            old_sessions = g.clients[client_key]
+            for old_addr, old_writer in list(old_sessions.items()):
+                if old_writer and not old_writer.is_closing():
+                    logger.warning(f"[CLIENT] 기존 연결 종료: {client_key} at {old_addr}")
+                    old_writer.close()
+                    await old_writer.wait_closed()
+        
+        # 새 연결 등록
+        g.clients.setdefault(client_key, {})[addr] = writer
+        g.clients_by_addr[addr] = client_key
+        logger.info(f"[CLIENT] 클라이언트 등록: {client_key} from {addr}")
         # g.room_to_writer.setdefault(bot_name, {})  # 레거시 코드 제거
 
         logger.info(f"[HANDSHAKE COMPLETE] 봇 이름 등록 완료 → {bot_name}")
@@ -175,16 +255,30 @@ async def handle_client(reader, writer):
             ip_address = addr[0] if isinstance(addr, tuple) else str(addr)
             await save_or_update_bot_device(
                 bot_name=bot_name,
+                device_id=device_id,  # device_id 추가
                 ip_address=ip_address,
-                client_type="MessengerBotR",  # 또는 handshake에서 받는 client_type
+                client_type=client_type,  # handshake에서 받은 client_type 사용
                 client_version=bot_version or "unknown",
                 status_hint=None
             )
         except Exception as e:
             logger.error(f"[BOT_DEVICE_REGISTER] 최초 등록/갱신 실패: {e}")
 
+        # ====== [추가] 클라이언트별 ping 태스크 시작 ======
+        ping_task_key = (bot_name, device_id)
+        ping_task = asyncio.create_task(client_ping_task(bot_name, addr, writer))
+        client_ping_tasks[ping_task_key] = ping_task
+        logger.info(f"[PING_TASK] 클라이언트 ping 태스크 시작됨 → {client_key} / {addr}")
+
         while True:
-            data = await reader.readline()
+            # 메시지 수신 (30초 타임아웃)
+            try:
+                async with asyncio.timeout(30):
+                    data = await reader.readline()
+            except asyncio.TimeoutError:
+                logger.warning(f"[TIMEOUT] 읽기 타임아웃 → {addr}")
+                continue
+                
             if not data:
                 logger.info(f"[DISCONNECT] 연결 끊김 → {addr}")
                 break
@@ -230,14 +324,41 @@ async def handle_client(reader, writer):
 
     finally:
         # 연결 종료 시 정리
-        if bot_name:
-            if addr in g.clients.get(bot_name, {}):
-                del g.clients[bot_name][addr]
+        if bot_name and device_id:
+            client_key = (bot_name, device_id)
+            if client_key in g.clients and addr in g.clients[client_key]:
+                # writer_locks 정리
+                old_writer = g.clients[client_key].get(addr)
+                if old_writer and old_writer in g.writer_locks:
+                    del g.writer_locks[old_writer]
+                    logger.debug(f"[WRITER_LOCK] writer lock 정리 완료 → writer: {old_writer}")
+                del g.clients[client_key][addr]
+                
+                # 해당 클라이언트의 모든 연결이 종료되면 키 자체 제거
+                if not g.clients[client_key]:
+                    del g.clients[client_key]
+            
+            # ====== [추가] ping 태스크 정리 ======
+            ping_task_key = (bot_name, device_id)
+            if ping_task_key in client_ping_tasks:
+                ping_task = client_ping_tasks[ping_task_key]
+                if not ping_task.done():
+                    ping_task.cancel()
+                    try:
+                        await ping_task
+                    except asyncio.CancelledError:
+                        pass
+                del client_ping_tasks[ping_task_key]
+                logger.info(f"[PING_TASK] ping 태스크 정리 완료 → {bot_name} / {device_id}")
+            
             logger.info(f"[CLEANUP] 클라이언트 정리 완료 → {bot_name} / {addr}")
 
         try:
             writer.close()
-            await writer.wait_closed()
+            async with asyncio.timeout(5):  # writer 종료 타임아웃
+                await writer.wait_closed()
+        except asyncio.TimeoutError:
+            logger.error(f"[ERROR] writer 종료 타임아웃 → {addr}")
         except Exception as e:
             logger.error(f"[ERROR] writer 종료 중 오류 발생 → {e}")
 
@@ -262,9 +383,10 @@ async def disconnect_client(bot_name, addr, writer):
         #     del room_to_writer[cid]
         #     logger.debug(f"[DISCONNECT] room_to_writer 제거 → {bot_name} / {cid}")
 
-        # g.clients에서만 제거
-        g.clients.get(bot_name, {}).pop(addr, None)
-        logger.debug(f"[DISCONNECT] g.clients에서 제거 → {bot_name} / {addr}")
+        # g.clients_by_addr에서 제거
+        if addr in g.clients_by_addr:
+            del g.clients_by_addr[addr]
+        logger.debug(f"[DISCONNECT] 클라이언트 정리 완료 → {client_key} / {addr}")
 
     # ✅ writer 종료 처리
     try:

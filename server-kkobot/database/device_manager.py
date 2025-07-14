@@ -69,13 +69,13 @@ async def validate_and_register_device(handshake_data: Dict[str, Any], client_ad
                     # 새로운 디바이스 등록 (pending 상태)
                     insert_sql = """
                     INSERT INTO kb_bot_devices 
-                    (bot_name, device_id, ip_address, status, client_type, client_version, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    (bot_name, device_id, ip_address, status, client_type, client_version, client_info, descryption, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     now = datetime.now()
                     await cursor.execute(insert_sql, (
                         bot_name, device_id, device_ip, 'pending', 
-                        client_type, version, now, now
+                        client_type, version, device_info, '', now, now
                     ))
                     
                     logger.info(f"[DEVICE] 새로운 디바이스 등록: {bot_name}@{device_id} (상태: pending)")
