@@ -4,3 +4,4 @@ cryptography==45.0.3
 PyMySQL>=1.0.2
 Pillow>=9.0.0
 pytz>=2023.3
+psutil>=7.0.0  # 시스템 모니터링 (CPU, 메모리, 디스크 사용률)

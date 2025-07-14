@@ -24,7 +24,7 @@ import signal
 import os
 from core.logger import logger
 from core.server import start_server
-from core.ping_scheduler import ping_manager
+from core.ping_scheduler_v2 import ping_scheduler
 from database.connection import init_db_pool
 from database.db_utils import create_tables, get_server_process_config, update_server_process_status, list_server_processes
 import core.globals as g
@@ -42,8 +42,8 @@ async def shutdown():
         # 종료 이벤트 설정
         g.shutdown_event.set()
         
-        # ping 관리자 중지
-        await ping_manager.stop()
+        # ping 스케줄러 중지
+        await ping_scheduler.stop()
         
         # 모든 클라이언트 연결 종료
         for addr, writer in list(g.clients.items()):
@@ -253,8 +253,13 @@ async def main():
             await create_tables()
             logger.info("[STARTUP] 데이터베이스 연결 및 테이블 확인 완료")
         
-        # ping 관리자 시작
-        await ping_manager.start()
+        # ping 스케줄러 시작
+        await ping_scheduler.start()
+        
+        # 시스템 모니터링 시작
+        from database.system_monitor import system_monitor_task
+        asyncio.create_task(system_monitor_task(interval=g.SYSTEM_MONITOR_INTERVAL))
+        logger.info(f"[STARTUP] 시스템 모니터링 태스크 시작 완료 (주기: {g.SYSTEM_MONITOR_INTERVAL}초)")
         
         # 프로세스 상태 업데이트 (실행 중)
         if g.process_name:

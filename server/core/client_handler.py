@@ -7,7 +7,48 @@ from typing import Dict, Any
 from core.logger import logger
 from core.message_processor import process_message
 from core.client_status import client_status_manager
+from core.ping_scheduler_v2 import ping_scheduler
 import core.globals as g
+
+
+async def ping_client_periodically(writer: asyncio.StreamWriter, client_addr, bot_name: str):
+    """
+    클라이언트에게 주기적으로 ping 전송
+    
+    Args:
+        writer: 스트림 라이터
+        client_addr: 클라이언트 주소
+        bot_name: 봇 이름
+    """
+    import random
+    # 클라이언트별로 분산시키기 위해 0~5초 랜덤 대기
+    initial_delay = random.uniform(0, 5)
+    await asyncio.sleep(initial_delay)
+    
+    while not g.shutdown_event.is_set():
+        try:
+            if writer.is_closing():
+                logger.debug(f"[PING] Writer가 닫혀있음, ping 중단: {client_addr}")
+                break
+                
+            # ping 메시지 전송
+            from core.response_utils import send_json_response
+            ping_message = {
+                'event': 'ping',
+                'data': {
+                    'bot_name': bot_name,
+                    'server_timestamp': int(asyncio.get_event_loop().time() * 1000)
+                }
+            }
+            await send_json_response(writer, ping_message)
+            logger.debug(f"[PING] 전송 완료: {client_addr}")
+            
+            # 다음 ping까지 대기
+            await asyncio.sleep(g.PING_INTERVAL_SECONDS)
+            
+        except Exception as e:
+            logger.error(f"[PING] 전송 실패: {client_addr} - {e}")
+            break
 
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -21,16 +62,78 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     client_addr = writer.get_extra_info('peername')
     logger.info(f"[CLIENT] 새 클라이언트 연결: {client_addr}")
     
-    # 클라이언트 등록
-    g.clients[client_addr] = writer
-    
     # 핸드셰이크 처리
     handshake_completed = False
+    bot_name = None
+    device_id = None
+    client_key = None  # (bot_name, device_id) 튜플
     
     try:
+        # 핸드셰이크 타임아웃 처리 (10초)
+        if not handshake_completed:
+            try:
+                async with asyncio.timeout(10):
+                    data = await reader.readline()
+                    if not data:
+                        logger.error(f"[HANDSHAKE] 핸드셰이크 데이터 없음: {client_addr}")
+                        writer.close()
+                        await writer.wait_closed()
+                        return
+                    
+                    # 핸드셰이크 처리
+                    message = data.decode('utf-8').strip()
+                    logger.debug(f"[RECV] {client_addr}: {message}")
+                    
+                    handshake_result = await handle_handshake(message, client_addr, writer)
+                    if isinstance(handshake_result, tuple) and len(handshake_result) == 3:
+                        handshake_completed, bot_name, device_id = handshake_result
+                        if handshake_completed:
+                            # 클라이언트 등록
+                            client_key = (bot_name, device_id)
+                            
+                            # 기존 연결이 있으면 종료
+                            if client_key in g.clients:
+                                old_writer = g.clients[client_key]
+                                if old_writer and not old_writer.is_closing():
+                                    logger.warning(f"[CLIENT] 기존 연결 종료: {client_key}")
+                                    old_writer.close()
+                                    await old_writer.wait_closed()
+                            
+                            # 새 연결 등록
+                            g.clients[client_key] = writer
+                            g.clients_by_addr[client_addr] = client_key
+                            logger.info(f"[CLIENT] 클라이언트 등록: {client_key} from {client_addr}")
+                            
+                            # 새로운 ping 스케줄러에 클라이언트 추가
+                            await ping_scheduler.add_client(bot_name, device_id, writer)
+                            logger.info(f"[CLIENT] Ping 스케줄러 등록: {client_key}")
+                        else:
+                            logger.error(f"[HANDSHAKE] 핸드셰이크 실패: {client_addr}")
+                            writer.close()
+                            await writer.wait_closed()
+                            return
+                    else:
+                        logger.error(f"[HANDSHAKE] 핸드셰이크 실패: {client_addr}")
+                        writer.close()
+                        await writer.wait_closed()
+                        return
+                        
+            except asyncio.TimeoutError:
+                logger.error(f"[HANDSHAKE] 핸드셰이크 타임아웃: {client_addr}")
+                writer.close()
+                await writer.wait_closed()
+                return
+        
+        # 일반 메시지 처리 루프
         while not g.shutdown_event.is_set():
-            # 클라이언트로부터 메시지 수신
-            data = await reader.readline()
+            # 클라이언트로부터 메시지 수신 (30초 타임아웃)
+            try:
+                async with asyncio.timeout(30):
+                    data = await reader.readline()
+            except asyncio.TimeoutError:
+                logger.warning(f"[TIMEOUT] 읽기 타임아웃: {client_addr}")
+                continue
+                
             if not data:
                 logger.warning(f"[CLIENT] 클라이언트 연결 종료: {client_addr}")
                 break
@@ -40,16 +143,24 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 message = data.decode('utf-8').strip()
                 logger.debug(f"[RECV] {client_addr}: {message}")
                 
-                # 핸드셰이크 처리 (첫 번째 메시지)
-                if not handshake_completed:
-                    handshake_completed = await handle_handshake(message, client_addr, writer)
-                    continue  # 핸드셰이크 메시지는 여기서 처리 종료
-                
                 # 일반 메시지 처리 (핸드셰이크 완료 후에만)
                 json_message = json.loads(message)
                 json_message['writer'] = writer
                 json_message['client_addr'] = client_addr
-                await process_message(json_message) 
+                
+                # ping 이벤트 처리
+                if json_message.get('event') == 'ping':
+                    from database.ping_monitor import save_ping_result
+                    ping_data = json_message.get('data', {})
+                    # bot_name과 device_id 정보 추가
+                    ping_data['bot_name'] = bot_name
+                    ping_data['device_id'] = device_id
+                    await save_ping_result(ping_data)
+                    continue  # ping 패킷은 일반 메시지 처리로 넘기지 않음
+                
+                # 메시지를 큐에 추가 (워커가 처리)
+                await g.message_queue.put(json_message)
+                logger.debug(f"[CLIENT] 메시지를 큐에 추가: {client_addr}") 
                 
             except json.JSONDecodeError as e:
                 logger.error(f"[CLIENT] JSON 파싱 실패: {e}")
@@ -61,16 +172,26 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     except Exception as e:
         logger.error(f"[CLIENT] 연결 오류: {client_addr} -> {e}")
     finally:
+        # ping 스케줄러에서 클라이언트 제거
+        if bot_name and device_id:
+            await ping_scheduler.remove_client(bot_name, device_id)
+            logger.debug(f"[CLIENT] Ping 스케줄러에서 제거: ({bot_name}, {device_id})")
+        
         # 클라이언트 정리
-        if client_addr in g.clients:
-            del g.clients[client_addr]
+        if client_addr in g.clients_by_addr:
+            client_key = g.clients_by_addr[client_addr]
+            if client_key in g.clients:
+                del g.clients[client_key]
+            del g.clients_by_addr[client_addr]
+            logger.info(f"[CLIENT] 클라이언트 제거: {client_key}")
+        
         client_status_manager.remove_client(str(client_addr))
         writer.close()
         await writer.wait_closed()
         logger.info(f"[CLIENT] 클라이언트 연결 해제: {client_addr}")
 
 
-async def handle_handshake(message: str, client_addr, writer) -> bool:
+async def handle_handshake(message: str, client_addr, writer):
     """
     클라이언트 핸드셰이크 처리 및 kb_bot_devices 테이블 연동
     
@@ -80,7 +201,7 @@ async def handle_handshake(message: str, client_addr, writer) -> bool:
         writer: 스트림 라이터
         
     Returns:
-        bool: 핸드셰이크 성공 여부
+        tuple: (핸드셰이크 성공 여부, bot_name, device_id) 또는 bool
     """
     try:
         # 핸드셰이크 메시지는 JSON 형태여야 함
@@ -135,7 +256,7 @@ async def handle_handshake(message: str, client_addr, writer) -> bool:
         await send_json_response(writer, handshake_response)
         logger.info(f"[HANDSHAKE] 응답 전송 완료: {client_addr}")
         
-        return True
+        return True, bot_name, device_id
         
     except json.JSONDecodeError:
         logger.error(f"[HANDSHAKE] JSON 파싱 실패: {client_addr}")

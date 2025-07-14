@@ -7,6 +7,7 @@ import json
 from typing import Dict, Any
 from core.logger import logger
 from core.client_handler import handle_client
+from core.worker import start_workers, stop_workers
 import core.globals as g
 
 
@@ -22,6 +23,9 @@ async def start_server(port: int):
 
     try:
         logger.info(f"[SERVER INIT] TCP 서버 시작 시도 → {TCP_IP}:{TCP_PORT}")
+        
+        # 워커 풀 시작
+        await start_workers()
 
         server = await asyncio.start_server(
             handle_client,
@@ -48,6 +52,9 @@ async def start_server(port: int):
             # 종료 이벤트를 기다림
             await g.shutdown_event.wait()
             logger.info("[SERVER] 종료 이벤트 수신, 서버 종료 중...")
+            
+            # 워커 풀 종료
+            await stop_workers()
 
     except Exception as e:
         logger.error(f"[SERVER ERROR] TCP 서버 실행 실패 → {e}", exc_info=True)

@@ -55,8 +55,8 @@ async def process_message(received_message: dict):
             }
             await handle_analyze_event(context)
             
-            # analyze 메시지 처리 후 ping 카운터 체크
-            await ping_manager.check_and_send_ping()
+            # analyze 메시지 처리 후 ping 카운터 체크 (비활성화 - 30초 주기 방식으로 변경)
+            # await ping_manager.check_and_send_ping()
             
         elif event == 'ping':
             # ping 이벤트 처리

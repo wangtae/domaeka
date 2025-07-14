@@ -41,20 +41,30 @@ class PingManager:
         logger.info(f"[PING_MANAGER] 메시지 {g.PING_MESSAGE_INTERVAL}개 도달 - ping 전송 시작")
         
         # 연결된 모든 클라이언트에게 ping 전송
-        for client_addr, writer in list(g.clients.items()):
+        for client_key, writer in list(g.clients.items()):
             try:
                 if writer.is_closing():
-                    logger.warning(f"[PING_MANAGER] 닫힌 연결 제거: {client_addr}")
-                    del g.clients[client_addr]
+                    logger.warning(f"[PING_MANAGER] 닫힌 연결 제거: {client_key}")
+                    del g.clients[client_key]
                     continue
                     
+                # client_key는 (bot_name, device_id) 튜플
+                bot_name, device_id = client_key
+                
+                # 주소 찾기 (역방향 조회)
+                client_addr = None
+                for addr, key in g.clients_by_addr.items():
+                    if key == client_key:
+                        client_addr = addr
+                        break
+                
                 from core.client_status import client_status_manager
-                client_info = client_status_manager.get_client_info(str(client_addr))
+                client_info = client_status_manager.get_client_info(str(client_addr)) if client_addr else None
 
                 ping_data = {
                     "event": "ping",
                     "data": {
-                        "bot_name": client_info.bot_name if client_info else "",
+                        "bot_name": bot_name,  # client_key에서 가져온 값 사용
                         "channel_id": client_info.channel_id if client_info else "",
                         "room": client_info.room if client_info else "",
                         "user_hash": client_info.user_hash if client_info else "",
@@ -69,13 +79,13 @@ class PingManager:
                 
                 await send_json_response(writer, ping_data)
                 ping_count += 1
-                logger.info(f"[PING_MANAGER] ping 전송: {client_addr}")
+                logger.info(f"[PING_MANAGER] ping 전송: {client_key}")
                 
             except Exception as e:
-                logger.error(f"[PING_MANAGER] ping 전송 실패 {client_addr}: {e}")
+                logger.error(f"[PING_MANAGER] ping 전송 실패 {client_key}: {e}")
                 # 전송 실패한 클라이언트는 연결 목록에서 제거
                 try:
-                    del g.clients[client_addr]
+                    del g.clients[client_key]
                 except KeyError:
                     pass
                     
