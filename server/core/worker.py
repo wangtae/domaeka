@@ -38,9 +38,10 @@ async def process_message_with_limit(message: Dict[str, Any]):
         message: 처리할 메시지
     """
     bot_name = message.get('bot_name')
-    channel_id = message.get('channel_id') or message.get('channelId', '')
-    sender = message.get('sender')
-    text = message.get('text')
+    data = message.get('data', {})
+    channel_id = data.get('channel_id') or data.get('channelId', '')
+    sender = data.get('sender')
+    text = data.get('text')
     
     if not channel_id or channel_id == 'None':
         logger.error(f"[SEMAPHORE] channel_id 누락: {message}")
