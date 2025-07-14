@@ -42,7 +42,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 
                 # 핸드셰이크 처리 (첫 번째 메시지)
                 if not handshake_completed:
-                    handshake_completed = await handle_handshake(message, client_addr)
+                    handshake_completed = await handle_handshake(message, client_addr, writer)
                     continue  # 핸드셰이크 메시지는 여기서 처리 종료
                 
                 # 일반 메시지 처리 (핸드셰이크 완료 후에만)
@@ -70,13 +70,14 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         logger.info(f"[CLIENT] 클라이언트 연결 해제: {client_addr}")
 
 
-async def handle_handshake(message: str, client_addr) -> bool:
+async def handle_handshake(message: str, client_addr, writer) -> bool:
     """
     클라이언트 핸드셰이크 처리 및 kb_bot_devices 테이블 연동
     
     Args:
         message: 핸드셰이크 메시지
         client_addr: 클라이언트 주소
+        writer: 스트림 라이터
         
     Returns:
         bool: 핸드셰이크 성공 여부
@@ -119,6 +120,20 @@ async def handle_handshake(message: str, client_addr) -> bool:
         client_info = client_status_manager.register_client(str(client_addr), handshake_data)
         
         logger.info(f"[HANDSHAKE] 성공: {client_addr} - {bot_name} v{version} (상태: {handshake_data['approval_status']})")
+        
+        # 핸드셰이크 성공 응답 전송
+        from core.response_utils import send_json_response
+        handshake_response = {
+            'event': 'handshakeComplete',
+            'data': {
+                'success': True,
+                'approved': is_approved,
+                'message': status_message,
+                'server_version': '1.0.0'
+            }
+        }
+        await send_json_response(writer, handshake_response)
+        logger.info(f"[HANDSHAKE] 응답 전송 완료: {client_addr}")
         
         return True
         

@@ -119,6 +119,21 @@ async def handle_client(reader, writer):
             # 승인되지 않았어도 연결은 허용하되, 제한 모드로 동작
         
         logger.info(f"[HANDSHAKE] 성공: {addr} - {bot_name} v{bot_version} (상태: {'approved' if is_approved else 'pending'})")
+        
+        # 핸드셰이크 성공 응답 전송
+        handshake_response = {
+            'event': 'handshakeComplete',
+            'data': {
+                'success': True,
+                'approved': is_approved,
+                'message': status_message,
+                'server_version': '1.0.0'
+            }
+        }
+        response_message = json.dumps(handshake_response, ensure_ascii=False) + '\n'
+        writer.write(response_message.encode('utf-8'))
+        await writer.drain()
+        logger.info(f"[HANDSHAKE] 응답 전송 완료: {addr}")
 
         if not bot_name:
             logger.error(f"[ERROR] 핸드셰이크 실패 → {addr}")
