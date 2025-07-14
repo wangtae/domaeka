@@ -97,6 +97,9 @@ BOT_CONCURRENCY = 30  # 봇별 동시 처리 제한
 ROOM_CONCURRENCY = 3  # 방별 동시 처리 제한 
 MAX_CONCURRENT_WORKERS = 31  # 전체 워커 수
 
+# ====== 시스템 모니터링 설정 ======
+SYSTEM_MONITOR_INTERVAL = 300  # 시스템 모니터링 주기 (초), 기본값: 5분
+
 # ====== Writer 동시성 보호 ======
 writer_locks = {}  # {writer: asyncio.Lock} - Writer별 Lock 관리
 # ====== (이하 기존 코드) ======

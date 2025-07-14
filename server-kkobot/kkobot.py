@@ -21,12 +21,24 @@ from core.command_manager import command_manager
 shutdown_event = asyncio.Event()  # ✅ 종료 이벤트 객체 추가
 
 
-# ✅ 시스템 상태 모니터링 (옵션)
-async def system_monitor(interval=60):
+# ✅ 시스템 상태 모니터링 (DB 저장 포함)
+async def system_monitor(interval=300):
+    """시스템 모니터링 + DB 저장"""
+    from core.utils.system_monitor import save_system_status
+    
     while not shutdown_event.is_set():
-        cpu = psutil.cpu_percent()
-        memory = psutil.virtual_memory().percent
-        logger.debug(f"[SYSTEM] CPU 사용률: {cpu}% / 메모리 사용률: {memory}%\n\n")
+        try:
+            # 시스템 상태 DB 저장
+            await save_system_status()
+            
+            # 로그 출력 (디버그용)
+            cpu = psutil.cpu_percent()
+            memory = psutil.virtual_memory().percent
+            logger.debug(f"[SYSTEM] CPU 사용률: {cpu}% / 메모리 사용률: {memory}%\n\n")
+            
+        except Exception as e:
+            logger.error(f"[SYSTEM_MONITOR] 모니터링 오류: {e}")
+            
         await asyncio.sleep(interval)
 
 
@@ -136,8 +148,8 @@ async def main():
     asyncio.create_task(fetch_schedule_data())
     asyncio.create_task(scheduled_sender())
 
-    # ✅ 시스템 모니터링 (CPU/메모리)
-    asyncio.create_task(system_monitor(interval=60))
+    # ✅ 시스템 모니터링 (CPU/메모리 + DB 저장)
+    asyncio.create_task(system_monitor(interval=g.SYSTEM_MONITOR_INTERVAL))
 
     # ✅ 에러 알림 큐 처리 태스크 추가
     asyncio.create_task(notification_queue_processor())
