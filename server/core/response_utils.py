@@ -61,7 +61,7 @@ async def send_message(writer, packet):
         logger.error(f"[SEND_MESSAGE] 메시지 전송 실패 → 타겟: {target}, writer: {writer}, 오류: {e}")
 
 
-async def send_message_response(context: Union[Dict[str, Any], asyncio.StreamWriter], message: Union[str, List[str]], room: str = None, channel_id: Optional[str] = None):
+async def send_message_response(context: Union[Dict[str, Any], asyncio.StreamWriter], message: Union[str, List[str]], room: str = None, channel_id: Optional[str] = None, media_wait_time: Optional[int] = None):
     """
     메시지 응답 전송 - kkobot 호환 버전
     
@@ -70,6 +70,7 @@ async def send_message_response(context: Union[Dict[str, Any], asyncio.StreamWri
         message: 전송할 메시지 또는 메시지 리스트
         room: 채팅방 이름 (하위 호환성)
         channel_id: 채널 ID (하위 호환성)
+        media_wait_time: 미디어 전송 대기시간 (밀리초) - v3.2.1 클라이언트 지원
     """
     # 하위 호환성: 이전 방식 지원
     if isinstance(context, asyncio.StreamWriter):
@@ -100,6 +101,10 @@ async def send_message_response(context: Union[Dict[str, Any], asyncio.StreamWri
             'bot_name': bot_name
         }
     }
+    
+    # media_wait_time이 지정되면 패킷에 추가
+    if media_wait_time and media_wait_time > 0:
+        base_packet['data']['media_wait_time'] = media_wait_time
 
     # 리스트 형태의 메시지 처리
     if isinstance(message, list):

@@ -10,6 +10,7 @@ from core.response_utils import send_message_response
 import re
 import os
 from typing import Dict, Any
+from core.command_definitions import parse_command_parameters, validate_command_parameters
 
 # 한글 폰트 경로들 (kkobot과 동일하게 적용)
 KOREAN_FONT_PATHS = [
@@ -40,7 +41,11 @@ def find_korean_font(font_size=40):
 
 async def handle_imgext_command(context: Dict[str, Any], text: str):
     """
-    IMGEXT 명령어 처리
+    IMGEXT 명령어 처리 - 새로운 파라미터 시스템 사용
+    
+    사용법:
+    - # IMGEXT {텍스트}
+    - # IMGEXT --media-wait-time=8000 {텍스트}
     
     Args:
         context: 메시지 컨텍스트
@@ -51,21 +56,35 @@ async def handle_imgext_command(context: Dict[str, Any], text: str):
         if not writer:
             logger.error("[IMGEXT] Writer not found in context")
             return
-            
         
-        # 프롬프트 추출
-        prompt = text.replace("# IMGEXT", "").strip()
-        if not prompt:
-            await send_message_response(context, "사용법: # IMGEXT {텍스트}")
+        # 새로운 파라미터 시스템으로 파싱
+        params, remaining_text = parse_command_parameters("# IMGEXT", text)
+        
+        # 파라미터 유효성 검증
+        is_valid, error_msg = validate_command_parameters("# IMGEXT", params)
+        if not is_valid:
+            await send_message_response(context, f"오류: {error_msg}")
             return
         
+        # 텍스트가 없으면 오류
+        if not remaining_text:
+            await send_message_response(context, "사용법: # IMGEXT [--media-wait-time=밀리초] {텍스트}")
+            return
+        
+        # 파라미터 추출
+        media_wait_time = params.get("media_wait_time")
+        
+        if media_wait_time:
+            logger.info(f"[IMGEXT] media_wait_time 옵션 감지: {media_wait_time}ms")
+        
         # 멀티 이미지 생성
-        response = await handle_multiple_image_command(prompt)
+        response = await handle_multiple_image_command(remaining_text)
         
-        # 응답 전송
-        await send_message_response(context, response)
+        # 응답 전송 (media_wait_time 옵션 포함)
+        await send_message_response(context, response, media_wait_time=media_wait_time)
         
-        logger.info(f"[IMGEXT] 명령어 처리 완료: {prompt}")
+        logger.info(f"[IMGEXT] 명령어 처리 완료: {remaining_text}" + 
+                   (f" (대기시간: {media_wait_time}ms)" if media_wait_time else ""))
         
     except Exception as e:
         logger.error(f"[IMGEXT] 명령어 처리 오류: {e}")
