@@ -45,6 +45,14 @@ ROOM_CONCURRENCY = 3  # 방별 동시 처리 제한 (기본값)
 # 시스템 모니터링 설정
 SYSTEM_MONITOR_INTERVAL = 300  # 시스템 모니터링 주기 (초), 기본값: 5분
 
+# 메시지 크기 제한
+MAX_MESSAGE_SIZE = 1024 * 1024  # 1MB - 원시 TCP 데이터 최대 크기
+MAX_KAKAOTALK_MESSAGE_LENGTH = 65000  # 카카오톡 최대 글자수
+
+# 전체 연결 수 제한
+MAX_CONCURRENT_CONNECTIONS = 100  # 최대 동시 TCP 연결 수
+connection_semaphore = None  # asyncio.Semaphore 인스턴스 (서버 시작시 초기화)
+
 # 세마포어 관리
 bot_semaphores = defaultdict(lambda: asyncio.Semaphore(BOT_CONCURRENCY))  # 봇별 세마포어
 room_semaphores = {}  # {channel_id: asyncio.Semaphore} - 방별 세마포어

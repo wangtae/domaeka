@@ -24,13 +24,19 @@ async def start_server(port: int):
     try:
         logger.info(f"[SERVER INIT] TCP 서버 시작 시도 → {TCP_IP}:{TCP_PORT}")
         
+        # 전체 연결 수 제한 세마포어 초기화
+        g.connection_semaphore = asyncio.Semaphore(g.MAX_CONCURRENT_CONNECTIONS)
+        logger.info(f"[SERVER INIT] 최대 동시 연결 수 제한: {g.MAX_CONCURRENT_CONNECTIONS}")
+        
         # 워커 풀 시작
         await start_workers()
 
+        # StreamReader의 기본 limit 설정 (메시지 크기 제한과 동일하게)
         server = await asyncio.start_server(
             handle_client,
             TCP_IP,
-            TCP_PORT
+            TCP_PORT,
+            limit=g.MAX_MESSAGE_SIZE  # StreamReader 버퍼 크기 제한
         )
 
         # TCP_NODELAY 활성화

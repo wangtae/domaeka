@@ -42,9 +42,20 @@ async def send_message(writer, packet):
         return
 
     try:
+        # 응답 메시지 크기 체크
+        text = packet.get('data', {}).get('text', '')
+        if isinstance(text, str) and len(text) > g.MAX_KAKAOTALK_MESSAGE_LENGTH:
+            logger.warning(f"[SEND_MESSAGE] 응답 메시지 길이 초과: {len(text)} 글자. 메시지를 잘라서 전송합니다.")
+            packet['data']['text'] = text[:g.MAX_KAKAOTALK_MESSAGE_LENGTH]
+        
         message = json.dumps(packet, ensure_ascii=False) + '\n'
         message = sanitize_surrogates(message)
         encoded_message = message.encode('utf-8')
+        
+        # 인코딩된 메시지 크기 체크
+        if len(encoded_message) > g.MAX_MESSAGE_SIZE:
+            logger.error(f"[SEND_MESSAGE] 인코딩된 메시지 크기 초과: {len(encoded_message)} 바이트")
+            return
 
         channel_id = packet.get('data', {}).get('channel_id')
         room = packet.get('data', {}).get('room')
@@ -166,10 +177,17 @@ async def send_json_response(writer: asyncio.StreamWriter, response: Dict[str, A
             
         message = json.dumps(response, ensure_ascii=False) + '\n'
         message = sanitize_surrogates(message)
-        writer.write(message.encode('utf-8'))
+        encoded_message = message.encode('utf-8')
+        
+        # 인코딩된 메시지 크기 체크
+        if len(encoded_message) > g.MAX_MESSAGE_SIZE:
+            logger.error(f"[JSON_RESPONSE] 인코딩된 메시지 크기 초과: {len(encoded_message)} 바이트")
+            return
+            
+        writer.write(encoded_message)
         await writer.drain()
         
-        logger.debug(f"[JSON_RESPONSE] 전송 완료: {message.strip()}")
+        logger.debug(f"[JSON_RESPONSE] 전송 완료: {message.strip()[:100]}...")
         
     except Exception as e:
         logger.error(f"[JSON_RESPONSE] 전송 실패: {e}")

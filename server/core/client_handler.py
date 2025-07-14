@@ -11,6 +11,49 @@ from core.ping_scheduler_v2 import ping_scheduler
 import core.globals as g
 
 
+async def read_limited_line(reader: asyncio.StreamReader, max_size: int = None):
+    """
+    크기 제한이 있는 readline 구현
+    
+    Args:
+        reader: 스트림 리더
+        max_size: 최대 읽기 크기 (기본값: MAX_MESSAGE_SIZE)
+    
+    Returns:
+        bytes: 읽은 데이터 (None이면 연결 종료)
+        
+    Raises:
+        ValueError: 메시지 크기가 제한을 초과한 경우
+    """
+    if max_size is None:
+        max_size = g.MAX_MESSAGE_SIZE
+    
+    try:
+        # readuntil을 사용하여 줄바꿈까지 읽기
+        # limit 매개변수로 최대 크기 제한
+        data = await reader.readuntil(b'\n')
+        
+        # 크기 체크
+        if len(data) > max_size:
+            raise ValueError(f"메시지 크기가 {max_size} 바이트를 초과했습니다: {len(data)} 바이트")
+            
+        return data
+        
+    except asyncio.LimitOverrunError as e:
+        # StreamReader의 내부 버퍼 제한 초과
+        raise ValueError(f"메시지 크기가 스트림 버퍼 제한을 초과했습니다: {e}")
+    except asyncio.IncompleteReadError as e:
+        # 연결이 종료되어 데이터가 불완전한 경우
+        if e.partial:
+            return e.partial
+        return None
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.error(f"[READ] 데이터 읽기 오류: {e}")
+        raise
+
+
 async def ping_client_periodically(writer: asyncio.StreamWriter, client_addr, bot_name: str):
     """
     클라이언트에게 주기적으로 ping 전송
@@ -60,7 +103,16 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         writer: 스트림 라이터
     """
     client_addr = writer.get_extra_info('peername')
-    logger.info(f"[CLIENT] 새 클라이언트 연결: {client_addr}")
+    
+    # 전체 연결 수 제한 적용
+    try:
+        await g.connection_semaphore.acquire()
+        logger.info(f"[CLIENT] 새 클라이언트 연결: {client_addr} (활성 연결: {g.MAX_CONCURRENT_CONNECTIONS - g.connection_semaphore._value}/{g.MAX_CONCURRENT_CONNECTIONS})")
+    except Exception as e:
+        logger.error(f"[CLIENT] 연결 수 제한 초과: {client_addr} - {e}")
+        writer.close()
+        await writer.wait_closed()
+        return
     
     # 핸드셰이크 처리
     handshake_completed = False
@@ -73,16 +125,22 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         if not handshake_completed:
             try:
                 async with asyncio.timeout(10):
-                    data = await reader.readline()
-                    if not data:
-                        logger.error(f"[HANDSHAKE] 핸드셰이크 데이터 없음: {client_addr}")
+                    try:
+                        data = await read_limited_line(reader)
+                        if not data:
+                            logger.error(f"[HANDSHAKE] 핸드셰이크 데이터 없음: {client_addr}")
+                            writer.close()
+                            await writer.wait_closed()
+                            return
+                        
+                        # 핸드셰이크 처리
+                        message = data.decode('utf-8').strip()
+                        logger.debug(f"[RECV] {client_addr}: {message}")
+                    except ValueError as e:
+                        logger.error(f"[HANDSHAKE] 메시지 크기 초과: {client_addr} - {e}")
                         writer.close()
                         await writer.wait_closed()
                         return
-                    
-                    # 핸드셰이크 처리
-                    message = data.decode('utf-8').strip()
-                    logger.debug(f"[RECV] {client_addr}: {message}")
                     
                     handshake_result = await handle_handshake(message, client_addr, writer)
                     if isinstance(handshake_result, tuple) and len(handshake_result) == 3:
@@ -129,7 +187,12 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             # 클라이언트로부터 메시지 수신 (30초 타임아웃)
             try:
                 async with asyncio.timeout(30):
-                    data = await reader.readline()
+                    try:
+                        data = await read_limited_line(reader)
+                    except ValueError as e:
+                        logger.error(f"[CLIENT] 메시지 크기 초과: {client_addr} - {e}")
+                        # 크기 초과 시 연결 종료
+                        break
             except asyncio.TimeoutError:
                 logger.warning(f"[TIMEOUT] 읽기 타임아웃: {client_addr}")
                 continue
@@ -141,10 +204,26 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             # JSON 메시지 파싱 및 처리
             try:
                 message = data.decode('utf-8').strip()
+                
+                # 디코딩된 문자열 크기도 체크 (메모리 공격 방지)
+                if len(message) > g.MAX_MESSAGE_SIZE:
+                    logger.error(f"[CLIENT] 디코딩된 메시지 크기 초과: {client_addr} - {len(message)} 바이트")
+                    break
+                    
                 logger.debug(f"[RECV] {client_addr}: {message}")
                 
                 # 일반 메시지 처리 (핸드셰이크 완료 후에만)
                 json_message = json.loads(message)
+                
+                # 카카오톡 메시지 내용 길이 체크
+                if json_message.get('event') == 'analyze':
+                    msg_data = json_message.get('data', {})
+                    msg_text = msg_data.get('text', '')
+                    if len(msg_text) > g.MAX_KAKAOTALK_MESSAGE_LENGTH:
+                        logger.warning(f"[CLIENT] 카카오톡 메시지 길이 초과: {client_addr} - {len(msg_text)} 글자")
+                        # 길이 초과 메시지는 처리하지 않고 무시
+                        continue
+                
                 # 순환 참조 방지: writer 객체 대신 필요한 정보만 전달
                 json_message['bot_name'] = bot_name
                 json_message['device_id'] = device_id
@@ -191,7 +270,10 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         client_status_manager.remove_client(str(client_addr))
         writer.close()
         await writer.wait_closed()
-        logger.info(f"[CLIENT] 클라이언트 연결 해제: {client_addr}")
+        
+        # 연결 수 제한 세마포어 해제
+        g.connection_semaphore.release()
+        logger.info(f"[CLIENT] 클라이언트 연결 해제: {client_addr} (활성 연결: {g.MAX_CONCURRENT_CONNECTIONS - g.connection_semaphore._value - 1}/{g.MAX_CONCURRENT_CONNECTIONS})")
 
 
 async def handle_handshake(message: str, client_addr, writer):
