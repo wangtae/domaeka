@@ -145,7 +145,10 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 
                 # 일반 메시지 처리 (핸드셰이크 완료 후에만)
                 json_message = json.loads(message)
-                json_message['writer'] = writer
+                # 순환 참조 방지: writer 객체 대신 필요한 정보만 전달
+                json_message['bot_name'] = bot_name
+                json_message['device_id'] = device_id
+                json_message['client_key'] = (bot_name, device_id)
                 json_message['client_addr'] = client_addr
                 
                 # ping 이벤트 처리

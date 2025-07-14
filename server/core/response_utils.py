@@ -79,7 +79,12 @@ async def send_message_response(context: Union[Dict[str, Any], asyncio.StreamWri
         channel_id_val = channel_id
         bot_name = ""
     else:
-        writer = context.get('writer')
+        # client_key로 writer 가져오기
+        client_key = context.get('client_key')
+        writer = None
+        if client_key and client_key in g.clients:
+            writer = g.clients[client_key]
+        
         room_name = context.get('room', '')
         channel_id_val = context.get('channel_id', '')
         bot_name = context.get('bot_name', '')
@@ -181,7 +186,12 @@ async def send_ping_event_to_client(context):
     bot_name = context.get('bot_name')
     channel_id = context.get('channel_id')
     user_hash = context.get('user_hash')
-    writer = context.get('writer')
+    
+    # client_key로 writer 가져오기
+    client_key = context.get('client_key')
+    writer = None
+    if client_key and client_key in g.clients:
+        writer = g.clients[client_key]
 
     if not writer or not room:
         logger.warning(f"[PING_EVENT] 필수 정보 누락 → writer: {bool(writer)}, room: {room}, bot_name: {bot_name}")

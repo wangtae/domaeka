@@ -50,7 +50,7 @@ async def process_message(received_message: dict):
                 'timestamp': data.get('timestamp'),
                 'bot_name': data.get('botName'),
                 'auth': data.get('auth'),
-                'writer': received_message.get('writer'),
+                'client_key': received_message.get('client_key'),
                 'client_addr': str(received_message.get('client_addr', '')),
             }
             await handle_analyze_event(context)
@@ -83,7 +83,7 @@ async def handle_analyze_event(context: Dict[str, Any]):
     bot_name = context.get('bot_name', '')
     channel_id = context.get('channel_id', '')
     user_hash = context.get('user_hash', '')
-    writer = context.get('writer')
+    client_key = context.get('client_key')  # (bot_name, device_id) 튜플
     client_addr = context.get('client_addr')
     
     if client_addr:
@@ -155,7 +155,7 @@ async def handle_ping_event(received_message: Dict[str, Any]):
         received_message: 클라이언트로부터 받은 ping 메시지
     """
     data = received_message.get('data', {})
-    writer = received_message.get('writer')
+    client_key = received_message.get('client_key')
     client_addr = received_message.get('client_addr')
     
     logger.info(f"[PING] 핑 수신 - 클라이언트: {client_addr}")
@@ -229,7 +229,12 @@ async def handle_ping_event(received_message: Dict[str, Any]):
         }
     }
     
-    await send_json_response(writer, response)
-    logger.info(f"[PING] 새로운 ping - 응답 전송 완료: {client_addr}")
+    # client_key로 writer 가져오기
+    if client_key and client_key in g.clients:
+        writer = g.clients[client_key]
+        await send_json_response(writer, response)
+        logger.info(f"[PING] 새로운 ping - 응답 전송 완료: {client_addr}")
+    else:
+        logger.warning(f"[PING] writer를 찾을 수 없음: {client_key}")
 
 

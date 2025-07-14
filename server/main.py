@@ -261,6 +261,11 @@ async def main():
         asyncio.create_task(system_monitor_task(interval=g.SYSTEM_MONITOR_INTERVAL))
         logger.info(f"[STARTUP] 시스템 모니터링 태스크 시작 완료 (주기: {g.SYSTEM_MONITOR_INTERVAL}초)")
         
+        # 메모리 관리자 시작
+        from core.memory_manager import memory_manager
+        await memory_manager.start()
+        logger.info("[STARTUP] 메모리 관리자 시작 완료")
+        
         # 프로세스 상태 업데이트 (실행 중)
         if g.process_name:
             await update_server_process_status(g.process_name, 'running', os.getpid())
