@@ -40,6 +40,29 @@ $log_settings['enabled'] = $_POST['log_enabled'] ? true : false;
 $log_settings['retention_days'] = $_POST['log_retention_days'] ? (int)$_POST['log_retention_days'] : 30;
 $log_settings_json = json_encode($log_settings, JSON_UNESCAPED_UNICODE);
 
+// 배정 정보 처리
+$owner_type = null;
+$owner_id = null;
+
+$user_info = dmk_get_admin_auth($member['mb_id']);
+if ($user_info['type'] == 'super' || $user_info['type'] == 'distributor') {
+    // 지점이 선택된 경우
+    if (!empty($_POST['br_id'])) {
+        $owner_type = 'branch';
+        $owner_id = $_POST['br_id'];
+    }
+    // 대리점이 선택된 경우
+    else if (!empty($_POST['ag_id'])) {
+        $owner_type = 'agency';
+        $owner_id = $_POST['ag_id'];
+    }
+    // 총판이 선택된 경우
+    else if (!empty($_POST['dt_id'])) {
+        $owner_type = 'distributor';
+        $owner_id = $_POST['dt_id'];
+    }
+}
+
 // 상태 변경 로그용 데이터
 $old_status = $room['status'];
 $status_changed = ($old_status != $status);
@@ -51,6 +74,11 @@ $sql = " UPDATE kb_rooms SET
          rejection_reason = '$rejection_reason',
          log_settings = '$log_settings_json',
          updated_at = NOW() ";
+
+// 배정 정보가 있으면 추가
+if ($owner_type && $owner_id) {
+    $sql .= ", owner_type = '$owner_type', owner_id = '$owner_id' ";
+}
 
 // 상태가 승인으로 변경되는 경우 승인 시간 기록
 if ($status == 'approved' && $old_status != 'approved') {

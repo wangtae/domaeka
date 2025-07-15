@@ -82,6 +82,100 @@ if($room['log_settings']) {
         <th scope="row">최종 업데이트</th>
         <td><?php echo $room['updated_at'] ? $room['updated_at'] : '수정 이력 없음'?></td>
     </tr>
+    <?php
+    // 관리자 권한 체크 - 본사와 총판만 지점 배정 가능
+    $user_info = dmk_get_admin_auth($member['mb_id']);
+    if ($user_info['type'] == 'super' || $user_info['type'] == 'distributor'):
+    ?>
+    <tr>
+        <th scope="row"><label for="owner_type">배정 지점<strong class="sound_only">필수</strong></label></th>
+        <td>
+            <?php if ($user_info['type'] == 'super'): ?>
+            <!-- 본사는 총판부터 선택 -->
+            <select name="dt_id" id="dt_id" class="frm_input" onchange="loadAgencies(this.value)">
+                <option value="">총판 선택</option>
+                <?php
+                $sql = " SELECT dt_id, dt_name FROM g5_dmk_distributors ORDER BY dt_name ";
+                $result_dt = sql_query($sql);
+                while($dt = sql_fetch_array($result_dt)) {
+                    $selected = '';
+                    if ($room['owner_type'] == 'distributor' && $room['owner_id'] == $dt['dt_id']) {
+                        $selected = 'selected';
+                    }
+                    echo '<option value="'.$dt['dt_id'].'" '.$selected.'>'.$dt['dt_name'].'</option>';
+                }
+                ?>
+            </select>
+            <?php else: ?>
+            <!-- 총판은 자신의 ID를 hidden으로 -->
+            <input type="hidden" name="dt_id" id="dt_id" value="<?php echo $user_info['key']?>">
+            <?php echo $user_info['name']?> (총판)
+            <?php endif; ?>
+            
+            <select name="ag_id" id="ag_id" class="frm_input" onchange="loadBranches(this.value)" style="margin-left:5px;">
+                <option value="">대리점 선택</option>
+                <?php if ($room['owner_type'] == 'agency' || $room['owner_type'] == 'branch'): ?>
+                <?php
+                // 기존 대리점 정보 로드
+                $dt_id_for_agency = '';
+                if ($room['owner_type'] == 'agency') {
+                    $sql = " SELECT dt_id FROM g5_dmk_agencies WHERE ag_id = '{$room['owner_id']}' ";
+                    $ag_info = sql_fetch($sql);
+                    $dt_id_for_agency = $ag_info['dt_id'];
+                } else if ($room['owner_type'] == 'branch') {
+                    $sql = " SELECT a.dt_id FROM g5_dmk_agencies a 
+                             JOIN g5_dmk_branches b ON a.ag_id = b.ag_id 
+                             WHERE b.br_id = '{$room['owner_id']}' ";
+                    $br_info = sql_fetch($sql);
+                    $dt_id_for_agency = $br_info['dt_id'];
+                }
+                
+                if ($dt_id_for_agency) {
+                    $sql = " SELECT ag_id, ag_name FROM g5_dmk_agencies WHERE dt_id = '$dt_id_for_agency' ORDER BY ag_name ";
+                    $result_ag = sql_query($sql);
+                    while($ag = sql_fetch_array($result_ag)) {
+                        $selected = '';
+                        if ($room['owner_type'] == 'agency' && $room['owner_id'] == $ag['ag_id']) {
+                            $selected = 'selected';
+                        } else if ($room['owner_type'] == 'branch') {
+                            $sql2 = " SELECT ag_id FROM g5_dmk_branches WHERE br_id = '{$room['owner_id']}' ";
+                            $br_ag = sql_fetch($sql2);
+                            if ($br_ag['ag_id'] == $ag['ag_id']) {
+                                $selected = 'selected';
+                            }
+                        }
+                        echo '<option value="'.$ag['ag_id'].'" '.$selected.'>'.$ag['ag_name'].'</option>';
+                    }
+                }
+                ?>
+                <?php endif; ?>
+            </select>
+            
+            <select name="br_id" id="br_id" class="frm_input" style="margin-left:5px;">
+                <option value="">지점 선택</option>
+                <?php if ($room['owner_type'] == 'branch'): ?>
+                <?php
+                // 기존 지점 정보 로드
+                $sql = " SELECT ag_id FROM g5_dmk_branches WHERE br_id = '{$room['owner_id']}' ";
+                $br_info = sql_fetch($sql);
+                if ($br_info['ag_id']) {
+                    $sql = " SELECT br_id, br_name FROM g5_dmk_branches WHERE ag_id = '{$br_info['ag_id']}' ORDER BY br_name ";
+                    $result_br = sql_query($sql);
+                    while($br = sql_fetch_array($result_br)) {
+                        $selected = ($room['owner_id'] == $br['br_id']) ? 'selected' : '';
+                        echo '<option value="'.$br['br_id'].'" '.$selected.'>'.$br['br_name'].'</option>';
+                    }
+                }
+                ?>
+                <?php endif; ?>
+            </select>
+            
+            <div class="frm_info">
+                채팅방을 관리할 지점을 선택하세요. 지점을 선택하지 않으면 상위 레벨(대리점/총판)이 관리합니다.
+            </div>
+        </td>
+    </tr>
+    <?php endif; ?>
     <tr>
         <th scope="row"><label for="status">상태<strong class="sound_only">필수</strong></label></th>
         <td>
@@ -153,6 +247,66 @@ if($room['log_settings']) {
 </form>
 
 <script>
+function loadAgencies(dt_id) {
+    var ag_select = document.getElementById('ag_id');
+    var br_select = document.getElementById('br_id');
+    
+    // 대리점, 지점 선택 초기화
+    ag_select.innerHTML = '<option value="">대리점 선택</option>';
+    br_select.innerHTML = '<option value="">지점 선택</option>';
+    
+    if (!dt_id) return;
+    
+    // AJAX로 대리점 목록 로드
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', './ajax.get_agencies.php?dt_id=' + dt_id, true);
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            try {
+                var agencies = JSON.parse(xhr.responseText);
+                agencies.forEach(function(agency) {
+                    var option = document.createElement('option');
+                    option.value = agency.ag_id;
+                    option.textContent = agency.ag_name;
+                    ag_select.appendChild(option);
+                });
+            } catch (e) {
+                console.error('대리점 목록 로드 실패:', e);
+            }
+        }
+    };
+    xhr.send();
+}
+
+function loadBranches(ag_id) {
+    var br_select = document.getElementById('br_id');
+    
+    // 지점 선택 초기화
+    br_select.innerHTML = '<option value="">지점 선택</option>';
+    
+    if (!ag_id) return;
+    
+    // AJAX로 지점 목록 로드
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', './ajax.get_branches.php?ag_id=' + ag_id, true);
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            try {
+                var branches = JSON.parse(xhr.responseText);
+                branches.forEach(function(branch) {
+                    var option = document.createElement('option');
+                    option.value = branch.br_id;
+                    option.textContent = branch.br_name;
+                    br_select.appendChild(option);
+                });
+            } catch (e) {
+                console.error('지점 목록 로드 실패:', e);
+            }
+        }
+    };
+    xhr.send();
+}
+
 function froom_submit(f)
 {
     if (!f.status.value) {
@@ -171,6 +325,45 @@ function froom_submit(f)
     
     return true;
 }
+
+// 페이지 로드 시 기존 값이 있으면 하위 목록 로드
+<?php if ($user_info['type'] == 'super' && $room['owner_type'] && $room['owner_id']): ?>
+document.addEventListener('DOMContentLoaded', function() {
+    <?php if ($room['owner_type'] == 'distributor'): ?>
+    // 총판이 선택된 경우
+    loadAgencies('<?php echo $room['owner_id']?>');
+    <?php elseif ($room['owner_type'] == 'agency'): ?>
+    // 대리점이 선택된 경우
+    <?php
+    $sql = " SELECT dt_id FROM g5_dmk_agencies WHERE ag_id = '{$room['owner_id']}' ";
+    $ag_info = sql_fetch($sql);
+    ?>
+    document.getElementById('dt_id').value = '<?php echo $ag_info['dt_id']?>';
+    loadAgencies('<?php echo $ag_info['dt_id']?>');
+    setTimeout(function() {
+        document.getElementById('ag_id').value = '<?php echo $room['owner_id']?>';
+        loadBranches('<?php echo $room['owner_id']?>');
+    }, 500);
+    <?php elseif ($room['owner_type'] == 'branch'): ?>
+    // 지점이 선택된 경우
+    <?php
+    $sql = " SELECT a.dt_id, b.ag_id FROM g5_dmk_agencies a 
+             JOIN g5_dmk_branches b ON a.ag_id = b.ag_id 
+             WHERE b.br_id = '{$room['owner_id']}' ";
+    $br_info = sql_fetch($sql);
+    ?>
+    document.getElementById('dt_id').value = '<?php echo $br_info['dt_id']?>';
+    loadAgencies('<?php echo $br_info['dt_id']?>');
+    setTimeout(function() {
+        document.getElementById('ag_id').value = '<?php echo $br_info['ag_id']?>';
+        loadBranches('<?php echo $br_info['ag_id']?>');
+        setTimeout(function() {
+            document.getElementById('br_id').value = '<?php echo $room['owner_id']?>';
+        }, 500);
+    }, 500);
+    <?php endif; ?>
+});
+<?php endif; ?>
 </script>
 
 <?php
