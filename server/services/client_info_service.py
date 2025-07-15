@@ -8,13 +8,13 @@ from core.response_utils import send_message_response
 from core.client_status import client_status_manager
 
 
-async def handle_client_info_command(context: Dict[str, Any], text: str):
+async def handle_client_info_command(context: Dict[str, Any], prompt: str):
     """
     클라이언트 정보 조회 명령어 처리
     
     Args:
         context: 메시지 컨텍스트
-        text: 명령어 텍스트
+        prompt: 명령어 뒤의 텍스트 (예: "summary")
     """
     try:
         writer = context.get("writer")
@@ -23,10 +23,10 @@ async def handle_client_info_command(context: Dict[str, Any], text: str):
             return
             
         
-        # 명령어 파싱
-        command_parts = text.strip().split()
+        # 프롬프트 파싱
+        prompt = prompt.strip()
         
-        if len(command_parts) == 2 and command_parts[1] == "summary":
+        if prompt == "summary":
             # 클라이언트 요약 정보
             summary = client_status_manager.get_client_summary()
             
@@ -71,7 +71,7 @@ async def handle_client_info_command(context: Dict[str, Any], text: str):
             
             await send_message_response(context, usage_text)
         
-        logger.info(f"[CLIENT_INFO] 명령어 처리 완료: {text}")
+        logger.info(f"[CLIENT_INFO] 명령어 처리 완료: {prompt}")
         
     except Exception as e:
         logger.error(f"[CLIENT_INFO] 명령어 처리 오류: {e}")

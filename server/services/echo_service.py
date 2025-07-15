@@ -6,16 +6,15 @@ from core.logger import logger
 from core.response_utils import send_message_response
 
 
-async def handle_echo_command(context: Dict[str, Any], text: str):
+async def handle_echo_command(context: Dict[str, Any], prompt: str):
     """
     에코 명령어 처리
     
     Args:
         context: 메시지 컨텍스트
-        text: 입력 텍스트
+        prompt: 에코할 내용
     """
-    # '# echo ' 제거하여 에코할 내용 추출
-    echo_content = text[7:].strip()  # '# echo ' 길이만큼 제거
+    echo_content = prompt.strip()
     
     room = context.get('room', '')
     channel_id = context.get('channel_id', '')

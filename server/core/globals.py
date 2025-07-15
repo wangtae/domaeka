@@ -59,3 +59,34 @@ connection_semaphore = None  # asyncio.Semaphore 인스턴스 (서버 시작시 
 bot_semaphores = defaultdict(lambda: asyncio.Semaphore(BOT_CONCURRENCY))  # 봇별 세마포어
 room_semaphores = {}  # {channel_id: asyncio.Semaphore} - 방별 세마포어
 room_semaphore_lock = asyncio.Lock()  # 세마포어 생성/갱신 보호용
+
+# 명령어 정의
+COMMAND_PREFIX_MAP = {
+    "# echo": {
+        "type": "echo",
+        "desc": "에코 테스트 (# echo {내용})",
+        "admin_only": False,
+        "prompt_required": True
+    },
+    "# client_info": {
+        "type": "client_info",
+        "desc": "클라이언트 정보 조회",
+        "admin_only": True,
+        "prompt_required": False
+    },
+    "# IMGEXT": {
+        "type": "imgext",
+        "desc": "이미지 추출 테스트",
+        "admin_only": False,
+        "prompt_required": True
+    },
+    "# reload bots-config": {
+        "type": "reload_bots_config",
+        "desc": "봇 승인 상태 및 설정을 DB에서 다시 로드",
+        "admin_only": True,
+        "prompt_required": False
+    }
+}
+
+# 활성화된 명령어 접두어 리스트
+ENABLED_PREFIXES = list(COMMAND_PREFIX_MAP.keys())
