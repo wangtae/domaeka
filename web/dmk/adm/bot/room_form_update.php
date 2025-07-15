@@ -32,7 +32,7 @@ if (!$_POST['status']) {
 // 데이터 준비
 $status = $_POST['status'];
 $description = $_POST['description'];
-$rejection_reason = $_POST['rejection_reason'];
+$rejection_reason = isset($_POST['rejection_reason']) ? $_POST['rejection_reason'] : '';
 
 // 로그 설정 준비
 $log_settings = [];

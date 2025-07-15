@@ -194,7 +194,7 @@ if($room['log_settings']) {
     <tr>
         <th scope="row"><label for="description">설명/메모</label></th>
         <td>
-            <textarea name="description" id="description" class="frm_input" rows="5" cols="50" placeholder="채팅방에 대한 설명이나 메모를 입력하세요"><?php echo get_text($room['description'])?></textarea>
+            <textarea name="description" id="description" class="frm_input" rows="5" cols="50" placeholder="채팅방에 대한 설명이나 메모를 입력하세요"><?php echo get_text($room['descryption'])?></textarea>
             <div class="frm_info">
                 관리자용 메모입니다. 채팅방 관리에 필요한 정보를 기록하세요.
             </div>
@@ -204,7 +204,7 @@ if($room['log_settings']) {
     <tr>
         <th scope="row"><label for="rejection_reason">거부/차단 사유</label></th>
         <td>
-            <textarea name="rejection_reason" id="rejection_reason" class="frm_input" rows="3" cols="50" placeholder="거부 또는 차단 사유를 입력하세요"><?php echo get_text($room['rejection_reason'])?></textarea>
+            <textarea name="rejection_reason" id="rejection_reason" class="frm_input" rows="3" cols="50" placeholder="거부 또는 차단 사유를 입력하세요"><?php echo isset($room['rejection_reason']) ? get_text($room['rejection_reason']) : ''?></textarea>
         </td>
     </tr>
     <?php endif; ?>

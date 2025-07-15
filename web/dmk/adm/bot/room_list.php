@@ -43,48 +43,22 @@ $sql = " SELECT COUNT(*) as cnt FROM kb_rooms $where ";
 $row = sql_fetch($sql);
 $total_count = $row['cnt'];
 
-// 디버깅용 출력
-echo "<!-- Debug: Total count = $total_count -->";
-echo "<!-- Debug: Where clause = $where -->";
-
 // 페이징
 $rows = 20;
 $total_page = ceil($total_count / $rows);
 if(!$page) $page = 1;
 $start = ($page - 1) * $rows;
 
-// 채팅방 목록 조회 - 배정 정보 JOIN
-$sql = " SELECT r.*, 
-         CASE 
-            WHEN r.owner_type = 'branch' THEN b.br_name
-            WHEN r.owner_type = 'agency' THEN a.ag_name
-            WHEN r.owner_type = 'distributor' THEN d.dt_name
-            ELSE NULL
-         END as owner_name
-         FROM kb_rooms r
-         LEFT JOIN g5_dmk_branches b ON r.owner_type = 'branch' AND r.owner_id = b.br_id
-         LEFT JOIN g5_dmk_agencies a ON r.owner_type = 'agency' AND r.owner_id = a.ag_id
-         LEFT JOIN g5_dmk_distributors d ON r.owner_type = 'distributor' AND r.owner_id = d.dt_id
-         $where 
-         ORDER BY r.created_at DESC 
-         LIMIT $start, $rows ";
+// 채팅방 목록 조회 - 일단 간단하게
+$sql = " SELECT * FROM kb_rooms $where ORDER BY created_at DESC LIMIT $start, $rows ";
 $result = sql_query($sql);
 
-// 디버깅용 - 쿼리 직접 실행
-echo "<!-- Debug Query: $sql -->";
-
-// 테이블 존재 여부 확인
-$table_check = sql_query("SHOW TABLES LIKE 'kb_rooms'");
-if(sql_num_rows($table_check) == 0) {
-    echo "<!-- Debug: kb_rooms 테이블이 존재하지 않습니다 -->";
+// 쿼리 결과 확인
+if($result) {
+    $num_rows = sql_num_rows($result);
+    echo "<!-- Query returned $num_rows rows -->";
 } else {
-    echo "<!-- Debug: kb_rooms 테이블 존재 확인 -->";
-    
-    // 데이터 직접 확인
-    $simple_query = "SELECT * FROM kb_rooms LIMIT 5";
-    $simple_result = sql_query($simple_query);
-    $simple_count = sql_num_rows($simple_result);
-    echo "<!-- Debug: Simple query count = $simple_count -->";
+    echo "<!-- Query failed -->";
 }
 
 // 상태별 통계
@@ -153,6 +127,11 @@ while($row = sql_fetch_array($stats_result)) {
     <?php
     for ($i=0; $row=sql_fetch_array($result); $i++) {
         $bg = 'bg'.($i%2);
+        
+        // 디버깅용
+        if($i == 0) {
+            echo "<!-- First row data: " . print_r($row, true) . " -->";
+        }
         
         // 상태별 클래스와 텍스트
         $status_class = '';
@@ -224,12 +203,14 @@ while($row = sql_fetch_array($stats_result)) {
         </td>
         <td><?php echo get_text($row['bot_name'])?></td>
         <td class="td_left">
-            <?php if($row['owner_name']): ?>
-                <?php echo get_text($row['owner_name'])?>
+            <?php if($row['owner_type'] && $row['owner_id']): ?>
+                <?php echo get_text($row['owner_id'])?>
                 <?php if($row['owner_type'] == 'distributor'): ?>
                     <small>(총판)</small>
                 <?php elseif($row['owner_type'] == 'agency'): ?>
                     <small>(대리점)</small>
+                <?php elseif($row['owner_type'] == 'branch'): ?>
+                    <small>(지점)</small>
                 <?php endif; ?>
             <?php else: ?>
                 <span class="fc_999">미배정</span>
