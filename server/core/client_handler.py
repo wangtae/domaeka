@@ -29,6 +29,10 @@ async def read_limited_line(reader: asyncio.StreamReader, max_size: int = None):
         max_size = g.MAX_MESSAGE_SIZE
     
     try:
+        # EOF 체크
+        if reader.at_eof():
+            return None
+            
         # readuntil을 사용하여 줄바꿈까지 읽기
         # limit 매개변수로 최대 크기 제한
         data = await reader.readuntil(b'\n')
@@ -49,9 +53,16 @@ async def read_limited_line(reader: asyncio.StreamReader, max_size: int = None):
         return None
     except asyncio.CancelledError:
         raise
+    except (ConnectionResetError, BrokenPipeError, OSError) as e:
+        logger.debug(f"[READ] 연결 종료: {e}")
+        return None
+    except asyncio.TimeoutError:
+        # TimeoutError는 상위로 전파
+        raise
     except Exception as e:
         logger.error(f"[READ] 데이터 읽기 오류: {e}")
-        raise
+        # 알 수 없는 오류는 None 반환하여 연결 종료
+        return None
 
 
 async def ping_client_periodically(writer: asyncio.StreamWriter, client_addr, bot_name: str):
@@ -187,6 +198,9 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 return
         
         # 일반 메시지 처리 루프
+        timeout_count = 0
+        max_timeout_retries = 3
+        
         while not g.shutdown_event.is_set():
             # 클라이언트로부터 메시지 수신 (30초 타임아웃)
             try:
@@ -194,12 +208,18 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     try:
                         client_max_size = g.client_max_message_sizes.get(client_key, g.MAX_MESSAGE_SIZE) if client_key else g.MAX_MESSAGE_SIZE
                         data = await read_limited_line(reader, client_max_size)
+                        # 데이터를 성공적으로 읽었으면 타임아웃 카운트 리셋
+                        timeout_count = 0
                     except ValueError as e:
                         logger.error(f"[CLIENT] 메시지 크기 초과: {client_addr} - {e}")
                         # 크기 초과 시 연결 종료
                         break
             except asyncio.TimeoutError:
-                logger.warning(f"[TIMEOUT] 읽기 타임아웃: {client_addr}")
+                timeout_count += 1
+                logger.warning(f"[TIMEOUT] 읽기 타임아웃 ({timeout_count}/{max_timeout_retries}): {client_addr}")
+                if timeout_count >= max_timeout_retries:
+                    logger.error(f"[TIMEOUT] 최대 타임아웃 횟수 초과, 연결 종료: {client_addr}")
+                    break
                 continue
                 
             if not data:

@@ -11,8 +11,11 @@ if (defined('G5_DEVELOPER_IPS') && G5_DEVELOPER_IPS) {
     $current_ip = $_SERVER['REMOTE_ADDR'];
 
     if (in_array($current_ip, $developer_ips)) {
-        error_reporting(E_ALL);
-        ini_set('display_errors', 1);
+        //error_reporting(E_ALL);
+        //ini_set('display_errors', 1);
+
+        error_reporting(E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING);
+        ini_set('display_errors', 0);
     } else {
         error_reporting(E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING);
         ini_set('display_errors', 0);

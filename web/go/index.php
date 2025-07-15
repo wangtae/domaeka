@@ -409,57 +409,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     <h1 class="text-xl font-bold" id="orderTitle"><?php echo date('n.j', strtotime($selected_date)) . '.' . get_yoil($selected_date) ?>요일 주문</h1>
                     <span class="text-sm font-normal text-gray-500" id="orderDate">주문일 <?php echo date('Y년 m월 d일', strtotime($selected_date)) ?></span>
                 </div>
-                <?php
-                // 배송 타입별 상품 수 계산
-                $pickup_count = 0;
-                $delivery_count = 0;
                 
-                // 모든 상품의 배송 타입 확인
-                $delivery_type_sql = " SELECT COUNT(DISTINCT i.it_id) as cnt, c.dmk_delivery_type
-                                      FROM g5_shop_item i
-                                      INNER JOIN g5_shop_category c ON i.ca_id = c.ca_id
-                                      WHERE i.dmk_br_id = '$br_id'
-                                      AND i.it_use = '1'
-                                      AND i.it_soldout = '0'
-                                      AND i.it_stock_qty > 0
-                                      AND c.ca_use = '1'
-                                      AND (
-                                          (i.dmk_it_valid_start_date IS NULL AND i.dmk_it_valid_end_date IS NULL)
-                                          OR 
-                                          (
-                                              (i.dmk_it_valid_start_date IS NULL OR i.dmk_it_valid_start_date <= '$current_date')
-                                              AND 
-                                              (i.dmk_it_valid_end_date IS NULL OR i.dmk_it_valid_end_date >= '$current_date')
-                                          )
-                                      )
-                                      GROUP BY c.dmk_delivery_type ";
-                $type_result = sql_query($delivery_type_sql);
-                while ($type_row = sql_fetch_array($type_result)) {
-                    $types = explode(',', $type_row['dmk_delivery_type']);
-                    if (in_array('pickup', $types)) {
-                        $pickup_count += $type_row['cnt'];
-                    }
-                    if (in_array('delivery', $types)) {
-                        $delivery_count += $type_row['cnt'];
-                    }
-                }
-                ?>
-                <div class="flex gap-2">
-                    <button type="button" 
-                            id="btnPickup"
-                            onclick="filterByDeliveryType('pickup')" 
-                            class="btn-outline whitespace-nowrap text-sm <?php echo $pickup_count == 0 ? 'opacity-50 cursor-not-allowed' : '' ?>"
-                            <?php echo $pickup_count == 0 ? 'disabled' : '' ?>>
-                        <i class="fas fa-store mr-1"></i>픽업상품(<?php echo $pickup_count ?>)
-                    </button>
-                    <button type="button" 
-                            id="btnDelivery"
-                            onclick="filterByDeliveryType('delivery')" 
-                            class="btn-outline whitespace-nowrap text-sm <?php echo $delivery_count == 0 ? 'opacity-50 cursor-not-allowed' : '' ?>"
-                            <?php echo $delivery_count == 0 ? 'disabled' : '' ?>>
-                        <i class="fas fa-truck mr-1"></i>배송상품(<?php echo $delivery_count ?>)
-                    </button>
-                </div>
             </div>
 
             <!-- Category Filter -->
@@ -622,14 +572,12 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                                     <span class="font-medium peer-checked:text-green-700">매장 픽업</span>
                                 </div>
                             </label>
-                            <label class="relative flex items-center justify-center cursor-pointer group">
-                                <input type="radio" name="delivery_type" value="DELIVERY" class="peer sr-only">
+                            <label class="relative flex items-center justify-center opacity-50 cursor-not-allowed group">
+                                <input type="radio" name="delivery_type" value="DELIVERY" disabled class="peer sr-only">
                                 <div class="w-full py-4 px-4 border-2 rounded-lg transition-all
-                                           peer-checked:border-green-500 peer-checked:bg-green-50
-                                           group-hover:border-gray-300 text-center">
-                                    <i class="fas fa-truck text-2xl mb-2 block
-                                       peer-checked:text-green-600"></i>
-                                    <span class="font-medium peer-checked:text-green-700">배송 수령</span>
+                                           border-gray-200 bg-gray-50 text-center">
+                                    <i class="fas fa-truck text-2xl mb-2 block text-gray-400"></i>
+                                    <span class="font-medium text-gray-500">배송 수령</span>
                                 </div>
                             </label>
                         </div>
@@ -1233,14 +1181,14 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
         // Handle delivery method change
         document.addEventListener('DOMContentLoaded', function() {
-            const deliveryRadios = document.querySelectorAll('input[name="delivery_type"]');
+            const deliveryRadios = document.querySelectorAll('input[name="delivery_type"]:not([disabled])');
             const addressField = document.getElementById('addressField');
             const addressInput = document.getElementById('customerAddress');
             const addressRequired = document.getElementById('addressRequired');
             
             deliveryRadios.forEach(radio => {
                 radio.addEventListener('change', function() {
-                    if (this.value === 'DELIVERY') {
+                    if (this.value === 'DELIVERY' && !this.disabled) {
                         // 배송 수령 선택 시
                         addressField.style.display = 'block';
                         addressInput.setAttribute('required', 'required');
