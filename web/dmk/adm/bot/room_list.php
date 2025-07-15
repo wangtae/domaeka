@@ -204,7 +204,24 @@ while($row = sql_fetch_array($stats_result)) {
         <td><?php echo get_text($row['bot_name'])?></td>
         <td class="td_left">
             <?php if($row['owner_type'] && $row['owner_id']): ?>
-                <?php echo get_text($row['owner_id'])?>
+                <?php 
+                // 배정된 지점/대리점/총판 이름 조회
+                $owner_name = '';
+                if($row['owner_type'] == 'distributor') {
+                    $sql = " SELECT dt_name FROM dmk_distributor WHERE dt_id = '".sql_escape_string($row['owner_id'])."' ";
+                    $owner_info = sql_fetch($sql);
+                    $owner_name = $owner_info['dt_name'];
+                } else if($row['owner_type'] == 'agency') {
+                    $sql = " SELECT ag_name FROM dmk_agency WHERE ag_id = '".sql_escape_string($row['owner_id'])."' ";
+                    $owner_info = sql_fetch($sql);
+                    $owner_name = $owner_info['ag_name'];
+                } else if($row['owner_type'] == 'branch') {
+                    $sql = " SELECT br_name FROM dmk_branch WHERE br_id = '".sql_escape_string($row['owner_id'])."' ";
+                    $owner_info = sql_fetch($sql);
+                    $owner_name = $owner_info['br_name'];
+                }
+                ?>
+                <?php echo get_text($owner_name ?: $row['owner_id'])?>
                 <?php if($row['owner_type'] == 'distributor'): ?>
                     <small>(총판)</small>
                 <?php elseif($row['owner_type'] == 'agency'): ?>

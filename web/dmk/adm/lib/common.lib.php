@@ -163,9 +163,12 @@ function dmk_get_admin_auth() {
         return [
             'is_super' => true,
             'mb_type' => 'super',
+            'type' => 'super',  // 호환성을 위해 추가
             'dt_id' => '',
             'ag_id' => '',
-            'br_id' => ''
+            'br_id' => '',
+            'key' => '',
+            'name' => '본사'
         ];
     }
     

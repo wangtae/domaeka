@@ -97,15 +97,50 @@ class InfiniteLoopDetector(ast.NodeVisitor):
         
     def _has_timeout_retry_limit(self, node) -> bool:
         """타임아웃 재시도 제한이 있는지 확인"""
-        # 간단한 휴리스틱: 카운터 변수나 break 문이 있는지 확인
+        # 개선된 휴리스틱: 더 많은 패턴 확인
         for child in ast.walk(node):
+            # 카운터 변수 체크
             if isinstance(child, ast.AugAssign):  # +=, -= 등
-                if hasattr(child.target, 'id') and 'count' in child.target.id.lower():
+                if hasattr(child.target, 'id') and any(word in child.target.id.lower() 
+                    for word in ['count', 'retry', 'attempt']):
                     return True
-            if isinstance(child, ast.Compare):  # 비교 연산
+            
+            # 비교 연산 체크
+            if isinstance(child, ast.Compare):
                 for comparator in child.comparators:
-                    if hasattr(comparator, 'id') and 'max' in comparator.id.lower():
+                    if hasattr(comparator, 'id') and any(word in comparator.id.lower() 
+                        for word in ['max', 'limit', 'threshold']):
                         return True
+            
+            # 메서드 호출 체크 (handler.on_timeout() 같은 패턴)
+            if isinstance(child, ast.Call):
+                if hasattr(child.func, 'attr') and 'timeout' in child.func.attr.lower():
+                    # If 문 안에서 호출되고 있는지 확인
+                    parent = self._find_parent_if(child, node)
+                    if parent:
+                        return True
+            
+            # shutdown_event 체크 (while 조건에)
+            if hasattr(node, 'test') and isinstance(node.test, ast.UnaryOp):
+                if isinstance(node.test.op, ast.Not):
+                    if self._contains_shutdown_check(node.test.operand):
+                        return True
+                        
+        return False
+    
+    def _find_parent_if(self, target, root):
+        """특정 노드가 If 문 안에 있는지 확인"""
+        for node in ast.walk(root):
+            if isinstance(node, ast.If):
+                if target in ast.walk(node):
+                    return node
+        return None
+    
+    def _contains_shutdown_check(self, node):
+        """shutdown 관련 체크가 있는지 확인"""
+        if isinstance(node, ast.Call):
+            if hasattr(node.func, 'attr') and 'shutdown' in str(node.func.attr).lower():
+                return True
         return False
 
 

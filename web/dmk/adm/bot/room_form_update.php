@@ -44,8 +44,8 @@ $log_settings_json = json_encode($log_settings, JSON_UNESCAPED_UNICODE);
 $owner_type = null;
 $owner_id = null;
 
-$user_info = dmk_get_admin_auth($member['mb_id']);
-if ($user_info['type'] == 'super' || $user_info['type'] == 'distributor') {
+$user_info = dmk_get_admin_auth();
+if ($user_info['is_super'] || $user_info['mb_type'] == 'distributor') {
     // 지점이 선택된 경우
     if (!empty($_POST['br_id'])) {
         $owner_type = 'branch';
