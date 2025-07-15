@@ -6,6 +6,7 @@ import json
 from typing import Dict, Any
 from core.logger import logger
 from core.message_processor import process_message
+from core.timeout_handler import with_timeout_retry, TimeoutRetryHandler
 import core.globals as g
 
 
@@ -36,6 +37,9 @@ async def process_message_with_limit(message: Dict[str, Any]):
     
     Args:
         message: 처리할 메시지
+        
+    Returns:
+        bool: 처리 성공 여부
     """
     bot_name = message.get('bot_name')
     data = message.get('data', {})
@@ -46,7 +50,7 @@ async def process_message_with_limit(message: Dict[str, Any]):
     if not channel_id or channel_id == 'None':
         logger.error(f"[SEMAPHORE] channel_id 누락: {message}")
         await process_message(message)  # 세마포어 없이 처리
-        return
+        return True
     
     # 봇별 세마포어 획득
     bot_semaphore = g.bot_semaphores[bot_name]
@@ -62,6 +66,7 @@ async def process_message_with_limit(message: Dict[str, Any]):
             logger.debug(f"[SEMAPHORE] 진입: bot={bot_name}, channel_id={channel_id}, sender={sender}")
             try:
                 await process_message(message)
+                return True  # 성공 시 True 반환
             finally:
                 logger.debug(f"[SEMAPHORE] 반환: bot={bot_name}, channel_id={channel_id}")
 
@@ -84,11 +89,18 @@ async def message_worker(worker_id: int):
             
             try:
                 # 5분 타임아웃으로 메시지 처리
-                async with asyncio.timeout(300):  # 300초 = 5분
-                    await process_message_with_limit(message)
-                logger.debug(f"[WORKER {worker_id}] 메시지 처리 완료")
-            except asyncio.TimeoutError:
-                logger.error(f"[WORKER {worker_id}] 메시지 처리 타임아웃 (5분 초과)")
+                result = await with_timeout_retry(
+                    process_message_with_limit,
+                    300,  # 300초 = 5분
+                    TimeoutRetryHandler(max_retries=1),  # 메시지 처리는 1회만 재시도
+                    f"WORKER {worker_id} 메시지 처리",
+                    message
+                )
+                
+                if result is not None:
+                    logger.debug(f"[WORKER {worker_id}] 메시지 처리 완료")
+                else:
+                    logger.error(f"[WORKER {worker_id}] 메시지 처리 실패 (타임아웃 또는 오류)")
             except Exception as e:
                 logger.error(f"[WORKER {worker_id}] 메시지 처리 실패: {e}", exc_info=True)
             finally:

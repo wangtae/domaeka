@@ -10,7 +10,7 @@ if (defined('G5_DEVELOPER_IPS') && G5_DEVELOPER_IPS) {
     $developer_ips = explode(',', G5_DEVELOPER_IPS);
     $current_ip = $_SERVER['REMOTE_ADDR'];
 
-    if (in_array($current_ip, $developer_ips)) {
+    if (0 ){ //in_array($current_ip, $developer_ips)) {
         //error_reporting(E_ALL);
         //ini_set('display_errors', 1);
 

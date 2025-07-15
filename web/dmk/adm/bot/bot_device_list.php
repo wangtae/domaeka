@@ -41,8 +41,13 @@ $total_page = ceil($total_count / $rows);
 if(!$page) $page = 1;
 $start = ($page - 1) * $rows;
 
-// 봇 디바이스 목록 조회
-$sql = " SELECT * FROM kb_bot_devices $where ORDER BY created_at DESC LIMIT $start, $rows ";
+// 봇 디바이스 목록 조회 - 입장중인 채팅방 수 포함
+$sql = " SELECT d.*, 
+         (SELECT COUNT(*) FROM kb_rooms WHERE bot_name = d.bot_name AND status = 'approved') as room_count
+         FROM kb_bot_devices d 
+         $where 
+         ORDER BY d.created_at DESC 
+         LIMIT $start, $rows ";
 $result = sql_query($sql);
 
 // 상태별 통계
@@ -98,6 +103,7 @@ while($row = sql_fetch_array($stats_result)) {
         </th>
         <th scope="col">ID</th>
         <th scope="col">봇명</th>
+        <th scope="col">채팅방</th>
         <th scope="col">디바이스 ID</th>
         <th scope="col">IP 주소</th>
         <th scope="col">클라이언트</th>
@@ -160,6 +166,15 @@ while($row = sql_fetch_array($stats_result)) {
                 <?php echo get_text($row['bot_name'])?>
             </a>
         </td>
+        <td class="td_num">
+            <?php if($row['room_count'] > 0): ?>
+                <a href="./room_list.php?bot_name=<?php echo urlencode($row['bot_name'])?>&status=approved">
+                    <?php echo number_format($row['room_count'])?>개
+                </a>
+            <?php else: ?>
+                <span class="fc_999">0개</span>
+            <?php endif; ?>
+        </td>
         <td class="td_monospace"><?php echo $masked_device_id?></td>
         <td><?php echo $row['ip_address']?></td>
         <td><?php echo $client_info?></td>
@@ -175,6 +190,10 @@ while($row = sql_fetch_array($stats_result)) {
         </td>
     </tr>
     <?php
+    }
+    
+    if ($i == 0) {
+        echo '<tr><td colspan="10" class="empty_table">등록된 봇 디바이스가 없습니다.</td></tr>';
     }
     ?>
     </tbody>

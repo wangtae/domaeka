@@ -8,6 +8,7 @@ from core.logger import logger
 from core.message_processor import process_message
 from core.client_status import client_status_manager
 from core.ping_scheduler_v2 import ping_scheduler
+from core.timeout_handler import TimeoutRetryHandler, ConnectionHealthChecker
 import core.globals as g
 
 
@@ -198,28 +199,36 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 return
         
         # 일반 메시지 처리 루프
-        timeout_count = 0
-        max_timeout_retries = 3
+        timeout_handler = TimeoutRetryHandler(max_retries=3, initial_delay=0.5, max_delay=5.0)
+        health_checker = ConnectionHealthChecker()
         
         while not g.shutdown_event.is_set():
+            # 연결 상태 확인
+            if not await health_checker.is_healthy(reader, writer):
+                logger.warning(f"[CLIENT] 연결 상태 불량: {client_addr}")
+                break
+            
             # 클라이언트로부터 메시지 수신 (30초 타임아웃)
             try:
                 async with asyncio.timeout(30):
                     try:
                         client_max_size = g.client_max_message_sizes.get(client_key, g.MAX_MESSAGE_SIZE) if client_key else g.MAX_MESSAGE_SIZE
                         data = await read_limited_line(reader, client_max_size)
-                        # 데이터를 성공적으로 읽었으면 타임아웃 카운트 리셋
-                        timeout_count = 0
+                        # 데이터를 성공적으로 읽었으면 핸들러 리셋
+                        timeout_handler.reset()
                     except ValueError as e:
                         logger.error(f"[CLIENT] 메시지 크기 초과: {client_addr} - {e}")
                         # 크기 초과 시 연결 종료
                         break
             except asyncio.TimeoutError:
-                timeout_count += 1
-                logger.warning(f"[TIMEOUT] 읽기 타임아웃 ({timeout_count}/{max_timeout_retries}): {client_addr}")
-                if timeout_count >= max_timeout_retries:
+                if not timeout_handler.on_timeout():
+                    timeout_handler.log_timeout(f"클라이언트 {client_addr}")
                     logger.error(f"[TIMEOUT] 최대 타임아웃 횟수 초과, 연결 종료: {client_addr}")
                     break
+                
+                timeout_handler.log_timeout(f"클라이언트 {client_addr}")
+                delay = timeout_handler.get_delay()
+                await asyncio.sleep(delay)
                 continue
                 
             if not data:

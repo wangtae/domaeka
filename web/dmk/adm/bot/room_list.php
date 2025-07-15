@@ -43,15 +43,49 @@ $sql = " SELECT COUNT(*) as cnt FROM kb_rooms $where ";
 $row = sql_fetch($sql);
 $total_count = $row['cnt'];
 
+// 디버깅용 출력
+echo "<!-- Debug: Total count = $total_count -->";
+echo "<!-- Debug: Where clause = $where -->";
+
 // 페이징
 $rows = 20;
 $total_page = ceil($total_count / $rows);
 if(!$page) $page = 1;
 $start = ($page - 1) * $rows;
 
-// 채팅방 목록 조회
-$sql = " SELECT * FROM kb_rooms $where ORDER BY created_at DESC LIMIT $start, $rows ";
+// 채팅방 목록 조회 - 배정 정보 JOIN
+$sql = " SELECT r.*, 
+         CASE 
+            WHEN r.owner_type = 'branch' THEN b.br_name
+            WHEN r.owner_type = 'agency' THEN a.ag_name
+            WHEN r.owner_type = 'distributor' THEN d.dt_name
+            ELSE NULL
+         END as owner_name
+         FROM kb_rooms r
+         LEFT JOIN g5_dmk_branches b ON r.owner_type = 'branch' AND r.owner_id = b.br_id
+         LEFT JOIN g5_dmk_agencies a ON r.owner_type = 'agency' AND r.owner_id = a.ag_id
+         LEFT JOIN g5_dmk_distributors d ON r.owner_type = 'distributor' AND r.owner_id = d.dt_id
+         $where 
+         ORDER BY r.created_at DESC 
+         LIMIT $start, $rows ";
 $result = sql_query($sql);
+
+// 디버깅용 - 쿼리 직접 실행
+echo "<!-- Debug Query: $sql -->";
+
+// 테이블 존재 여부 확인
+$table_check = sql_query("SHOW TABLES LIKE 'kb_rooms'");
+if(sql_num_rows($table_check) == 0) {
+    echo "<!-- Debug: kb_rooms 테이블이 존재하지 않습니다 -->";
+} else {
+    echo "<!-- Debug: kb_rooms 테이블 존재 확인 -->";
+    
+    // 데이터 직접 확인
+    $simple_query = "SELECT * FROM kb_rooms LIMIT 5";
+    $simple_result = sql_query($simple_query);
+    $simple_count = sql_num_rows($simple_result);
+    echo "<!-- Debug: Simple query count = $simple_count -->";
+}
 
 // 상태별 통계
 $stats_sql = " SELECT status, COUNT(*) as cnt FROM kb_rooms GROUP BY status ";
@@ -108,7 +142,7 @@ while($row = sql_fetch_array($stats_result)) {
         <th scope="col">방 ID</th>
         <th scope="col">채팅방명</th>
         <th scope="col">봇명</th>
-        <th scope="col">동시실행수</th>
+        <th scope="col">배정 지점</th>
         <th scope="col">방장 정보</th>
         <th scope="col">상태</th>
         <th scope="col">등록일</th>
@@ -189,7 +223,18 @@ while($row = sql_fetch_array($stats_result)) {
             <?php echo $log_settings_info?>
         </td>
         <td><?php echo get_text($row['bot_name'])?></td>
-        <td class="td_num"><?php echo $row['room_concurrency']?></td>
+        <td class="td_left">
+            <?php if($row['owner_name']): ?>
+                <?php echo get_text($row['owner_name'])?>
+                <?php if($row['owner_type'] == 'distributor'): ?>
+                    <small>(총판)</small>
+                <?php elseif($row['owner_type'] == 'agency'): ?>
+                    <small>(대리점)</small>
+                <?php endif; ?>
+            <?php else: ?>
+                <span class="fc_999">미배정</span>
+            <?php endif; ?>
+        </td>
         <td class="td_left">
             <?php if($owners_info): ?>
                 <?php echo get_text($owners_info)?>
@@ -209,6 +254,10 @@ while($row = sql_fetch_array($stats_result)) {
         </td>
     </tr>
     <?php
+    }
+    
+    if ($i == 0) {
+        echo '<tr><td colspan="9" class="empty_table">등록된 채팅방이 없습니다.</td></tr>';
     }
     ?>
     </tbody>
