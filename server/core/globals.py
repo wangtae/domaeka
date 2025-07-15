@@ -99,16 +99,15 @@ COMMAND_PREFIX_MAP = {
     },
     "# IMGEXT": {
         "type": "imgext",
-        "desc": "이미지 추출 테스트",
+        "desc": "멀티이미지 전송 테스트 (# IMGEXT 1 2 3)",
         "admin_only": False,
         "prompt_required": True,
         "parameters": [
             {
-                "name": "count",
-                "type": "int", 
-                "desc": "추출할 이미지 개수 (기본값: 2)",
-                "optional": True,
-                "default": 2
+                "name": "media-wait-time",
+                "type": "int",
+                "desc": "미디어 전송 대기시간 (밀리초, 기본값: 클라이언트 설정)",
+                "optional": True
             }
         ]
     },

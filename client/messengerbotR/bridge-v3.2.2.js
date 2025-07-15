@@ -80,7 +80,7 @@ var BOT_CONFIG = {
         CORE_MESSAGES: true,            // 핵심 메시지 로깅 (전송/수신/ping/연결)
         CONNECTION_EVENTS: true,        // 연결 관련 이벤트 로깅
         MESSAGE_TRANSFER: true,         // 메시지 전송/수신 로깅
-        PING_EVENTS: true,              // ping 관련 이벤트 로깅
+        PING_EVENTS: false,              // ping 관련 이벤트 로깅
         QUEUE_OPERATIONS: true,         // 큐 처리 관련 로깅
         RESOURCE_INFO: true,            // 리소스 정보 로깅
         MESSAGE_CONTENT: true,          // 송수신 메시지 내용 표시 (요약)
