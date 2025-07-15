@@ -143,8 +143,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         return
                     
                     handshake_result = await handle_handshake(message, client_addr, writer)
-                    if isinstance(handshake_result, tuple) and len(handshake_result) == 4:
-                        handshake_completed, bot_name, device_id, max_message_size = handshake_result
+                    if isinstance(handshake_result, tuple) and len(handshake_result) >= 4:
+                        handshake_completed, bot_name, device_id, max_message_size = handshake_result[:4]
                         if handshake_completed:
                             # 클라이언트 등록
                             client_key = (bot_name, device_id)
@@ -161,7 +161,10 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                             g.clients[client_key] = writer
                             g.clients_by_addr[client_addr] = client_key
                             g.client_max_message_sizes[client_key] = max_message_size
-                            logger.info(f"[CLIENT] 클라이언트 등록: {client_key} from {client_addr} (메시지 크기 제한: {max_message_size/1024/1024:.1f}MB)")
+                            # 승인 상태도 캐싱
+                            is_approved = handshake_result[4] if len(handshake_result) > 4 else True
+                            g.client_approval_status[client_key] = is_approved
+                            logger.info(f"[CLIENT] 클라이언트 등록: {client_key} from {client_addr} (메시지 크기 제한: {max_message_size/1024/1024:.1f}MB, 승인: {is_approved})")
                             
                             # 새로운 ping 스케줄러에 클라이언트 추가
                             await ping_scheduler.add_client(bot_name, device_id, writer)
@@ -269,6 +272,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 del g.clients[client_key]
             if client_key in g.client_max_message_sizes:
                 del g.client_max_message_sizes[client_key]
+            if client_key in g.client_approval_status:
+                del g.client_approval_status[client_key]
             del g.clients_by_addr[client_addr]
             logger.info(f"[CLIENT] 클라이언트 제거: {client_key}")
         
@@ -346,7 +351,7 @@ async def handle_handshake(message: str, client_addr, writer):
         await send_json_response(writer, handshake_response)
         logger.info(f"[HANDSHAKE] 응답 전송 완료: {client_addr}")
         
-        return True, bot_name, device_id, max_message_size
+        return True, bot_name, device_id, max_message_size, is_approved
         
     except json.JSONDecodeError:
         logger.error(f"[HANDSHAKE] JSON 파싱 실패: {client_addr}")

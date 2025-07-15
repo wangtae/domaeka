@@ -103,11 +103,12 @@ async def handle_analyze_event(context: Dict[str, Any]):
             if client_addr:
                 client_status_manager.update_auth_info(client_addr, auth_data)
             
-            # 디바이스 승인 상태 확인
+            # 디바이스 승인 상태 확인 (캐시에서)
             device_id = auth_data.get('deviceID')
             if device_id and bot_name:
-                from database.device_manager import is_device_approved as check_device_approved
-                is_device_approved = await check_device_approved(bot_name, device_id)
+                # 캐시에서 승인 상태 확인
+                client_key = (bot_name, device_id)
+                is_device_approved = g.client_approval_status.get(client_key, True)
                 
                 if not is_device_approved:
                     logger.info(f"[ANALYZE] 승인되지 않은 디바이스: {bot_name}@{device_id} - 제한 모드")
@@ -145,6 +146,74 @@ async def handle_analyze_event(context: Dict[str, Any]):
         await handle_client_info_command(context, text)
     elif text.startswith('# IMGEXT'):
         await handle_imgext_command(context, text)
+    elif text.strip() == '# reload bots-config':
+        await handle_reload_bots_config(context)
+
+
+async def handle_reload_bots_config(context: Dict[str, Any]):
+    """
+    봇 설정을 DB에서 다시 로드하여 메모리 캐시를 갱신
+    
+    Args:
+        context: 메시지 컨텍스트
+    """
+    try:
+        # 관리자 권한 확인 (필요시)
+        # TODO: 관리자 권한 체크 로직 추가
+        
+        await send_message_response(context, "🔄 봇 설정을 다시 로드하는 중...")
+        
+        # 모든 연결된 클라이언트의 승인 상태 재조회
+        from database.device_manager import get_device_approval_status
+        
+        updated_count = 0
+        for client_key in list(g.clients.keys()):
+            bot_name, device_id = client_key
+            
+            # DB에서 최신 승인 상태 조회
+            is_approved, status = await get_device_approval_status(bot_name, device_id)
+            
+            # 캐시 업데이트
+            old_status = g.client_approval_status.get(client_key, None)
+            g.client_approval_status[client_key] = is_approved
+            
+            if old_status != is_approved:
+                updated_count += 1
+                logger.info(f"[RELOAD] 봇 승인 상태 변경: {bot_name}@{device_id} - {old_status} → {is_approved}")
+        
+        # max_message_size도 함께 갱신
+        if g.db_pool:
+            async with g.db_pool.acquire() as conn:
+                async with conn.cursor() as cursor:
+                    sql = """
+                    SELECT bot_name, device_id, max_message_size 
+                    FROM kb_bot_devices 
+                    WHERE (bot_name, device_id) IN ({})
+                    """.format(','.join(['(%s,%s)'] * len(g.clients)))
+                    
+                    params = []
+                    for bot_name, device_id in g.clients.keys():
+                        params.extend([bot_name, device_id])
+                    
+                    if params:
+                        await cursor.execute(sql, params)
+                        results = await cursor.fetchall()
+                        
+                        for bot_name, device_id, max_message_size in results:
+                            client_key = (bot_name, device_id)
+                            if max_message_size:
+                                g.client_max_message_sizes[client_key] = max_message_size
+        
+        await send_message_response(context, 
+            f"✅ 봇 설정 갱신 완료!\n"
+            f"• 총 {len(g.clients)}개 봇 확인\n"
+            f"• {updated_count}개 봇 상태 변경됨")
+        
+        logger.info(f"[RELOAD] 봇 설정 갱신 완료 - 총 {len(g.clients)}개, 변경 {updated_count}개")
+        
+    except Exception as e:
+        logger.error(f"[RELOAD] 봇 설정 갱신 오류: {e}")
+        await send_message_response(context, f"❌ 봇 설정 갱신 실패: {str(e)}")
 
 
 async def handle_ping_event(received_message: Dict[str, Any]):

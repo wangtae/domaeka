@@ -22,6 +22,7 @@ process_name = None  # 현재 서버 프로세스 이름
 # 클라이언트 관리 (추가 매핑)
 clients_by_addr = {}  # {(ip, port): (bot_name, device_id)} - 주소로 클라이언트 찾기용
 client_max_message_sizes = {}  # {(bot_name, device_id): max_message_size} - 클라이언트별 메시지 크기 제한
+client_approval_status = {}  # {(bot_name, device_id): is_approved} - 클라이언트별 승인 상태 캐시
 
 # 로그 레벨
 LOG_LEVEL = 'DEBUG'
