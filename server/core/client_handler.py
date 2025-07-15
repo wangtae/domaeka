@@ -126,7 +126,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             try:
                 async with asyncio.timeout(10):
                     try:
-                        data = await read_limited_line(reader)
+                        data = await read_limited_line(reader, g.MAX_MESSAGE_SIZE)
                         if not data:
                             logger.error(f"[HANDSHAKE] 핸드셰이크 데이터 없음: {client_addr}")
                             writer.close()
@@ -143,8 +143,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         return
                     
                     handshake_result = await handle_handshake(message, client_addr, writer)
-                    if isinstance(handshake_result, tuple) and len(handshake_result) == 3:
-                        handshake_completed, bot_name, device_id = handshake_result
+                    if isinstance(handshake_result, tuple) and len(handshake_result) == 4:
+                        handshake_completed, bot_name, device_id, max_message_size = handshake_result
                         if handshake_completed:
                             # 클라이언트 등록
                             client_key = (bot_name, device_id)
@@ -160,7 +160,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                             # 새 연결 등록
                             g.clients[client_key] = writer
                             g.clients_by_addr[client_addr] = client_key
-                            logger.info(f"[CLIENT] 클라이언트 등록: {client_key} from {client_addr}")
+                            g.client_max_message_sizes[client_key] = max_message_size
+                            logger.info(f"[CLIENT] 클라이언트 등록: {client_key} from {client_addr} (메시지 크기 제한: {max_message_size/1024/1024:.1f}MB)")
                             
                             # 새로운 ping 스케줄러에 클라이언트 추가
                             await ping_scheduler.add_client(bot_name, device_id, writer)
@@ -188,7 +189,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             try:
                 async with asyncio.timeout(30):
                     try:
-                        data = await read_limited_line(reader)
+                        client_max_size = g.client_max_message_sizes.get(client_key, g.MAX_MESSAGE_SIZE) if client_key else g.MAX_MESSAGE_SIZE
+                        data = await read_limited_line(reader, client_max_size)
                     except ValueError as e:
                         logger.error(f"[CLIENT] 메시지 크기 초과: {client_addr} - {e}")
                         # 크기 초과 시 연결 종료
@@ -205,9 +207,10 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             try:
                 message = data.decode('utf-8').strip()
                 
-                # 디코딩된 문자열 크기도 체크 (메모리 공격 방지)
-                if len(message) > g.MAX_MESSAGE_SIZE:
-                    logger.error(f"[CLIENT] 디코딩된 메시지 크기 초과: {client_addr} - {len(message)} 바이트")
+                # 클라이언트별 메시지 크기 체크 (메모리 공격 방지)
+                client_max_size = g.client_max_message_sizes.get(client_key, g.MAX_MESSAGE_SIZE) if client_key else g.MAX_MESSAGE_SIZE
+                if len(message) > client_max_size:
+                    logger.error(f"[CLIENT] 디코딩된 메시지 크기 초과: {client_addr} - {len(message)} 바이트 (제한: {client_max_size} 바이트)")
                     break
                     
                 logger.debug(f"[RECV] {client_addr}: {message}")
@@ -264,6 +267,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             client_key = g.clients_by_addr[client_addr]
             if client_key in g.clients:
                 del g.clients[client_key]
+            if client_key in g.client_max_message_sizes:
+                del g.client_max_message_sizes[client_key]
             del g.clients_by_addr[client_addr]
             logger.info(f"[CLIENT] 클라이언트 제거: {client_key}")
         
@@ -286,7 +291,7 @@ async def handle_handshake(message: str, client_addr, writer):
         writer: 스트림 라이터
         
     Returns:
-        tuple: (핸드셰이크 성공 여부, bot_name, device_id) 또는 bool
+        tuple: (핸드셰이크 성공 여부, bot_name, device_id, max_message_size) 또는 bool
     """
     try:
         # 핸드셰이크 메시지는 JSON 형태여야 함
@@ -314,7 +319,7 @@ async def handle_handshake(message: str, client_addr, writer):
         
         # kb_bot_devices 테이블과 연동하여 승인 상태 확인
         from database.device_manager import validate_and_register_device
-        is_approved, status_message = await validate_and_register_device(handshake_data, str(client_addr))
+        is_approved, status_message, max_message_size = await validate_and_register_device(handshake_data, str(client_addr))
         
         if not is_approved:
             logger.warning(f"[HANDSHAKE] 승인되지 않은 디바이스: {client_addr} - {status_message}")
@@ -325,7 +330,7 @@ async def handle_handshake(message: str, client_addr, writer):
         handshake_data['status_message'] = status_message
         client_info = client_status_manager.register_client(str(client_addr), handshake_data)
         
-        logger.info(f"[HANDSHAKE] 성공: {client_addr} - {bot_name} v{version} (상태: {handshake_data['approval_status']})")
+        logger.info(f"[HANDSHAKE] 성공: {client_addr} - {bot_name} v{version} (상태: {handshake_data['approval_status']}, 메시지 크기 제한: {max_message_size/1024/1024:.1f}MB)")
         
         # 핸드셰이크 성공 응답 전송
         from core.response_utils import send_json_response
@@ -341,7 +346,7 @@ async def handle_handshake(message: str, client_addr, writer):
         await send_json_response(writer, handshake_response)
         logger.info(f"[HANDSHAKE] 응답 전송 완료: {client_addr}")
         
-        return True, bot_name, device_id
+        return True, bot_name, device_id, max_message_size
         
     except json.JSONDecodeError:
         logger.error(f"[HANDSHAKE] JSON 파싱 실패: {client_addr}")

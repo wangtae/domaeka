@@ -7,7 +7,7 @@ from core.logger import logger
 import core.globals as g
 
 
-async def validate_and_register_device(handshake_data: Dict[str, Any], client_addr: str) -> Tuple[bool, str]:
+async def validate_and_register_device(handshake_data: Dict[str, Any], client_addr: str) -> Tuple[bool, str, int]:
     """
     핸드셰이크 정보를 kb_bot_devices 테이블과 연동하여 승인 상태 확인
     
@@ -16,11 +16,11 @@ async def validate_and_register_device(handshake_data: Dict[str, Any], client_ad
         client_addr: 클라이언트 주소
         
     Returns:
-        (is_approved: bool, status_message: str)
+        (is_approved: bool, status_message: str, max_message_size: int)
     """
     if not g.db_pool:
         logger.warning("[DEVICE] DB 풀이 없어 승인 확인 건너뜀")
-        return True, "DB 연결 없음 - 기본 승인"
+        return True, "DB 연결 없음 - 기본 승인", g.MAX_MESSAGE_SIZE
     
     bot_name = handshake_data.get('botName', '')
     device_id = handshake_data.get('deviceID', '')
@@ -34,7 +34,7 @@ async def validate_and_register_device(handshake_data: Dict[str, Any], client_ad
             async with conn.cursor() as cursor:
                 # 1. 기존 디바이스 조회
                 select_sql = """
-                SELECT id, status, client_version, ip_address 
+                SELECT id, status, client_version, ip_address, max_message_size 
                 FROM kb_bot_devices 
                 WHERE bot_name = %s AND device_id = %s
                 """
@@ -43,7 +43,7 @@ async def validate_and_register_device(handshake_data: Dict[str, Any], client_ad
                 
                 if existing_device:
                     # 기존 디바이스 업데이트
-                    device_record_id, current_status, old_version, old_ip = existing_device
+                    device_record_id, current_status, old_version, old_ip, max_message_size = existing_device
                     
                     # 정보 업데이트
                     update_sql = """
@@ -57,13 +57,13 @@ async def validate_and_register_device(handshake_data: Dict[str, Any], client_ad
                     
                     # 승인 상태 확인
                     if current_status == 'approved':
-                        return True, "승인된 디바이스입니다"
+                        return True, "승인된 디바이스입니다", max_message_size or g.MAX_MESSAGE_SIZE
                     elif current_status == 'pending':
-                        return False, "승인 대기 중인 디바이스입니다"
+                        return False, "승인 대기 중인 디바이스입니다", max_message_size or g.MAX_MESSAGE_SIZE
                     elif current_status in ['denied', 'revoked', 'blocked']:
-                        return False, f"접근이 차단된 디바이스입니다 ({current_status})"
+                        return False, f"접근이 차단된 디바이스입니다 ({current_status})", max_message_size or g.MAX_MESSAGE_SIZE
                     else:
-                        return False, f"알 수 없는 상태입니다 ({current_status})"
+                        return False, f"알 수 없는 상태입니다 ({current_status})", max_message_size or g.MAX_MESSAGE_SIZE
                         
                 else:
                     # 새로운 디바이스 등록 (pending 상태)
@@ -83,11 +83,11 @@ async def validate_and_register_device(handshake_data: Dict[str, Any], client_ad
                     if device_info:
                         logger.info(f"[DEVICE] 기기 정보: {device_info}")
                     
-                    return False, "디바이스가 승인 대기 상태로 등록되었습니다"
+                    return False, "디바이스가 승인 대기 상태로 등록되었습니다", g.MAX_MESSAGE_SIZE
                     
     except Exception as e:
         logger.error(f"[DEVICE] 디바이스 검증 실패: {e}")
-        return True, f"검증 실패 - 기본 승인 ({e})"
+        return True, f"검증 실패 - 기본 승인 ({e})", g.MAX_MESSAGE_SIZE
 
 
 async def get_device_approval_status(bot_name: str, device_id: str) -> Tuple[bool, str]:
