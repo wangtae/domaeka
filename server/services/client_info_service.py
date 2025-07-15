@@ -8,13 +8,14 @@ from core.response_utils import send_message_response
 from core.client_status import client_status_manager
 
 
-async def handle_client_info_command(context: Dict[str, Any], prompt: str):
+async def handle_client_info_command(context: Dict[str, Any], prompt: str, params: Dict[str, Any]):
     """
     클라이언트 정보 조회 명령어 처리
     
     Args:
         context: 메시지 컨텍스트
         prompt: 명령어 뒤의 텍스트 (예: "summary")
+        params: 파싱된 파라미터 (bot-name 등)
     """
     try:
         writer = context.get("writer")
@@ -26,6 +27,9 @@ async def handle_client_info_command(context: Dict[str, Any], prompt: str):
         # 프롬프트 파싱
         prompt = prompt.strip()
         
+        # 파라미터 처리
+        filter_bot_name = params.get('bot-name')
+        
         if prompt == "summary":
             # 클라이언트 요약 정보
             summary = client_status_manager.get_client_summary()
@@ -36,7 +40,12 @@ async def handle_client_info_command(context: Dict[str, Any], prompt: str):
 
 📋 연결된 클라이언트:"""
             
-            for i, client in enumerate(summary['clients'], 1):
+            filtered_clients = summary['clients']
+            if filter_bot_name:
+                filtered_clients = [c for c in summary['clients'] if c.get('bot_name') == filter_bot_name]
+                response_text += f" (필터: {filter_bot_name})"
+            
+            for i, client in enumerate(filtered_clients, 1):
                 bot_name = client.get('bot_name', 'Unknown')
                 device_id = client.get('device_id', 'N/A')
                 version = client.get('version', 'N/A')

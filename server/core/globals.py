@@ -66,25 +66,58 @@ COMMAND_PREFIX_MAP = {
         "type": "echo",
         "desc": "에코 테스트 (# echo {내용})",
         "admin_only": False,
-        "prompt_required": True
+        "prompt_required": True,
+        "parameters": [
+            {
+                "name": "channel-id",
+                "type": "string",
+                "desc": "에코를 발송할 채널 ID (기본값: 현재 채널)",
+                "optional": True
+            },
+            {
+                "name": "repeat",
+                "type": "int",
+                "desc": "반복 횟수 (기본값: 1, 최대: 5)",
+                "optional": True,
+                "default": 1
+            }
+        ]
     },
     "# client_info": {
         "type": "client_info",
         "desc": "클라이언트 정보 조회",
         "admin_only": True,
-        "prompt_required": False
+        "prompt_required": False,
+        "parameters": [
+            {
+                "name": "bot-name",
+                "type": "string",
+                "desc": "특정 봇 정보만 조회",
+                "optional": True
+            }
+        ]
     },
     "# IMGEXT": {
         "type": "imgext",
         "desc": "이미지 추출 테스트",
         "admin_only": False,
-        "prompt_required": True
+        "prompt_required": True,
+        "parameters": [
+            {
+                "name": "count",
+                "type": "int", 
+                "desc": "추출할 이미지 개수 (기본값: 2)",
+                "optional": True,
+                "default": 2
+            }
+        ]
     },
     "# reload bots-config": {
         "type": "reload_bots_config",
         "desc": "봇 승인 상태 및 설정을 DB에서 다시 로드",
         "admin_only": True,
-        "prompt_required": False
+        "prompt_required": False,
+        "parameters": []
     }
 }
 
