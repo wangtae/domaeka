@@ -682,7 +682,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             <footer class="mt-5 bg-gray-50">
                 <div class="w-full mx-auto max-w-4xl px-5 py-10">
                     <div class="text-gray-500 text-xs">
-                        <strong>도매까 주문 시스템</strong> / 제휴문의 : 02-1234-5679 <br> (주)강성에프엔비 / 대표 이지애<br>
+                        <strong>도매까 주문 시스템</strong> / 제휴문의 : 010-9841-3328 <br> (주)강성에프엔비 / 대표 이지애<br>
                         <br>
 
                         <div class="flex gap-x-2">
