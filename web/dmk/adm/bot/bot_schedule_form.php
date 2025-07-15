@@ -66,25 +66,19 @@ if ($w == 'u' && $id) {
 $g5['title'] = '스케줄링 발송 '.($w==''?'등록':'수정');
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
-// 봇 목록 조회
-$bot_list = [];
-$sql = " SELECT DISTINCT bot_name FROM kb_bot_devices WHERE approved = 'Y' ORDER BY bot_name ";
-$result_bots = sql_query($sql);
-while($row = sql_fetch_array($result_bots)) {
-    $bot_list[] = $row['bot_name'];
-}
-
-// 사용자 권한에 따른 톡방 목록 조회
+// 사용자 권한에 따른 지점 배정된 톡방과 봇 목록 조회
 $user_info = dmk_get_admin_auth($member['mb_id']);
-$room_where = " WHERE r.approved = 'Y' ";
+
+// status가 approved이고 지점이 배정된(owner_id가 있는) 톡방만 조회
+$room_where = " WHERE r.status = 'approved' AND r.owner_id IS NOT NULL ";
 
 if ($user_info['type'] != 'super') {
     // 계층별 필터링
     if ($user_info['type'] == 'branch') {
         // 지점은 자신의 톡방만
-        $room_where .= " AND r.owner_type = 'branch' AND r.owner_id = '{$user_info['key']}' ";
+        $room_where .= " AND r.owner_id = '{$user_info['key']}' ";
     } else if ($user_info['type'] == 'agency') {
-        // 대리점은 자신과 하위 지점의 톡방
+        // 대리점은 하위 지점의 톡방
         $br_list = [];
         $sql = " SELECT br_id FROM dmk_branch WHERE ag_id = '{$user_info['key']}' ";
         $result = sql_query($sql);
@@ -92,13 +86,13 @@ if ($user_info['type'] != 'super') {
             $br_list[] = "'" . $row['br_id'] . "'";
         }
         
-        $conditions = ["(r.owner_type = 'agency' AND r.owner_id = '{$user_info['key']}')"];
         if (count($br_list) > 0) {
-            $conditions[] = "(r.owner_type = 'branch' AND r.owner_id IN (" . implode(',', $br_list) . "))";
+            $room_where .= " AND r.owner_id IN (" . implode(',', $br_list) . ") ";
+        } else {
+            $room_where .= " AND 1=0 "; // 하위 지점이 없으면 조회 결과 없음
         }
-        $room_where .= " AND (" . implode(' OR ', $conditions) . ") ";
     } else if ($user_info['type'] == 'distributor') {
-        // 총판은 자신과 하위 대리점/지점의 톡방
+        // 총판은 하위 대리점의 지점 톡방
         $ag_list = [];
         $sql = " SELECT ag_id FROM dmk_agency WHERE dt_id = '{$user_info['key']}' ";
         $result = sql_query($sql);
@@ -116,28 +110,33 @@ if ($user_info['type'] != 'super') {
             }
         }
         
-        $conditions = ["(r.owner_type = 'distributor' AND r.owner_id = '{$user_info['key']}')"];
-        if (count($ag_list) > 0) {
-            $conditions[] = "(r.owner_type = 'agency' AND r.owner_id IN (" . implode(',', $ag_list) . "))";
-        }
         if (count($br_list) > 0) {
-            $conditions[] = "(r.owner_type = 'branch' AND r.owner_id IN (" . implode(',', $br_list) . "))";
+            $room_where .= " AND r.owner_id IN (" . implode(',', $br_list) . ") ";
+        } else {
+            $room_where .= " AND 1=0 "; // 하위 지점이 없으면 조회 결과 없음
         }
-        $room_where .= " AND (" . implode(' OR ', $conditions) . ") ";
     }
 }
 
-// 톡방 목록 조회
+// 지점이 배정된 톡방 목록 조회
 $room_list = [];
-$sql = " SELECT r.*, b.br_name 
+$bot_list = [];
+$sql = " SELECT r.room_id, r.room_name, r.bot_name, r.owner_id, m.mb_name as branch_name
          FROM kb_rooms r
-         LEFT JOIN dmk_branch b ON r.owner_type = 'branch' AND r.owner_id = b.br_id
+         LEFT JOIN g5_member m ON r.owner_id = m.mb_id
          $room_where
          ORDER BY r.room_name, r.room_id ";
 $result_rooms = sql_query($sql);
 while($row = sql_fetch_array($result_rooms)) {
     $room_list[] = $row;
+    // 봇 이름 수집 (중복 제거)
+    if (!in_array($row['bot_name'], $bot_list)) {
+        $bot_list[] = $row['bot_name'];
+    }
 }
+
+// 봇 목록 정렬
+sort($bot_list);
 ?>
 
 <form name="fschedule" id="fschedule" action="./bot_schedule_form_update.php" onsubmit="return fschedule_submit(this);" method="post" enctype="multipart/form-data">
@@ -173,6 +172,9 @@ while($row = sql_fetch_array($result_rooms)) {
                 <option value="<?php echo $bot_name?>" <?php echo ($schedule['target_bot_name']==$bot_name)?'selected':'';?>><?php echo $bot_name?></option>
                 <?php endforeach; ?>
             </select>
+            <?php if(count($bot_list) == 0): ?>
+            <div class="frm_info fc_red">지점이 배정된 승인된 톡방이 없습니다.</div>
+            <?php endif; ?>
         </td>
     </tr>
     <tr>
@@ -184,10 +186,11 @@ while($row = sql_fetch_array($result_rooms)) {
                 <option value="<?php echo $room['room_id']?>" 
                         data-bot="<?php echo $room['bot_name']?>"
                         <?php echo ($schedule['target_room_id']==$room['room_id'])?'selected':'';?>>
-                    <?php echo $room['room_name']?> (<?php echo $room['br_name']?>)
+                    <?php echo $room['room_name']?> - <?php echo $room['branch_name']?> (<?php echo $room['owner_id']?>)
                 </option>
                 <?php endforeach; ?>
             </select>
+            <div class="frm_info">봇을 먼저 선택하면 해당 봇의 톡방만 표시됩니다.</div>
         </td>
     </tr>
     </tbody>
