@@ -95,26 +95,20 @@ if($room['log_settings']) {
         <th scope="row"><label for="owner_type">배정 지점<strong class="sound_only">필수</strong></label></th>
         <td>
             <?php
-            // 현재 선택된 값 설정
+            // 현재 선택된 값 설정 - owner_id가 있으면 지점으로 간주
             $current_values = [];
-            if ($room['owner_type'] == 'distributor') {
-                $current_values['dt_id'] = $room['owner_id'];
-            } else if ($room['owner_type'] == 'agency') {
-                // 대리점이 선택된 경우 소속 총판 찾기
-                $sql = " SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_escape_string($room['owner_id'])."' ";
-                $ag_info = sql_fetch($sql);
-                $current_values['dt_id'] = $ag_info['dt_id'];
-                $current_values['ag_id'] = $room['owner_id'];
-            } else if ($room['owner_type'] == 'branch') {
+            if ($room['owner_id']) {
                 // 지점이 선택된 경우 소속 대리점과 총판 찾기
                 $sql = " SELECT b.ag_id, a.dt_id 
                          FROM dmk_branch b 
                          JOIN dmk_agency a ON b.ag_id = a.ag_id 
                          WHERE b.br_id = '".sql_escape_string($room['owner_id'])."' ";
                 $br_info = sql_fetch($sql);
-                $current_values['dt_id'] = $br_info['dt_id'];
-                $current_values['ag_id'] = $br_info['ag_id'];
-                $current_values['br_id'] = $room['owner_id'];
+                if ($br_info) {
+                    $current_values['dt_id'] = $br_info['dt_id'];
+                    $current_values['ag_id'] = $br_info['ag_id'];
+                    $current_values['br_id'] = $room['owner_id'];
+                }
             }
             
             // chain-select 렌더링
@@ -138,7 +132,9 @@ if($room['log_settings']) {
             ?>
             
             <div class="frm_info">
-                채팅방을 관리할 지점을 선택하세요. 지점을 선택하지 않으면 상위 레벨(대리점/총판)이 관리합니다.
+                - 이 채팅방을 담당할 <strong>지점</strong>을 선택할 수 있습니다<br>
+                - 지점을 선택하려면 총판 → 대리점 → 지점 순서로 선택하세요<br>
+                - 지점을 선택하지 않으면 배정되지 않은 상태로 유지됩니다
             </div>
         </td>
     </tr>

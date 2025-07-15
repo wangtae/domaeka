@@ -1598,3 +1598,4 @@ function dmk_get_owner_info_from_fields($item) {
     
     return $owner_info;
 }
+
