@@ -4,7 +4,7 @@
 -- 1분 후 실행되는 1회성 테스트 스케줄
 INSERT INTO kb_schedule (
     title, description, created_by_type, created_by_id, created_by_mb_id,
-    target_bot_name, target_room_id, message_text, message_images_1, message_images_2,
+    target_bot_name, target_device_id, target_room_id, message_text, message_images_1, message_images_2,
     send_interval_seconds, media_wait_time_1, media_wait_time_2,
     schedule_type, schedule_date, schedule_time,
     valid_from, valid_until, status, next_send_at
@@ -15,6 +15,7 @@ INSERT INTO kb_schedule (
     'BR001',
     'admin',
     'LOA',  -- 실제 봇 이름으로 변경 필요
+    'device_001',  -- 실제 디바이스 ID로 변경 필요
     '12345',  -- 실제 채널 ID로 변경 필요
     '🔔 스케줄 테스트 메시지입니다.\n\n현재 시간: {{NOW}}\n이 메시지는 자동으로 발송되었습니다.',
     '[]',
@@ -34,7 +35,7 @@ INSERT INTO kb_schedule (
 -- 매일 오전 9시에 발송되는 반복 스케줄
 INSERT INTO kb_schedule (
     title, description, created_by_type, created_by_id, created_by_mb_id,
-    target_bot_name, target_room_id, message_text, message_images_1, message_images_2,
+    target_bot_name, target_device_id, target_room_id, message_text, message_images_1, message_images_2,
     send_interval_seconds, media_wait_time_1, media_wait_time_2,
     schedule_type, schedule_time, valid_from, valid_until,
     status, next_send_at
@@ -45,6 +46,7 @@ INSERT INTO kb_schedule (
     'BR001',
     'admin',
     'LOA',
+    'device_001',  -- 실제 디바이스 ID로 변경 필요
     '12345',
     '☀️ 좋은 아침입니다!\n\n오늘도 좋은 하루 되세요.',
     '[]',
@@ -66,7 +68,7 @@ INSERT INTO kb_schedule (
 -- 매주 월요일 오전 10시에 발송되는 주간 스케줄
 INSERT INTO kb_schedule (
     title, description, created_by_type, created_by_id, created_by_mb_id,
-    target_bot_name, target_room_id, message_text, message_images_1, message_images_2,
+    target_bot_name, target_device_id, target_room_id, message_text, message_images_1, message_images_2,
     send_interval_seconds, media_wait_time_1, media_wait_time_2,
     schedule_type, schedule_time, schedule_weekdays,
     valid_from, valid_until, status, next_send_at
@@ -77,6 +79,7 @@ INSERT INTO kb_schedule (
     'BR001',
     'admin',
     'LOA',
+    'device_001',  -- 실제 디바이스 ID로 변경 필요
     '12345',
     '📊 주간 리포트\n\n이번 주도 열심히 일합시다!',
     '[]',
@@ -103,7 +106,7 @@ INSERT INTO kb_schedule (
 -- 텍스트와 이미지가 포함된 스케줄 (5분 후 발송)
 INSERT INTO kb_schedule (
     title, description, created_by_type, created_by_id, created_by_mb_id,
-    target_bot_name, target_room_id, message_text, 
+    target_bot_name, target_device_id, target_room_id, message_text, 
     message_images_1, message_images_2,
     send_interval_seconds, media_wait_time_1, media_wait_time_2,
     schedule_type, schedule_date, schedule_time,
@@ -115,6 +118,7 @@ INSERT INTO kb_schedule (
     'BR001',
     'admin',
     'LOA',
+    'device_001',  -- 실제 디바이스 ID로 변경 필요
     '12345',
     '📸 이미지 테스트 메시지\n\n아래 이미지를 확인해주세요.',
     '[{"name":"test1.jpg","path":"data/schedule/test1.jpg","size":102400}]',

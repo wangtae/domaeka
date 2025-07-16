@@ -165,7 +165,7 @@ sort($bot_list);
     <tr>
         <th scope="row"><label for="target_bot_name">대상 봇<strong class="sound_only">필수</strong></label></th>
         <td>
-            <select name="target_bot_name" id="target_bot_name" required class="required frm_input" onchange="filterRooms()">
+            <select name="target_bot_name" id="target_bot_name" required class="required frm_input" onchange="filterDevicesAndRooms()">
                 <option value="">봇을 선택하세요</option>
                 <?php foreach($bot_list as $bot_name): ?>
                 <option value="<?php echo $bot_name?>" <?php echo ($schedule['target_bot_name']==$bot_name)?'selected':'';?>><?php echo $bot_name?></option>
@@ -174,6 +174,34 @@ sort($bot_list);
             <?php if(count($bot_list) == 0): ?>
             <div class="frm_info fc_red">지점이 배정된 승인된 톡방이 없습니다.</div>
             <?php endif; ?>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="target_device_id">대상 디바이스<strong class="sound_only">필수</strong></label></th>
+        <td>
+            <select name="target_device_id" id="target_device_id" required class="required frm_input" onchange="filterRooms()">
+                <option value="">디바이스를 선택하세요</option>
+                <?php
+                // 봇별 디바이스 목록 조회
+                $device_sql = "SELECT bot_name, device_id, device_name, device_model 
+                              FROM kb_bot_devices 
+                              WHERE status = 'approved' 
+                              ORDER BY bot_name, device_id";
+                $device_result = sql_query($device_sql);
+                while($device = sql_fetch_array($device_result)) {
+                    $device_display = $device['device_name'] ? $device['device_name'] : $device['device_id'];
+                    if($device['device_model']) {
+                        $device_display .= ' (' . $device['device_model'] . ')';
+                    }
+                ?>
+                <option value="<?php echo $device['device_id']?>" 
+                        data-bot="<?php echo $device['bot_name']?>"
+                        <?php echo ($schedule['target_device_id']==$device['device_id'])?'selected':'';?>>
+                    <?php echo $device_display?>
+                </option>
+                <?php } ?>
+            </select>
+            <div class="frm_info">봇을 선택하면 해당 봇의 디바이스 목록이 표시됩니다.</div>
         </td>
     </tr>
     <tr>
@@ -647,6 +675,42 @@ function removeImage(btn, groupNum) {
     btn.parentElement.remove();
 }
 
+function filterDevicesAndRooms() {
+    const botSelect = document.getElementById('target_bot_name');
+    const deviceSelect = document.getElementById('target_device_id');
+    const selectedBot = botSelect.value;
+    
+    // 디바이스 필터링
+    const deviceOptions = deviceSelect.querySelectorAll('option');
+    let hasVisibleDevice = false;
+    for (let i = 1; i < deviceOptions.length; i++) {
+        const option = deviceOptions[i];
+        if (selectedBot && option.dataset.bot !== selectedBot) {
+            option.style.display = 'none';
+        } else {
+            option.style.display = '';
+            hasVisibleDevice = true;
+        }
+    }
+    
+    // 선택된 디바이스가 숨겨진 경우 초기화
+    const selectedDeviceOption = deviceSelect.options[deviceSelect.selectedIndex];
+    if (selectedDeviceOption && selectedDeviceOption.style.display === 'none') {
+        deviceSelect.value = '';
+    }
+    
+    // 봇이 선택되고 해당 봇에 디바이스가 하나만 있으면 자동 선택
+    if (selectedBot && hasVisibleDevice) {
+        const visibleDevices = Array.from(deviceOptions).filter((opt, idx) => idx > 0 && opt.style.display !== 'none');
+        if (visibleDevices.length === 1) {
+            deviceSelect.value = visibleDevices[0].value;
+        }
+    }
+    
+    // 톡방도 필터링
+    filterRooms();
+}
+
 function filterRooms() {
     const botSelect = document.getElementById('target_bot_name');
     const roomSelect = document.getElementById('target_room_id');
@@ -731,6 +795,12 @@ function fschedule_submit(f) {
         return false;
     }
     
+    if (!f.target_device_id.value) {
+        alert("대상 디바이스를 선택해주세요.");
+        f.target_device_id.focus();
+        return false;
+    }
+    
     if (!f.target_room_id.value) {
         alert("대상 톡방을 선택해주세요.");
         f.target_room_id.focus();
@@ -812,9 +882,9 @@ function fschedule_submit(f) {
     return true;
 }
 
-// 초기 톡방 필터링
+// 초기 필터링
 <?php if ($w == 'u' && $schedule['target_bot_name']): ?>
-filterRooms();
+filterDevicesAndRooms();
 <?php endif; ?>
 </script>
 

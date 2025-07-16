@@ -31,6 +31,10 @@ if (!$_POST['target_bot_name']) {
     alert('대상 봇을 선택해주세요.');
 }
 
+if (!$_POST['target_device_id']) {
+    alert('대상 디바이스를 선택해주세요.');
+}
+
 if (!$_POST['target_room_id']) {
     alert('대상 톡방을 선택해주세요.');
 }
@@ -90,6 +94,7 @@ if (strtotime($valid_from) >= strtotime($valid_until)) {
 $title = trim($_POST['title']);
 $description = trim($_POST['description']);
 $target_bot_name = trim($_POST['target_bot_name']);
+$target_device_id = trim($_POST['target_device_id']);
 $target_room_id = trim($_POST['target_room_id']);
 $message_text = trim($_POST['message_text']);
 
@@ -435,6 +440,7 @@ if ($w == '' || $w == 'a') {
              created_by_id = '".sql_escape_string($created_by_id)."',
              created_by_mb_id = '".sql_escape_string($created_by_mb_id)."',
              target_bot_name = '".sql_escape_string($target_bot_name)."',
+             target_device_id = '".sql_escape_string($target_device_id)."',
              target_room_id = '".sql_escape_string($target_room_id)."',
              message_text = '".sql_escape_string($message_text)."',
              message_images_1 = " . ($message_images_1_json ? "'".sql_escape_string($message_images_1_json)."'" : "NULL") . ",
@@ -534,6 +540,7 @@ if ($w == '' || $w == 'a') {
              title = '".sql_escape_string($title)."',
              description = '".sql_escape_string($description)."',
              target_bot_name = '".sql_escape_string($target_bot_name)."',
+             target_device_id = '".sql_escape_string($target_device_id)."',
              target_room_id = '".sql_escape_string($target_room_id)."',
              message_text = '".sql_escape_string($message_text)."',
              message_images_1 = " . ($message_images_1_json ? "'".sql_escape_string($message_images_1_json)."'" : "NULL") . ",

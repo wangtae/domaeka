@@ -244,7 +244,13 @@ class SchedulerService:
         """스케줄에 따른 메시지 전송"""
         try:
             bot_name = schedule['target_bot_name']
+            device_id = schedule.get('target_device_id', '')  # device_id 추가
             room_id = schedule['target_room_id']
+            
+            # device_id가 없는 경우 경고
+            if not device_id:
+                logger.warning(f"[SCHEDULER] device_id 없음, 스케줄 {schedule['id']} 건너뜀")
+                return False
             
             # 메시지 구성 요소
             text = schedule.get('message_text')
@@ -270,9 +276,9 @@ class SchedulerService:
             # 순차적으로 발송
             for i, (comp_type, content, wait_time) in enumerate(components):
                 if comp_type == 'text':
-                    await self.send_text_message(bot_name, room_id, content)
+                    await self.send_text_message(bot_name, device_id, room_id, content)
                 elif comp_type == 'images':
-                    await self.send_images(bot_name, room_id, content, wait_time)
+                    await self.send_images(bot_name, device_id, room_id, content, wait_time)
                 
                 # 다음 컴포넌트가 있으면 대기
                 if i < len(components) - 1:
@@ -284,63 +290,67 @@ class SchedulerService:
             logger.error(f"[SCHEDULER] 메시지 발송 실패: {e}")
             return False
     
-    async def send_text_message(self, bot_name: str, room_id: str, text: str):
+    async def send_text_message(self, bot_name: str, device_id: str, room_id: str, text: str):
         """텍스트 메시지 발송"""
         # 연결된 클라이언트 찾기
         from core.globals import clients
         
-        for (b_name, device_id), sessions in clients.items():
-            if b_name == bot_name:
-                for addr, writer in sessions.items():
-                    if writer and not writer.is_closing():
-                        message = {
-                            'event': 'messageResponse',
-                            'data': {
-                                'room': room_id,
-                                'text': text,
-                                'channel_id': room_id
-                            }
+        # bot_name과 device_id로 정확한 클라이언트 찾기
+        client_key = (bot_name, device_id)
+        if client_key in clients:
+            sessions = clients[client_key]
+            for addr, writer in sessions.items():
+                if writer and not writer.is_closing():
+                    message = {
+                        'event': 'messageResponse',
+                        'data': {
+                            'room': room_id,
+                            'text': text,
+                            'channel_id': room_id
                         }
-                        await send_json_response(writer, message)
-                        logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name} -> {room_id}")
-                        return
+                    }
+                    await send_json_response(writer, message)
+                    logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_id}")
+                    return
         
-        logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}")
+        logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
     
-    async def send_images(self, bot_name: str, room_id: str, images: List[Dict], wait_time: int):
+    async def send_images(self, bot_name: str, device_id: str, room_id: str, images: List[Dict], wait_time: int):
         """이미지 발송"""
         from core.globals import clients
         
-        for (b_name, device_id), sessions in clients.items():
-            if b_name == bot_name:
-                for addr, writer in sessions.items():
-                    if writer and not writer.is_closing():
-                        # 이미지 파일 경로 구성
-                        web_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../web'))
+        # bot_name과 device_id로 정확한 클라이언트 찾기
+        client_key = (bot_name, device_id)
+        if client_key in clients:
+            sessions = clients[client_key]
+            for addr, writer in sessions.items():
+                if writer and not writer.is_closing():
+                    # 이미지 파일 경로 구성
+                    web_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../web'))
+                    
+                    for img_info in images:
+                        img_path = os.path.join(web_root, img_info['path'].lstrip('/'))
                         
-                        for img_info in images:
-                            img_path = os.path.join(web_root, img_info['path'].lstrip('/'))
-                            
-                            if os.path.exists(img_path):
-                                message = {
-                                    'event': 'messageResponse',
-                                    'data': {
-                                        'room': room_id,
-                                        'channel_id': room_id,
-                                        'imagePath': img_path,
-                                        'mediaWaitTime': wait_time if wait_time > 0 else None
-                                    }
+                        if os.path.exists(img_path):
+                            message = {
+                                'event': 'messageResponse',
+                                'data': {
+                                    'room': room_id,
+                                    'channel_id': room_id,
+                                    'imagePath': img_path,
+                                    'mediaWaitTime': wait_time if wait_time > 0 else None
                                 }
-                                await send_json_response(writer, message)
-                                logger.info(f"[SCHEDULER] 이미지 발송: {bot_name} -> {room_id} -> {img_info['name']}")
-                                
-                                # 이미지 간 짧은 대기
-                                await asyncio.sleep(0.5)
-                            else:
-                                logger.warning(f"[SCHEDULER] 이미지 파일 없음: {img_path}")
-                        return
+                            }
+                            await send_json_response(writer, message)
+                            logger.info(f"[SCHEDULER] 이미지 발송: {bot_name}@{device_id} -> {room_id} -> {img_info['name']}")
+                            
+                            # 이미지 간 짧은 대기
+                            await asyncio.sleep(0.5)
+                        else:
+                            logger.warning(f"[SCHEDULER] 이미지 파일 없음: {img_path}")
+                    return
         
-        logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}")
+        logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
     
     async def update_last_sent_at(self, schedule_id: int) -> bool:
         """last_sent_at 업데이트 (중복 방지)"""
