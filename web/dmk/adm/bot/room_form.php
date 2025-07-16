@@ -14,12 +14,23 @@ auth_check('180500', 'w');
 
 $w = $_GET['w'];
 $room_id = $_GET['room_id'];
+$bot_name = $_GET['bot_name'];
+$device_id = $_GET['device_id'];
 
 if (!$room_id) {
     alert('방 ID가 없습니다.');
 }
 
-$sql = " SELECT * FROM kb_rooms WHERE room_id = '$room_id' ";
+// 새로운 PRIMARY KEY 구조에 맞게 조회
+if ($bot_name && $device_id) {
+    $sql = " SELECT * FROM kb_rooms WHERE room_id = '".sql_escape_string($room_id)."' 
+             AND bot_name = '".sql_escape_string($bot_name)."' 
+             AND device_id = '".sql_escape_string($device_id)."' ";
+} else {
+    // 기존 방식 (마이그레이션 전 호환성)
+    $sql = " SELECT * FROM kb_rooms WHERE room_id = '".sql_escape_string($room_id)."' ";
+}
+
 $room = sql_fetch($sql);
 if (!$room['room_id']) {
     alert('등록된 채팅방이 아닙니다.');
@@ -47,6 +58,8 @@ if($room['log_settings']) {
 <form name="froom" id="froom" action="./room_form_update.php" onsubmit="return froom_submit(this);" method="post">
 <input type="hidden" name="w" value="<?php echo $w ?>">
 <input type="hidden" name="room_id" value="<?php echo $room_id ?>">
+<input type="hidden" name="bot_name" value="<?php echo $bot_name ?>">
+<input type="hidden" name="device_id" value="<?php echo $device_id ?>">
 <input type="hidden" name="token" value="<?php echo get_admin_token() ?>">
 
 <div class="tbl_frm01 tbl_wrap">
@@ -202,9 +215,6 @@ if($room['log_settings']) {
 <div class="btn_fixed_top">
     <a href="./room_list.php" class="btn btn_02">목록</a>
     <input type="submit" name="btn_submit" value="확인" id="btn_submit" accesskey="s" class="btn_submit btn">
-    <?php if($room['status'] != 'blocked'): ?>
-    <a href="./room_block.php?room_id=<?php echo urlencode($room_id)?>" class="btn btn_01" onclick="return confirm('이 채팅방을 차단하시겠습니까?')">차단</a>
-    <?php endif; ?>
 </div>
 
 </form>

@@ -6,6 +6,13 @@
 $sub_menu = "180600";
 include_once('./_common.php');
 
+// PHP 업로드 설정 (가능한 경우)
+@ini_set('upload_max_filesize', '10M');
+@ini_set('post_max_size', '100M');
+@ini_set('max_file_uploads', '30');
+@ini_set('max_execution_time', '300');
+@ini_set('memory_limit', '512M');
+
 // 에러 표시 활성화 (디버깅용)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -251,15 +258,28 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
                 // 리사이징 실패 또는 비활성화 시 원본 저장
                 if (!$uploaded) {
                     echo "<!-- DEBUG: Attempting direct move -->\n";
+                    echo "<!-- DEBUG: Source: " . $new_files['tmp_name'][$i] . " -->\n";
+                    echo "<!-- DEBUG: Destination: " . $filepath . " -->\n";
+                    echo "<!-- DEBUG: Source exists: " . (file_exists($new_files['tmp_name'][$i]) ? 'YES' : 'NO') . " -->\n";
+                    echo "<!-- DEBUG: Source is uploaded: " . (is_uploaded_file($new_files['tmp_name'][$i]) ? 'YES' : 'NO') . " -->\n";
+                    echo "<!-- DEBUG: Dest dir writable: " . (is_writable($upload_dir) ? 'YES' : 'NO') . " -->\n";
                     $uploaded = move_uploaded_file($new_files['tmp_name'][$i], $filepath);
                     echo "<!-- DEBUG: Move result: " . ($uploaded ? 'success' : 'failed') . " -->\n";
+                    if (!$uploaded) {
+                        $error = error_get_last();
+                        echo "<!-- DEBUG: Last error: " . ($error ? $error['message'] : 'none') . " -->\n";
+                    }
                 }
                 
                 if ($uploaded) {
                     $images[] = array('file' => $filename);
-                    echo "<!-- DEBUG: File successfully processed -->\n";
+                    echo "<!-- DEBUG: File successfully processed: $filename -->\n";
+                    echo "<!-- DEBUG: File exists: " . (file_exists($filepath) ? 'YES' : 'NO') . " -->\n";
+                    echo "<!-- DEBUG: File size: " . (file_exists($filepath) ? filesize($filepath) : '0') . " bytes -->\n";
                 } else {
                     echo "<!-- DEBUG: Failed to process file -->\n";
+                    echo "<!-- DEBUG: Upload max filesize: " . ini_get('upload_max_filesize') . " -->\n";
+                    echo "<!-- DEBUG: Post max size: " . ini_get('post_max_size') . " -->\n";
                 }
             } else {
                 echo "<!-- DEBUG: File upload error: " . $new_files['error'][$i] . " -->\n";
@@ -273,6 +293,13 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
 
 // 이미지 리사이징 함수
 function resize_and_save_image($source_path, $dest_path, $max_width) {
+    // GD 라이브러리 체크
+    if (!extension_loaded('gd') || !function_exists('gd_info')) {
+        // GD 라이브러리가 없으면 안내 메시지와 함께 중단
+        alert('PHP GD 라이브러리가 설치되어 있지 않습니다.\\n\\n이미지 업로드 기능을 사용하려면 GD 라이브러리를 설치해주세요.\\n\\n설치 방법:\\nsudo apt-get install php-gd\\nsudo service apache2 restart');
+        return false;
+    }
+    
     // 메모리 제한 임시 증가
     ini_set('memory_limit', '512M');
     

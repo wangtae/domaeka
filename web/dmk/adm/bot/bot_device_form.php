@@ -114,6 +114,10 @@ include_once (G5_ADMIN_PATH.'/admin.head.php');
             <label><input type="checkbox" name="image_resize_enabled" id="image_resize_enabled" value="1" <?php echo $device['image_resize_enabled'] ? 'checked' : '' ?>> 활성화</label>
             <div class="frm_info">
                 스케줄링 발송 시 업로드되는 이미지를 자동으로 리사이징합니다.
+                <?php if (!extension_loaded('gd')): ?>
+                <br><span class="fc_red">※ PHP GD 라이브러리가 설치되어 있지 않습니다.</span>
+                <br><small>설치: sudo apt-get install php-gd && sudo service apache2 restart</small>
+                <?php endif; ?>
             </div>
         </td>
     </tr>
@@ -134,9 +138,6 @@ include_once (G5_ADMIN_PATH.'/admin.head.php');
 <div class="btn_fixed_top">
     <a href="./bot_device_list.php" class="btn btn_02">목록</a>
     <input type="submit" name="btn_submit" value="확인" id="btn_submit" accesskey="s" class="btn_submit btn">
-    <?php if($device['status'] != 'blocked'): ?>
-    <a href="./bot_device_block.php?device_id=<?php echo $device_id?>" class="btn btn_01" onclick="return confirm('이 디바이스를 차단하시겠습니까?')">차단</a>
-    <?php endif; ?>
 </div>
 
 </form>

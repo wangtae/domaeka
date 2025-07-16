@@ -120,7 +120,7 @@ async def save_ping_to_db(ping_data: Dict[str, Any]):
         logger.error(f"[DB] ping_data: {ping_data}")
 
 
-async def check_room_approval(room_name: str, channel_id: str, bot_name: str) -> bool:
+async def check_room_approval(room_name: str, channel_id: str, bot_name: str, device_id: str = None) -> bool:
     """
     방 승인 상태를 확인하고, 새로운 방이면 pending 상태로 등록
     
@@ -128,6 +128,7 @@ async def check_room_approval(room_name: str, channel_id: str, bot_name: str) ->
         room_name: 채팅방 이름
         channel_id: 채널 ID
         bot_name: 봇 이름
+        device_id: 디바이스 ID (선택사항)
         
     Returns:
         bool: 승인된 방이면 True, 아니면 False
@@ -136,15 +137,20 @@ async def check_room_approval(room_name: str, channel_id: str, bot_name: str) ->
         logger.debug("[DB] DB 풀이 없어 방 승인 확인 건너뜀")
         return True  # DB 연결이 없으면 기본적으로 허용
     
+    # device_id가 없으면 기본적으로 승인 상태로 처리
+    if not device_id:
+        logger.warning(f"[DB] device_id가 없어 방 승인 확인 건너뜀: {room_name}")
+        return True
+    
     try:
         async with g.db_pool.acquire() as conn:
             async with conn.cursor() as cursor:
-                # room_id는 channel_id와 bot_name을 조합하여 생성
-                room_id = f"{channel_id}_{bot_name}"
+                # room_id는 이제 channel_id만 사용
+                room_id = channel_id
                 
-                # 기존 방 조회
-                sql = "SELECT status FROM kb_rooms WHERE room_id = %s"
-                await cursor.execute(sql, (room_id,))
+                # 기존 방 조회 - bot_name과 device_id로 특정 봇의 방 조회
+                sql = "SELECT status FROM kb_rooms WHERE room_id = %s AND bot_name = %s AND device_id = %s"
+                await cursor.execute(sql, (room_id, bot_name, device_id))
                 result = await cursor.fetchone()
                 
                 if result:
@@ -155,7 +161,7 @@ async def check_room_approval(room_name: str, channel_id: str, bot_name: str) ->
                     return is_approved
                 else:
                     # 새로운 방이면 pending 상태로 등록
-                    await register_room_if_new(room_id, room_name, channel_id, bot_name)
+                    await register_room_if_new(room_id, room_name, channel_id, bot_name, device_id)
                     logger.info(f"[DB] 새로운 방 등록: {room_name} -> pending 상태")
                     return False  # 새로 등록된 방은 승인 대기 상태
                     
@@ -164,44 +170,50 @@ async def check_room_approval(room_name: str, channel_id: str, bot_name: str) ->
         return False  # 오류 발생 시 안전하게 False 반환
 
 
-async def register_room_if_new(room_id: str, room_name: str, channel_id: str, bot_name: str):
+async def register_room_if_new(room_id: str, room_name: str, channel_id: str, bot_name: str, device_id: str = None):
     """
     새로운 방을 kb_rooms 테이블에 pending 상태로 등록
     
     Args:
-        room_id: 방 ID (channel_id + bot_name 조합)
+        room_id: 방 ID (channel_id와 동일)
         room_name: 채팅방 이름
         channel_id: 채널 ID
         bot_name: 봇 이름
+        device_id: 디바이스 ID (필수)
     """
     if not g.db_pool:
         logger.debug("[DB] DB 풀이 없어 방 등록 건너뜀")
         return
     
+    if not device_id:
+        logger.error(f"[DB] device_id가 없어 방 등록 불가: {room_name}")
+        raise ValueError("device_id is required for room registration")
+    
     try:
         async with g.db_pool.acquire() as conn:
             async with conn.cursor() as cursor:
-                # 방 정보 삽입 (실제 테이블 스키마에 맞게 수정)
+                # 방 정보 삽입 (device_id 포함)
                 sql = """
                 INSERT INTO kb_rooms 
-                (room_id, bot_name, room_name, room_concurrency, status, descryption, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (room_id, bot_name, device_id, room_name, room_concurrency, status, description, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 values = (
                     room_id,
                     bot_name,
+                    device_id,  # device_id 필수
                     room_name,
                     2,  # room_concurrency 기본값
                     'pending',
-                    f"자동 등록된 방 - 채널ID: {channel_id}",  # descryption
+                    f"자동 등록된 방 - 봇: {bot_name}, 디바이스: {device_id[:8]}...",  # description
                     datetime.now(),
                     datetime.now()
                 )
                 
                 await cursor.execute(sql, values)
                 await conn.commit()
-                logger.info(f"[DB] 새로운 방 등록 성공: {room_name} (room_id: {room_id})")
+                logger.info(f"[DB] 새로운 방 등록 성공: {room_name} (room_id: {room_id}, bot: {bot_name}, device: {device_id[:8]}...)")
                 
     except Exception as e:
         logger.error(f"[DB] 방 등록 실패: {e}")

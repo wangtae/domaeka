@@ -41,8 +41,31 @@ $stx = $_GET['stx'];
 $where = " WHERE 1=1 ";
 
 $user_info = dmk_get_admin_auth($member['mb_id']);
-$user_type = $user_info['type'];
-$user_key = $user_info['key'];
+
+// type이 없으면 admin_type과 is_super를 확인하여 설정
+if ($user_info['is_super']) {
+    $user_type = 'super';
+} else if ($user_info['admin_type'] == 'distributor') {
+    $user_type = 'distributor';
+} else if ($user_info['admin_type'] == 'agency') {
+    $user_type = 'agency';
+} else if ($user_info['admin_type'] == 'branch') {
+    $user_type = 'branch';
+} else {
+    $user_type = 'super'; // 기본값
+}
+
+// key 설정
+if ($user_type == 'distributor') {
+    $user_key = $user_info['dt_id'];
+} else if ($user_type == 'agency') {
+    $user_key = $user_info['ag_id'];
+} else if ($user_type == 'branch') {
+    $user_key = $user_info['br_id'];
+} else {
+    $user_key = $user_info['mb_id'];
+}
+
 
 // 계층별 필터링
 if ($user_type != 'super') {
@@ -72,6 +95,8 @@ if ($user_type != 'super') {
         if (count($br_list) > 0) {
             $conditions[] = "(created_by_type = 'branch' AND created_by_id IN (" . implode(',', $br_list) . "))";
         }
+        // created_by_type이 빈 문자열인 경우도 포함 (이전 데이터 호환성)
+        $conditions[] = "(created_by_type = '' OR created_by_type IS NULL)";
         $where .= " AND (" . implode(' OR ', $conditions) . ") ";
     } else if ($user_type == 'agency') {
         // 대리점은 자신과 하위 지점의 스케줄 조회
@@ -86,10 +111,12 @@ if ($user_type != 'super') {
         if (count($br_list) > 0) {
             $conditions[] = "(created_by_type = 'branch' AND created_by_id IN (" . implode(',', $br_list) . "))";
         }
+        // created_by_type이 빈 문자열인 경우도 포함 (이전 데이터 호환성)
+        $conditions[] = "(created_by_type = '' OR created_by_type IS NULL)";
         $where .= " AND (" . implode(' OR ', $conditions) . ") ";
     } else if ($user_type == 'branch') {
         // 지점은 자신의 스케줄만 조회
-        $where .= " AND created_by_type = 'branch' AND created_by_id = '$user_key' ";
+        $where .= " AND (created_by_type = 'branch' AND created_by_id = '$user_key' OR created_by_type = '' OR created_by_type IS NULL) ";
     }
 }
 
@@ -124,13 +151,17 @@ if ($page < 1) $page = 1;
 $from_record = ($page - 1) * $rows;
 
 // 목록 조회
-$sql = " SELECT s.*, r.room_name
+$sql = " SELECT DISTINCT s.*, r.room_name
          FROM kb_schedule s
-         LEFT JOIN kb_rooms r ON s.target_room_id COLLATE utf8mb4_unicode_ci = r.room_id COLLATE utf8mb4_unicode_ci
+         LEFT JOIN kb_rooms r ON (s.target_room_id = r.room_id 
+                                  AND s.target_bot_name = r.bot_name 
+                                  AND s.target_device_id = r.device_id)
          $where
          $order_by
          LIMIT $from_record, $rows ";
 
+// 목록 조회
+$sql = " SELECT s.* FROM kb_schedule s $where $order_by LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
 $qstr = "&sfl=$sfl&stx=$stx";
@@ -507,8 +538,14 @@ function moveTooltip(event) {
             }
         }
         
-        // 톡방 이름
-        $room_name = $row['room_name'] ? $row['room_name'] : $row['target_room_id'];
+        // 톡방 이름 조회
+        $room_sql = "SELECT room_name FROM kb_rooms 
+                     WHERE room_id = '".sql_escape_string($row['target_room_id'])."' 
+                     AND bot_name = '".sql_escape_string($row['target_bot_name'])."' 
+                     AND device_id = '".sql_escape_string($row['target_device_id'])."' 
+                     LIMIT 1";
+        $room_row = sql_fetch($room_sql);
+        $room_name = $room_row['room_name'] ? $room_row['room_name'] : $row['target_room_id'];
         
         // 메시지 미리보기 (30자)
         $message_preview = '';

@@ -200,44 +200,11 @@ while($row = sql_fetch_array($stats_result)) {
     </table>
 </div>
 
-<div class="btn_list01 btn_list">
-    <input type="button" name="btn_submit" value="선택 승인" onclick="btn_check(this.form, 'approve')" class="btn btn_01">
-    <input type="button" name="btn_submit" value="선택 거부" onclick="btn_check(this.form, 'deny')" class="btn btn_02">
-    <input type="button" name="btn_submit" value="선택 삭제" onclick="btn_check(this.form, 'delete')" class="btn btn_02">
-</div>
 
 </form>
 
 <?php echo get_paging(G5_IS_MOBILE ? $config['cf_mobile_pages'] : $config['cf_write_pages'], $page, $total_page, '?'.$qstr.'&amp;page='); ?>
 
-<script>
-function btn_check(f, act)
-{
-    if (!is_checked("chk[]")) {
-        alert("하나 이상 선택하세요.");
-        return;
-    }
-
-    if (act == "approve") {
-        if (!confirm("선택한 디바이스를 승인하시겠습니까?")) {
-            return;
-        }
-        f.action = "./bot_device_bulk_action.php?action=approve";
-    } else if (act == "deny") {
-        if (!confirm("선택한 디바이스를 거부하시겠습니까?")) {
-            return;
-        }
-        f.action = "./bot_device_bulk_action.php?action=deny";
-    } else if (act == "delete") {
-        if (!confirm("선택한 디바이스를 정말 삭제하시겠습니까?\\n\\n한번 삭제한 자료는 복구할 수 없습니다.\\n\\n그래도 삭제하시겠습니까?")) {
-            return;
-        }
-        f.action = "./bot_device_list_delete.php";
-    }
-
-    f.submit();
-}
-</script>
 
 <?php
 include_once (G5_ADMIN_PATH.'/admin.tail.php');

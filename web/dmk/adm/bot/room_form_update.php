@@ -12,14 +12,24 @@ check_admin_token();
 
 $w = $_POST['w'];
 $room_id = $_POST['room_id'];
+$bot_name = $_POST['bot_name'];
+$device_id = $_POST['device_id'];
 
 if (!$room_id) {
     alert('방 ID가 없습니다.');
 }
 
-// 기존 채팅방 정보 확인
+// 기존 채팅방 정보 확인 - 새로운 PRIMARY KEY 구조
 $room_id_esc = sql_real_escape_string($room_id);
-$sql = " SELECT * FROM kb_rooms WHERE room_id = '{$room_id_esc}' ";
+if ($bot_name && $device_id) {
+    $bot_name_esc = sql_real_escape_string($bot_name);
+    $device_id_esc = sql_real_escape_string($device_id);
+    $sql = " SELECT * FROM kb_rooms WHERE room_id = '{$room_id_esc}' 
+             AND bot_name = '{$bot_name_esc}' AND device_id = '{$device_id_esc}' ";
+} else {
+    // 기존 방식 (마이그레이션 전 호환성)
+    $sql = " SELECT * FROM kb_rooms WHERE room_id = '{$room_id_esc}' ";
+}
 $room = sql_fetch($sql);
 if (!$room['room_id']) {
     alert('등록된 채팅방이 아닙니다.');
@@ -76,7 +86,13 @@ if ($owner_id) {
 // rejection_reason과 approved_at 필드는 현재 테이블에 없으므로 제외
 // 나중에 006_fix_kb_rooms_table.sql 실행 후 활성화 필요
 
-$sql .= " WHERE room_id = '{$room_id_esc}' ";
+// WHERE 절 - 새로운 PRIMARY KEY 구조
+if ($bot_name && $device_id) {
+    $sql .= " WHERE room_id = '{$room_id_esc}' AND bot_name = '{$bot_name_esc}' AND device_id = '{$device_id_esc}' ";
+} else {
+    // 기존 방식 (마이그레이션 전 호환성)
+    $sql .= " WHERE room_id = '{$room_id_esc}' ";
+}
 
 $result = sql_query($sql);
 

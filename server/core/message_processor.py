@@ -113,9 +113,9 @@ async def handle_analyze_event(context: Dict[str, Any]):
                 if not is_device_approved:
                     logger.info(f"[ANALYZE] 승인되지 않은 디바이스: {bot_name}@{device_id} - 제한 모드")
     
-    # 방 승인 상태 확인
+    # 방 승인 상태 확인 (device_id 포함)
     from database.db_utils import check_room_approval
-    is_room_approved = await check_room_approval(room, channel_id, bot_name)
+    is_room_approved = await check_room_approval(room, channel_id, bot_name, device_id)
     
     # 전체 승인 상태 확인 (디바이스 승인 AND 방 승인)
     is_fully_approved = is_device_approved and is_room_approved

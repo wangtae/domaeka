@@ -12,6 +12,15 @@ auth_check('180500', 'r');
 $g5['title'] = '채팅방 관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
+// URL 파라미터
+$qstr = '';
+if (isset($sfl))  $qstr .= 'sfl=' . urlencode($sfl) . '&amp;';
+if (isset($stx))  $qstr .= 'stx=' . urlencode($stx) . '&amp;';
+if (isset($sst))  $qstr .= 'sst=' . urlencode($sst) . '&amp;';
+if (isset($sod))  $qstr .= 'sod=' . urlencode($sod) . '&amp;';
+if (isset($status)) $qstr .= 'status=' . urlencode($status) . '&amp;';
+if (isset($bot_name)) $qstr .= 'bot_name=' . urlencode($bot_name) . '&amp;';
+
 // 검색 조건
 $where = " WHERE 1=1 ";
 $sql_search = "";
@@ -116,6 +125,7 @@ while($row = sql_fetch_array($stats_result)) {
         <th scope="col">방 ID</th>
         <th scope="col">채팅방명</th>
         <th scope="col">봇명</th>
+        <th scope="col">디바이스</th>
         <th scope="col">배정 지점</th>
         <th scope="col">방장 정보</th>
         <th scope="col">상태</th>
@@ -186,8 +196,8 @@ while($row = sql_fetch_array($stats_result)) {
             }
         }
         
-        // 방 ID 마스킹
-        $masked_room_id = substr($row['room_id'], 0, 10) . '***' . substr($row['room_id'], -5);
+        // 방 ID 마스킹 - 채널 ID만 표시
+        $masked_room_id = substr($row['room_id'], 0, 10) . '***';
     ?>
     <tr class="<?php echo $bg; ?>">
         <td class="td_chk">
@@ -196,12 +206,19 @@ while($row = sql_fetch_array($stats_result)) {
         </td>
         <td class="td_monospace"><?php echo $masked_room_id?></td>
         <td class="td_left">
-            <a href="./room_form.php?w=u&amp;room_id=<?php echo urlencode($row['room_id'])?>">
+            <a href="./room_form.php?w=u&amp;room_id=<?php echo urlencode($row['room_id'])?>&amp;bot_name=<?php echo urlencode($row['bot_name'])?>&amp;device_id=<?php echo urlencode($row['device_id'])?>">
                 <?php echo get_text($row['room_name'])?>
             </a>
             <?php echo $log_settings_info?>
         </td>
         <td><?php echo get_text($row['bot_name'])?></td>
+        <td>
+            <?php if($row['device_id']): ?>
+                <span title="<?php echo $row['device_id']?>"><?php echo substr($row['device_id'], 0, 8)?>...</span>
+            <?php else: ?>
+                <span class="fc_999">-</span>
+            <?php endif; ?>
+        </td>
         <td class="td_left">
             <?php if($row['owner_id']): ?>
                 <?php 
@@ -231,12 +248,7 @@ while($row = sql_fetch_array($stats_result)) {
         <td class="<?php echo $status_class?>"><?php echo $status_text?></td>
         <td class="td_datetime"><?php echo substr($row['created_at'], 0, 16)?></td>
         <td class="td_mng td_mng_s">
-            <?php if($row['status'] == 'pending'): ?>
-                <a href="./room_approve.php?room_id=<?php echo urlencode($row['room_id'])?>&amp;action=approve" class="btn btn_01" onclick="return confirm('이 채팅방을 승인하시겠습니까?')">승인</a>
-                <a href="./room_approve.php?room_id=<?php echo urlencode($row['room_id'])?>&amp;action=deny" class="btn btn_02" onclick="return confirm('이 채팅방을 거부하시겠습니까?')">거부</a>
-            <?php else: ?>
-                <a href="./room_form.php?w=u&amp;room_id=<?php echo urlencode($row['room_id'])?>" class="btn btn_03">수정</a>
-            <?php endif; ?>
+            <a href="./room_form.php?w=u&amp;room_id=<?php echo urlencode($row['room_id'])?>&amp;bot_name=<?php echo urlencode($row['bot_name'])?>&amp;device_id=<?php echo urlencode($row['device_id'])?>&amp;<?php echo $qstr?>" class="btn btn_03">수정</a>
         </td>
     </tr>
     <?php
@@ -250,11 +262,6 @@ while($row = sql_fetch_array($stats_result)) {
     </table>
 </div>
 
-<div class="btn_list01 btn_list">
-    <input type="button" name="btn_submit" value="선택 승인" onclick="btn_check(this.form, 'approve')" class="btn btn_01">
-    <input type="button" name="btn_submit" value="선택 거부" onclick="btn_check(this.form, 'deny')" class="btn btn_02">
-    <input type="button" name="btn_submit" value="선택 삭제" onclick="btn_check(this.form, 'delete')" class="btn btn_02">
-</div>
 
 </form>
 
@@ -273,34 +280,6 @@ while($row = sql_fetch_array($stats_result)) {
 .error { background-color: #f5c6cb; }
 </style>
 
-<script>
-function btn_check(f, act)
-{
-    if (!is_checked("chk[]")) {
-        alert("하나 이상 선택하세요.");
-        return;
-    }
-
-    if (act == "approve") {
-        if (!confirm("선택한 채팅방을 승인하시겠습니까?")) {
-            return;
-        }
-        f.action = "./room_bulk_action.php?action=approve";
-    } else if (act == "deny") {
-        if (!confirm("선택한 채팅방을 거부하시겠습니까?")) {
-            return;
-        }
-        f.action = "./room_bulk_action.php?action=deny";
-    } else if (act == "delete") {
-        if (!confirm("선택한 채팅방을 정말 삭제하시겠습니까?\\n\\n한번 삭제한 자료는 복구할 수 없습니다.\\n\\n그래도 삭제하시겠습니까?")) {
-            return;
-        }
-        f.action = "./room_list_delete.php";
-    }
-
-    f.submit();
-}
-</script>
 
 <?php
 include_once (G5_ADMIN_PATH.'/admin.tail.php');

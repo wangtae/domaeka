@@ -1,0 +1,16 @@
+# PHP 업로드 설정
+php_value upload_max_filesize 10M
+php_value post_max_size 100M
+php_value max_file_uploads 30
+php_value max_execution_time 300
+php_value memory_limit 512M
+
+# 보안 설정
+Options -Indexes
+DirectoryIndex index.php index.html
+
+# 직접 접근 차단
+<FilesMatch "\.(inc|lib|sql|log)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

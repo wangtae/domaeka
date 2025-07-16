@@ -73,6 +73,25 @@ if ($w == 'u' && $id) {
 $g5['title'] = '스케줄링 발송 '.($w==''?'등록':'수정');
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
+// GD 라이브러리 체크
+if (!extension_loaded('gd')) {
+    echo '<div class="local_desc01 local_desc" style="background-color: #fff3cd; border-color: #ffeaa7; color: #856404;">';
+    echo '<p><strong>⚠️ PHP GD 라이브러리가 설치되어 있지 않습니다.</strong></p>';
+    echo '<p>이미지 업로드 기능을 사용하려면 GD 라이브러리를 설치해야 합니다.</p>';
+    echo '<p>설치 방법:</p>';
+    echo '<pre style="background: #f8f9fa; padding: 10px; border-radius: 4px;">';
+    echo '# Ubuntu/Debian 계열' . PHP_EOL;
+    echo 'sudo apt-get update' . PHP_EOL;
+    echo 'sudo apt-get install php-gd' . PHP_EOL;
+    echo 'sudo service apache2 restart' . PHP_EOL . PHP_EOL;
+    echo '# CentOS/RHEL 계열' . PHP_EOL;
+    echo 'sudo yum install php-gd' . PHP_EOL;
+    echo 'sudo service httpd restart';
+    echo '</pre>';
+    echo '<p>설치 후 이 페이지를 새로고침하세요.</p>';
+    echo '</div>';
+}
+
 // 사용자 권한에 따른 지점 배정된 톡방과 봇 목록 조회
 $user_info = dmk_get_admin_auth();
 
@@ -127,23 +146,27 @@ if (!$user_info['is_super']) {
 
 // 지점이 배정된 톡방 목록 조회
 $room_list = [];
-$bot_list = [];
-$sql = " SELECT r.room_id, r.room_name, r.bot_name, r.owner_id, m.mb_name as branch_name
+$room_bot_map = []; // 톡방별 봇 디바이스 맵핑
+
+$sql = " SELECT r.room_id, r.room_name, r.bot_name, r.device_id, r.owner_id, m.mb_name as branch_name
          FROM kb_rooms r
          LEFT JOIN g5_member m ON r.owner_id = m.mb_id
          $room_where
-         ORDER BY r.room_name, r.room_id ";
+         ORDER BY r.room_name, r.room_id, r.bot_name ";
 $result_rooms = sql_query($sql);
 while($row = sql_fetch_array($result_rooms)) {
-    $room_list[] = $row;
-    // 봇 이름 수집 (중복 제거)
-    if (!in_array($row['bot_name'], $bot_list)) {
-        $bot_list[] = $row['bot_name'];
-    }
+    // 고유 키 생성 (room_id + bot_name + device_id)
+    $unique_key = $row['room_id'] . '|' . $row['bot_name'] . '|' . $row['device_id'];
+    
+    $room_list[] = array_merge($row, ['unique_key' => $unique_key]);
+    
+    // 봇 디바이스 맵핑 - 이미 room에 device_id가 있음
+    $room_bot_map[$unique_key] = [[
+        'bot_name' => $row['bot_name'],
+        'device_id' => $row['device_id'],
+        'display_name' => $row['bot_name'] . ' (' . substr($row['device_id'], 0, 8) . '...)'
+    ]];
 }
-
-// 봇 목록 정렬
-sort($bot_list);
 ?>
 
 <form name="fschedule" id="fschedule" action="./bot_schedule_form_update.php" onsubmit="return fschedule_submit(this);" method="post" enctype="multipart/form-data" accept-charset="UTF-8">
@@ -163,63 +186,39 @@ sort($bot_list);
     </colgroup>
     <tbody>
     <tr>
-        <th scope="row"><label for="target_bot_name">대상 봇<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <select name="target_bot_name" id="target_bot_name" required class="required frm_input" onchange="filterDevicesAndRooms()">
-                <option value="">봇을 선택하세요</option>
-                <?php foreach($bot_list as $bot_name): ?>
-                <option value="<?php echo $bot_name?>" <?php echo ($schedule['target_bot_name']==$bot_name)?'selected':'';?>><?php echo $bot_name?></option>
-                <?php endforeach; ?>
-            </select>
-            <?php if(count($bot_list) == 0): ?>
-            <div class="frm_info fc_red">지점이 배정된 승인된 톡방이 없습니다.</div>
-            <?php endif; ?>
-        </td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="target_device_id">대상 디바이스<strong class="sound_only">필수</strong></label></th>
-        <td>
-            <select name="target_device_id" id="target_device_id" required class="required frm_input" onchange="filterRooms()">
-                <option value="">디바이스를 선택하세요</option>
-                <?php
-                // 봇별 디바이스 목록 조회
-                $device_sql = "SELECT bot_name, device_id, device_name, device_model 
-                              FROM kb_bot_devices 
-                              WHERE status = 'approved' 
-                              ORDER BY bot_name, device_id";
-                $device_result = sql_query($device_sql);
-                while($device = sql_fetch_array($device_result)) {
-                    $device_display = $device['device_name'] ? $device['device_name'] : $device['device_id'];
-                    if($device['device_model']) {
-                        $device_display .= ' (' . $device['device_model'] . ')';
-                    }
-                ?>
-                <option value="<?php echo $device['device_id']?>" 
-                        data-bot="<?php echo $device['bot_name']?>"
-                        <?php echo ($schedule['target_device_id']==$device['device_id'])?'selected':'';?>>
-                    <?php echo $device_display?>
-                </option>
-                <?php } ?>
-            </select>
-            <div class="frm_info">봇을 선택하면 해당 봇의 디바이스 목록이 표시됩니다.</div>
-        </td>
-    </tr>
-    <tr>
         <th scope="row"><label for="target_room_id">대상 톡방<strong class="sound_only">필수</strong></label></th>
         <td>
-            <select name="target_room_id" id="target_room_id" required class="required frm_input">
+            <select name="target_room_key" id="target_room_key" required class="required frm_input" onchange="updateBotDeviceList()">
                 <option value="">톡방을 선택하세요</option>
                 <?php foreach($room_list as $room): ?>
-                <option value="<?php echo $room['room_id']?>" 
+                <option value="<?php echo $room['unique_key']?>" 
                         data-bot="<?php echo $room['bot_name']?>"
-                        <?php echo ($schedule['target_room_id']==$room['room_id'])?'selected':'';?>>
-                    <?php echo $room['room_name']?> - <?php echo $room['branch_name']?> (<?php echo $room['owner_id']?>)
+                        data-device="<?php echo $room['device_id']?>"
+                        data-room-id="<?php echo $room['room_id']?>"
+                        <?php echo ($schedule['target_room_id']==$room['room_id'] && $schedule['target_bot_name']==$room['bot_name'] && $schedule['target_device_id']==$room['device_id'])?'selected':'';?>>
+                    <?php echo $room['room_name']?> - <?php echo $room['bot_name']?> (<?php echo substr($room['device_id'], 0, 8)?>...) - <?php echo $room['branch_name']?>
                 </option>
                 <?php endforeach; ?>
             </select>
-            <div class="frm_info">봇을 먼저 선택하면 해당 봇의 톡방만 표시됩니다.</div>
+            <?php if(count($room_list) == 0): ?>
+            <div class="frm_info fc_red">지점이 배정된 승인된 톡방이 없습니다.</div>
+            <?php else: ?>
+            <div class="frm_info">각 톡방은 지정된 봇과 디바이스로 메시지를 발송합니다.</div>
+            <?php endif; ?>
+            <div id="selected_bot_info" style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; display: none;">
+                <strong>선택된 봇:</strong> <span id="bot_info_text"></span>
+            </div>
         </td>
     </tr>
+    <!-- 대상 정보는 톡방 선택 시 자동으로 결정됨 -->
+    <input type="hidden" name="target_room_id" id="target_room_id" value="<?php echo $schedule['target_room_id']?>">
+    <input type="hidden" name="target_bot_name" id="target_bot_name" value="<?php echo $schedule['target_bot_name']?>">
+    <input type="hidden" name="target_device_id" id="target_device_id" value="<?php echo $schedule['target_device_id']?>">
+    
+    <script>
+    // 톡방별 봇 디바이스 맵핑 데이터
+    var roomBotMap = <?php echo json_encode($room_bot_map); ?>;
+    </script>
     <tr>
         <th scope="row"><label for="title">제목<strong class="sound_only">필수</strong></label></th>
         <td><input type="text" name="title" value="<?php echo get_text($schedule['title'])?>" id="title" required class="required frm_input" size="50" maxlength="255"></td>
@@ -272,7 +271,13 @@ sort($bot_list);
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="frm_info">첫 번째 이미지 그룹 (최대 30개, 개별 최대 10MB, 가로 900px 이상은 자동 리사이징)</div>
+            <div class="frm_info">
+                첫 번째 이미지 그룹 (최대 30개, 개별 최대 10MB<?php if (extension_loaded('gd')): ?>, 가로 900px 이상은 자동 리사이징<?php endif; ?>)
+                <?php if (!extension_loaded('gd')): ?>
+                <br><span class="fc_red">※ PHP GD 라이브러리가 설치되어 있지 않아 이미지 리사이징이 작동하지 않습니다.</span>
+                <?php endif; ?>
+                <br><small>현재 PHP 설정: upload_max_filesize=<?php echo ini_get('upload_max_filesize')?>, post_max_size=<?php echo ini_get('post_max_size')?></small>
+            </div>
         </td>
     </tr>
     <tr>
@@ -295,7 +300,12 @@ sort($bot_list);
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="frm_info">두 번째 이미지 그룹 (최대 30개, 개별 최대 10MB, 가로 900px 이상은 자동 리사이징)</div>
+            <div class="frm_info">
+                두 번째 이미지 그룹 (최대 30개, 개별 최대 10MB<?php if (extension_loaded('gd')): ?>, 가로 900px 이상은 자동 리사이징<?php endif; ?>)
+                <?php if (!extension_loaded('gd')): ?>
+                <br><span class="fc_red">※ PHP GD 라이브러리가 설치되어 있지 않아 이미지 리사이징이 작동하지 않습니다.</span>
+                <?php endif; ?>
+            </div>
         </td>
     </tr>
     <tr>
@@ -675,63 +685,37 @@ function removeImage(btn, groupNum) {
     btn.parentElement.remove();
 }
 
-function filterDevicesAndRooms() {
-    const botSelect = document.getElementById('target_bot_name');
-    const deviceSelect = document.getElementById('target_device_id');
-    const selectedBot = botSelect.value;
-    
-    // 디바이스 필터링
-    const deviceOptions = deviceSelect.querySelectorAll('option');
-    let hasVisibleDevice = false;
-    for (let i = 1; i < deviceOptions.length; i++) {
-        const option = deviceOptions[i];
-        if (selectedBot && option.dataset.bot !== selectedBot) {
-            option.style.display = 'none';
-        } else {
-            option.style.display = '';
-            hasVisibleDevice = true;
-        }
-    }
-    
-    // 선택된 디바이스가 숨겨진 경우 초기화
-    const selectedDeviceOption = deviceSelect.options[deviceSelect.selectedIndex];
-    if (selectedDeviceOption && selectedDeviceOption.style.display === 'none') {
-        deviceSelect.value = '';
-    }
-    
-    // 봇이 선택되고 해당 봇에 디바이스가 하나만 있으면 자동 선택
-    if (selectedBot && hasVisibleDevice) {
-        const visibleDevices = Array.from(deviceOptions).filter((opt, idx) => idx > 0 && opt.style.display !== 'none');
-        if (visibleDevices.length === 1) {
-            deviceSelect.value = visibleDevices[0].value;
-        }
-    }
-    
-    // 톡방도 필터링
-    filterRooms();
-}
-
-function filterRooms() {
-    const botSelect = document.getElementById('target_bot_name');
-    const roomSelect = document.getElementById('target_room_id');
-    const selectedBot = botSelect.value;
-    
-    // 모든 옵션 처리
-    const options = roomSelect.querySelectorAll('option');
-    for (let i = 1; i < options.length; i++) { // 첫 번째 옵션은 "톡방을 선택하세요"
-        const option = options[i];
-        if (selectedBot && option.dataset.bot !== selectedBot) {
-            option.style.display = 'none';
-        } else {
-            option.style.display = '';
-        }
-    }
-    
-    // 선택된 값이 숨겨진 경우 초기화
+function updateBotDeviceList() {
+    const roomSelect = document.getElementById('target_room_key');
+    const roomIdInput = document.getElementById('target_room_id');
+    const deviceIdInput = document.getElementById('target_device_id');
+    const botNameInput = document.getElementById('target_bot_name');
+    const botInfoDiv = document.getElementById('selected_bot_info');
+    const botInfoText = document.getElementById('bot_info_text');
     const selectedOption = roomSelect.options[roomSelect.selectedIndex];
-    if (selectedOption && selectedOption.style.display === 'none') {
-        roomSelect.value = '';
+    
+    if (!roomSelect.value) {
+        roomIdInput.value = '';
+        deviceIdInput.value = '';
+        botNameInput.value = '';
+        botInfoDiv.style.display = 'none';
+        return;
     }
+    
+    // 선택된 옵션에서 데이터 추출
+    const roomId = selectedOption.getAttribute('data-room-id');
+    const botName = selectedOption.getAttribute('data-bot');
+    const deviceId = selectedOption.getAttribute('data-device');
+    
+    // hidden 필드에 값 설정
+    roomIdInput.value = roomId;
+    botNameInput.value = botName;
+    deviceIdInput.value = deviceId;
+    
+    // 봇 정보 표시
+    botInfoDiv.style.display = 'block';
+    botInfoText.textContent = botName + ' (' + deviceId.substr(0, 8) + '...)';
+    botInfoText.style.color = '#4CAF50';
 }
 
 function toggleScheduleType() {
@@ -789,21 +773,16 @@ function fschedule_submit(f) {
         return false;
     }
     
-    if (!f.target_bot_name.value) {
-        alert("대상 봇을 선택해주세요.");
-        f.target_bot_name.focus();
-        return false;
-    }
-    
-    if (!f.target_device_id.value) {
-        alert("대상 디바이스를 선택해주세요.");
-        f.target_device_id.focus();
-        return false;
-    }
-    
-    if (!f.target_room_id.value) {
+    if (!f.target_room_key.value) {
         alert("대상 톡방을 선택해주세요.");
-        f.target_room_id.focus();
+        f.target_room_key.focus();
+        return false;
+    }
+    
+    // target_room_id, target_device_id와 target_bot_name은 톡방 선택 시 자동 설정됨
+    if (!f.target_room_id.value || !f.target_device_id.value || !f.target_bot_name.value) {
+        alert("선택한 톡방에 연결된 봇 정보를 찾을 수 없습니다.");
+        f.target_room_key.focus();
         return false;
     }
     
@@ -882,10 +861,15 @@ function fschedule_submit(f) {
     return true;
 }
 
-// 초기 필터링
-<?php if ($w == 'u' && $schedule['target_bot_name']): ?>
-filterDevicesAndRooms();
-<?php endif; ?>
+// 초기화 - 페이지 로드 시 봇 정보 표시
+document.addEventListener('DOMContentLoaded', function() {
+    <?php if ($w == 'u' && $schedule['target_room_id']): ?>
+    // 수정 모드 - 선택된 톡방의 봇 정보 표시
+    setTimeout(function() {
+        updateBotDeviceList();
+    }, 100);
+    <?php endif; ?>
+});
 </script>
 
 <?php
