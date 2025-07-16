@@ -99,6 +99,38 @@ include_once (G5_ADMIN_PATH.'/admin.head.php');
     </table>
 </div>
 
+<h2 class="h2_frm">이미지 설정</h2>
+<div class="tbl_frm01 tbl_wrap">
+    <table>
+    <caption>이미지 설정</caption>
+    <colgroup>
+        <col class="grid_4">
+        <col>
+    </colgroup>
+    <tbody>
+    <tr>
+        <th scope="row"><label for="image_resize_enabled">이미지 리사이징</label></th>
+        <td>
+            <label><input type="checkbox" name="image_resize_enabled" id="image_resize_enabled" value="1" <?php echo $device['image_resize_enabled'] ? 'checked' : '' ?>> 활성화</label>
+            <div class="frm_info">
+                스케줄링 발송 시 업로드되는 이미지를 자동으로 리사이징합니다.
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="image_resize_width">리사이징 가로 크기</label></th>
+        <td>
+            <input type="number" name="image_resize_width" id="image_resize_width" value="<?php echo $device['image_resize_width'] ? $device['image_resize_width'] : 900 ?>" class="frm_input" size="10" min="100" max="2000"> px
+            <div class="frm_info">
+                이미지의 가로 크기가 설정값보다 큰 경우 자동으로 리사이징됩니다. (비율 유지)<br>
+                권장 크기: 900px (기본값)
+            </div>
+        </td>
+    </tr>
+    </tbody>
+    </table>
+</div>
+
 <div class="btn_fixed_top">
     <a href="./bot_device_list.php" class="btn btn_02">목록</a>
     <input type="submit" name="btn_submit" value="확인" id="btn_submit" accesskey="s" class="btn_submit btn">

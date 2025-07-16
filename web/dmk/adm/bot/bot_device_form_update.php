@@ -30,9 +30,20 @@ if (!$_POST['status']) {
 }
 
 // 데이터 준비
-$status = $_POST['status'];
-$description = $_POST['description'];
-$rejection_reason = $_POST['rejection_reason'];
+$status = sql_escape_string($_POST['status']);
+$description = sql_escape_string($_POST['description']);
+$image_resize_enabled = isset($_POST['image_resize_enabled']) ? 1 : 0;
+$image_resize_width = (int)$_POST['image_resize_width'];
+
+// 이미지 리사이징 크기 검증
+if ($image_resize_width < 100 || $image_resize_width > 2000) {
+    $image_resize_width = 900; // 기본값
+}
+
+// 디버깅 - POST 값 확인
+error_log("POST image_resize_width: " . $_POST['image_resize_width']);
+error_log("Processed image_resize_width: " . $image_resize_width);
+error_log("image_resize_enabled: " . $image_resize_enabled);
 
 // 상태 변경 로그용 데이터
 $old_status = $device['status'];
@@ -41,8 +52,9 @@ $status_changed = ($old_status != $status);
 // 디바이스 정보 업데이트
 $sql = " UPDATE kb_bot_devices SET 
          status = '$status',
-         description = '$description',
-         rejection_reason = '$rejection_reason',
+         descryption = '$description',
+         image_resize_enabled = '$image_resize_enabled',
+         image_resize_width = '$image_resize_width',
          updated_at = NOW() ";
 
 // 상태가 승인으로 변경되는 경우 승인 시간 기록
@@ -52,7 +64,15 @@ if ($status == 'approved' && $old_status != 'approved') {
 
 $sql .= " WHERE id = '$device_id' ";
 
+// 디버깅 - 실행될 SQL 쿼리 확인
+error_log("SQL Query: " . $sql);
+
 sql_query($sql);
+
+// 업데이트 후 값 확인
+$check_sql = "SELECT image_resize_width, image_resize_enabled FROM kb_bot_devices WHERE id = '$device_id'";
+$check_result = sql_fetch($check_sql);
+error_log("After update - image_resize_width: " . $check_result['image_resize_width'] . ", image_resize_enabled: " . $check_result['image_resize_enabled']);
 
 // 상태 변경 로그 기록
 if ($status_changed) {
@@ -67,10 +87,10 @@ if ($status_changed) {
     $old_status_name = $status_names[$old_status] ?? $old_status;
     $new_status_name = $status_names[$status] ?? $status;
     
-    dmk_admin_log('봇 디바이스 상태 변경', 
-        "디바이스ID: {$device_id}, 봇명: {$device['bot_name']}, " .
-        "상태: {$old_status_name} → {$new_status_name}"
-    );
+    // dmk_admin_log('봇 디바이스 상태 변경', 
+    //     "디바이스ID: {$device_id}, 봇명: {$device['bot_name']}, " .
+    //     "상태: {$old_status_name} → {$new_status_name}"
+    // );
     
     // 승인된 경우 추가 처리
     if ($status == 'approved') {
@@ -82,9 +102,9 @@ if ($status_changed) {
         // TODO: 필요시 연결 강제 해제 등 추가 처리
     }
 } else {
-    dmk_admin_log('봇 디바이스 정보 수정', 
-        "디바이스ID: {$device_id}, 봇명: {$device['bot_name']}"
-    );
+    // dmk_admin_log('봇 디바이스 정보 수정', 
+    //     "디바이스ID: {$device_id}, 봇명: {$device['bot_name']}"
+    // );
 }
 
 goto_url('./bot_device_list.php');

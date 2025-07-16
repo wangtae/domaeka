@@ -206,6 +206,7 @@ $qstr = "&sfl=$sfl&stx=$stx";
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     font-size: 13px;
     line-height: 1.5;
+    pointer-events: auto;  /* 툴팁 내부에서는 마우스 이벤트 허용 (스크롤 가능) */
 }
 .image-thumbnails {
     display: flex;
@@ -305,7 +306,9 @@ $qstr = "&sfl=$sfl&stx=$stx";
     </div>
 </div>
 
-<div id="messageTooltip" class="message-tooltip"></div>
+<div id="messageTooltip" class="message-tooltip" 
+     onmouseenter="if(hideTimeout) clearTimeout(hideTimeout);" 
+     onmouseleave="hideTooltip()"></div>
 
 <script>
 function showModal(src) {
@@ -319,50 +322,86 @@ function closeModal() {
 
 // 툴팁 표시 함수
 function showTooltip(event, text) {
+    // 숨기기 타이머가 있으면 취소
+    if (hideTimeout) {
+        clearTimeout(hideTimeout);
+    }
+    
     var tooltip = document.getElementById('messageTooltip');
     tooltip.textContent = text;
     tooltip.style.display = 'block';
     
-    // 마우스 위치에서 조금 떨어진 곳에 표시
-    var x = event.pageX + 10;
-    var y = event.pageY + 10;
+    // 마우스 포인터가 툴팁 내부에 위치하도록 설정
+    // 툴팁 좌상단에서 20px 안쪽에 마우스가 위치
+    var x = event.pageX - 20;
+    var y = event.pageY - 20;
     
     // 화면 경계 체크
     var tooltipWidth = 400; // max-width
     var tooltipHeight = 300; // max-height
     
-    if (x + tooltipWidth > window.innerWidth + window.pageXOffset) {
-        x = event.pageX - tooltipWidth - 10;
+    // 화면 왼쪽 벗어나면 조정
+    if (x < 10) {
+        x = 10;
     }
     
-    if (y + tooltipHeight > window.innerHeight + window.pageYOffset) {
-        y = event.pageY - tooltipHeight - 10;
+    // 화면 오른쪽 벗어나면 마우스가 툴팁 오른쪽 내부에 위치하도록
+    if (x + tooltipWidth > window.innerWidth + window.pageXOffset - 20) {
+        x = event.pageX - tooltipWidth + 20;
+    }
+    
+    // 화면 위쪽 벗어나면 조정
+    if (y < 10) {
+        y = 10;
+    }
+    
+    // 화면 아래쪽 벗어나면 마우스가 툴팁 아래쪽 내부에 위치하도록
+    if (y + tooltipHeight > window.innerHeight + window.pageYOffset - 20) {
+        y = event.pageY - tooltipHeight + 20;
     }
     
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
 }
 
+var hideTimeout;
+
 function hideTooltip() {
-    document.getElementById('messageTooltip').style.display = 'none';
+    // 약간의 지연 후 툴팁 숨기기 (깜빡거림 방지)
+    hideTimeout = setTimeout(function() {
+        document.getElementById('messageTooltip').style.display = 'none';
+    }, 100);
 }
 
 // 툴팁 마우스 이동 추적
 function moveTooltip(event) {
     var tooltip = document.getElementById('messageTooltip');
     if (tooltip.style.display === 'block') {
-        var x = event.pageX + 10;
-        var y = event.pageY + 10;
+        // 마우스 포인터가 툴팁 내부에 위치하도록 설정
+        var x = event.pageX - 20;
+        var y = event.pageY - 20;
         
         var tooltipWidth = tooltip.offsetWidth;
         var tooltipHeight = tooltip.offsetHeight;
         
-        if (x + tooltipWidth > window.innerWidth + window.pageXOffset) {
-            x = event.pageX - tooltipWidth - 10;
+        // 화면 왼쪽 벗어나면 조정
+        if (x < 10) {
+            x = 10;
         }
         
-        if (y + tooltipHeight > window.innerHeight + window.pageYOffset) {
-            y = event.pageY - 10 - tooltipHeight;
+        // 화면 오른쪽 벗어나면 마우스가 툴팁 오른쪽 내부에 위치하도록
+        if (x + tooltipWidth > window.innerWidth + window.pageXOffset - 20) {
+            x = event.pageX - tooltipWidth + 20;
+        }
+        
+        // 화면 위쪽 벗어나면 조정
+        if (y < 10) {
+            y = 10;
+        }
+        
+        // 화면 아래쪽 벗어나면 마우스가 툴팁 아래쪽 내부에 위치하도록
+        if (y + tooltipHeight > window.innerHeight + window.pageYOffset - 20) {
+            y = event.pageY - tooltipHeight + 20;
         }
         
         tooltip.style.left = x + 'px';

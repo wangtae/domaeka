@@ -148,12 +148,26 @@ if (is_dir($upload_dir)) {
 }
 
 // 이미지 처리 함수
-function process_schedule_images($group_num, $existing_images, $new_files) {
+function process_schedule_images($group_num, $existing_images, $new_files, $bot_name = null) {
     global $upload_dir;
     
     $images = [];
     $max_images = 30; // 최대 이미지 개수
-    $max_width = 900; // 최대 가로 크기
+    
+    // 봇 설정에서 리사이징 크기 가져오기
+    $max_width = 900; // 기본값
+    $resize_enabled = true; // 기본값
+    
+    if ($bot_name) {
+        $sql = "SELECT image_resize_width, image_resize_enabled FROM kb_bot_devices WHERE bot_name = '".sql_escape_string($bot_name)."' AND status = 'approved' LIMIT 1";
+        $bot_config = sql_fetch($sql);
+        if ($bot_config) {
+            $resize_enabled = $bot_config['image_resize_enabled'];
+            if ($bot_config['image_resize_width'] > 0) {
+                $max_width = $bot_config['image_resize_width'];
+            }
+        }
+    }
     
     // 기존 이미지 처리
     if (!empty($existing_images)) {
@@ -178,18 +192,17 @@ function process_schedule_images($group_num, $existing_images, $new_files) {
                 
                 echo "<!-- DEBUG: Target filepath: $filepath -->\n";
                 
-                // 이미지 리사이징 처리 (임시로 비활성화)
+                // 이미지 리사이징 처리
                 $uploaded = false;
-                /*
-                if (preg_match('/\.(jpg|jpeg|png|gif)$/i', $new_files['name'][$i])) {
+                
+                if ($resize_enabled && preg_match('/\.(jpg|jpeg|png|gif)$/i', $new_files['name'][$i])) {
                     // 이미지 파일인 경우 리사이징 처리
-                    echo "<!-- DEBUG: Attempting to resize image -->\n";
+                    echo "<!-- DEBUG: Attempting to resize image (max_width: $max_width) -->\n";
                     $uploaded = resize_and_save_image($new_files['tmp_name'][$i], $filepath, $max_width);
                     echo "<!-- DEBUG: Resize result: " . ($uploaded ? 'success' : 'failed') . " -->\n";
                 }
-                */
                 
-                // 원본 저장 (리사이징 임시 비활성화)
+                // 리사이징 실패 또는 비활성화 시 원본 저장
                 if (!$uploaded) {
                     echo "<!-- DEBUG: Attempting direct move -->\n";
                     $uploaded = move_uploaded_file($new_files['tmp_name'][$i], $filepath);
@@ -291,8 +304,9 @@ echo "<!-- DEBUG: FILES data: " . print_r($_FILES, true) . " -->\n";
 echo "<!-- DEBUG: POST existing_images_1: " . print_r($_POST['existing_images_1'] ?? [], true) . " -->\n";
 echo "<!-- DEBUG: POST existing_images_2: " . print_r($_POST['existing_images_2'] ?? [], true) . " -->\n";
 
-$message_images_1 = process_schedule_images(1, $_POST['existing_images_1'] ?? [], $_FILES['new_images_1'] ?? []);
-$message_images_2 = process_schedule_images(2, $_POST['existing_images_2'] ?? [], $_FILES['new_images_2'] ?? []);
+// 봇 이름을 process_schedule_images 함수에 전달
+$message_images_1 = process_schedule_images(1, $_POST['existing_images_1'] ?? [], $_FILES['new_images_1'] ?? [], $target_bot_name);
+$message_images_2 = process_schedule_images(2, $_POST['existing_images_2'] ?? [], $_FILES['new_images_2'] ?? [], $target_bot_name);
 
 echo "<!-- DEBUG: message_images_1 result: " . print_r($message_images_1, true) . " -->\n";
 echo "<!-- DEBUG: message_images_2 result: " . print_r($message_images_2, true) . " -->\n";
