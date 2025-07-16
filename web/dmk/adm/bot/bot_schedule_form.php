@@ -6,6 +6,9 @@
 $sub_menu = "180600";
 include_once('./_common.php');
 
+// UTF-8 인코딩 설정
+header('Content-Type: text/html; charset=utf-8');
+
 auth_check('180600', 'w');
 
 $w = $_GET['w'];
@@ -19,11 +22,15 @@ if ($w == 'u' && $id) {
     }
     
     // 권한 체크
-    $user_info = dmk_get_admin_auth($member['mb_id']);
-    if ($user_info['type'] != 'super') {
+    $user_info = dmk_get_admin_auth();
+    if (!$user_info['is_super']) {
         // 스케줄 소유권 확인
         $can_edit = false;
-        if ($user_info['type'] == 'distributor') {
+        
+        // created_by_type이 비어있으면 수정 불가
+        if (empty($schedule['created_by_type'])) {
+            $can_edit = false;
+        } else if ($user_info['mb_type'] == 'distributor') {
             // 총판은 자신과 하위 스케줄 수정 가능
             if ($schedule['created_by_type'] == 'distributor' && $schedule['created_by_id'] == $user_info['key']) {
                 $can_edit = true;
@@ -36,7 +43,7 @@ if ($w == 'u' && $id) {
                          WHERE a.dt_id = '{$user_info['key']}' AND b.br_id = '{$schedule['created_by_id']}' ";
                 if (sql_fetch($sql)) $can_edit = true;
             }
-        } else if ($user_info['type'] == 'agency') {
+        } else if ($user_info['mb_type'] == 'agency') {
             // 대리점은 자신과 하위 스케줄 수정 가능
             if ($schedule['created_by_type'] == 'agency' && $schedule['created_by_id'] == $user_info['key']) {
                 $can_edit = true;
@@ -44,7 +51,7 @@ if ($w == 'u' && $id) {
                 $sql = " SELECT br_id FROM dmk_branch WHERE ag_id = '{$user_info['key']}' AND br_id = '{$schedule['created_by_id']}' ";
                 if (sql_fetch($sql)) $can_edit = true;
             }
-        } else if ($user_info['type'] == 'branch') {
+        } else if ($user_info['mb_type'] == 'branch') {
             // 지점은 자신의 스케줄만 수정 가능
             if ($schedule['created_by_type'] == 'branch' && $schedule['created_by_id'] == $user_info['key']) {
                 $can_edit = true;
@@ -67,17 +74,17 @@ $g5['title'] = '스케줄링 발송 '.($w==''?'등록':'수정');
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
 // 사용자 권한에 따른 지점 배정된 톡방과 봇 목록 조회
-$user_info = dmk_get_admin_auth($member['mb_id']);
+$user_info = dmk_get_admin_auth();
 
 // status가 approved이고 지점이 배정된(owner_id가 있는) 톡방만 조회
 $room_where = " WHERE r.status = 'approved' AND r.owner_id IS NOT NULL ";
 
-if ($user_info['type'] != 'super') {
+if (!$user_info['is_super']) {
     // 계층별 필터링
-    if ($user_info['type'] == 'branch') {
+    if ($user_info['mb_type'] == 'branch') {
         // 지점은 자신의 톡방만
         $room_where .= " AND r.owner_id = '{$user_info['key']}' ";
-    } else if ($user_info['type'] == 'agency') {
+    } else if ($user_info['mb_type'] == 'agency') {
         // 대리점은 하위 지점의 톡방
         $br_list = [];
         $sql = " SELECT br_id FROM dmk_branch WHERE ag_id = '{$user_info['key']}' ";
@@ -91,7 +98,7 @@ if ($user_info['type'] != 'super') {
         } else {
             $room_where .= " AND 1=0 "; // 하위 지점이 없으면 조회 결과 없음
         }
-    } else if ($user_info['type'] == 'distributor') {
+    } else if ($user_info['mb_type'] == 'distributor') {
         // 총판은 하위 대리점의 지점 톡방
         $ag_list = [];
         $sql = " SELECT ag_id FROM dmk_agency WHERE dt_id = '{$user_info['key']}' ";
@@ -139,7 +146,7 @@ while($row = sql_fetch_array($result_rooms)) {
 sort($bot_list);
 ?>
 
-<form name="fschedule" id="fschedule" action="./bot_schedule_form_update.php" onsubmit="return fschedule_submit(this);" method="post" enctype="multipart/form-data">
+<form name="fschedule" id="fschedule" action="./bot_schedule_form_update.php" onsubmit="return fschedule_submit(this);" method="post" enctype="multipart/form-data" accept-charset="UTF-8">
 <input type="hidden" name="w" value="<?php echo $w ?>">
 <input type="hidden" name="id" value="<?php echo $id ?>">
 <input type="hidden" name="token" value="<?php echo get_admin_token() ?>">
@@ -155,14 +162,6 @@ sort($bot_list);
         <col>
     </colgroup>
     <tbody>
-    <tr>
-        <th scope="row"><label for="title">제목<strong class="sound_only">필수</strong></label></th>
-        <td><input type="text" name="title" value="<?php echo get_text($schedule['title'])?>" id="title" required class="required frm_input" size="50" maxlength="255"></td>
-    </tr>
-    <tr>
-        <th scope="row"><label for="description">설명</label></th>
-        <td><textarea name="description" id="description" class="frm_input" rows="3" cols="50"><?php echo get_text($schedule['description'])?></textarea></td>
-    </tr>
     <tr>
         <th scope="row"><label for="target_bot_name">대상 봇<strong class="sound_only">필수</strong></label></th>
         <td>
@@ -193,6 +192,15 @@ sort($bot_list);
             <div class="frm_info">봇을 먼저 선택하면 해당 봇의 톡방만 표시됩니다.</div>
         </td>
     </tr>
+    <tr>
+        <th scope="row"><label for="title">제목<strong class="sound_only">필수</strong></label></th>
+        <td><input type="text" name="title" value="<?php echo get_text($schedule['title'])?>" id="title" required class="required frm_input" size="50" maxlength="255"></td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="description">설명</label></th>
+        <td><textarea name="description" id="description" class="frm_input" rows="3" cols="50"><?php echo get_text($schedule['description'])?></textarea></td>
+    </tr>
+    
     </tbody>
     </table>
 </div>
@@ -212,8 +220,8 @@ sort($bot_list);
     <tr>
         <th scope="row"><label for="message_text">텍스트 메시지</label></th>
         <td>
-            <textarea name="message_text" id="message_text" class="frm_input" rows="10" cols="70"><?php echo get_text($schedule['message_text'])?></textarea>
-            <div class="frm_info">발송할 텍스트 메시지를 입력하세요. (선택사항)</div>
+            <textarea name="message_text" id="message_text" class="frm_input" rows="10" cols="70" style="font-family: 'Noto Sans KR', sans-serif;"><?php echo get_text($schedule['message_text'])?></textarea>
+            <div class="frm_info">발송할 텍스트 메시지를 입력하세요. 이모티콘 사용 가능합니다. (선택사항)</div>
         </td>
     </tr>
     <tr>
@@ -236,7 +244,7 @@ sort($bot_list);
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="frm_info">첫 번째 이미지 그룹 (최대 10개, 개별 최대 10MB)</div>
+            <div class="frm_info">첫 번째 이미지 그룹 (최대 30개, 개별 최대 10MB, 가로 900px 이상은 자동 리사이징)</div>
         </td>
     </tr>
     <tr>
@@ -259,7 +267,7 @@ sort($bot_list);
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="frm_info">두 번째 이미지 그룹 (최대 10개, 개별 최대 10MB)</div>
+            <div class="frm_info">두 번째 이미지 그룹 (최대 30개, 개별 최대 10MB, 가로 900px 이상은 자동 리사이징)</div>
         </td>
     </tr>
     <tr>
@@ -536,7 +544,7 @@ function setupDropzone(dropzoneId, fileInputId, previewId, groupNum) {
 
 function handleFiles(files, groupNum) {
     const preview = document.getElementById('preview_' + groupNum);
-    const maxFiles = 10;
+    const maxFiles = 30;
     const maxSize = 10 * 1024 * 1024; // 10MB
     
     // 현재 업로드된 파일 수 확인
@@ -562,27 +570,77 @@ function handleFiles(files, groupNum) {
             continue;
         }
         
-        // 미리보기 생성
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const previewItem = document.createElement('div');
-            previewItem.className = 'preview_item';
-            previewItem.innerHTML = `
-                <img src="${e.target.result}" alt="">
-                <button type="button" class="btn_delete" onclick="removeImage(this, ${groupNum})">×</button>
-                <input type="file" name="new_images_${groupNum}[]" style="display:none;">
-            `;
-            
-            // File 객체를 숨겨진 input에 저장
-            const hiddenInput = previewItem.querySelector('input[type="file"]');
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            hiddenInput.files = dataTransfer.files;
-            
-            preview.appendChild(previewItem);
-        };
-        reader.readAsDataURL(file);
+        // 이미지 리사이징 및 미리보기 생성
+        processImage(file, groupNum, preview);
     }
+}
+
+function processImage(file, groupNum, preview) {
+    const maxWidth = 900;
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            let width = img.width;
+            let height = img.height;
+            let needResize = false;
+            
+            // 가로 사이즈가 900px를 초과하는 경우 리사이징 필요
+            if (width > maxWidth) {
+                needResize = true;
+                height = (height / width) * maxWidth;
+                width = maxWidth;
+            }
+            
+            if (needResize) {
+                // Canvas를 사용하여 리사이징
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                // 이미지를 캔버스에 그리기
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Canvas를 Blob으로 변환
+                canvas.toBlob(function(blob) {
+                    // 새로운 File 객체 생성
+                    const resizedFile = new File([blob], file.name, {
+                        type: file.type,
+                        lastModified: Date.now()
+                    });
+                    
+                    // 리사이징된 이미지로 미리보기 생성
+                    createPreviewItem(resizedFile, groupNum, preview, canvas.toDataURL());
+                }, file.type, 0.9); // JPEG 품질 90%
+            } else {
+                // 리사이징이 필요없는 경우 원본 사용
+                createPreviewItem(file, groupNum, preview, e.target.result);
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function createPreviewItem(file, groupNum, preview, dataUrl) {
+    const previewItem = document.createElement('div');
+    previewItem.className = 'preview_item';
+    previewItem.innerHTML = `
+        <img src="${dataUrl}" alt="">
+        <button type="button" class="btn_delete" onclick="removeImage(this, ${groupNum})">×</button>
+        <input type="file" name="new_images_${groupNum}[]" style="display:none;">
+    `;
+    
+    // File 객체를 숨겨진 input에 저장
+    const hiddenInput = previewItem.querySelector('input[type="file"]');
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    hiddenInput.files = dataTransfer.files;
+    
+    preview.appendChild(previewItem);
 }
 
 function removeImage(btn, groupNum) {
@@ -657,6 +715,9 @@ function removeScheduleTime(btn) {
 }
 
 function fschedule_submit(f) {
+    // UTF-8 인코딩 보장
+    f.acceptCharset = "UTF-8";
+    
     // 기본 유효성 검사
     if (!f.title.value) {
         alert("제목을 입력해주세요.");

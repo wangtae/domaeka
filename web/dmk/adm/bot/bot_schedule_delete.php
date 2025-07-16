@@ -23,12 +23,15 @@ if (!$schedule['id']) {
 }
 
 // 권한 체크
-$user_info = dmk_get_admin_auth($member['mb_id']);
-if ($user_info['type'] != 'super') {
+$user_info = dmk_get_admin_auth();
+if (!$user_info['is_super']) {
     // 스케줄 소유권 확인
     $can_delete = false;
     
-    if ($user_info['type'] == 'distributor') {
+    // created_by_type이 비어있으면 삭제 불가
+    if (empty($schedule['created_by_type'])) {
+        $can_delete = false;
+    } else if ($user_info['mb_type'] == 'distributor') {
         // 총판은 자신과 하위 스케줄 삭제 가능
         if ($schedule['created_by_type'] == 'distributor' && $schedule['created_by_id'] == $user_info['key']) {
             $can_delete = true;
@@ -41,7 +44,7 @@ if ($user_info['type'] != 'super') {
                      WHERE a.dt_id = '{$user_info['key']}' AND b.br_id = '{$schedule['created_by_id']}' ";
             if (sql_fetch($sql)) $can_delete = true;
         }
-    } else if ($user_info['type'] == 'agency') {
+    } else if ($user_info['mb_type'] == 'agency') {
         // 대리점은 자신과 하위 스케줄 삭제 가능
         if ($schedule['created_by_type'] == 'agency' && $schedule['created_by_id'] == $user_info['key']) {
             $can_delete = true;
@@ -49,7 +52,7 @@ if ($user_info['type'] != 'super') {
             $sql = " SELECT br_id FROM dmk_branch WHERE ag_id = '{$user_info['key']}' AND br_id = '{$schedule['created_by_id']}' ";
             if (sql_fetch($sql)) $can_delete = true;
         }
-    } else if ($user_info['type'] == 'branch') {
+    } else if ($user_info['mb_type'] == 'branch') {
         // 지점은 자신의 스케줄만 삭제 가능
         if ($schedule['created_by_type'] == 'branch' && $schedule['created_by_id'] == $user_info['key']) {
             $can_delete = true;
@@ -87,7 +90,7 @@ $sql = " DELETE FROM kb_schedule_logs WHERE schedule_id = '$id' ";
 sql_query($sql);
 
 // 로그 기록
-dmk_admin_log('스케줄링 발송 삭제', "ID: $id, 제목: {$schedule['title']}");
+// dmk_admin_log('스케줄링 발송 삭제', "ID: $id, 제목: {$schedule['title']}");
 
 goto_url('./bot_schedule_list.php?'.$qstr);
 ?>

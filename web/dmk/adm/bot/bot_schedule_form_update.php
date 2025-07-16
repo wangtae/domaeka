@@ -6,6 +6,15 @@
 $sub_menu = "180600";
 include_once('./_common.php');
 
+// 에러 표시 활성화 (디버깅용)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('max_execution_time', 300);
+ini_set('memory_limit', '512M');
+
+// UTF-8 인코딩 설정
+header('Content-Type: text/html; charset=utf-8');
+
 auth_check('180600', 'w');
 
 check_admin_token();
@@ -78,11 +87,31 @@ if (strtotime($valid_from) >= strtotime($valid_until)) {
 }
 
 // 데이터 준비
-$title = $_POST['title'];
-$description = $_POST['description'];
-$target_bot_name = $_POST['target_bot_name'];
-$target_room_id = $_POST['target_room_id'];
-$message_text = $_POST['message_text'];
+$title = trim($_POST['title']);
+$description = trim($_POST['description']);
+$target_bot_name = trim($_POST['target_bot_name']);
+$target_room_id = trim($_POST['target_room_id']);
+$message_text = trim($_POST['message_text']);
+
+// 메시지 텍스트 인코딩 처리
+if ($message_text) {
+    // 디버깅 정보 출력
+    echo "<!-- DEBUG: Original message_text: " . bin2hex(substr($message_text, 0, 50)) . " -->\n";
+    echo "<!-- DEBUG: Detected encoding: " . mb_detect_encoding($message_text, mb_detect_order(), true) . " -->\n";
+    
+    // 현재 인코딩 확인
+    $encoding = mb_detect_encoding($message_text, array('UTF-8', 'EUC-KR', 'ISO-8859-1'), true);
+    
+    // UTF-8이 아닌 경우 변환
+    if ($encoding && $encoding !== 'UTF-8') {
+        $message_text = mb_convert_encoding($message_text, 'UTF-8', $encoding);
+    }
+    
+    // 잘못된 UTF-8 시퀀스 제거
+    $message_text = mb_convert_encoding($message_text, 'UTF-8', 'UTF-8');
+    
+    echo "<!-- DEBUG: After conversion: " . bin2hex(substr($message_text, 0, 50)) . " -->\n";
+}
 $send_interval_seconds = $_POST['send_interval_seconds'] ? $_POST['send_interval_seconds'] : 1;
 $media_wait_time_1 = $_POST['media_wait_time_1'] ? $_POST['media_wait_time_1'] : 0;
 $media_wait_time_2 = $_POST['media_wait_time_2'] ? $_POST['media_wait_time_2'] : 0;
@@ -94,16 +123,28 @@ $schedule_weekdays = !empty($_POST['schedule_weekdays']) ? implode(',', $_POST['
 $status = $_POST['status'] ? $_POST['status'] : 'active';
 
 // 사용자 정보
-$user_info = dmk_get_admin_auth($member['mb_id']);
+$user_info = dmk_get_admin_auth();
 $created_by_type = $user_info['mb_type'];
 $created_by_id = $user_info['key'];
 $created_by_mb_id = $member['mb_id'];
 
 // 이미지 업로드 디렉토리
 $upload_dir = G5_DATA_PATH.'/schedule';
+$upload_url = G5_DATA_URL.'/schedule';
+
+echo "<!-- DEBUG: Upload directory: $upload_dir -->\n";
+echo "<!-- DEBUG: Upload URL: $upload_url -->\n";
+
 if (!is_dir($upload_dir)) {
     @mkdir($upload_dir, G5_DIR_PERMISSION);
     @chmod($upload_dir, G5_DIR_PERMISSION);
+}
+
+// 디렉토리 존재 확인
+if (is_dir($upload_dir)) {
+    echo "<!-- DEBUG: Directory exists and is writable: " . (is_writable($upload_dir) ? 'YES' : 'NO') . " -->\n";
+} else {
+    echo "<!-- DEBUG: Directory does not exist! -->\n";
 }
 
 // 이미지 처리 함수
@@ -111,34 +152,150 @@ function process_schedule_images($group_num, $existing_images, $new_files) {
     global $upload_dir;
     
     $images = [];
+    $max_images = 30; // 최대 이미지 개수
+    $max_width = 900; // 최대 가로 크기
     
     // 기존 이미지 처리
     if (!empty($existing_images)) {
         foreach ($existing_images as $file) {
+            if (count($images) >= $max_images) break;
             $images[] = array('file' => $file);
         }
     }
     
     // 새 이미지 업로드
     if (!empty($new_files['name'][0])) {
+        echo "<!-- DEBUG: Processing " . count($new_files['name']) . " new files for group $group_num -->\n";
+        
         for ($i = 0; $i < count($new_files['name']); $i++) {
+            if (count($images) >= $max_images) break;
+            
+            echo "<!-- DEBUG: Processing file $i: " . $new_files['name'][$i] . " -->\n";
+            
             if ($new_files['error'][$i] == 0) {
                 $filename = time() . '_' . $group_num . '_' . $i . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $new_files['name'][$i]);
                 $filepath = $upload_dir . '/' . $filename;
                 
-                if (move_uploaded_file($new_files['tmp_name'][$i], $filepath)) {
-                    $images[] = array('file' => $filename);
+                echo "<!-- DEBUG: Target filepath: $filepath -->\n";
+                
+                // 이미지 리사이징 처리 (임시로 비활성화)
+                $uploaded = false;
+                /*
+                if (preg_match('/\.(jpg|jpeg|png|gif)$/i', $new_files['name'][$i])) {
+                    // 이미지 파일인 경우 리사이징 처리
+                    echo "<!-- DEBUG: Attempting to resize image -->\n";
+                    $uploaded = resize_and_save_image($new_files['tmp_name'][$i], $filepath, $max_width);
+                    echo "<!-- DEBUG: Resize result: " . ($uploaded ? 'success' : 'failed') . " -->\n";
                 }
+                */
+                
+                // 원본 저장 (리사이징 임시 비활성화)
+                if (!$uploaded) {
+                    echo "<!-- DEBUG: Attempting direct move -->\n";
+                    $uploaded = move_uploaded_file($new_files['tmp_name'][$i], $filepath);
+                    echo "<!-- DEBUG: Move result: " . ($uploaded ? 'success' : 'failed') . " -->\n";
+                }
+                
+                if ($uploaded) {
+                    $images[] = array('file' => $filename);
+                    echo "<!-- DEBUG: File successfully processed -->\n";
+                } else {
+                    echo "<!-- DEBUG: Failed to process file -->\n";
+                }
+            } else {
+                echo "<!-- DEBUG: File upload error: " . $new_files['error'][$i] . " -->\n";
             }
         }
     }
     
+    echo "<!-- DEBUG: Total images for group $group_num: " . count($images) . " -->\n";
     return $images;
 }
 
+// 이미지 리사이징 함수
+function resize_and_save_image($source_path, $dest_path, $max_width) {
+    // 메모리 제한 임시 증가
+    ini_set('memory_limit', '512M');
+    
+    // 이미지 정보 가져오기
+    $image_info = getimagesize($source_path);
+    if (!$image_info) return false;
+    
+    $width = $image_info[0];
+    $height = $image_info[1];
+    $type = $image_info[2];
+    
+    // 리사이징이 필요 없는 경우
+    if ($width <= $max_width) {
+        return move_uploaded_file($source_path, $dest_path);
+    }
+    
+    // 새로운 크기 계산
+    $new_width = $max_width;
+    $new_height = ($height / $width) * $new_width;
+    
+    // 원본 이미지 로드
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $source = imagecreatefromjpeg($source_path);
+            break;
+        case IMAGETYPE_PNG:
+            $source = imagecreatefrompng($source_path);
+            break;
+        case IMAGETYPE_GIF:
+            $source = imagecreatefromgif($source_path);
+            break;
+        default:
+            return false;
+    }
+    
+    if (!$source) return false;
+    
+    // 새 이미지 생성
+    $dest = imagecreatetruecolor($new_width, $new_height);
+    
+    // PNG/GIF 투명도 처리
+    if ($type == IMAGETYPE_PNG || $type == IMAGETYPE_GIF) {
+        imagecolortransparent($dest, imagecolorallocatealpha($dest, 0, 0, 0, 127));
+        imagealphablending($dest, false);
+        imagesavealpha($dest, true);
+    }
+    
+    // 리사이징
+    imagecopyresampled($dest, $source, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+    
+    // 저장
+    $result = false;
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $result = imagejpeg($dest, $dest_path, 90);
+            break;
+        case IMAGETYPE_PNG:
+            $result = imagepng($dest, $dest_path, 9);
+            break;
+        case IMAGETYPE_GIF:
+            $result = imagegif($dest, $dest_path);
+            break;
+    }
+    
+    // 메모리 해제
+    imagedestroy($source);
+    imagedestroy($dest);
+    
+    return $result;
+}
+
 // 이미지 그룹 처리
+echo "<!-- DEBUG: Processing images -->\n";
+echo "<!-- DEBUG: FILES data: " . print_r($_FILES, true) . " -->\n";
+echo "<!-- DEBUG: POST existing_images_1: " . print_r($_POST['existing_images_1'] ?? [], true) . " -->\n";
+echo "<!-- DEBUG: POST existing_images_2: " . print_r($_POST['existing_images_2'] ?? [], true) . " -->\n";
+
 $message_images_1 = process_schedule_images(1, $_POST['existing_images_1'] ?? [], $_FILES['new_images_1'] ?? []);
 $message_images_2 = process_schedule_images(2, $_POST['existing_images_2'] ?? [], $_FILES['new_images_2'] ?? []);
+
+echo "<!-- DEBUG: message_images_1 result: " . print_r($message_images_1, true) . " -->\n";
+echo "<!-- DEBUG: message_images_2 result: " . print_r($message_images_2, true) . " -->\n";
 
 // JSON 인코딩
 $message_images_1_json = !empty($message_images_1) ? json_encode($message_images_1) : null;
@@ -214,35 +371,35 @@ $next_send_at = calculate_next_send_time($schedule_type, $schedule_date, $schedu
 if ($w == '' || $w == 'a') {
     // 등록
     $sql = " INSERT INTO kb_schedule SET 
-             title = '$title',
-             description = '$description',
-             created_by_type = '$created_by_type',
-             created_by_id = '$created_by_id',
-             created_by_mb_id = '$created_by_mb_id',
-             target_bot_name = '$target_bot_name',
-             target_room_id = '$target_room_id',
-             message_text = '$message_text',
-             message_images_1 = " . ($message_images_1_json ? "'$message_images_1_json'" : "NULL") . ",
-             message_images_2 = " . ($message_images_2_json ? "'$message_images_2_json'" : "NULL") . ",
-             send_interval_seconds = '$send_interval_seconds',
-             media_wait_time_1 = '$media_wait_time_1',
-             media_wait_time_2 = '$media_wait_time_2',
-             schedule_type = '$schedule_type',
-             schedule_date = " . ($schedule_date ? "'$schedule_date'" : "NULL") . ",
-             schedule_time = '$schedule_time',
-             schedule_times = '$schedule_times',
-             schedule_weekdays = " . ($schedule_weekdays ? "'$schedule_weekdays'" : "NULL") . ",
-             valid_from = '$valid_from',
-             valid_until = '$valid_until',
-             status = '$status',
-             next_send_at = " . ($next_send_at ? "'$next_send_at'" : "NULL") . ",
+             title = '".sql_escape_string($title)."',
+             description = '".sql_escape_string($description)."',
+             created_by_type = '".sql_escape_string($created_by_type)."',
+             created_by_id = '".sql_escape_string($created_by_id)."',
+             created_by_mb_id = '".sql_escape_string($created_by_mb_id)."',
+             target_bot_name = '".sql_escape_string($target_bot_name)."',
+             target_room_id = '".sql_escape_string($target_room_id)."',
+             message_text = '".sql_escape_string($message_text)."',
+             message_images_1 = " . ($message_images_1_json ? "'".sql_escape_string($message_images_1_json)."'" : "NULL") . ",
+             message_images_2 = " . ($message_images_2_json ? "'".sql_escape_string($message_images_2_json)."'" : "NULL") . ",
+             send_interval_seconds = '".sql_escape_string($send_interval_seconds)."',
+             media_wait_time_1 = '".sql_escape_string($media_wait_time_1)."',
+             media_wait_time_2 = '".sql_escape_string($media_wait_time_2)."',
+             schedule_type = '".sql_escape_string($schedule_type)."',
+             schedule_date = " . ($schedule_date ? "'".sql_escape_string($schedule_date)."'" : "NULL") . ",
+             schedule_time = '".sql_escape_string($schedule_time)."',
+             schedule_times = '".sql_escape_string($schedule_times)."',
+             schedule_weekdays = " . ($schedule_weekdays ? "'".sql_escape_string($schedule_weekdays)."'" : "NULL") . ",
+             valid_from = '".sql_escape_string($valid_from)."',
+             valid_until = '".sql_escape_string($valid_until)."',
+             status = '".sql_escape_string($status)."',
+             next_send_at = " . ($next_send_at ? "'".sql_escape_string($next_send_at)."'" : "NULL") . ",
              created_at = NOW(),
              updated_at = NOW() ";
     
     sql_query($sql);
     
     // 로그 기록
-    dmk_admin_log('스케줄링 발송 등록', "제목: $title, 톡방: $target_room_id");
+    // dmk_admin_log('스케줄링 발송 등록', "제목: $title, 톡방: $target_room_id");
     
     goto_url('./bot_schedule_list.php');
     
@@ -319,27 +476,27 @@ if ($w == '' || $w == 'a') {
              target_bot_name = '$target_bot_name',
              target_room_id = '$target_room_id',
              message_text = '$message_text',
-             message_images_1 = " . ($message_images_1_json ? "'$message_images_1_json'" : "NULL") . ",
-             message_images_2 = " . ($message_images_2_json ? "'$message_images_2_json'" : "NULL") . ",
-             send_interval_seconds = '$send_interval_seconds',
-             media_wait_time_1 = '$media_wait_time_1',
-             media_wait_time_2 = '$media_wait_time_2',
-             schedule_type = '$schedule_type',
-             schedule_date = " . ($schedule_date ? "'$schedule_date'" : "NULL") . ",
-             schedule_time = '$schedule_time',
-             schedule_times = '$schedule_times',
-             schedule_weekdays = " . ($schedule_weekdays ? "'$schedule_weekdays'" : "NULL") . ",
-             valid_from = '$valid_from',
-             valid_until = '$valid_until',
-             status = '$status',
-             next_send_at = " . ($next_send_at ? "'$next_send_at'" : "NULL") . ",
+             message_images_1 = " . ($message_images_1_json ? "'".sql_escape_string($message_images_1_json)."'" : "NULL") . ",
+             message_images_2 = " . ($message_images_2_json ? "'".sql_escape_string($message_images_2_json)."'" : "NULL") . ",
+             send_interval_seconds = '".sql_escape_string($send_interval_seconds)."',
+             media_wait_time_1 = '".sql_escape_string($media_wait_time_1)."',
+             media_wait_time_2 = '".sql_escape_string($media_wait_time_2)."',
+             schedule_type = '".sql_escape_string($schedule_type)."',
+             schedule_date = " . ($schedule_date ? "'".sql_escape_string($schedule_date)."'" : "NULL") . ",
+             schedule_time = '".sql_escape_string($schedule_time)."',
+             schedule_times = '".sql_escape_string($schedule_times)."',
+             schedule_weekdays = " . ($schedule_weekdays ? "'".sql_escape_string($schedule_weekdays)."'" : "NULL") . ",
+             valid_from = '".sql_escape_string($valid_from)."',
+             valid_until = '".sql_escape_string($valid_until)."',
+             status = '".sql_escape_string($status)."',
+             next_send_at = " . ($next_send_at ? "'".sql_escape_string($next_send_at)."'" : "NULL") . ",
              updated_at = NOW()
              WHERE id = '$id' ";
     
     sql_query($sql);
     
     // 로그 기록
-    dmk_admin_log('스케줄링 발송 수정', "ID: $id, 제목: $title");
+    // dmk_admin_log('스케줄링 발송 수정', "ID: $id, 제목: $title");
     
     goto_url('./bot_schedule_list.php');
 }

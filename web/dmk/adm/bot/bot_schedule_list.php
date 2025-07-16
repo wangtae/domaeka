@@ -11,6 +11,28 @@ auth_check('180600', 'r');
 $g5['title'] = '스케줄링 발송 관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
+// 이미지 파일 크기 가져오기 함수
+function get_file_size($filename) {
+    $filepath = G5_DATA_PATH.'/schedule/'.$filename;
+    if (file_exists($filepath)) {
+        return filesize($filepath);
+    }
+    return 0;
+}
+
+// 바이트를 읽기 쉬운 형식으로 변환
+function format_bytes($bytes, $precision = 2) {
+    $units = array('B', 'KB', 'MB', 'GB');
+    
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    
+    $bytes /= pow(1024, $pow);
+    
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
 // 검색 조건
 $sfl = $_GET['sfl'] ? $_GET['sfl'] : 'title';
 $stx = $_GET['stx'];
@@ -104,10 +126,11 @@ $from_record = ($page - 1) * $rows;
 // 목록 조회
 $sql = " SELECT s.*, r.room_name
          FROM kb_schedule s
-         LEFT JOIN kb_rooms r ON s.target_room_id = r.room_id AND s.target_bot_name = r.bot_name
+         LEFT JOIN kb_rooms r ON s.target_room_id COLLATE utf8mb4_unicode_ci = r.room_id COLLATE utf8mb4_unicode_ci
          $where
          $order_by
          LIMIT $from_record, $rows ";
+
 $result = sql_query($sql);
 
 $qstr = "&sfl=$sfl&stx=$stx";
@@ -134,21 +157,235 @@ $qstr = "&sfl=$sfl&stx=$stx";
     <a href="./bot_schedule_form.php" class="btn btn_01">스케줄 등록</a>
 </div>
 
+<style>
+.schedule-list-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.schedule-row {
+    border-bottom: 2px solid #ddd;
+}
+.schedule-row.bg0 {
+    background-color: #f9f9f9;
+}
+.schedule-row.bg1 {
+    background-color: #fff;
+}
+.schedule-info {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+.schedule-info td {
+    padding: 5px 10px;
+    vertical-align: middle;
+}
+.schedule-preview {
+    padding: 10px;
+}
+.message-preview {
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    cursor: help;
+    position: relative;
+}
+.message-tooltip {
+    display: none;
+    position: fixed;
+    background: #333;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    max-width: 400px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 10000;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.image-thumbnails {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.image-group {
+    border: 1px solid #ddd;
+    padding: 5px;
+    border-radius: 3px;
+}
+.image-group-title {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+.thumbnails {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.thumbnail-item {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border: 1px solid #ccc;
+    overflow: hidden;
+}
+.thumbnail-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.thumbnail-size {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    font-size: 10px;
+    padding: 2px;
+    text-align: center;
+}
+.no-images {
+    color: #999;
+    font-style: italic;
+}
+.total-size {
+    margin-top: 5px;
+    font-size: 11px;
+    color: #666;
+}
+.thumbnail-item img {
+    cursor: pointer;
+}
+.image-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+}
+.image-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 90%;
+    max-height: 90%;
+}
+.image-modal-content img {
+    width: 100%;
+    height: auto;
+}
+.image-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    color: white;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.image-modal-close:hover {
+    color: #ccc;
+}
+</style>
+
+<div id="imageModal" class="image-modal" onclick="closeModal()">
+    <span class="image-modal-close">&times;</span>
+    <div class="image-modal-content">
+        <img id="modalImage" src="" alt="">
+    </div>
+</div>
+
+<div id="messageTooltip" class="message-tooltip"></div>
+
+<script>
+function showModal(src) {
+    document.getElementById('modalImage').src = src;
+    document.getElementById('imageModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('imageModal').style.display = 'none';
+}
+
+// 툴팁 표시 함수
+function showTooltip(event, text) {
+    var tooltip = document.getElementById('messageTooltip');
+    tooltip.textContent = text;
+    tooltip.style.display = 'block';
+    
+    // 마우스 위치에서 조금 떨어진 곳에 표시
+    var x = event.pageX + 10;
+    var y = event.pageY + 10;
+    
+    // 화면 경계 체크
+    var tooltipWidth = 400; // max-width
+    var tooltipHeight = 300; // max-height
+    
+    if (x + tooltipWidth > window.innerWidth + window.pageXOffset) {
+        x = event.pageX - tooltipWidth - 10;
+    }
+    
+    if (y + tooltipHeight > window.innerHeight + window.pageYOffset) {
+        y = event.pageY - tooltipHeight - 10;
+    }
+    
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+}
+
+function hideTooltip() {
+    document.getElementById('messageTooltip').style.display = 'none';
+}
+
+// 툴팁 마우스 이동 추적
+function moveTooltip(event) {
+    var tooltip = document.getElementById('messageTooltip');
+    if (tooltip.style.display === 'block') {
+        var x = event.pageX + 10;
+        var y = event.pageY + 10;
+        
+        var tooltipWidth = tooltip.offsetWidth;
+        var tooltipHeight = tooltip.offsetHeight;
+        
+        if (x + tooltipWidth > window.innerWidth + window.pageXOffset) {
+            x = event.pageX - tooltipWidth - 10;
+        }
+        
+        if (y + tooltipHeight > window.innerHeight + window.pageYOffset) {
+            y = event.pageY - 10 - tooltipHeight;
+        }
+        
+        tooltip.style.left = x + 'px';
+        tooltip.style.top = y + 'px';
+    }
+}
+</script>
+
 <div class="tbl_head01 tbl_wrap">
-    <table>
+    <table class="schedule-list-table">
     <caption><?php echo $g5['title']; ?> 목록</caption>
     <thead>
     <tr>
-        <th scope="col">ID</th>
-        <th scope="col">제목</th>
-        <th scope="col">대상 톡방</th>
-        <th scope="col">스케줄 타입</th>
-        <th scope="col">발송 시간</th>
-        <th scope="col">상태</th>
-        <th scope="col">다음 발송</th>
-        <th scope="col">발송 횟수</th>
-        <th scope="col">등록일</th>
-        <th scope="col">관리</th>
+        <th scope="col" width="50">ID</th>
+        <th scope="col" width="200">제목</th>
+        <th scope="col" width="150">대상 톡방</th>
+        <th scope="col" width="80">타입</th>
+        <th scope="col" width="150">발송 시간</th>
+        <th scope="col" width="60">상태</th>
+        <th scope="col" width="120">다음 발송</th>
+        <th scope="col" width="60">횟수</th>
+        <th scope="col" width="80">등록일</th>
+        <th scope="col" width="100">관리</th>
     </tr>
     </thead>
     <tbody>
@@ -233,20 +470,117 @@ $qstr = "&sfl=$sfl&stx=$stx";
         
         // 톡방 이름
         $room_name = $row['room_name'] ? $row['room_name'] : $row['target_room_id'];
+        
+        // 메시지 미리보기 (30자)
+        $message_preview = '';
+        $message_full = '';
+        if ($row['message_text']) {
+            $message_full = $row['message_text'];
+            if (mb_strlen($message_full, 'utf-8') > 30) {
+                $message_preview = mb_substr($message_full, 0, 30, 'utf-8') . '...';
+            } else {
+                $message_preview = $message_full;
+            }
+        }
+        
+        // 이미지 정보 파싱
+        $images_1 = $row['message_images_1'] ? json_decode($row['message_images_1'], true) : [];
+        $images_2 = $row['message_images_2'] ? json_decode($row['message_images_2'], true) : [];
+        
+        // 이미지 용량 계산
+        $total_size = 0;
+        $image_sizes_1 = [];
+        $image_sizes_2 = [];
+        
+        foreach ($images_1 as $img) {
+            if (isset($img['file'])) {
+                $size = get_file_size($img['file']);
+                $image_sizes_1[$img['file']] = $size;
+                $total_size += $size;
+            }
+        }
+        
+        foreach ($images_2 as $img) {
+            if (isset($img['file'])) {
+                $size = get_file_size($img['file']);
+                $image_sizes_2[$img['file']] = $size;
+                $total_size += $size;
+            }
+        }
     ?>
-    <tr class="<?php echo $bg; ?>">
-        <td class="td_num"><?php echo $row['id'] ?></td>
-        <td class="td_left"><?php echo get_text($row['title']) ?></td>
-        <td class="td_left"><?php echo get_text($room_name) ?></td>
-        <td class="td_category"><?php echo $schedule_type_text ?></td>
-        <td class="td_datetime"><?php echo $send_time_text ?></td>
-        <td class="td_boolean"><?php echo $status_text ?></td>
-        <td class="td_datetime"><?php echo $row['next_send_at'] ? substr($row['next_send_at'], 0, 16) : '-' ?></td>
-        <td class="td_num"><?php echo number_format($row['send_count']) ?>회</td>
-        <td class="td_datetime"><?php echo substr($row['created_at'], 0, 10) ?></td>
-        <td class="td_mng td_mng_m">
-            <a href="./bot_schedule_form.php?w=u&amp;id=<?php echo $row['id'] ?>&amp;<?php echo $qstr ?>" class="btn btn_03">수정</a>
-            <a href="./bot_schedule_delete.php?id=<?php echo $row['id'] ?>&amp;<?php echo $qstr ?>" onclick="return confirm('정말로 삭제하시겠습니까?');" class="btn btn_02">삭제</a>
+    <tr class="schedule-row <?php echo $bg; ?>">
+        <td colspan="10" style="padding: 0;">
+            <table width="100%">
+                <tr class="schedule-info">
+                    <td class="td_num" width="50"><?php echo $row['id'] ?></td>
+                    <td class="td_left" width="200"><?php echo get_text($row['title']) ?></td>
+                    <td class="td_left" width="150"><?php echo get_text($room_name) ?></td>
+                    <td class="td_category" width="80"><?php echo $schedule_type_text ?></td>
+                    <td class="td_datetime" width="150"><?php echo $send_time_text ?></td>
+                    <td class="td_boolean" width="60"><?php echo $status_text ?></td>
+                    <td class="td_datetime" width="120"><?php echo $row['next_send_at'] ? substr($row['next_send_at'], 0, 16) : '-' ?></td>
+                    <td class="td_num" width="60"><?php echo number_format($row['send_count']) ?>회</td>
+                    <td class="td_datetime" width="80"><?php echo substr($row['created_at'], 0, 10) ?></td>
+                    <td class="td_mng td_mng_m" width="100">
+                        <a href="./bot_schedule_form.php?w=u&amp;id=<?php echo $row['id'] ?>&amp;<?php echo $qstr ?>" class="btn btn_03">수정</a>
+                        <a href="./bot_schedule_delete.php?id=<?php echo $row['id'] ?>&amp;<?php echo $qstr ?>" onclick="return confirm('정말로 삭제하시겠습니까?');" class="btn btn_02">삭제</a>
+                    </td>
+                </tr>
+                <tr class="schedule-preview">
+                    <td colspan="10">
+                        <?php if ($message_preview): ?>
+                        <div class="message-preview" 
+                             onmouseover="showTooltip(event, <?php echo htmlspecialchars(json_encode($message_full), ENT_QUOTES) ?>)" 
+                             onmouseout="hideTooltip()"
+                             onmousemove="moveTooltip(event)">
+                            <?php echo nl2br(htmlspecialchars($message_preview)) ?>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <div class="image-thumbnails">
+                            <div class="image-group">
+                                <div class="image-group-title">이미지 그룹 1</div>
+                                <?php if (count($images_1) > 0): ?>
+                                    <div class="thumbnails">
+                                        <?php foreach ($images_1 as $img): ?>
+                                            <?php if (isset($img['file'])): ?>
+                                            <div class="thumbnail-item">
+                                                <img src="<?php echo G5_DATA_URL ?>/schedule/<?php echo $img['file'] ?>" alt="" onclick="showModal(this.src)">
+                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_1[$img['file']]) ?></div>
+                                            </div>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-images">이미지 없음</div>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div class="image-group">
+                                <div class="image-group-title">이미지 그룹 2</div>
+                                <?php if (count($images_2) > 0): ?>
+                                    <div class="thumbnails">
+                                        <?php foreach ($images_2 as $img): ?>
+                                            <?php if (isset($img['file'])): ?>
+                                            <div class="thumbnail-item">
+                                                <img src="<?php echo G5_DATA_URL ?>/schedule/<?php echo $img['file'] ?>" alt="" onclick="showModal(this.src)">
+                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_2[$img['file']]) ?></div>
+                                            </div>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-images">이미지 없음</div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        
+                        <?php if ($total_size > 0): ?>
+                        <div class="total-size">전체 이미지 용량: <?php echo format_bytes($total_size) ?></div>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            </table>
         </td>
     </tr>
     <?php

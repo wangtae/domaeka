@@ -31,6 +31,9 @@ if ($gnuboard_main_common_path) {
 // 계층별 메뉴 설정을 위해 권한 라이브러리보다 먼저 로드합니다.
 require_once G5_PATH . '/dmk/dmk_global_settings.php';
 
+// 도매까 UTF-8 인코딩 설정
+require_once G5_PATH . '/dmk/dmk_common.php';
+
 // 도매까 관리자 권한 라이브러리를 포함합니다.
 // G5_DMK_PATH 상수가 정의된 후에 로드되어야 하며, admin.lib.php 보다 먼저 로드합니다.
 require_once G5_DMK_PATH . '/adm/lib/admin.auth.lib.php';
