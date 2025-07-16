@@ -45,6 +45,10 @@ async def shutdown():
         # ping 스케줄러 중지
         await ping_scheduler.stop()
         
+        # 스케줄러 서비스 중지
+        from services.scheduler_service import scheduler_service
+        await scheduler_service.stop()
+        
         # 모든 클라이언트 연결 종료
         for addr, writer in list(g.clients.items()):
             try:
@@ -265,6 +269,11 @@ async def main():
         from core.memory_manager import memory_manager
         await memory_manager.start()
         logger.info("[STARTUP] 메모리 관리자 시작 완료")
+        
+        # 스케줄러 서비스 시작
+        from services.scheduler_service import scheduler_service
+        scheduler_task = asyncio.create_task(scheduler_service.start())
+        logger.info("[STARTUP] 스케줄러 서비스 시작 완료")
         
         # 프로세스 상태 업데이트 (실행 중)
         if g.process_name:

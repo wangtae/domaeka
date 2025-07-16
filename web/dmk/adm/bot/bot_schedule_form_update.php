@@ -122,11 +122,52 @@ $schedule_time = $valid_times[0];  // 첫 번째 시간 (호환성을 위해 유
 $schedule_weekdays = !empty($_POST['schedule_weekdays']) ? implode(',', $_POST['schedule_weekdays']) : null;
 $status = $_POST['status'] ? $_POST['status'] : 'active';
 
+// 디버깅: 발송 시간 정보
+echo "<!-- DEBUG: Valid times: " . print_r($valid_times, true) . " -->\n";
+echo "<!-- DEBUG: Schedule times JSON: " . $schedule_times . " -->\n";
+echo "<!-- DEBUG: Schedule type: $schedule_type, Schedule date: $schedule_date -->\n";
+
 // 사용자 정보
 $user_info = dmk_get_admin_auth();
-$created_by_type = $user_info['mb_type'];
-$created_by_id = $user_info['key'];
+
+// 디버깅: 권한 정보 출력
+echo "<!-- DEBUG: user_info: " . print_r($user_info, true) . " -->\n";
+
+if (!$user_info) {
+    alert('권한 정보를 가져올 수 없습니다.');
+}
+
+// mb_type을 문자열로 변환
+$mb_type_map = array(
+    10 => 'super',  // 최고관리자
+    8 => 'distributor',  // 총판
+    6 => 'agency',  // 대리점
+    4 => 'branch'   // 지점
+);
+
+$created_by_type = isset($mb_type_map[$user_info['mb_level']]) ? $mb_type_map[$user_info['mb_level']] : '';
+if ($user_info['is_super']) {
+    $created_by_type = 'super';
+}
+
+// created_by_id 설정
+switch($created_by_type) {
+    case 'distributor':
+        $created_by_id = $user_info['dt_id'];
+        break;
+    case 'agency':
+        $created_by_id = $user_info['ag_id'];
+        break;
+    case 'branch':
+        $created_by_id = $user_info['br_id'];
+        break;
+    default:
+        $created_by_id = $user_info['mb_id'];
+}
+
 $created_by_mb_id = $member['mb_id'];
+
+echo "<!-- DEBUG: created_by_type: $created_by_type, created_by_id: $created_by_id -->\n";
 
 // 이미지 업로드 디렉토리
 $upload_dir = G5_DATA_PATH.'/schedule';
@@ -324,11 +365,14 @@ function calculate_next_send_time($schedule_type, $schedule_date, $schedule_time
     // JSON에서 시간 배열 추출
     $times = json_decode($schedule_times_json, true);
     if (empty($times)) {
+        echo "<!-- DEBUG: No times found in JSON: $schedule_times_json -->\n";
         return null;
     }
     
     // 시간 정렬
     sort($times);
+    echo "<!-- DEBUG: Times: " . implode(', ', $times) . " -->\n";
+    echo "<!-- DEBUG: Schedule type: $schedule_type, Date: $schedule_date, Weekdays: $schedule_weekdays -->\n";
     
     if ($schedule_type == 'once') {
         // 1회성 - 모든 시간 중 가장 빠른 미래 시간 찾기
@@ -431,30 +475,32 @@ if ($w == '' || $w == 'a') {
     }
     
     // 권한 체크
-    if ($user_info['type'] != 'super') {
+    if (!$user_info['is_super']) {
         // 스케줄 소유권 확인
         $can_edit = false;
-        if ($user_info['type'] == 'distributor') {
-            if ($schedule['created_by_type'] == 'distributor' && $schedule['created_by_id'] == $user_info['key']) {
+        
+        // 사용자의 mb_level을 기반으로 권한 체크
+        if ($user_info['mb_level'] == 8) { // 총판
+            if ($schedule['created_by_type'] == 'distributor' && $schedule['created_by_id'] == $user_info['dt_id']) {
                 $can_edit = true;
             } else if ($schedule['created_by_type'] == 'agency') {
-                $sql = " SELECT ag_id FROM dmk_agency WHERE dt_id = '{$user_info['key']}' AND ag_id = '{$schedule['created_by_id']}' ";
+                $sql = " SELECT ag_id FROM dmk_agency WHERE dt_id = '{$user_info['dt_id']}' AND ag_id = '{$schedule['created_by_id']}' ";
                 if (sql_fetch($sql)) $can_edit = true;
             } else if ($schedule['created_by_type'] == 'branch') {
                 $sql = " SELECT b.br_id FROM dmk_branch b 
                          JOIN dmk_agency a ON b.ag_id = a.ag_id 
-                         WHERE a.dt_id = '{$user_info['key']}' AND b.br_id = '{$schedule['created_by_id']}' ";
+                         WHERE a.dt_id = '{$user_info['dt_id']}' AND b.br_id = '{$schedule['created_by_id']}' ";
                 if (sql_fetch($sql)) $can_edit = true;
             }
-        } else if ($user_info['type'] == 'agency') {
-            if ($schedule['created_by_type'] == 'agency' && $schedule['created_by_id'] == $user_info['key']) {
+        } else if ($user_info['mb_level'] == 6) { // 대리점
+            if ($schedule['created_by_type'] == 'agency' && $schedule['created_by_id'] == $user_info['ag_id']) {
                 $can_edit = true;
             } else if ($schedule['created_by_type'] == 'branch') {
-                $sql = " SELECT br_id FROM dmk_branch WHERE ag_id = '{$user_info['key']}' AND br_id = '{$schedule['created_by_id']}' ";
+                $sql = " SELECT br_id FROM dmk_branch WHERE ag_id = '{$user_info['ag_id']}' AND br_id = '{$schedule['created_by_id']}' ";
                 if (sql_fetch($sql)) $can_edit = true;
             }
-        } else if ($user_info['type'] == 'branch') {
-            if ($schedule['created_by_type'] == 'branch' && $schedule['created_by_id'] == $user_info['key']) {
+        } else if ($user_info['mb_level'] == 4) { // 지점
+            if ($schedule['created_by_type'] == 'branch' && $schedule['created_by_id'] == $user_info['br_id']) {
                 $can_edit = true;
             }
         }
@@ -485,11 +531,11 @@ if ($w == '' || $w == 'a') {
     }
     
     $sql = " UPDATE kb_schedule SET 
-             title = '$title',
-             description = '$description',
-             target_bot_name = '$target_bot_name',
-             target_room_id = '$target_room_id',
-             message_text = '$message_text',
+             title = '".sql_escape_string($title)."',
+             description = '".sql_escape_string($description)."',
+             target_bot_name = '".sql_escape_string($target_bot_name)."',
+             target_room_id = '".sql_escape_string($target_room_id)."',
+             message_text = '".sql_escape_string($message_text)."',
              message_images_1 = " . ($message_images_1_json ? "'".sql_escape_string($message_images_1_json)."'" : "NULL") . ",
              message_images_2 = " . ($message_images_2_json ? "'".sql_escape_string($message_images_2_json)."'" : "NULL") . ",
              send_interval_seconds = '".sql_escape_string($send_interval_seconds)."',
@@ -505,9 +551,19 @@ if ($w == '' || $w == 'a') {
              status = '".sql_escape_string($status)."',
              next_send_at = " . ($next_send_at ? "'".sql_escape_string($next_send_at)."'" : "NULL") . ",
              updated_at = NOW()
-             WHERE id = '$id' ";
+             WHERE id = '".sql_escape_string($id)."' ";
     
-    sql_query($sql);
+    // 디버깅: SQL 쿼리 출력
+    echo "<!-- DEBUG: UPDATE SQL: " . $sql . " -->\n";
+    
+    $result = sql_query($sql);
+    
+    // 디버깅: 쿼리 실행 결과
+    if ($result) {
+        echo "<!-- DEBUG: UPDATE successful -->\n";
+    } else {
+        echo "<!-- DEBUG: UPDATE failed -->\n";
+    }
     
     // 로그 기록
     // dmk_admin_log('스케줄링 발송 수정', "ID: $id, 제목: $title");
