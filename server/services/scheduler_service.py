@@ -36,14 +36,36 @@ class SchedulerService:
         # 미발송 건 처리
         await self.handle_missed_schedules()
         
-        # 폴링 시작
+        # 폴링 시작 - 매분 정시에 실행
         while self.running:
             try:
+                # 현재 시간
+                now = datetime.now()
+                
+                # 다음 정시까지 대기 시간 계산
+                seconds_until_next_minute = 60 - now.second
+                if seconds_until_next_minute == 60:
+                    seconds_until_next_minute = 0
+                
+                # 다음 정시까지 대기
+                if seconds_until_next_minute > 0:
+                    logger.debug(f"[SCHEDULER] {seconds_until_next_minute}초 후 정시 실행")
+                    await asyncio.sleep(seconds_until_next_minute)
+                
+                # 정시에 폴링 실행
                 await self.poll_and_process()
-                await asyncio.sleep(self.polling_interval)
+                
+                # 다음 실행까지 남은 시간 계산 (처리 시간 고려)
+                now = datetime.now()
+                remaining_seconds = 60 - now.second
+                if remaining_seconds > 0:
+                    await asyncio.sleep(remaining_seconds)
+                    
             except Exception as e:
                 logger.error(f"[SCHEDULER] 폴링 중 오류: {e}")
-                await asyncio.sleep(self.polling_interval)
+                # 오류 발생 시에도 다음 정시까지 대기
+                now = datetime.now()
+                await asyncio.sleep(60 - now.second)
     
     async def stop(self):
         """스케줄러 중지"""
@@ -89,15 +111,70 @@ class SchedulerService:
         
         # 발송할 스케줄 조회
         schedules = await self.get_pending_schedules(active_bots)
+        if not schedules:
+            return
+            
         logger.info(f"[SCHEDULER] 발송 대기 스케줄 {len(schedules)}건")
         
-        # 각 스케줄 처리
+        # 봇별로 스케줄 그룹화 (같은 봇에 여러 메시지가 있을 경우 순차 처리)
+        bot_schedules = {}
         for schedule in schedules:
-            # 처리 직전 봇 연결 재확인
-            if self.is_bot_connected(schedule['target_bot_name']):
+            bot_name = schedule['target_bot_name']
+            if bot_name not in bot_schedules:
+                bot_schedules[bot_name] = []
+            bot_schedules[bot_name].append(schedule)
+        
+        # 여러 봇이 있을 경우 봇별로 분산 실행
+        if len(bot_schedules) > 1:
+            # 다음 정시까지 남은 시간을 고려하여 간격 조정
+            remaining_seconds = 60 - now.second - 5  # 5초 여유
+            interval = min(10, max(1, remaining_seconds // len(bot_schedules)))
+            logger.info(f"[SCHEDULER] {len(bot_schedules)}개 봇에 {interval}초 간격으로 분산 실행")
+            
+            # 각 봇의 스케줄을 비동기 태스크로 생성하여 분산 실행
+            tasks = []
+            for i, (bot_name, bot_schedule_list) in enumerate(bot_schedules.items()):
+                delay = i * interval
+                task = asyncio.create_task(self._process_bot_schedules(bot_name, bot_schedule_list, delay))
+                tasks.append(task)
+            
+            # 모든 태스크 완료 대기
+            await asyncio.gather(*tasks, return_exceptions=True)
+        else:
+            # 1개 봇만 있으면 즉시 처리
+            bot_name = list(bot_schedules.keys())[0]
+            await self._process_bot_schedules(bot_name, bot_schedules[bot_name], 0)
+    
+    async def _process_bot_schedules(self, bot_name: str, schedules: List[Dict], delay: int):
+        """특정 봇의 스케줄들을 처리"""
+        if delay > 0:
+            await asyncio.sleep(delay)
+        
+        # 봇 연결 확인
+        if not self.is_bot_connected(bot_name):
+            logger.warning(f"[SCHEDULER] 봇 연결 끊김, {len(schedules)}건 스케줄 건너뜀: {bot_name}")
+            return
+        
+        # 같은 봇의 여러 스케줄은 순차적으로 처리
+        for schedule in schedules:
+            try:
                 await self.process_schedule(schedule)
-            else:
-                logger.warning(f"[SCHEDULER] 봇 연결 끊김, 스케줄 건너뜀: {schedule['target_bot_name']}")
+                # 같은 봇에 연속 발송 시 짧은 대기
+                if len(schedules) > 1:
+                    await asyncio.sleep(0.5)
+            except Exception as e:
+                logger.error(f"[SCHEDULER] 스케줄 처리 실패 {schedule['id']}: {e}")
+    
+    async def _process_schedule_with_delay(self, schedule: Dict, delay: int):
+        """지연 시간 후 스케줄 처리"""
+        if delay > 0:
+            await asyncio.sleep(delay)
+        
+        # 처리 직전 봇 연결 재확인
+        if self.is_bot_connected(schedule['target_bot_name']):
+            await self.process_schedule(schedule)
+        else:
+            logger.warning(f"[SCHEDULER] 봇 연결 끊김, 스케줄 건너뜀: {schedule['target_bot_name']}")
     
     async def get_pending_schedules(self, bot_names: List[str]) -> List[Dict]:
         """발송 대기 중인 스케줄 조회"""
