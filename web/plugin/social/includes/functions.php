@@ -610,8 +610,12 @@ function social_check_login_before($p_service=''){
             
             // 자동 회원가입 옵션 확인 (카카오 로그인인 경우)
             $auto_register = false;
-            if (strtolower($provider_name) == 'kakao' && defined('G5_KAKAO_AUTO_REGISTER') && G5_KAKAO_AUTO_REGISTER === true) {
+            if (strtolower($provider_name) == 'kakao' && (
+                (defined('G5_KAKAO_AUTO_REGISTER') && G5_KAKAO_AUTO_REGISTER === true) ||
+                (isset($_SESSION['kakao_auto_register']) && $_SESSION['kakao_auto_register'] === true)
+            )) {
                 $auto_register = true;
+                unset($_SESSION['kakao_auto_register']); // 사용 후 삭제
             }
             
             if ($auto_register) {

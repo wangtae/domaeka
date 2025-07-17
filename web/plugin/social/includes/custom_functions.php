@@ -16,16 +16,12 @@ function social_auto_register_member($user_profile, $provider_name, $url = '') {
         return false;
     }
     
-    // 카카오 자동 회원가입 페이지로 리다이렉트
-    $register_url = G5_SOCIAL_LOGIN_URL . '/register_member_kakao.php?provider=' . $provider_name;
-    
+    // URL을 세션에 저장
     if ($url) {
         $_SESSION['ss_redirect_url'] = $url;
     }
     
-    goto_url($register_url);
+    // 직접 회원가입 처리 페이지로 리다이렉트
+    goto_url(G5_PLUGIN_URL . '/social/register_member_kakao_direct.php');
     return true;
 }
-
-// exist_mb_id_recursive와 exist_mb_nick_recursive 함수는 
-// functions.php에 이미 정의되어 있으므로 여기서는 제거합니다.
