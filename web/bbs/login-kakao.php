@@ -12,6 +12,9 @@ $g5['title'] = '도매까 로그인';
 
 $od_id = isset($_POST['od_id']) ? safe_replace_regex($_POST['od_id'], 'od_id') : '';
 
+// URL 파라미터 처리
+$url = isset($_GET['url']) ? $_GET['url'] : '';
+
 // provider 파라미터 처리 - redirect_to_idp는 무시
 $provider = isset($_GET['provider']) ? $_GET['provider'] : '';
 
@@ -202,8 +205,16 @@ body {
     
     <!-- Kakao Login Button -->
     <div class="kakao-login-button-wrapper">
-        <a href="<?php echo G5_BBS_URL; ?>/login-kakao.php?provider=kakao&amp;url=<?php echo urlencode($url); ?>" 
-           class="kakao-login-button">
+        <?php
+        // 카카오 소셜 로그인 URL 생성 (정상적인 login.php를 통해)
+        $kakao_login_url = G5_BBS_URL . '/login.php?provider=kakao';
+        
+        // URL 파라미터가 있으면 추가
+        if ($url) {
+            $kakao_login_url .= '&url=' . urlencode($url);
+        }
+        ?>
+        <a href="<?php echo $kakao_login_url; ?>" class="kakao-login-button">
             <picture>
                 <source media="(max-width: 480px)" srcset="<?php echo G5_URL; ?>/assets/domaeka/logo/kakao_login/ko/kakao_login_medium_narrow.png">
                 <source media="(max-width: 768px)" srcset="<?php echo G5_URL; ?>/assets/domaeka/logo/kakao_login/ko/kakao_login_large_narrow.png">

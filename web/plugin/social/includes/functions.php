@@ -610,7 +610,7 @@ function social_check_login_before($p_service=''){
             
             // 자동 회원가입 옵션 확인 (카카오 로그인인 경우)
             $auto_register = false;
-            if ($provider_name == 'Kakao' && defined('G5_KAKAO_AUTO_REGISTER') && G5_KAKAO_AUTO_REGISTER === true) {
+            if (strtolower($provider_name) == 'kakao' && defined('G5_KAKAO_AUTO_REGISTER') && G5_KAKAO_AUTO_REGISTER === true) {
                 $auto_register = true;
             }
             
@@ -1088,3 +1088,4 @@ function social_nonce_generate_hash( $action='' , $user='', $provider = '' ){
     $i = ceil( time() / ( social_get_nonce('d') / 2 ) );
     return md5( $i . $action . $user . social_get_nonce($provider) );
 }
+
