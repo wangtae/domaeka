@@ -11,9 +11,14 @@ import core.globals as g
 
 def sanitize_surrogates(text: str) -> str:
     """
-    UTF-16 surrogate 영역에 해당하는 비정상 문자 제거
+    UTF-8 인코딩으로 안전하게 처리하며 이모티콘 보존
     """
-    return text.encode("utf-16", "surrogatepass").decode("utf-16", "replace")
+    try:
+        # UTF-8로 인코딩/디코딩하여 유효하지 않은 문자만 제거
+        return text.encode("utf-8", "ignore").decode("utf-8", "ignore")
+    except Exception:
+        # 에러 발생 시 원본 반환
+        return text
 
 
 async def send_message(writer, packet):
@@ -42,20 +47,15 @@ async def send_message(writer, packet):
         return
 
     try:
-        # 응답 메시지 크기 체크
-        text = packet.get('data', {}).get('text', '')
-        if isinstance(text, str) and len(text) > g.MAX_KAKAOTALK_MESSAGE_LENGTH:
-            logger.warning(f"[SEND_MESSAGE] 응답 메시지 길이 초과: {len(text)} 글자. 메시지를 잘라서 전송합니다.")
-            packet['data']['text'] = text[:g.MAX_KAKAOTALK_MESSAGE_LENGTH]
+        # 서버→클라이언트 전송은 길이 제한 없음 (미디어 파일 전송을 위해)
+        # 응답 메시지 크기 체크 제거
         
         message = json.dumps(packet, ensure_ascii=False) + '\n'
         message = sanitize_surrogates(message)
         encoded_message = message.encode('utf-8')
         
-        # 인코딩된 메시지 크기 체크
-        if len(encoded_message) > g.MAX_MESSAGE_SIZE:
-            logger.error(f"[SEND_MESSAGE] 인코딩된 메시지 크기 초과: {len(encoded_message)} 바이트")
-            return
+        # 서버→클라이언트는 크기 제한 없음
+        logger.debug(f"[SEND_MESSAGE] 메시지 크기: {len(encoded_message)} 바이트")
 
         channel_id = packet.get('data', {}).get('channel_id')
         room = packet.get('data', {}).get('room')

@@ -254,8 +254,11 @@ class SchedulerService:
             
             # 메시지 구성 요소
             text = schedule.get('message_text')
-            images_1 = json.loads(schedule.get('message_images_1', '[]'))
-            images_2 = json.loads(schedule.get('message_images_2', '[]'))
+            # 빈 문자열 처리 추가
+            images_1_str = schedule.get('message_images_1', '[]')
+            images_2_str = schedule.get('message_images_2', '[]')
+            images_1 = json.loads(images_1_str if images_1_str else '[]')
+            images_2 = json.loads(images_2_str if images_2_str else '[]')
             interval = schedule.get('send_interval_seconds', 1)
             media_wait_1 = schedule.get('media_wait_time_1', 0)
             media_wait_2 = schedule.get('media_wait_time_2', 0)
@@ -277,11 +280,14 @@ class SchedulerService:
             for i, (comp_type, content, wait_time) in enumerate(components):
                 if comp_type == 'text':
                     await self.send_text_message(bot_name, device_id, room_id, content)
+                    # 텍스트 다음 이미지는 즉시 전송 (대기 없음)
+                    if i < len(components) - 1 and components[i+1][0] == 'images':
+                        continue
                 elif comp_type == 'images':
                     await self.send_images(bot_name, device_id, room_id, content, wait_time)
                 
-                # 다음 컴포넌트가 있으면 대기
-                if i < len(components) - 1:
+                # 이미지1 다음 이미지2 사이에만 interval 적용
+                if i < len(components) - 1 and comp_type == 'images' and components[i+1][0] == 'images':
                     await asyncio.sleep(interval)
             
             return True
@@ -301,16 +307,22 @@ class SchedulerService:
         if client_key in clients:
             writer = clients[client_key]
             if writer and not writer.is_closing():
+                # room_name 조회
+                room_name = await self.get_room_name(room_id, bot_name, device_id)
+                if not room_name:
+                    logger.error(f"[SCHEDULER] 채팅방 이름을 찾을 수 없음: {room_id}")
+                    return
+                
                 # context 구성
                 context = {
                     'client_key': client_key,
-                    'room': room_id,
+                    'room': room_name,  # room_id가 아닌 room_name 사용
                     'channel_id': room_id,
                     'bot_name': bot_name,
                     'writer': writer
                 }
                 await send_message_response(context, text)
-                logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_id}")
+                logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_name} ({room_id})")
                 return
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
@@ -325,6 +337,12 @@ class SchedulerService:
         if client_key in clients:
             writer = clients[client_key]
             if writer and not writer.is_closing():
+                # room_name 조회
+                room_name = await self.get_room_name(room_id, bot_name, device_id)
+                if not room_name:
+                    logger.error(f"[SCHEDULER] 채팅방 이름을 찾을 수 없음: {room_id}")
+                    return
+                
                 # Base64 이미지 데이터 리스트 생성
                 base64_images = []
                 for img_info in images:
@@ -339,7 +357,7 @@ class SchedulerService:
                     # context 구성
                     context = {
                         'client_key': client_key,
-                        'room': room_id,
+                        'room': room_name,  # room_id가 아닌 room_name 사용
                         'channel_id': room_id,
                         'bot_name': bot_name,
                         'writer': writer
@@ -348,10 +366,36 @@ class SchedulerService:
                     # IMAGE_BASE64 형식으로 전송
                     image_message = f"IMAGE_BASE64:{'|||'.join(base64_images)}"
                     await send_message_response(context, image_message, media_wait_time=wait_time)
-                    logger.info(f"[SCHEDULER] 이미지 {len(base64_images)}개 발송: {bot_name}@{device_id} -> {room_id}")
+                    logger.info(f"[SCHEDULER] 이미지 {len(base64_images)}개 발송: {bot_name}@{device_id} -> {room_name} ({room_id})")
                     return
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
+    
+    async def get_room_name(self, room_id: str, bot_name: str, device_id: str) -> Optional[str]:
+        """room_id로 실제 채팅방 이름 조회"""
+        if not self.db_pool:
+            return None
+        
+        query = """
+            SELECT room_name 
+            FROM kb_rooms 
+            WHERE room_id = %s 
+            AND bot_name = %s 
+            AND device_id = %s
+            LIMIT 1
+        """
+        
+        try:
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute(query, [room_id, bot_name, device_id])
+                    row = await cursor.fetchone()
+                    if row:
+                        return row[0]
+                    return None
+        except Exception as e:
+            logger.error(f"[SCHEDULER] room_name 조회 실패: {e}")
+            return None
     
     async def update_last_sent_at(self, schedule_id: int) -> bool:
         """last_sent_at 업데이트 (중복 방지)"""

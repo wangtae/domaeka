@@ -41,6 +41,13 @@ async def init_db_pool():
 
         # 전역 변수에 저장
         g.db_pool = pool
+        
+        # UTF8MB4 인코딩 설정 확인
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'")
+                logger.info("[DB INIT] UTF8MB4 인코딩 설정 완료")
+        
         logger.info("[DB INIT] DB 커넥션 풀 생성 완료!")
         return pool
 
