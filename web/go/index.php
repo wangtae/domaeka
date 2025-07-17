@@ -596,13 +596,13 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 <!-- Customer Information -->
                 <div class="mx-8 flex flex-col gap-y-3 py-5">
                     <div class="flex flex-col space-y-1 w-full">
-                        <label class="text-sm font-medium text-gray-700">주문자명 *</label>
-                        <input type="text" name="customer_name" class="input-field" placeholder="주문자 이름을 입력해주세요" required>
+                        <label class="text-sm font-medium text-gray-700">주문자명 <span class="text-red-500">*</span></label>
+                        <input type="text" name="customer_name" class="input-field" placeholder="처음 한 번만 입력하면 이후에는 자동으로 입력됩니다." required>
                     </div>
                     
                     <div class="flex flex-col space-y-1 w-full">
-                        <label class="text-sm font-medium text-gray-700">전화번호 *</label>
-                        <input type="tel" name="customer_phone" class="input-field" placeholder="연락 가능한 전화번호를 입력해주세요" required>
+                        <label class="text-sm font-medium text-gray-700">전화번호 <span class="text-red-500">*</span></label>
+                        <input type="tel" name="customer_phone" class="input-field" placeholder="알림톡 발송을 위해 정확한 전화번호를 입력해주세요" required>
                     </div>
                     
                     <div class="flex flex-col space-y-1 w-full" id="addressField" style="display: none;">
@@ -655,7 +655,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
         <!-- Fixed Bottom Bar -->
         <div class="fixed-footer py-2 px-3 flex space-x-3">
-            <a href="/go/orderlist.php?br_id=<?php echo $br_id ?>" class="btn-outline">주문내역</a>
+            <a href="/go/orderlist.php" class="btn-outline">주문내역</a>
             <button type="submit" form="orderForm" class="btn-primary flex-1" id="submitOrder">주문하기</button>
         </div>
     </div>

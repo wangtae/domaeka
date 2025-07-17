@@ -11,37 +11,23 @@ if (!$member['mb_id']) {
     goto_url(G5_BBS_URL . '/login-kakao.php?url=' . $current_url);
 }
 
-// URL에서 브랜치 ID 추출
-$br_id = isset($_GET['br_id']) ? trim($_GET['br_id']) : '';
+// URL에서 코드 추출 (옵션)
+$code = isset($_GET['code']) ? trim($_GET['code']) : '';
 
-if (!$br_id) {
-    alert('잘못된 접근입니다.', G5_URL);
-}
+// 로그인한 회원의 주문내역 조회를 위한 정보 설정
+$mb_id = $member['mb_id'];
 
-// 지점 정보 조회
-$branch_sql = " SELECT b.*, 
-                    COALESCE(br_m.mb_name, '') AS br_name, 
-                    COALESCE(br_m.mb_tel, '') AS br_phone, 
-                    COALESCE(br_m.mb_hp, '') AS br_hp, 
-                    COALESCE(br_m.mb_addr1, '') AS br_address
-                FROM dmk_branch b 
-                JOIN g5_member br_m ON b.br_id = br_m.mb_id 
-                WHERE b.br_id = '$br_id' AND b.br_status = 1 ";
-$branch = sql_fetch($branch_sql);
-
-if (!$branch) {
-    alert('유효하지 않거나 비활성화된 지점입니다.', G5_URL);
-}
-
-// 주문 내역 조회
+// 주문 내역 조회 (로그인한 회원의 모든 주문)
 $sql = " SELECT o.*, 
-         (SELECT COUNT(*) FROM g5_shop_cart WHERE od_id = o.od_id) as item_count
+         (SELECT COUNT(*) FROM g5_shop_cart WHERE od_id = o.od_id) as item_count,
+         b.br_name as branch_name
          FROM g5_shop_order o 
-         WHERE o.dmk_od_br_id = '$br_id' 
+         LEFT JOIN dmk_branch b ON o.dmk_od_br_id = b.br_id
+         WHERE o.mb_id = '$mb_id' 
          ORDER BY o.od_time DESC ";
 $result = sql_query($sql);
 
-$g5['title'] = $branch['br_name'] . ' 주문내역';
+$g5['title'] = '내 주문내역';
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -96,11 +82,16 @@ $g5['title'] = $branch['br_name'] . ' 주문내역';
                     </div>
                 </div>
                 <div class="flex gap-2 h-full flex-row flex-nowrap items-center">
-                    <a href="/go/<?php echo $branch['br_shortcut_code'] ?: $br_id ?>" class="btn-outline text-sm">
+                    <a href="/go/<?php echo $code ?: $br_id ?>" class="btn-outline text-sm">
                         <i class="fas fa-shopping-cart mr-1"></i> 주문페이지
                     </a>
-                    <?php if ($member['mb_id']) { ?>
-                    <a href="<?php echo G5_BBS_URL ?>/logout.php" class="btn-outline text-sm">
+                    <?php if ($member['mb_id']) { 
+                        // 로그아웃 후 돌아올 현재 페이지 URL (code 파라미터 사용)
+                        $return_url = '/go/orderlist.php?code=' . ($code ?: $br_id);
+                        // 로그아웃 후 카카오 로그인 페이지로 이동하도록 URL 구성 (도메인 제외)
+                        $logout_url = G5_BBS_URL . '/logout.php?url=' . urlencode('/bbs/login-kakao.php?url=' . urlencode($return_url));
+                    ?>
+                    <a href="<?php echo $logout_url ?>" class="btn-outline text-sm">
                         <i class="fas fa-sign-out-alt mr-1"></i> 로그아웃
                     </a>
                     <?php } ?>

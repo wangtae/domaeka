@@ -44,6 +44,12 @@ if (!$is_admin && $dmk_auth && $dmk_auth['mb_type'] > 0) {
     $is_admin = 'dmk_admin'; // 도매까 관리자를 위한 특별한 값
 }
 
+// 일반 회원이 관리자 페이지에 접속한 경우 로그아웃 후 메인으로 이동
+if (!$is_admin && $is_member && (!$dmk_auth || $dmk_auth['mb_type'] == 0)) {
+    // 로그아웃 처리
+    goto_url(G5_BBS_URL.'/logout.php?url='.urlencode('/'));
+}
+
 // G5_ADMIN_PATH가 정의된 후 admin.lib.php를 포함합니다.
 require_once G5_ADMIN_PATH . '/admin.lib.php';
 
