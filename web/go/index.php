@@ -2,6 +2,15 @@
 $sub_menu = "";
 include_once(__DIR__ . '/../common.php');
 
+// 로그인 체크
+if (!$member['mb_id']) {
+    // 현재 페이지 URL을 인코딩하여 로그인 후 돌아올 URL로 설정
+    $current_url = urlencode(G5_URL . $_SERVER['REQUEST_URI']);
+    
+    // 카카오 로그인 전용 페이지로 리다이렉트 (자동 회원가입 처리)
+    goto_url(G5_BBS_URL . '/login-kakao.php?url=' . $current_url);
+}
+
 // URL에서 코드 추출
 $request_uri = $_SERVER['REQUEST_URI'];
 $path_info = parse_url($request_uri, PHP_URL_PATH);

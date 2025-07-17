@@ -1,6 +1,9 @@
 <?php
 if (!defined('_GNUBOARD_')) exit;
 
+// 커스텀 함수 포함
+include_once(G5_PLUGIN_PATH.'/social/includes/custom_functions.php');
+
 function get_social_skin_path(){
     global $config;
 
@@ -604,30 +607,52 @@ function social_check_login_before($p_service=''){
             /*
              * 회원이 아닌 경우에만 아래 실행
             */
-            $register_url = G5_SOCIAL_LOGIN_URL.'/register_member.php?provider='.$provider_name;
-
-            if( $url ){
-                $register_url .= '&url='.urlencode($url);
+            
+            // 자동 회원가입 옵션 확인 (카카오 로그인인 경우)
+            $auto_register = false;
+            if ($provider_name == 'Kakao' && defined('G5_KAKAO_AUTO_REGISTER') && G5_KAKAO_AUTO_REGISTER === true) {
+                $auto_register = true;
             }
-
-            if( $use_popup == 1 || ! $use_popup ){   //팝업이면
-            ?>
-                <script>
-                    if( window.opener )
-                    {
-                        window.close();
-
-                        if (typeof window.opener.social_link_fn != 'undefined')
-                        {
-                            window.opener.social_link_fn("<?php echo $provider_name; ?>");
-                        } else {
-                            window.opener.location.href = "<?php echo $register_url; ?>";
-                        }
+            
+            if ($auto_register) {
+                // 자동 회원가입 처리
+                $result = social_auto_register_member($user_profile, $provider_name, $url);
+                
+                if (!$result) {
+                    // 자동 회원가입 실패 시 기존 방식으로 처리
+                    $register_url = G5_SOCIAL_LOGIN_URL.'/register_member.php?provider='.$provider_name;
+                    if( $url ){
+                        $register_url .= '&url='.urlencode($url);
                     }
-                </script>
-            <?php
+                    goto_url( $register_url );
+                }
             } else {
-                goto_url( $register_url );
+                // 기존 회원가입 페이지로 이동
+                $register_url = G5_SOCIAL_LOGIN_URL.'/register_member.php?provider='.$provider_name;
+
+                if( $url ){
+                    $register_url .= '&url='.urlencode($url);
+                }
+
+                if( $use_popup == 1 || ! $use_popup ){   //팝업이면
+                ?>
+                    <script>
+                        if( window.opener )
+                        {
+                            window.close();
+
+                            if (typeof window.opener.social_link_fn != 'undefined')
+                            {
+                                window.opener.social_link_fn("<?php echo $provider_name; ?>");
+                            } else {
+                                window.opener.location.href = "<?php echo $register_url; ?>";
+                            }
+                        }
+                    </script>
+                <?php
+                } else {
+                    goto_url( $register_url );
+                }
             }
 
             return '';

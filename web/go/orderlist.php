@@ -88,7 +88,10 @@ $g5['title'] = $branch['br_name'] . ' 주문내역';
                 </div>
                 <div class="flex gap-2 h-full flex-row flex-nowrap items-center">
                     <a href="/go/<?php echo $branch['br_shortcut_code'] ?: $br_id ?>" class="btn-outline text-sm">
-                        <i class="fas fa-shopping-cart mr-1"></i> 주문하기
+                        <i class="fas fa-shopping-cart mr-1"></i> 주문페이지
+                    </a>
+                    <a href="<?php echo G5_BBS_URL ?>/logout.php" class="btn-outline text-sm">
+                        <i class="fas fa-sign-out-alt mr-1"></i> 로그아웃
                     </a>
                 </div>
             </header>
