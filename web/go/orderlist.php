@@ -11,11 +11,57 @@ if (!$member['mb_id']) {
     goto_url(G5_BBS_URL . '/login-kakao.php?url=' . $current_url);
 }
 
+// 회원이 지점 정보가 있고 URL에 코드가 없는 경우 리다이렉트
+if ($member['dmk_br_id'] && !isset($_GET['code']) && !isset($_GET['noredirect'])) {
+    // 지점의 shortcut_code 조회
+    $br_sql = " SELECT br_shortcut_code 
+               FROM dmk_branch 
+               WHERE br_id = '".sql_real_escape_string($member['dmk_br_id'])."' 
+               AND br_shortcut_code IS NOT NULL 
+               AND br_shortcut_code != '' 
+               LIMIT 1 ";
+    $br_info = sql_fetch($br_sql);
+    
+    if ($br_info && $br_info['br_shortcut_code']) {
+        goto_url('/go/' . $br_info['br_shortcut_code']);
+    } else {
+        goto_url('/go/' . $member['dmk_br_id']);
+    }
+}
+
 // URL에서 코드 추출 (옵션)
 $code = isset($_GET['code']) ? trim($_GET['code']) : '';
 
 // 로그인한 회원의 주문내역 조회를 위한 정보 설정
 $mb_id = $member['mb_id'];
+
+// 회원의 지점 정보 확인
+$order_page_url = '/go/'; // 기본값
+$branch_name = '도매까'; // 기본 지점명
+
+// dmk_br_id가 있는지 확인
+if (isset($member['dmk_br_id']) && $member['dmk_br_id']) {
+    // 지점의 shortcut_code 조회
+    $br_sql = " SELECT br_id, br_shortcut_code, br_name 
+               FROM dmk_branch 
+               WHERE br_id = '".sql_real_escape_string($member['dmk_br_id'])."' 
+               AND br_status = 1
+               LIMIT 1 ";
+    $br_info = sql_fetch($br_sql);
+    
+    if ($br_info) {
+        // shortcut_code가 있으면 사용, 없으면 br_id 사용
+        if (!empty($br_info['br_shortcut_code'])) {
+            $order_page_url = '/go/' . $br_info['br_shortcut_code'];
+        } else {
+            $order_page_url = '/go/' . $br_info['br_id'];
+        }
+        $branch_name = $br_info['br_name'] ? $br_info['br_name'] : '도매까';
+    } else {
+        // 지점 정보가 없지만 dmk_br_id가 있으면 그대로 사용
+        $order_page_url = '/go/' . $member['dmk_br_id'];
+    }
+}
 
 // 주문 내역 조회 (로그인한 회원의 모든 주문)
 $sql = " SELECT o.*, 
@@ -64,6 +110,25 @@ $g5['title'] = '내 주문내역';
             color: var(--foreground);
         }
         
+        .btn-outline {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-outline:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
         
         .order-status-waiting { color: #3b82f6; }
         .order-status-prepare { color: #3b82f6; }
@@ -78,16 +143,19 @@ $g5['title'] = '내 주문내역';
             <header class="z-40 flex px-6 gap-4 w-full flex-row relative flex-nowrap items-center justify-between h-16">
                 <div class="flex gap-4 h-full flex-row flex-nowrap items-center">
                     <div class="flex flex-row flex-nowrap justify-start bg-transparent items-center">
-                        <p class="font-bold text-inherit"><?php echo htmlspecialchars($branch['br_name']) ?> 주문내역</p>
+                        <p class="font-bold text-inherit"><?php echo htmlspecialchars($branch_name) ?> 주문내역</p>
+                        <?php if (defined('G5_IS_ADMIN') && G5_IS_ADMIN && isset($_GET['debug'])) { ?>
+                        <span class="text-xs text-gray-500 ml-2">[dmk_br_id: <?php echo $member['dmk_br_id'] ?>, URL: <?php echo $order_page_url ?>]</span>
+                        <?php } ?>
                     </div>
                 </div>
                 <div class="flex gap-2 h-full flex-row flex-nowrap items-center">
-                    <a href="/go/<?php echo $code ?: $br_id ?>" class="btn-outline text-sm">
+                    <a href="<?php echo $order_page_url ?>" class="btn-outline text-sm">
                         <i class="fas fa-shopping-cart mr-1"></i> 주문페이지
                     </a>
                     <?php if ($member['mb_id']) { 
-                        // 로그아웃 후 돌아올 현재 페이지 URL (code 파라미터 사용)
-                        $return_url = '/go/orderlist.php?code=' . ($code ?: $br_id);
+                        // 로그아웃 후 돌아올 현재 페이지 URL
+                        $return_url = '/go/orderlist.php?noredirect=1';
                         // 로그아웃 후 카카오 로그인 페이지로 이동하도록 URL 구성 (도메인 제외)
                         $logout_url = G5_BBS_URL . '/logout.php?url=' . urlencode('/bbs/login-kakao.php?url=' . urlencode($return_url));
                     ?>

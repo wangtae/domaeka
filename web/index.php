@@ -91,8 +91,26 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
                             <a href="<?php echo G5_ADMIN_URL; ?>" class="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition duration-300">
                                 <i class="fas fa-cog mr-2"></i>관리자
                             </a>
-                        <?php } else { ?>
-                            <a href="/go/orderlist.php" class="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition duration-300">
+                        <?php } else { 
+                            // 회원의 지점 정보 확인
+                            $order_url = '/go/orderlist.php';
+                            if ($member['dmk_br_id']) {
+                                // 지점의 shortcut_code 조회
+                                $br_sql = " SELECT br_shortcut_code 
+                                           FROM dmk_branch 
+                                           WHERE br_id = '".sql_real_escape_string($member['dmk_br_id'])."' 
+                                           AND br_shortcut_code IS NOT NULL 
+                                           AND br_shortcut_code != '' 
+                                           LIMIT 1 ";
+                                $br_info = sql_fetch($br_sql);
+                                if ($br_info && $br_info['br_shortcut_code']) {
+                                    $order_url = '/go/' . $br_info['br_shortcut_code'];
+                                } else {
+                                    $order_url = '/go/' . $member['dmk_br_id'];
+                                }
+                            }
+                        ?>
+                            <a href="<?php echo $order_url; ?>" class="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition duration-300">
                                 <i class="fas fa-shopping-cart mr-2"></i>내 주문
                             </a>
                         <?php } ?>
@@ -270,8 +288,8 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
                     <div class="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6 text-white text-3xl font-bold">
                         4
                     </div>
-                    <h4 class="text-xl font-semibold mb-3">배송 받기</h4>
-                    <p class="text-gray-600">편하게 상품을 받아보세요</p>
+                    <h4 class="text-xl font-semibold mb-3">상품 픽업</h4>
+                    <p class="text-gray-600">주문한 상품을 매장에서 수령합니다.</p>
                 </div>
             </div>
         </div>
@@ -286,8 +304,26 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
             <a href="<?php echo G5_BBS_URL; ?>/login-kakao.php" class="bg-yellow-400 text-black px-8 py-4 rounded-full text-lg font-semibold hover:bg-yellow-500 transition duration-300 inline-block">
                 <i class="fas fa-comment mr-2"></i>카카오톡으로 시작하기
             </a>
-            <?php } else { ?>
-            <a href="/go/orderlist.php" class="bg-white text-purple-600 px-8 py-4 rounded-full text-lg font-semibold hover:bg-gray-100 transition duration-300 inline-block">
+            <?php } else { 
+                // 회원의 지점 정보 확인 (상단과 동일한 로직)
+                $order_url = '/go/orderlist.php';
+                if ($member['dmk_br_id']) {
+                    // 지점의 shortcut_code 조회
+                    $br_sql = " SELECT br_shortcut_code 
+                               FROM dmk_branch 
+                               WHERE br_id = '".sql_real_escape_string($member['dmk_br_id'])."' 
+                               AND br_shortcut_code IS NOT NULL 
+                               AND br_shortcut_code != '' 
+                               LIMIT 1 ";
+                    $br_info = sql_fetch($br_sql);
+                    if ($br_info && $br_info['br_shortcut_code']) {
+                        $order_url = '/go/' . $br_info['br_shortcut_code'];
+                    } else {
+                        $order_url = '/go/' . $member['dmk_br_id'];
+                    }
+                }
+            ?>
+            <a href="<?php echo $order_url; ?>" class="bg-white text-purple-600 px-8 py-4 rounded-full text-lg font-semibold hover:bg-gray-100 transition duration-300 inline-block">
                 <i class="fas fa-shopping-cart mr-2"></i>주문하러 가기
             </a>
             <?php } ?>

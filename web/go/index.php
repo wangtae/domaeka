@@ -655,7 +655,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
 
         <!-- Fixed Bottom Bar -->
         <div class="fixed-footer py-2 px-3 flex space-x-3">
-            <a href="/go/orderlist.php" class="btn-outline">주문내역</a>
+            <a href="/go/orderlist.php?noredirect=1" class="btn-outline">주문내역</a>
             <button type="submit" form="orderForm" class="btn-primary flex-1" id="submitOrder">주문하기</button>
         </div>
     </div>

@@ -56,6 +56,36 @@ $mb_password = md5(pack('V*', rand(), rand(), rand(), rand()));
 // 휴대폰 번호 형식 처리
 $mb_hp = hyphen_hp_number($user_phone);
 
+// URL에서 지점 코드 추출 및 계층 정보 설정
+$dmk_br_id = '';
+$dmk_ag_id = '';
+$dmk_dt_id = '';
+
+// 세션에 저장된 원래 URL에서 코드 추출
+$original_url = isset($_SESSION['ss_redirect_url']) ? $_SESSION['ss_redirect_url'] : '';
+if ($original_url) {
+    // URL에서 /go/코드 패턴 추출
+    if (preg_match('#/go/([a-zA-Z0-9_-]+)#', $original_url, $matches)) {
+        $url_code = $matches[1];
+        
+        // 지점 정보 조회
+        $branch_sql = " SELECT b.br_id, b.ag_id
+                        FROM dmk_branch b 
+                        WHERE (b.br_shortcut_code = '".sql_real_escape_string($url_code)."' 
+                               OR b.br_id = '".sql_real_escape_string($url_code)."')
+                        AND b.br_status = 1 
+                        LIMIT 1 ";
+        $branch = sql_fetch($branch_sql);
+        
+        if ($branch) {
+            $dmk_br_id = $branch['br_id'];
+            $dmk_ag_id = $branch['ag_id'];
+            // 도매까에서는 총판(distributor) 계층이 없으므로 dt_id는 빈 값으로 설정
+            $dmk_dt_id = '';
+        }
+    }
+}
+
 // 회원 정보 DB 삽입
 $sql = " INSERT INTO {$g5['member_table']} SET
             mb_id = '".sql_real_escape_string($mb_id)."',
@@ -74,7 +104,10 @@ $sql = " INSERT INTO {$g5['member_table']} SET
             mb_mailling = '0',
             mb_sms = '0',
             mb_open = '0',
-            mb_open_date = '".G5_TIME_YMD."' ";
+            mb_open_date = '".G5_TIME_YMD."',
+            dmk_br_id = '".sql_real_escape_string($dmk_br_id)."',
+            dmk_ag_id = '".sql_real_escape_string($dmk_ag_id)."',
+            dmk_dt_id = '".sql_real_escape_string($dmk_dt_id)."' ";
 
 $result = sql_query($sql, false);
 
