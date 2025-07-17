@@ -68,9 +68,10 @@ if ($original_url) {
     if (preg_match('#/go/([a-zA-Z0-9_-]+)#', $original_url, $matches)) {
         $url_code = $matches[1];
         
-        // 지점 정보 조회
-        $branch_sql = " SELECT b.br_id, b.ag_id
+        // 지점 정보 조회 (총판 정보 포함)
+        $branch_sql = " SELECT b.br_id, b.ag_id, a.dt_id
                         FROM dmk_branch b 
+                        LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id
                         WHERE (b.br_shortcut_code = '".sql_real_escape_string($url_code)."' 
                                OR b.br_id = '".sql_real_escape_string($url_code)."')
                         AND b.br_status = 1 
@@ -80,8 +81,7 @@ if ($original_url) {
         if ($branch) {
             $dmk_br_id = $branch['br_id'];
             $dmk_ag_id = $branch['ag_id'];
-            // 도매까에서는 총판(distributor) 계층이 없으므로 dt_id는 빈 값으로 설정
-            $dmk_dt_id = '';
+            $dmk_dt_id = $branch['dt_id'] ? $branch['dt_id'] : '';
         }
     }
 }
