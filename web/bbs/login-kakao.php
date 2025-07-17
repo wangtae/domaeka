@@ -206,11 +206,8 @@ body {
     <!-- Kakao Login Button -->
     <div class="kakao-login-button-wrapper">
         <?php
-        // 카카오 자동 회원가입 세션 플래그 설정
-        $_SESSION['kakao_auto_register'] = true;
-        
         // 카카오 소셜 로그인 URL 생성 (정상적인 login.php를 통해)
-        $kakao_login_url = G5_BBS_URL . '/login.php?provider=kakao';
+        $kakao_login_url = G5_BBS_URL . '/login.php?provider=kakao&auto_register=1';
         
         // URL 파라미터가 있으면 추가
         if ($url) {

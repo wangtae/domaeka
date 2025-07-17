@@ -21,7 +21,12 @@ function social_auto_register_member($user_profile, $provider_name, $url = '') {
         $_SESSION['ss_redirect_url'] = $url;
     }
     
-    // 직접 회원가입 처리 페이지로 리다이렉트
-    goto_url(G5_PLUGIN_URL . '/social/register_member_kakao_direct.php');
+    // 자동 회원가입 페이지로 리다이렉트 (기존 register_member.php 활용)
+    $register_url = G5_PLUGIN_URL . '/social/register_member_auto.php?provider=' . $provider_name;
+    if ($url) {
+        $register_url .= '&url=' . urlencode($url);
+    }
+    
+    goto_url($register_url);
     return true;
 }
