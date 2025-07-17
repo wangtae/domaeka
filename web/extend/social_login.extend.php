@@ -30,8 +30,8 @@ if(G5_IS_MOBILE) {
 }
 
 //소셜 로그인 팝업을 사용하면 true
-define('G5_SOCIAL_USE_POPUP', ! is_mobile() );  // 모바일에서는 팝업사용 안함
-//define('G5_SOCIAL_USE_POPUP', false );        //팝업을 사용하지 않을 경우
+//define('G5_SOCIAL_USE_POPUP', ! is_mobile() );  // 모바일에서는 팝업사용 안함
+define('G5_SOCIAL_USE_POPUP', false );        //팝업을 사용하지 않을 경우
 
 //소셜 db 테이블에 기록된 내용중에 mb_id가 없는 소셜 데이터를 몇일 이후에 삭제합니다.
 //해당 기간동안 중복 회원가입을 막는 역할을 합니다.
