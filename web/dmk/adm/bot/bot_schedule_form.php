@@ -262,10 +262,10 @@ while($row = sql_fetch_array($result_rooms)) {
                 <div class="image_preview sortable" id="preview_1">
                     <?php if (!empty($schedule['message_images_1'])): ?>
                         <?php foreach($schedule['message_images_1'] as $idx => $img): ?>
-                        <div class="preview_item" data-file="<?php echo $img['file']?>">
-                            <img src="<?php echo G5_DATA_URL?>/schedule/<?php echo $img['file']?>" alt="">
+                        <div class="preview_item" data-index="<?php echo $idx?>">
+                            <img src="data:image/jpeg;base64,<?php echo $img['base64']?>" alt="">
                             <button type="button" class="btn_delete" onclick="removeImage(this, 1)">×</button>
-                            <input type="hidden" name="existing_images_1[]" value="<?php echo $img['file']?>">
+                            <input type="hidden" name="existing_images_1[]" value="<?php echo $img['base64']?>">
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -291,10 +291,10 @@ while($row = sql_fetch_array($result_rooms)) {
                 <div class="image_preview sortable" id="preview_2">
                     <?php if (!empty($schedule['message_images_2'])): ?>
                         <?php foreach($schedule['message_images_2'] as $idx => $img): ?>
-                        <div class="preview_item" data-file="<?php echo $img['file']?>">
-                            <img src="<?php echo G5_DATA_URL?>/schedule/<?php echo $img['file']?>" alt="">
+                        <div class="preview_item" data-index="<?php echo $idx?>">
+                            <img src="data:image/jpeg;base64,<?php echo $img['base64']?>" alt="">
                             <button type="button" class="btn_delete" onclick="removeImage(this, 2)">×</button>
-                            <input type="hidden" name="existing_images_2[]" value="<?php echo $img['file']?>">
+                            <input type="hidden" name="existing_images_2[]" value="<?php echo $img['base64']?>">
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>

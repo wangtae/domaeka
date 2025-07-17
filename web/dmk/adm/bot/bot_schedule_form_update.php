@@ -181,29 +181,11 @@ $created_by_mb_id = $member['mb_id'];
 
 echo "<!-- DEBUG: created_by_type: $created_by_type, created_by_id: $created_by_id -->\n";
 
-// 이미지 업로드 디렉토리
-$upload_dir = G5_DATA_PATH.'/schedule';
-$upload_url = G5_DATA_URL.'/schedule';
+// Base64 방식으로 변경되어 업로드 디렉토리는 더 이상 필요하지 않음
+echo "<!-- DEBUG: Using Base64 encoding for images (no file storage) -->\n";
 
-echo "<!-- DEBUG: Upload directory: $upload_dir -->\n";
-echo "<!-- DEBUG: Upload URL: $upload_url -->\n";
-
-if (!is_dir($upload_dir)) {
-    @mkdir($upload_dir, G5_DIR_PERMISSION);
-    @chmod($upload_dir, G5_DIR_PERMISSION);
-}
-
-// 디렉토리 존재 확인
-if (is_dir($upload_dir)) {
-    echo "<!-- DEBUG: Directory exists and is writable: " . (is_writable($upload_dir) ? 'YES' : 'NO') . " -->\n";
-} else {
-    echo "<!-- DEBUG: Directory does not exist! -->\n";
-}
-
-// 이미지 처리 함수
+// 이미지 처리 함수 (Base64 인코딩 방식)
 function process_schedule_images($group_num, $existing_images, $new_files, $bot_name = null) {
-    global $upload_dir;
-    
     $images = [];
     $max_images = 30; // 최대 이미지 개수
     
@@ -222,15 +204,15 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
         }
     }
     
-    // 기존 이미지 처리
+    // 기존 이미지 처리 (이미 base64로 저장되어 있음)
     if (!empty($existing_images)) {
-        foreach ($existing_images as $file) {
+        foreach ($existing_images as $base64_data) {
             if (count($images) >= $max_images) break;
-            $images[] = array('file' => $file);
+            $images[] = array('base64' => $base64_data);
         }
     }
     
-    // 새 이미지 업로드
+    // 새 이미지 업로드 및 Base64 인코딩
     if (!empty($new_files['name'][0])) {
         echo "<!-- DEBUG: Processing " . count($new_files['name']) . " new files for group $group_num -->\n";
         
@@ -240,46 +222,36 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
             echo "<!-- DEBUG: Processing file $i: " . $new_files['name'][$i] . " -->\n";
             
             if ($new_files['error'][$i] == 0) {
-                $filename = time() . '_' . $group_num . '_' . $i . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $new_files['name'][$i]);
-                $filepath = $upload_dir . '/' . $filename;
+                $original_name = $new_files['name'][$i];
+                $tmp_path = $new_files['tmp_name'][$i];
                 
-                echo "<!-- DEBUG: Target filepath: $filepath -->\n";
+                // 이미지인지 확인
+                $is_image = preg_match('/\.(jpg|jpeg|png|gif)$/i', $original_name);
                 
-                // 이미지 리사이징 처리
-                $uploaded = false;
-                
-                if ($resize_enabled && preg_match('/\.(jpg|jpeg|png|gif)$/i', $new_files['name'][$i])) {
-                    // 이미지 파일인 경우 리사이징 처리
+                if ($is_image && $resize_enabled) {
+                    // 이미지 리사이징 후 Base64 인코딩
                     echo "<!-- DEBUG: Attempting to resize image (max_width: $max_width) -->\n";
-                    $uploaded = resize_and_save_image($new_files['tmp_name'][$i], $filepath, $max_width);
-                    echo "<!-- DEBUG: Resize result: " . ($uploaded ? 'success' : 'failed') . " -->\n";
-                }
-                
-                // 리사이징 실패 또는 비활성화 시 원본 저장
-                if (!$uploaded) {
-                    echo "<!-- DEBUG: Attempting direct move -->\n";
-                    echo "<!-- DEBUG: Source: " . $new_files['tmp_name'][$i] . " -->\n";
-                    echo "<!-- DEBUG: Destination: " . $filepath . " -->\n";
-                    echo "<!-- DEBUG: Source exists: " . (file_exists($new_files['tmp_name'][$i]) ? 'YES' : 'NO') . " -->\n";
-                    echo "<!-- DEBUG: Source is uploaded: " . (is_uploaded_file($new_files['tmp_name'][$i]) ? 'YES' : 'NO') . " -->\n";
-                    echo "<!-- DEBUG: Dest dir writable: " . (is_writable($upload_dir) ? 'YES' : 'NO') . " -->\n";
-                    $uploaded = move_uploaded_file($new_files['tmp_name'][$i], $filepath);
-                    echo "<!-- DEBUG: Move result: " . ($uploaded ? 'success' : 'failed') . " -->\n";
-                    if (!$uploaded) {
-                        $error = error_get_last();
-                        echo "<!-- DEBUG: Last error: " . ($error ? $error['message'] : 'none') . " -->\n";
+                    $base64_data = resize_and_encode_image($tmp_path, $max_width);
+                } else {
+                    // 원본 파일을 Base64로 인코딩
+                    echo "<!-- DEBUG: Encoding original file to base64 -->\n";
+                    $file_content = file_get_contents($tmp_path);
+                    if ($file_content !== false) {
+                        $base64_data = base64_encode($file_content);
+                    } else {
+                        $base64_data = null;
                     }
                 }
                 
-                if ($uploaded) {
-                    $images[] = array('file' => $filename);
-                    echo "<!-- DEBUG: File successfully processed: $filename -->\n";
-                    echo "<!-- DEBUG: File exists: " . (file_exists($filepath) ? 'YES' : 'NO') . " -->\n";
-                    echo "<!-- DEBUG: File size: " . (file_exists($filepath) ? filesize($filepath) : '0') . " bytes -->\n";
+                if ($base64_data) {
+                    $images[] = array(
+                        'base64' => $base64_data,
+                        'name' => $original_name,
+                        'size' => strlen($base64_data)
+                    );
+                    echo "<!-- DEBUG: File successfully encoded: $original_name (base64 size: " . strlen($base64_data) . " bytes) -->\n";
                 } else {
-                    echo "<!-- DEBUG: Failed to process file -->\n";
-                    echo "<!-- DEBUG: Upload max filesize: " . ini_get('upload_max_filesize') . " -->\n";
-                    echo "<!-- DEBUG: Post max size: " . ini_get('post_max_size') . " -->\n";
+                    echo "<!-- DEBUG: Failed to encode file -->\n";
                 }
             } else {
                 echo "<!-- DEBUG: File upload error: " . $new_files['error'][$i] . " -->\n";
@@ -291,13 +263,13 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
     return $images;
 }
 
-// 이미지 리사이징 함수
-function resize_and_save_image($source_path, $dest_path, $max_width) {
+// 이미지 리사이징 및 Base64 인코딩 함수
+function resize_and_encode_image($source_path, $max_width) {
     // GD 라이브러리 체크
     if (!extension_loaded('gd') || !function_exists('gd_info')) {
-        // GD 라이브러리가 없으면 안내 메시지와 함께 중단
-        alert('PHP GD 라이브러리가 설치되어 있지 않습니다.\\n\\n이미지 업로드 기능을 사용하려면 GD 라이브러리를 설치해주세요.\\n\\n설치 방법:\\nsudo apt-get install php-gd\\nsudo service apache2 restart');
-        return false;
+        // GD 라이브러리가 없으면 원본을 Base64로 인코딩
+        $content = file_get_contents($source_path);
+        return $content !== false ? base64_encode($content) : null;
     }
     
     // 메모리 제한 임시 증가
@@ -305,7 +277,11 @@ function resize_and_save_image($source_path, $dest_path, $max_width) {
     
     // 이미지 정보 가져오기
     $image_info = getimagesize($source_path);
-    if (!$image_info) return false;
+    if (!$image_info) {
+        // 이미지가 아닌 경우 원본을 Base64로 인코딩
+        $content = file_get_contents($source_path);
+        return $content !== false ? base64_encode($content) : null;
+    }
     
     $width = $image_info[0];
     $height = $image_info[1];
@@ -313,7 +289,8 @@ function resize_and_save_image($source_path, $dest_path, $max_width) {
     
     // 리사이징이 필요 없는 경우
     if ($width <= $max_width) {
-        return move_uploaded_file($source_path, $dest_path);
+        $content = file_get_contents($source_path);
+        return $content !== false ? base64_encode($content) : null;
     }
     
     // 새로운 크기 계산
@@ -332,10 +309,15 @@ function resize_and_save_image($source_path, $dest_path, $max_width) {
             $source = imagecreatefromgif($source_path);
             break;
         default:
-            return false;
+            // 지원하지 않는 형식은 원본을 Base64로 인코딩
+            $content = file_get_contents($source_path);
+            return $content !== false ? base64_encode($content) : null;
     }
     
-    if (!$source) return false;
+    if (!$source) {
+        $content = file_get_contents($source_path);
+        return $content !== false ? base64_encode($content) : null;
+    }
     
     // 새 이미지 생성
     $dest = imagecreatetruecolor($new_width, $new_height);
@@ -350,25 +332,28 @@ function resize_and_save_image($source_path, $dest_path, $max_width) {
     // 리사이징
     imagecopyresampled($dest, $source, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
     
-    // 저장
-    $result = false;
+    // 메모리 스트림으로 출력하여 Base64 인코딩
+    ob_start();
     switch ($type) {
         case IMAGETYPE_JPEG:
-            $result = imagejpeg($dest, $dest_path, 90);
+            imagejpeg($dest, null, 90);
             break;
         case IMAGETYPE_PNG:
-            $result = imagepng($dest, $dest_path, 9);
+            imagepng($dest, null, 9);
             break;
         case IMAGETYPE_GIF:
-            $result = imagegif($dest, $dest_path);
+            imagegif($dest);
             break;
     }
+    $image_data = ob_get_contents();
+    ob_end_clean();
     
     // 메모리 해제
     imagedestroy($source);
     imagedestroy($dest);
     
-    return $result;
+    // Base64 인코딩하여 반환
+    return base64_encode($image_data);
 }
 
 // 이미지 그룹 처리
@@ -543,25 +528,7 @@ if ($w == '' || $w == 'a') {
         }
     }
     
-    // 기존 이미지 중 삭제된 것 처리
-    $old_images_1 = $schedule['message_images_1'] ? json_decode($schedule['message_images_1'], true) : [];
-    $old_images_2 = $schedule['message_images_2'] ? json_decode($schedule['message_images_2'], true) : [];
-    
-    // 삭제할 이미지 찾기
-    $keep_images_1 = $_POST['existing_images_1'] ?? [];
-    $keep_images_2 = $_POST['existing_images_2'] ?? [];
-    
-    foreach ($old_images_1 as $img) {
-        if (!in_array($img['file'], $keep_images_1)) {
-            @unlink($upload_dir . '/' . $img['file']);
-        }
-    }
-    
-    foreach ($old_images_2 as $img) {
-        if (!in_array($img['file'], $keep_images_2)) {
-            @unlink($upload_dir . '/' . $img['file']);
-        }
-    }
+    // Base64 방식에서는 파일 삭제가 필요 없음 - DB에서만 제거됨
     
     $sql = " UPDATE kb_schedule SET 
              title = '".sql_escape_string($title)."',

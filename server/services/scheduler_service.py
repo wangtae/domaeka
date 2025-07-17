@@ -8,7 +8,6 @@ import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from core.logger import logger
-from core.client_status import client_status_manager
 import core.globals as g
 from core.response_utils import send_json_response
 import os
@@ -74,26 +73,28 @@ class SchedulerService:
     
     def get_active_bots(self) -> List[str]:
         """현재 활성 봇 목록 조회"""
-        all_clients = client_status_manager.get_all_clients()
+        from core.globals import clients
+        
         active_bots = []
-        current_time = time.time()
         
-        for addr, client_info in all_clients.items():
-            if client_info.last_ping and (current_time - client_info.last_ping) < self.ping_timeout:
-                if client_info.bot_name:
-                    active_bots.append(client_info.bot_name)
+        # clients는 {(bot_name, device_id): writer} 형태로 관리됨
+        for (bot_name, device_id), writer in clients.items():
+            if writer and not writer.is_closing():
+                if bot_name not in active_bots:
+                    active_bots.append(bot_name)
         
-        return list(set(active_bots))  # 중복 제거
+        logger.debug(f"[SCHEDULER] 활성 클라이언트: {list(clients.keys())}")
+        
+        return active_bots
     
     def is_bot_connected(self, bot_name: str) -> bool:
         """특정 봇 연결 상태 확인"""
-        all_clients = client_status_manager.get_all_clients()
-        current_time = time.time()
+        from core.globals import clients
         
-        for addr, client_info in all_clients.items():
-            if client_info.bot_name == bot_name:
-                if client_info.last_ping and (current_time - client_info.last_ping) < self.ping_timeout:
-                    return True
+        # clients에서 해당 봇이 연결되어 있는지 확인
+        for (bot, device_id), writer in clients.items():
+            if bot == bot_name and writer and not writer.is_closing():
+                return True
         
         return False
     
@@ -193,7 +194,6 @@ class SchedulerService:
             AND (s.last_sent_at IS NULL OR s.last_sent_at < s.next_send_at)
             ORDER BY s.next_send_at ASC, s.id ASC
             LIMIT 10
-            FOR UPDATE SKIP LOCKED
         """
         
         async with self.db_pool.acquire() as conn:
@@ -294,60 +294,61 @@ class SchedulerService:
         """텍스트 메시지 발송"""
         # 연결된 클라이언트 찾기
         from core.globals import clients
+        from core.response_utils import send_message_response
         
         # bot_name과 device_id로 정확한 클라이언트 찾기
         client_key = (bot_name, device_id)
         if client_key in clients:
-            sessions = clients[client_key]
-            for addr, writer in sessions.items():
-                if writer and not writer.is_closing():
-                    message = {
-                        'event': 'messageResponse',
-                        'data': {
-                            'room': room_id,
-                            'text': text,
-                            'channel_id': room_id
-                        }
-                    }
-                    await send_json_response(writer, message)
-                    logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_id}")
-                    return
+            writer = clients[client_key]
+            if writer and not writer.is_closing():
+                # context 구성
+                context = {
+                    'client_key': client_key,
+                    'room': room_id,
+                    'channel_id': room_id,
+                    'bot_name': bot_name,
+                    'writer': writer
+                }
+                await send_message_response(context, text)
+                logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_id}")
+                return
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
     
     async def send_images(self, bot_name: str, device_id: str, room_id: str, images: List[Dict], wait_time: int):
-        """이미지 발송"""
+        """이미지 발송 (Base64 방식)"""
         from core.globals import clients
+        from core.response_utils import send_message_response
         
         # bot_name과 device_id로 정확한 클라이언트 찾기
         client_key = (bot_name, device_id)
         if client_key in clients:
-            sessions = clients[client_key]
-            for addr, writer in sessions.items():
-                if writer and not writer.is_closing():
-                    # 이미지 파일 경로 구성
-                    web_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../web'))
+            writer = clients[client_key]
+            if writer and not writer.is_closing():
+                # Base64 이미지 데이터 리스트 생성
+                base64_images = []
+                for img_info in images:
+                    # img_info는 {'base64': 'base64data...', 'name': 'filename.jpg'} 형태
+                    base64_data = img_info.get('base64', '')
+                    if base64_data:
+                        base64_images.append(base64_data)
+                    else:
+                        logger.warning(f"[SCHEDULER] Base64 데이터 없음")
+                
+                if base64_images:
+                    # context 구성
+                    context = {
+                        'client_key': client_key,
+                        'room': room_id,
+                        'channel_id': room_id,
+                        'bot_name': bot_name,
+                        'writer': writer
+                    }
                     
-                    for img_info in images:
-                        img_path = os.path.join(web_root, img_info['path'].lstrip('/'))
-                        
-                        if os.path.exists(img_path):
-                            message = {
-                                'event': 'messageResponse',
-                                'data': {
-                                    'room': room_id,
-                                    'channel_id': room_id,
-                                    'imagePath': img_path,
-                                    'mediaWaitTime': wait_time if wait_time > 0 else None
-                                }
-                            }
-                            await send_json_response(writer, message)
-                            logger.info(f"[SCHEDULER] 이미지 발송: {bot_name}@{device_id} -> {room_id} -> {img_info['name']}")
-                            
-                            # 이미지 간 짧은 대기
-                            await asyncio.sleep(0.5)
-                        else:
-                            logger.warning(f"[SCHEDULER] 이미지 파일 없음: {img_path}")
+                    # IMAGE_BASE64 형식으로 전송
+                    image_message = f"IMAGE_BASE64:{'|||'.join(base64_images)}"
+                    await send_message_response(context, image_message, media_wait_time=wait_time)
+                    logger.info(f"[SCHEDULER] 이미지 {len(base64_images)}개 발송: {bot_name}@{device_id} -> {room_id}")
                     return
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
@@ -407,10 +408,22 @@ class SchedulerService:
         if schedule['schedule_type'] == 'once':
             return None  # 1회성은 다음 발송 없음
         
-        elif schedule['schedule_type'] == 'daily':
+        # schedule_time을 time 객체로 변환
+        schedule_time = schedule.get('schedule_time')
+        if isinstance(schedule_time, str):
+            # HH:MM:SS 형식의 문자열인 경우
+            schedule_time = datetime.strptime(schedule_time, '%H:%M:%S').time()
+        elif isinstance(schedule_time, timedelta):
+            # timedelta인 경우 시간으로 변환
+            hours = int(schedule_time.total_seconds() // 3600)
+            minutes = int((schedule_time.total_seconds() % 3600) // 60)
+            seconds = int(schedule_time.total_seconds() % 60)
+            schedule_time = datetime.now().replace(hour=hours, minute=minutes, second=seconds).time()
+        
+        if schedule['schedule_type'] == 'daily':
             # 매일 반복: 다음날 같은 시간
             next_date = datetime.now().date() + timedelta(days=1)
-            return datetime.combine(next_date, schedule['schedule_time'])
+            return datetime.combine(next_date, schedule_time)
         
         elif schedule['schedule_type'] == 'weekly':
             # 주간 반복: 다음 해당 요일 같은 시간
@@ -422,7 +435,7 @@ class SchedulerService:
                 weekday_name = check_date.strftime('%A').lower()
                 
                 if weekday_name in weekdays:
-                    return datetime.combine(check_date, schedule['schedule_time'])
+                    return datetime.combine(check_date, schedule_time)
         
         return None
     

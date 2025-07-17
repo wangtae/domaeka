@@ -563,21 +563,33 @@ function moveTooltip(event) {
         $images_1 = $row['message_images_1'] ? json_decode($row['message_images_1'], true) : [];
         $images_2 = $row['message_images_2'] ? json_decode($row['message_images_2'], true) : [];
         
-        // 이미지 용량 계산
+        // 이미지 용량 계산 (Base64 방식)
         $total_size = 0;
         $image_sizes_1 = [];
         $image_sizes_2 = [];
         
-        foreach ($images_1 as $img) {
-            if (isset($img['file'])) {
+        foreach ($images_1 as $idx => $img) {
+            if (isset($img['base64'])) {
+                // Base64 데이터 크기 (실제 파일 크기는 약 3/4)
+                $size = strlen($img['base64']) * 3 / 4;
+                $image_sizes_1[$idx] = $size;
+                $total_size += $size;
+            } elseif (isset($img['file'])) {
+                // 이전 방식 호환성
                 $size = get_file_size($img['file']);
                 $image_sizes_1[$img['file']] = $size;
                 $total_size += $size;
             }
         }
         
-        foreach ($images_2 as $img) {
-            if (isset($img['file'])) {
+        foreach ($images_2 as $idx => $img) {
+            if (isset($img['base64'])) {
+                // Base64 데이터 크기 (실제 파일 크기는 약 3/4)
+                $size = strlen($img['base64']) * 3 / 4;
+                $image_sizes_2[$idx] = $size;
+                $total_size += $size;
+            } elseif (isset($img['file'])) {
+                // 이전 방식 호환성
                 $size = get_file_size($img['file']);
                 $image_sizes_2[$img['file']] = $size;
                 $total_size += $size;
@@ -618,8 +630,13 @@ function moveTooltip(event) {
                                 <div class="image-group-title">이미지 그룹 1</div>
                                 <?php if (count($images_1) > 0): ?>
                                     <div class="thumbnails">
-                                        <?php foreach ($images_1 as $img): ?>
-                                            <?php if (isset($img['file'])): ?>
+                                        <?php foreach ($images_1 as $idx => $img): ?>
+                                            <?php if (isset($img['base64'])): ?>
+                                            <div class="thumbnail-item">
+                                                <img src="data:image/jpeg;base64,<?php echo $img['base64'] ?>" alt="" onclick="showModal(this.src)">
+                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_1[$idx]) ?></div>
+                                            </div>
+                                            <?php elseif (isset($img['file'])): ?>
                                             <div class="thumbnail-item">
                                                 <img src="<?php echo G5_DATA_URL ?>/schedule/<?php echo $img['file'] ?>" alt="" onclick="showModal(this.src)">
                                                 <div class="thumbnail-size"><?php echo format_bytes($image_sizes_1[$img['file']]) ?></div>
@@ -636,8 +653,13 @@ function moveTooltip(event) {
                                 <div class="image-group-title">이미지 그룹 2</div>
                                 <?php if (count($images_2) > 0): ?>
                                     <div class="thumbnails">
-                                        <?php foreach ($images_2 as $img): ?>
-                                            <?php if (isset($img['file'])): ?>
+                                        <?php foreach ($images_2 as $idx => $img): ?>
+                                            <?php if (isset($img['base64'])): ?>
+                                            <div class="thumbnail-item">
+                                                <img src="data:image/jpeg;base64,<?php echo $img['base64'] ?>" alt="" onclick="showModal(this.src)">
+                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_2[$idx]) ?></div>
+                                            </div>
+                                            <?php elseif (isset($img['file'])): ?>
                                             <div class="thumbnail-item">
                                                 <img src="<?php echo G5_DATA_URL ?>/schedule/<?php echo $img['file'] ?>" alt="" onclick="showModal(this.src)">
                                                 <div class="thumbnail-size"><?php echo format_bytes($image_sizes_2[$img['file']]) ?></div>
