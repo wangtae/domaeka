@@ -198,6 +198,8 @@ class SchedulerService:
         
         async with self.db_pool.acquire() as conn:
             async with conn.cursor() as cursor:
+                # UTF8MB4 설정 보장
+                await cursor.execute("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'")
                 await cursor.execute(query, bot_names)
                 columns = [desc[0] for desc in cursor.description]
                 rows = await cursor.fetchall()
@@ -321,6 +323,10 @@ class SchedulerService:
                     'bot_name': bot_name,
                     'writer': writer
                 }
+                # 디버깅: 전송 전 텍스트 확인
+                sample = text[:100] if len(text) > 100 else text
+                logger.debug(f"[SCHEDULER] 전송할 텍스트 샘플: {repr(sample)}")
+                
                 await send_message_response(context, text)
                 logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_name} ({room_id})")
                 return

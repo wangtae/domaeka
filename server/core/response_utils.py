@@ -47,7 +47,7 @@ async def send_message(writer, packet):
         # 응답 메시지 크기 체크 제거
         
         message = json.dumps(packet, ensure_ascii=False) + '\n'
-        message = sanitize_surrogates(message)
+        # sanitize_surrogates 제거 - JSON 직렬화 후 추가 처리 불필요
         encoded_message = message.encode('utf-8')
         
         # 서버→클라이언트는 크기 제한 없음
@@ -172,7 +172,7 @@ async def send_json_response(writer: asyncio.StreamWriter, response: Dict[str, A
             return
             
         message = json.dumps(response, ensure_ascii=False) + '\n'
-        message = sanitize_surrogates(message)
+        # sanitize_surrogates 제거 - JSON 직렬화 후 추가 처리 불필요
         encoded_message = message.encode('utf-8')
         
         # 인코딩된 메시지 크기 체크
