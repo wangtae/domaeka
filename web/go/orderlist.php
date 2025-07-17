@@ -2,6 +2,15 @@
 $sub_menu = "";
 include_once(__DIR__ . '/../common.php');
 
+// 로그인 체크
+if (!$member['mb_id']) {
+    // 현재 페이지 URL을 인코딩하여 로그인 후 돌아올 URL로 설정
+    $current_url = urlencode(G5_URL . $_SERVER['REQUEST_URI']);
+    
+    // 카카오 로그인 전용 페이지로 리다이렉트 (자동 회원가입 처리)
+    goto_url(G5_BBS_URL . '/login-kakao.php?url=' . $current_url);
+}
+
 // URL에서 브랜치 ID 추출
 $br_id = isset($_GET['br_id']) ? trim($_GET['br_id']) : '';
 
@@ -90,9 +99,11 @@ $g5['title'] = $branch['br_name'] . ' 주문내역';
                     <a href="/go/<?php echo $branch['br_shortcut_code'] ?: $br_id ?>" class="btn-outline text-sm">
                         <i class="fas fa-shopping-cart mr-1"></i> 주문페이지
                     </a>
+                    <?php if ($member['mb_id']) { ?>
                     <a href="<?php echo G5_BBS_URL ?>/logout.php" class="btn-outline text-sm">
                         <i class="fas fa-sign-out-alt mr-1"></i> 로그아웃
                     </a>
+                    <?php } ?>
                 </div>
             </header>
         </nav>
