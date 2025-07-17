@@ -95,7 +95,7 @@ body {
 .kakao-login-button-wrapper {
     padding: 0 20px;
     margin: 0 auto;
-    max-width: 600px;
+    max-width: 400px;
     width: 100%;
 }
 
@@ -125,18 +125,30 @@ body {
 
 /* 모바일 우선 반응형 디자인 */
 @media (max-width: 480px) {
+    .kakao-login-button-wrapper {
+        max-width: 200px;
+    }
+    
     .kakao-login-button img {
         border-radius: 6px;
     }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
+    .kakao-login-button-wrapper {
+        max-width: 350px;
+    }
+    
     .kakao-login-button img {
         border-radius: 8px;
     }
 }
 
 @media (min-width: 769px) {
+    .kakao-login-button-wrapper {
+        max-width: 400px;
+    }
+    
     .kakao-login-button img {
         border-radius: 12px;
     }
