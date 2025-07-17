@@ -32,6 +32,7 @@ async def init_db_pool():
                 password=CONFIG['DBs'][db_name]['PASS'],
                 db=CONFIG['DBs'][db_name]['NAME'],
                 charset='utf8mb4',
+                use_unicode=True,
                 autocommit=True,
                 minsize=5,
                 maxsize=50

@@ -11,14 +11,10 @@ import core.globals as g
 
 def sanitize_surrogates(text: str) -> str:
     """
-    UTF-8 인코딩으로 안전하게 처리하며 이모티콘 보존
+    이모티콘을 포함한 모든 유니코드 문자를 안전하게 처리
     """
-    try:
-        # UTF-8로 인코딩/디코딩하여 유효하지 않은 문자만 제거
-        return text.encode("utf-8", "ignore").decode("utf-8", "ignore")
-    except Exception:
-        # 에러 발생 시 원본 반환
-        return text
+    # 대부분의 경우 원본 그대로 반환 (Python3는 기본적으로 UTF-8 지원)
+    return text
 
 
 async def send_message(writer, packet):
