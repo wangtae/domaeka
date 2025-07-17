@@ -12,6 +12,17 @@ $g5['title'] = '도매까 로그인';
 
 $od_id = isset($_POST['od_id']) ? safe_replace_regex($_POST['od_id'], 'od_id') : '';
 
+// provider 파라미터 처리 - redirect_to_idp는 무시
+$provider = isset($_GET['provider']) ? $_GET['provider'] : '';
+
+// provider가 kakao인 경우 바로 카카오 로그인 처리
+if ($provider === 'kakao') {
+    // 카카오 소셜 로그인으로 리디렉션
+    $kakao_login_url = G5_BBS_URL . '/login.php?provider=kakao&url=' . urlencode($url);
+    header('Location: ' . $kakao_login_url);
+    exit;
+}
+
 // url 체크
 check_url_host($url);
 
@@ -184,7 +195,7 @@ body {
     <div class="kakao-login-content">
         <span class="kakao-login-subtitle">간편하게 로그인하고</span><br>
         <span class="kakao-login-main">
-            도매까까 공동구매를<br> 
+            도매까 공동구매를<br> 
             경험해 보세요
         </span>
     </div>
