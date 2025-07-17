@@ -38,6 +38,7 @@ $mb_id = $member['mb_id'];
 // 회원의 지점 정보 확인
 $order_page_url = '/go/'; // 기본값
 $branch_name = '도매까'; // 기본 지점명
+$br_info = null; // 변수 초기화
 
 // dmk_br_id가 있는지 확인
 if (isset($member['dmk_br_id']) && $member['dmk_br_id']) {
@@ -49,16 +50,17 @@ if (isset($member['dmk_br_id']) && $member['dmk_br_id']) {
                LIMIT 1 ";
     $br_info = sql_fetch($br_sql);
     
-    if ($br_info) {
-        // shortcut_code가 있으면 사용, 없으면 br_id 사용
-        if (!empty($br_info['br_shortcut_code'])) {
-            $order_page_url = '/go/' . $br_info['br_shortcut_code'];
+    if ($br_info && isset($br_info['br_id'])) {
+        // shortcut_code가 있고 비어있지 않으면 사용
+        if (isset($br_info['br_shortcut_code']) && trim($br_info['br_shortcut_code']) !== '') {
+            $order_page_url = '/go/' . trim($br_info['br_shortcut_code']);
         } else {
+            // shortcut_code가 없으면 br_id 사용
             $order_page_url = '/go/' . $br_info['br_id'];
         }
-        $branch_name = $br_info['br_name'] ? $br_info['br_name'] : '도매까';
+        $branch_name = (isset($br_info['br_name']) && $br_info['br_name']) ? $br_info['br_name'] : '도매까';
     } else {
-        // 지점 정보가 없지만 dmk_br_id가 있으면 그대로 사용
+        // 지점 정보를 찾을 수 없으면 dmk_br_id 사용
         $order_page_url = '/go/' . $member['dmk_br_id'];
     }
 }
@@ -144,8 +146,12 @@ $g5['title'] = '내 주문내역';
                 <div class="flex gap-4 h-full flex-row flex-nowrap items-center">
                     <div class="flex flex-row flex-nowrap justify-start bg-transparent items-center">
                         <p class="font-bold text-inherit"><?php echo htmlspecialchars($branch_name) ?> 주문내역</p>
-                        <?php if (defined('G5_IS_ADMIN') && G5_IS_ADMIN && isset($_GET['debug'])) { ?>
-                        <span class="text-xs text-gray-500 ml-2">[dmk_br_id: <?php echo $member['dmk_br_id'] ?>, URL: <?php echo $order_page_url ?>]</span>
+                        <?php if (isset($_GET['debug'])) { ?>
+                        <span class="text-xs text-gray-500 ml-2">
+                            [br_id: <?php echo htmlspecialchars($member['dmk_br_id']) ?>, 
+                             shortcut: <?php echo ($br_info && isset($br_info['br_shortcut_code'])) ? '"'.htmlspecialchars($br_info['br_shortcut_code']).'"' : 'N/A' ?>, 
+                             URL: <?php echo htmlspecialchars($order_page_url) ?>]
+                        </span>
                         <?php } ?>
                     </div>
                 </div>
@@ -154,8 +160,8 @@ $g5['title'] = '내 주문내역';
                         <i class="fas fa-shopping-cart mr-1"></i> 주문페이지
                     </a>
                     <?php if ($member['mb_id']) { 
-                        // 로그아웃 후 돌아올 현재 페이지 URL
-                        $return_url = '/go/orderlist.php?noredirect=1';
+                        // 로그아웃 후 돌아올 URL - 회원의 지점 페이지로 설정
+                        $return_url = $order_page_url;
                         // 로그아웃 후 카카오 로그인 페이지로 이동하도록 URL 구성 (도메인 제외)
                         $logout_url = G5_BBS_URL . '/logout.php?url=' . urlencode('/bbs/login-kakao.php?url=' . urlencode($return_url));
                     ?>
