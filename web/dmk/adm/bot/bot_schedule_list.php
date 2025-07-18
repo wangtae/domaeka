@@ -40,6 +40,9 @@ $stx = $_GET['stx'];
 // 메시지 타입 필터
 $message_type = isset($_GET['message_type']) ? $_GET['message_type'] : '';
 
+// 상태 필터 (active, inactive, expired) - 기본값은 active
+$status_filter = isset($_GET['status_filter']) ? $_GET['status_filter'] : 'active';
+
 // 권한별 조회 조건
 $where = " WHERE 1=1 ";
 
@@ -50,6 +53,26 @@ if ($message_type) {
     // 기본 탭에서는 일반 스케줄만 표시
     $where .= " AND (message_type = 'schedule' OR message_type IS NULL) ";
 }
+
+// 상태별 필터링
+$today = date('Y-m-d H:i:s');
+if ($status_filter == 'active') {
+    // 활성 스케줄: 유효기간 내이고 상태가 active인 스케줄
+    $where .= " AND status = 'active' ";
+    $where .= " AND valid_from <= '$today' AND valid_until >= '$today' ";
+} else if ($status_filter == 'inactive') {
+    // 비활성 스케줄: 상태가 inactive인 스케줄
+    $where .= " AND status = 'inactive' ";
+} else if ($status_filter == 'expired') {
+    // 만료 스케줄: 상태는 active지만 유효기간이 지난 스케줄
+    $where .= " AND status = 'active' ";
+    $where .= " AND valid_until < '$today' ";
+}
+
+// 각 메시지 타입별 활성 스케줄 수 계산을 위한 기본 where 조건 구성
+$base_where = " WHERE 1=1 ";
+$base_where .= " AND status = 'active' ";
+$base_where .= " AND valid_from <= '$today' AND valid_until >= '$today' ";
 
 $user_info = dmk_get_admin_auth($member['mb_id']);
 
@@ -131,6 +154,81 @@ if ($user_type != 'super') {
     }
 }
 
+// 권한별 필터링 조건을 저장 (활성 스케줄 수 계산에 재사용)
+$auth_where = "";
+if ($user_type != 'super') {
+    if ($user_type == 'distributor') {
+        // 총판 권한 조건
+        $ag_list = [];
+        $sql = " SELECT ag_id FROM dmk_agency WHERE dt_id = '$user_key' ";
+        $result = sql_query($sql);
+        while($row = sql_fetch_array($result)) {
+            $ag_list[] = "'" . $row['ag_id'] . "'";
+        }
+        
+        $br_list = [];
+        if (count($ag_list) > 0) {
+            $ag_in = implode(',', $ag_list);
+            $sql = " SELECT br_id FROM dmk_branch WHERE ag_id IN ($ag_in) ";
+            $result = sql_query($sql);
+            while($row = sql_fetch_array($result)) {
+                $br_list[] = "'" . $row['br_id'] . "'";
+            }
+        }
+        
+        $conditions = ["(created_by_type = 'distributor' AND created_by_id = '$user_key')"];
+        if (count($ag_list) > 0) {
+            $conditions[] = "(created_by_type = 'agency' AND created_by_id IN (" . implode(',', $ag_list) . "))";
+        }
+        if (count($br_list) > 0) {
+            $conditions[] = "(created_by_type = 'branch' AND created_by_id IN (" . implode(',', $br_list) . "))";
+        }
+        $conditions[] = "(created_by_type = '' OR created_by_type IS NULL)";
+        $auth_where = " AND (" . implode(' OR ', $conditions) . ") ";
+    } else if ($user_type == 'agency') {
+        // 대리점 권한 조건
+        $br_list = [];
+        $sql = " SELECT br_id FROM dmk_branch WHERE ag_id = '$user_key' ";
+        $result = sql_query($sql);
+        while($row = sql_fetch_array($result)) {
+            $br_list[] = "'" . $row['br_id'] . "'";
+        }
+        
+        $conditions = ["(created_by_type = 'agency' AND created_by_id = '$user_key')"];
+        if (count($br_list) > 0) {
+            $conditions[] = "(created_by_type = 'branch' AND created_by_id IN (" . implode(',', $br_list) . "))";
+        }
+        $conditions[] = "(created_by_type = '' OR created_by_type IS NULL)";
+        $auth_where = " AND (" . implode(' OR ', $conditions) . ") ";
+    } else if ($user_type == 'branch') {
+        // 지점 권한 조건
+        $auth_where = " AND (created_by_type = 'branch' AND created_by_id = '$user_key' OR created_by_type = '' OR created_by_type IS NULL) ";
+    }
+}
+
+// 각 메시지 타입별 활성 스케줄 수 계산
+$message_types = [
+    '' => '일반 스케줄',
+    'order_placed' => '상품주문',
+    'order_complete' => '주문완료',
+    'stock_warning' => '품절임박',
+    'stock_out' => '품절'
+];
+
+$active_counts = [];
+foreach ($message_types as $type => $name) {
+    $count_where = $base_where . $auth_where;
+    if ($type) {
+        $count_where .= " AND message_type = '".sql_real_escape_string($type)."' ";
+    } else {
+        $count_where .= " AND (message_type = 'schedule' OR message_type IS NULL) ";
+    }
+    
+    $count_sql = "SELECT COUNT(*) as cnt FROM kb_schedule $count_where";
+    $count_row = sql_fetch($count_sql);
+    $active_counts[$type] = $count_row['cnt'];
+}
+
 // 검색
 if ($stx) {
     switch ($sfl) {
@@ -175,13 +273,13 @@ $sql = " SELECT DISTINCT s.*, r.room_name
 $sql = " SELECT s.* FROM kb_schedule s $where $order_by LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
-$qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type";
+$qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&status_filter=$status_filter";
 ?>
 
 <style>
 .schedule-tabs {
     display: flex;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     border-bottom: 2px solid #ddd;
 }
 .schedule-tab {
@@ -204,19 +302,72 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type";
     border-bottom: 2px solid #fff;
     color: #000;
 }
+.schedule-tab .count {
+    color: #666;
+    font-weight: normal;
+}
+.schedule-tab.active .count {
+    color: #000;
+    font-weight: bold;
+}
+.status-filters {
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+.status-filter {
+    display: inline-block;
+    padding: 5px 15px;
+    margin-right: 10px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    text-decoration: none;
+    color: #333;
+    font-size: 14px;
+}
+.status-filter:hover {
+    background: #e9ecef;
+}
+.status-filter.active {
+    background: #435ffe;
+    color: #fff;
+    border-color: #435ffe;
+}
 </style>
 
 <div class="schedule-tabs">
-    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => ''])); ?>" 
-       class="schedule-tab <?php echo (!$message_type) ? 'active' : ''; ?>">일반 스케줄</a>
-    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'order_placed'])); ?>" 
-       class="schedule-tab <?php echo ($message_type == 'order_placed') ? 'active' : ''; ?>">상품주문</a>
-    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'order_complete'])); ?>" 
-       class="schedule-tab <?php echo ($message_type == 'order_complete') ? 'active' : ''; ?>">주문완료</a>
-    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'stock_warning'])); ?>" 
-       class="schedule-tab <?php echo ($message_type == 'stock_warning') ? 'active' : ''; ?>">품절임박</a>
-    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'stock_out'])); ?>" 
-       class="schedule-tab <?php echo ($message_type == 'stock_out') ? 'active' : ''; ?>">품절</a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => '', 'page' => 1])); ?>" 
+       class="schedule-tab <?php echo (!$message_type) ? 'active' : ''; ?>">
+       일반 스케줄 <span class="count">(<?php echo number_format($active_counts['']); ?>)</span>
+    </a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'order_placed', 'page' => 1])); ?>" 
+       class="schedule-tab <?php echo ($message_type == 'order_placed') ? 'active' : ''; ?>">
+       상품주문 <span class="count">(<?php echo number_format($active_counts['order_placed']); ?>)</span>
+    </a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'order_complete', 'page' => 1])); ?>" 
+       class="schedule-tab <?php echo ($message_type == 'order_complete') ? 'active' : ''; ?>">
+       주문완료 <span class="count">(<?php echo number_format($active_counts['order_complete']); ?>)</span>
+    </a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'stock_warning', 'page' => 1])); ?>" 
+       class="schedule-tab <?php echo ($message_type == 'stock_warning') ? 'active' : ''; ?>">
+       품절임박 <span class="count">(<?php echo number_format($active_counts['stock_warning']); ?>)</span>
+    </a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'stock_out', 'page' => 1])); ?>" 
+       class="schedule-tab <?php echo ($message_type == 'stock_out') ? 'active' : ''; ?>">
+       품절 <span class="count">(<?php echo number_format($active_counts['stock_out']); ?>)</span>
+    </a>
+</div>
+
+<div class="status-filters">
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => 'active', 'page' => 1])); ?>" 
+       class="status-filter <?php echo ($status_filter == 'active') ? 'active' : ''; ?>">활성 스케줄</a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => 'inactive', 'page' => 1])); ?>" 
+       class="status-filter <?php echo ($status_filter == 'inactive') ? 'active' : ''; ?>">비활성 스케줄</a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => 'expired', 'page' => 1])); ?>" 
+       class="status-filter <?php echo ($status_filter == 'expired') ? 'active' : ''; ?>">만료 스케줄</a>
 </div>
 
 <div class="local_ov01 local_ov">
@@ -226,6 +377,7 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type";
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
 <input type="hidden" name="message_type" value="<?php echo $message_type; ?>">
+<input type="hidden" name="status_filter" value="<?php echo $status_filter; ?>">
 <label for="sfl" class="sound_only">검색대상</label>
 <select name="sfl" id="sfl">
     <option value="title"<?php echo get_selected($sfl, 'title'); ?>>제목</option>
@@ -238,7 +390,7 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type";
 </form>
 
 <div class="btn_fixed_top">
-    <a href="./bot_schedule_form.php?message_type=<?php echo $message_type; ?>" class="btn btn_01">스케줄 등록</a>
+    <a href="./bot_schedule_form.php?message_type=<?php echo $message_type; ?>&status_filter=<?php echo $status_filter; ?>" class="btn btn_01">스케줄 등록</a>
 </div>
 
 <style>
