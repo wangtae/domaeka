@@ -138,10 +138,6 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
             .mobile-menu-btn {
                 display: block;
             }
-            
-            .desktop-menu {
-                display: none;
-            }
         }
         
         /* 카드 호버 효과 */
@@ -178,8 +174,10 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
                     <img src="/assets/domaeka/logo/domaeka-logo-03-60h.png" alt="도매까" class="logo-img">
                 </div>
                 
-                <!-- 데스크톱 및 모바일 메뉴 -->
-                <div class="desktop-menu flex items-center space-x-4 sm:space-x-6">
+                <!-- 모바일 로그인/주문 버튼과 햄버거 메뉴 -->
+                <div class="flex items-center">
+                    <!-- 데스크톱 메뉴 (PC에서만 표시) -->
+                    <div class="desktop-menu hidden sm:flex items-center space-x-4 sm:space-x-6">
                     <!-- PC에서만 보이는 메뉴 -->
                     <a href="#features" class="hidden sm:block text-gray-700 hover:text-indigo-600 transition duration-300">주요 기능</a>
                     <a href="#benefits" class="hidden sm:block text-gray-700 hover:text-indigo-600 transition duration-300">장점</a>
@@ -220,12 +218,50 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
                             <i class="fas fa-comment mr-1 sm:mr-2"></i><span class="hidden sm:inline">카카오 로그인</span><span class="sm:hidden">로그인</span>
                         </a>
                     <?php } ?>
+                    </div>
+                    
+                    <!-- 모바일에서만 보이는 로그인/주문 버튼 -->
+                    <div class="flex sm:hidden items-center space-x-3 mr-3">
+                        <?php if ($is_member) { ?>
+                            <?php if ($is_admin == 'super' || $is_admin == 'dmk_admin') { ?>
+                                <a href="<?php echo G5_ADMIN_URL; ?>" class="text-gray-700">
+                                    <i class="fas fa-cog text-xl"></i>
+                                </a>
+                            <?php } else { 
+                                // 회원의 지점 정보 확인
+                                $order_url = '/go/orderlist.php';
+                                if ($member['dmk_br_id']) {
+                                    // 지점의 shortcut_code 조회
+                                    $br_sql = " SELECT br_shortcut_code 
+                                               FROM dmk_branch 
+                                               WHERE br_id = '".sql_real_escape_string($member['dmk_br_id'])."' 
+                                               AND br_shortcut_code IS NOT NULL 
+                                               AND br_shortcut_code != '' 
+                                               LIMIT 1 ";
+                                    $br_info = sql_fetch($br_sql);
+                                    if ($br_info && $br_info['br_shortcut_code']) {
+                                        $order_url = '/go/' . $br_info['br_shortcut_code'];
+                                    } else {
+                                        $order_url = '/go/' . $member['dmk_br_id'];
+                                    }
+                                }
+                            ?>
+                                <a href="<?php echo $order_url; ?>" class="text-gray-700">
+                                    <i class="fas fa-shopping-cart text-xl"></i>
+                                </a>
+                            <?php } ?>
+                        <?php } else { ?>
+                            <a href="<?php echo G5_BBS_URL; ?>/login-kakao.php" class="text-gray-700">
+                                <i class="fas fa-comment text-xl"></i>
+                            </a>
+                        <?php } ?>
+                    </div>
+                    
+                    <!-- 모바일 메뉴 버튼 -->
+                    <button class="mobile-menu-btn text-gray-700" onclick="toggleMobileMenu()">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
                 </div>
-                
-                <!-- 모바일 메뉴 버튼 -->
-                <button class="mobile-menu-btn text-gray-700" onclick="toggleMobileMenu()">
-                    <i class="fas fa-bars text-2xl"></i>
-                </button>
             </div>
         </div>
     </nav>
@@ -289,18 +325,18 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
     </div>
 
     <!-- 히어로 섹션 -->
-    <section class="gradient-bg text-white pt-32 pb-20">
-        <div class="container mx-auto px-6 text-center">
-            <h2 class="text-4xl sm:text-5xl font-bold mb-6 animate-fadeInUp">
+    <section class="gradient-bg text-white relative pt-32 pb-24">
+        <div class="container mx-auto px-6 text-center relative z-10">
+            <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 animate-fadeInUp">
                 스마트한 공동구매의 시작<br>
                 <span class="text-indigo-200">도매까</span>
             </h2>
-            <p class="text-lg sm:text-xl mb-10 animate-fadeInUp" style="animation-delay: 0.2s;">
+            <p class="text-base sm:text-lg md:text-xl mb-10 animate-fadeInUp max-w-2xl mx-auto" style="animation-delay: 0.2s;">
                 카카오톡으로 간편하게 주문하고, 함께 구매하여 더 저렴하게!
             </p>
-            <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
+            <div class="animate-fadeInUp mb-20" style="animation-delay: 0.4s;">
                 <?php if (!$is_member) { ?>
-                <a href="<?php echo G5_BBS_URL; ?>/login-kakao.php" class="bg-white text-gray-800 px-8 py-4 rounded-full text-lg font-semibold hover:bg-gray-100 transition duration-300 inline-block shadow-lg">
+                <a href="<?php echo G5_BBS_URL; ?>/login-kakao.php" class="bg-white text-gray-800 px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold hover:bg-gray-100 transition duration-300 inline-block shadow-lg">
                     <i class="fas fa-comment mr-2"></i>카카오톡으로 시작하기
                 </a>
                 <?php } ?>
@@ -308,8 +344,8 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
         </div>
         
         <!-- 웨이브 효과 -->
-        <div class="relative">
-            <svg class="absolute bottom-0 w-full" style="margin-bottom: -2px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320">
+        <div class="absolute bottom-0 left-0 right-0">
+            <svg class="w-full" style="margin-bottom: -2px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320">
                 <path fill="#f9fafb" fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,133.3C960,128,1056,96,1152,90.7C1248,85,1344,107,1392,117.3L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
             </svg>
         </div>
@@ -350,10 +386,10 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
                     <div class="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <i class="fas fa-sitemap text-pink-500 text-3xl"></i>
                     </div>
-                    <h3 class="text-2xl font-semibold mb-4">체계적인 관리</h3>
+                    <h3 class="text-2xl font-semibold mb-4">전국 물류 네트워크</h3>
                     <p class="text-gray-600">
-                        본사-총판-대리점-지점의 계층형 구조로 
-                        효율적인 상품 및 주문 관리가 가능합니다.
+                        전국 단위의 물류 시스템을 운영하므로 
+                        다양한 상품들을 저렴한 가격에 공급 가능합니다.
                     </p>
                 </div>
             </div>
