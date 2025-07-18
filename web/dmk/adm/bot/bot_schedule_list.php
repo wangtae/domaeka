@@ -37,8 +37,19 @@ function format_bytes($bytes, $precision = 2) {
 $sfl = $_GET['sfl'] ? $_GET['sfl'] : 'title';
 $stx = $_GET['stx'];
 
+// 메시지 타입 필터
+$message_type = isset($_GET['message_type']) ? $_GET['message_type'] : '';
+
 // 권한별 조회 조건
 $where = " WHERE 1=1 ";
+
+// 메시지 타입별 필터링
+if ($message_type) {
+    $where .= " AND message_type = '".sql_real_escape_string($message_type)."' ";
+} else {
+    // 기본 탭에서는 일반 스케줄만 표시
+    $where .= " AND (message_type = 'schedule' OR message_type IS NULL) ";
+}
 
 $user_info = dmk_get_admin_auth($member['mb_id']);
 
@@ -164,8 +175,49 @@ $sql = " SELECT DISTINCT s.*, r.room_name
 $sql = " SELECT s.* FROM kb_schedule s $where $order_by LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
-$qstr = "&sfl=$sfl&stx=$stx";
+$qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type";
 ?>
+
+<style>
+.schedule-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+}
+.schedule-tab {
+    padding: 10px 20px;
+    margin-bottom: -2px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-bottom: 2px solid #ddd;
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+    margin-right: 5px;
+    cursor: pointer;
+}
+.schedule-tab:hover {
+    background: #e5e5e5;
+}
+.schedule-tab.active {
+    background: #fff;
+    border-bottom: 2px solid #fff;
+    color: #000;
+}
+</style>
+
+<div class="schedule-tabs">
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => ''])); ?>" 
+       class="schedule-tab <?php echo (!$message_type) ? 'active' : ''; ?>">일반 스케줄</a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'order_placed'])); ?>" 
+       class="schedule-tab <?php echo ($message_type == 'order_placed') ? 'active' : ''; ?>">상품주문</a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'order_complete'])); ?>" 
+       class="schedule-tab <?php echo ($message_type == 'order_complete') ? 'active' : ''; ?>">주문완료</a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'stock_warning'])); ?>" 
+       class="schedule-tab <?php echo ($message_type == 'stock_warning') ? 'active' : ''; ?>">품절임박</a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['message_type' => 'stock_out'])); ?>" 
+       class="schedule-tab <?php echo ($message_type == 'stock_out') ? 'active' : ''; ?>">품절</a>
+</div>
 
 <div class="local_ov01 local_ov">
     <?php echo $listall ?>
@@ -173,6 +225,7 @@ $qstr = "&sfl=$sfl&stx=$stx";
 </div>
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
+<input type="hidden" name="message_type" value="<?php echo $message_type; ?>">
 <label for="sfl" class="sound_only">검색대상</label>
 <select name="sfl" id="sfl">
     <option value="title"<?php echo get_selected($sfl, 'title'); ?>>제목</option>

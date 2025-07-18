@@ -5,22 +5,17 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "/home/wangt/cursor/projects/web/domaeka"
+        "/home/wangt/projects/client/domaeka/domaeka.dev"
       ],
       "env": {
         "WSL_DISTRO_NAME": "Ubuntu"
       }
     },
     "mysql": {
-      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
-        "-p",
-        "@benborla29/mcp-server-mysql",
-        "-p",
-        "dotenv",
-        "mcp-server-mysql"
+        "@benborla29/mcp-server-mysql"
       ],
       "env": {
         "MYSQL_HOST": "1.201.172.211",

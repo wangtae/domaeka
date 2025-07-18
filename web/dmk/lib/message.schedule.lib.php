@@ -84,6 +84,12 @@ function dmk_register_message_schedule($message_type, $params) {
         return false;
     }
     
+    // 메시지 발송 봇이 설정되어 있지 않으면 종료
+    if (empty($branch['br_message_bot_name']) || empty($branch['br_message_device_id'])) {
+        error_log("Message not sent - No bot configured for branch: {$branch['br_id']}");
+        return false;
+    }
+    
     // 템플릿 변수 준비
     $template_variables = dmk_prepare_template_variables($message_type, $params);
     
@@ -94,8 +100,8 @@ function dmk_register_message_schedule($message_type, $params) {
     $schedule_datetime = date('Y-m-d H:i:s', strtotime("+{$delay_minutes} minutes"));
     
     // 봇 정보 확인 (지점에 설정된 봇 사용)
-    $target_bot_name = !empty($branch['br_message_bot_name']) ? $branch['br_message_bot_name'] : 'LOA.i';
-    $target_device_id = !empty($branch['br_message_device_id']) ? $branch['br_message_device_id'] : null;
+    $target_bot_name = $branch['br_message_bot_name'];
+    $target_device_id = $branch['br_message_device_id'];
     
     // kb_schedule에 등록
     $sql = "INSERT INTO kb_schedule SET
