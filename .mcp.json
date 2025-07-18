@@ -30,8 +30,7 @@
         "MYSQL_DB": "domaeka",
         "ALLOW_INSERT_OPERATION": "true",
         "ALLOW_UPDATE_OPERATION": "true",
-        "ALLOW_DELETE_OPERATION": "true",
-        "SCHEMA_DDL_PERMISSIONS": "true"
+        "ALLOW_DELETE_OPERATION": "true"
       }
     }
   }
