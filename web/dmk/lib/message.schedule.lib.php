@@ -26,15 +26,21 @@ function dmk_register_message_schedule($message_type, $params) {
     }
     
     // 지점 정보 및 메시지 템플릿 조회
-    $branch_sql = "SELECT b.*, m.mb_name as br_name, r.room_name, r.channel_id
+    $branch_sql = "SELECT b.*, m.mb_name as br_name, r.room_name, r.room_id
                    FROM dmk_branch b
                    JOIN {$g5['member_table']} m ON b.br_id = m.mb_id
-                   LEFT JOIN kb_rooms r ON r.branch_id = b.br_id AND r.approved = 1
+                   LEFT JOIN kb_rooms r ON r.owner_id = b.br_id AND r.owner_type = 'branch' AND r.status = 'approved'
                    WHERE b.br_id = '".sql_real_escape_string($params['branch_id'])."'
                    AND b.br_status = 1";
     $branch = sql_fetch($branch_sql);
     
     if (!$branch) {
+        error_log("DMK: Branch not found for ID: " . $params['branch_id']);
+        return false;
+    }
+    
+    if (empty($branch['room_id'])) {
+        error_log("DMK: No approved room found for branch: " . $params['branch_id']);
         return false;
     }
     
@@ -71,16 +77,18 @@ function dmk_register_message_schedule($message_type, $params) {
     
     // 메시지 발송이 비활성화되어 있으면 종료
     if (!$enabled) {
+        error_log("DMK: Message type '$message_type' is not enabled for branch: " . $params['branch_id']);
         return false;
     }
     
-    // 템플릿이 없으면 종료
     if (empty($template)) {
+        error_log("DMK: Empty template for message type '$message_type' in branch: " . $params['branch_id']);
         return false;
     }
     
     // 발송할 톡방이 없으면 종료
-    if (empty($branch['channel_id'])) {
+    if (empty($branch['room_id'])) {
+        error_log("DMK: No room_id found for branch: " . $params['branch_id']);
         return false;
     }
     
@@ -115,7 +123,7 @@ function dmk_register_message_schedule($message_type, $params) {
             created_by_mb_id = '".sql_real_escape_string($params['mb_id'] ?? 'system')."',
             target_bot_name = '".sql_real_escape_string($target_bot_name)."',
             target_device_id = ".($target_device_id ? "'".sql_real_escape_string($target_device_id)."'" : "NULL").",
-            target_room_id = '".sql_real_escape_string($branch['channel_id'])."',
+            target_room_id = '".sql_real_escape_string($branch['room_id'])."',
             message_text = '".sql_real_escape_string($processed_message)."',
             send_interval_seconds = 1,
             schedule_type = 'once',

@@ -909,6 +909,16 @@ if($od_pg == 'inicis') {
 
 if(function_exists('add_order_post_log')) add_order_post_log('', 'delete');
 
+// 도매까 주문 완료 메시지 스케줄 등록
+if (file_exists(G5_PATH.'/dmk/lib/message.schedule.lib.php')) {
+    include_once(G5_PATH.'/dmk/lib/message.schedule.lib.php');
+    
+    // 회원의 지점 정보 확인
+    if ($is_member && !empty($member['dmk_br_id'])) {
+        dmk_register_order_placed_message($od_id, $member['dmk_br_id']);
+    }
+}
+
 // 주문번호제거
 set_session('ss_order_id', '');
 
