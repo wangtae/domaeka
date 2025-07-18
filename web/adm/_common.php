@@ -50,15 +50,13 @@ if ( !$member['mb_id'] ) {
     exit;
 }
 
-if ( $member['mb_level'] == 2 ) {
-    goto_url(G5_URL.'/index.adm.php');
-    exit;
-}
-
-// 일반 회원이 관리자 페이지에 접속한 경우 로그아웃 후 메인으로 이동
-if (!$is_admin && $is_member && (!$dmk_auth || $dmk_auth['mb_type'] == 0)) {
-    // 로그아웃 처리
-    goto_url(G5_BBS_URL.'/logout.php?url='.urlencode('/'));
+// 관리자 권한이 없는 회원의 접근 차단
+if (!$is_admin && $is_member) {
+    // 도매까 관리자 권한도 없는 경우
+    if (!$dmk_auth || $dmk_auth['mb_type'] == 0) {
+        alert('관리자 권한이 없습니다.', G5_URL);
+        exit;
+    }
 }
 
 // G5_ADMIN_PATH가 정의된 후 admin.lib.php를 포함합니다.

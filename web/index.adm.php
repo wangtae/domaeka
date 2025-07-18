@@ -3,8 +3,8 @@
 
 include_once('./_common.php');
 
-// 이미 로그인 중이라면 관리자 페이지로 리다이렉션
-if ($is_admin || $is_member) {
+// 관리자 권한이 있는 경우에만 관리자 페이지로 리다이렉션
+if ($is_admin) {
     // 상대 경로 사용하여 프로토콜 유지
     header('Location: /adm/');
     exit;
