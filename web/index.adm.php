@@ -5,15 +5,17 @@ include_once('./_common.php');
 
 // 이미 로그인 중이라면 관리자 페이지로 리다이렉션
 if ($is_admin || $is_member) {
-    goto_url(G5_ADMIN_URL);
+    // 상대 경로 사용하여 프로토콜 유지
+    header('Location: /adm/');
+    exit;
 }
 
-// 로그인 액션 URL
-$login_action_url = G5_BBS_URL . "/login_check.php";
+// 로그인 액션 URL (상대 경로 사용)
+$login_action_url = "/bbs/login_check.php";
 
-// 로그인 성공 후 이동할 URL 설정
+// 로그인 성공 후 이동할 URL 설정 (상대 경로 사용)
 // 현재 URL이 /adm 인 경우 관리자 페이지로, 아니면 메인으로
-$return_url = ($_SERVER['REQUEST_URI'] == '/adm' || $_SERVER['REQUEST_URI'] == '/adm/') ? G5_ADMIN_URL : G5_URL;
+$return_url = ($_SERVER['REQUEST_URI'] == '/adm' || $_SERVER['REQUEST_URI'] == '/adm/') ? '/adm/' : '/';
 $login_url = urlencode($return_url);
 
 // CSRF 토큰 생성 (필요한 경우)
