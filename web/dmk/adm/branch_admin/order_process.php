@@ -287,16 +287,8 @@ try {
             exit;
         }
         
-        // 재고 차감
-        $sql = "UPDATE g5_shop_item SET 
-                    it_stock_qty = it_stock_qty - ".intval($item['ct_qty'])."
-                WHERE it_id = '".sql_real_escape_string($item['it_id'])."'";
-        $result = sql_query($sql);
-        if (!$result) {
-            sql_query("ROLLBACK");
-            alert('주문 상품 저장 중 오류가 발생했습니다.');
-            exit;
-        }
+        // 영카트 표준에 따라 주문 시점에는 재고를 차감하지 않음
+        // 재고는 배송 처리 시점에 차감됨 (ct_stock_use 플래그 사용)
     }
     
     // 커밋
@@ -314,38 +306,8 @@ try {
         }
     }
     
-    // 품절 임박/품절 체크 및 메시지 등록
-    foreach ($order_items as $item) {
-        $item_id = $item['it_id'];
-        
-        // 현재 재고 조회 (주문 후)
-        $stock_sql = "SELECT it_stock_qty, it_name FROM g5_shop_item WHERE it_id = '".sql_real_escape_string($item_id)."'";
-        $stock_info = sql_fetch($stock_sql);
-        
-        if ($stock_info) {
-            $current_stock = $stock_info['it_stock_qty'];
-            
-            // 지점의 품절 임박 기준 수량 조회
-            $branch_sql = "SELECT br_stock_warning_qty FROM dmk_branch WHERE br_id = '".sql_real_escape_string($branch_id)."'";
-            $branch_settings = sql_fetch($branch_sql);
-            $warning_qty = $branch_settings['br_stock_warning_qty'] ?: 10;
-            
-            // 품절 체크
-            if ($current_stock <= 0) {
-                // 이미 등록된 활성 품절 메시지가 없는 경우에만 등록
-                if (!dmk_has_active_schedule('item', $item_id, 'stock_out')) {
-                    dmk_register_stock_out_message($item_id, $branch_id);
-                }
-            }
-            // 품절 임박 체크
-            else if ($current_stock <= $warning_qty) {
-                // 이미 등록된 활성 품절 임박 메시지가 없는 경우에만 등록
-                if (!dmk_has_active_schedule('item', $item_id, 'stock_warning')) {
-                    dmk_register_stock_warning_message($item_id, $branch_id, $current_stock, $warning_qty);
-                }
-            }
-        }
-    }
+    // 주문 시점에는 품절 체크를 하지 않음 (재고 차감이 없으므로)
+    // 품절 임박/품절 메시지는 배송 처리 시점에 트리거됨
     
     // 성공 메시지
     $success_msg = "주문이 성공적으로 접수되었습니다.\\n\\n";

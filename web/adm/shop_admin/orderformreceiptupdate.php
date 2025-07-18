@@ -145,6 +145,14 @@ if($info['od_misu'] == 0 && $od_status == '배송') {
             sql_query($sql);
         }
     }
+    
+    // 도매까 재고 차감 후 품절 체크 훅 호출
+    if (file_exists(G5_DMK_PATH.'/lib/order.status.hook.php')) {
+        include_once(G5_DMK_PATH.'/lib/order.status.hook.php');
+        if (function_exists('dmk_check_stock_after_delivery')) {
+            dmk_check_stock_after_delivery($od_id);
+        }
+    }
 
     unset($sql);
     unset($result);

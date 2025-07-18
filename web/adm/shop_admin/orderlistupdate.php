@@ -89,6 +89,14 @@ for ($i=0; $i<$count_post_chk; $i++)
 
             order_update_delivery($od_id, $od['mb_id'], $change_status, $delivery);
             change_status($od_id, '준비', '배송');
+            
+            // 도매까 재고 차감 후 품절 체크 훅 호출
+            if (file_exists(G5_DMK_PATH.'/lib/order.status.hook.php')) {
+                include_once(G5_DMK_PATH.'/lib/order.status.hook.php');
+                if (function_exists('dmk_check_stock_after_delivery')) {
+                    dmk_check_stock_after_delivery($od_id);
+                }
+            }
 
             // SMS
             if($config['cf_sms_use'] == 'icode' && $send_sms && $default['de_sms_use5']) {
@@ -139,6 +147,15 @@ for ($i=0; $i<$count_post_chk; $i++)
                 sql_query($sql3);
             }
             */
+            
+            // 도매까 주문 완료 메시지 훅 호출
+            if (file_exists(G5_DMK_PATH.'/lib/order.status.hook.php')) {
+                include_once(G5_DMK_PATH.'/lib/order.status.hook.php');
+                if (function_exists('dmk_order_status_changed')) {
+                    dmk_order_status_changed($od_id, '배송', '완료');
+                }
+            }
+            
             break;
 
     } // switch end

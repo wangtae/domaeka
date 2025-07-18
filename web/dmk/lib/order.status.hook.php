@@ -98,6 +98,69 @@ function dmk_item_stock_increased($it_id, $old_stock, $new_stock) {
 }
 
 /**
+ * 재고 차감 후 품절임박/품절 체크 함수
+ * 주문 상태가 '준비'에서 '배송'으로 변경될 때 호출
+ * 
+ * @param string $od_id 주문번호
+ */
+function dmk_check_stock_after_delivery($od_id) {
+    global $g5;
+    
+    // 통합 메시지 스케줄 라이브러리 포함
+    include_once(G5_DMK_PATH . '/lib/message.schedule.lib.php');
+    
+    // 주문의 지점 정보 확인
+    $order_sql = "SELECT dmk_od_br_id FROM g5_shop_order 
+                  WHERE od_id = '".sql_real_escape_string($od_id)."'";
+    $order_info = sql_fetch($order_sql);
+    
+    if (!$order_info || !$order_info['dmk_od_br_id']) {
+        return; // 지점 정보가 없으면 종료
+    }
+    
+    // 주문 상품 목록 조회
+    $cart_sql = "SELECT DISTINCT it_id FROM g5_shop_cart 
+                 WHERE od_id = '".sql_real_escape_string($od_id)."'";
+    $cart_result = sql_query($cart_sql);
+    
+    while ($cart = sql_fetch_array($cart_result)) {
+        // 상품 재고 확인
+        $stock_sql = "SELECT it_stock_qty, it_name, dmk_owner_id, dmk_owner_type 
+                      FROM g5_shop_item 
+                      WHERE it_id = '".sql_real_escape_string($cart['it_id'])."'";
+        $stock_info = sql_fetch($stock_sql);
+        
+        if ($stock_info) {
+            $new_stock = $stock_info['it_stock_qty'];
+            $item_branch_id = ($stock_info['dmk_owner_type'] == 'branch') ? $stock_info['dmk_owner_id'] : $order_info['dmk_od_br_id'];
+            
+            // 지점의 품절임박 기준 조회
+            $branch_sql = "SELECT br_stock_warning_qty, br_stock_warning_msg_enabled, br_stock_out_msg_enabled 
+                           FROM dmk_branch 
+                           WHERE br_id = '".sql_real_escape_string($item_branch_id)."'";
+            $branch_info = sql_fetch($branch_sql);
+            
+            if (!$branch_info) continue;
+            
+            $warning_qty = $branch_info['br_stock_warning_qty'] ?: 10;
+            
+            // 품절 체크 (재고가 0 이하)
+            if ($new_stock <= 0 && $branch_info['br_stock_out_msg_enabled']) {
+                if (!dmk_has_active_schedule('item', $cart['it_id'], 'stock_out')) {
+                    dmk_register_stock_out_message($cart['it_id'], $item_branch_id);
+                }
+            }
+            // 품절임박 체크 (재고가 경고 수량 이하)
+            else if ($new_stock > 0 && $new_stock <= $warning_qty && $branch_info['br_stock_warning_msg_enabled']) {
+                if (!dmk_has_active_schedule('item', $cart['it_id'], 'stock_warning')) {
+                    dmk_register_stock_warning_message($cart['it_id'], $item_branch_id, $new_stock, $warning_qty);
+                }
+            }
+        }
+    }
+}
+
+/**
  * 영카트 주문 상태 변경 시 자동 호출을 위한 액션 훅 등록
  * 이 부분은 영카트의 주문 처리 파일에 추가해야 합니다.
  * 
