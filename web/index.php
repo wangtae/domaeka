@@ -328,8 +328,8 @@ $g5['title'] = '도매까 - 스마트한 공동구매 플랫폼';
     <section class="gradient-bg text-white relative pt-32 pb-24">
         <div class="container mx-auto px-6 text-center relative z-10">
             <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 animate-fadeInUp">
-                스마트한 공동구매의 시작<br>
-                <span class="text-indigo-200">도매까</span>
+                스마트한 공동구매의 시작
+                <div style="margin:10px"><span class="text-indigo-200">도매까</span></div>
             </h2>
             <p class="text-base sm:text-lg md:text-xl mb-10 animate-fadeInUp max-w-2xl mx-auto" style="animation-delay: 0.2s;">
                 카카오톡으로 간편하게 주문하고, 함께 구매하여 더 저렴하게!
