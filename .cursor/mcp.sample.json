@@ -1,0 +1,58 @@
+{
+    "mcpServers": {
+      "filesystem": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "/home/wangt/projects/client/domaeka/domaeka.dev"
+        ],
+        "env": {
+          "WSL_DISTRO_NAME": "Ubuntu"
+        }
+      },
+      "mysql": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@benborla29/mcp-server-mysql"
+        ],
+        "env": {
+          "MYSQL_HOST": "1sdf.211",
+          "MYSQL_PORT": "3307",
+          "MYSQL_USER": "",
+          "MYSQL_PASS": "!@.",
+          "MYSQL_DB": "doaeka",
+          "ALLOW_INSERT_OPERATION": "true",
+          "ALLOW_UPDATE_OPERATION": "true",
+          "ALLOW_DELETE_OPERATION": "true"
+        }
+      },
+      "fetch": {
+        "type": "stdio",
+        "command": "/home/wangt/.local/bin/uvx",
+        "args": ["mcp-server-fetch"]
+      },
+      "playwright": {
+          "type": "stdio",  
+          "command": "npx",
+          "args": [
+            "@playwright/mcp@latest",
+            "--save-trace",
+            "--output-dir=/home/wangt/cursor/projects/playwright-trace"
+          ], 
+          "env": {
+            "LIBGL_ALWAYS_SOFTWARE": "1",
+            "PLAYWRIGHT_CHROMIUM_ARGS": "--no-sandbox --disable-gpu --disable-software-rasterizer"
+          }
+      },
+      "memory": {
+        "command": "npx", 
+        "args": ["-y", "@modelcontextprotocol/server-memory"]
+      },
+      "thinking": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+      }
+    }
+  }

@@ -100,6 +100,7 @@ if (strtotime($valid_from) >= strtotime($valid_until)) {
 // 데이터 준비
 $title = trim($_POST['title']);
 $description = trim($_POST['description']);
+$message_type = isset($_POST['message_type']) ? $_POST['message_type'] : 'schedule';
 $target_bot_name = trim($_POST['target_bot_name']);
 $target_device_id = trim($_POST['target_device_id']);
 $target_room_id = trim($_POST['target_room_id']);
@@ -448,6 +449,7 @@ if ($w == '' || $w == 'a') {
     $sql = " INSERT INTO kb_schedule SET 
              title = '".sql_escape_string($title)."',
              description = '".sql_escape_string($description)."',
+             message_type = '".sql_escape_string($message_type)."',
              created_by_type = '".sql_escape_string($created_by_type)."',
              created_by_id = '".sql_escape_string($created_by_id)."',
              created_by_mb_id = '".sql_escape_string($created_by_mb_id)."',
@@ -533,6 +535,7 @@ if ($w == '' || $w == 'a') {
     $sql = " UPDATE kb_schedule SET 
              title = '".sql_escape_string($title)."',
              description = '".sql_escape_string($description)."',
+             message_type = '".sql_escape_string($message_type)."',
              target_bot_name = '".sql_escape_string($target_bot_name)."',
              target_device_id = '".sql_escape_string($target_device_id)."',
              target_room_id = '".sql_escape_string($target_room_id)."',

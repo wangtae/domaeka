@@ -13,6 +13,7 @@ auth_check('180600', 'w');
 
 $w = $_GET['w'];
 $id = $_GET['id'];
+$message_type = isset($_GET['message_type']) ? $_GET['message_type'] : '';
 
 if ($w == 'u' && $id) {
     $sql = " SELECT * FROM kb_schedule WHERE id = '$id' ";
@@ -219,6 +220,32 @@ while($row = sql_fetch_array($result_rooms)) {
     // 톡방별 봇 디바이스 맵핑 데이터
     var roomBotMap = <?php echo json_encode($room_bot_map); ?>;
     </script>
+    <tr>
+        <th scope="row"><label for="message_type">스케줄 타입</label></th>
+        <td>
+            <?php 
+            // 수정 모드일 때 메시지 타입 설정
+            if ($w == 'u' && isset($schedule['message_type'])) {
+                $message_type = $schedule['message_type'];
+            }
+            // 신규 등록시 기본값
+            if (!$message_type) {
+                $message_type = 'schedule';
+            }
+            ?>
+            <select name="message_type" id="message_type" class="frm_input">
+                <option value="schedule" <?php echo ($message_type == 'schedule' || !$message_type) ? 'selected' : ''; ?>>일반 스케줄</option>
+                <option value="order_placed" <?php echo ($message_type == 'order_placed') ? 'selected' : ''; ?>>상품주문</option>
+                <option value="order_complete" <?php echo ($message_type == 'order_complete') ? 'selected' : ''; ?>>주문완료</option>
+                <option value="stock_warning" <?php echo ($message_type == 'stock_warning') ? 'selected' : ''; ?>>품절임박</option>
+                <option value="stock_out" <?php echo ($message_type == 'stock_out') ? 'selected' : ''; ?>>품절</option>
+            </select>
+            <div class="frm_info">
+                <strong>일반 스케줄</strong>: 사용자가 직접 등록하는 스케줄<br>
+                <strong>상품주문/주문완료/품절임박/품절</strong>: 시스템에서 자동으로 등록되는 이벤트 기반 스케줄
+            </div>
+        </td>
+    </tr>
     <tr>
         <th scope="row"><label for="title">제목<strong class="sound_only">필수</strong></label></th>
         <td><input type="text" name="title" value="<?php echo get_text($schedule['title'])?>" id="title" required class="required frm_input" size="50" maxlength="255"></td>

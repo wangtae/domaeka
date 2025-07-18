@@ -238,7 +238,7 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type";
 </form>
 
 <div class="btn_fixed_top">
-    <a href="./bot_schedule_form.php" class="btn btn_01">스케줄 등록</a>
+    <a href="./bot_schedule_form.php?message_type=<?php echo $message_type; ?>" class="btn btn_01">스케줄 등록</a>
 </div>
 
 <style>
@@ -500,14 +500,15 @@ function moveTooltip(event) {
     <thead>
     <tr>
         <th scope="col" width="50">ID</th>
-        <th scope="col" width="200">제목</th>
-        <th scope="col" width="150">대상 톡방</th>
-        <th scope="col" width="80">타입</th>
-        <th scope="col" width="150">발송 시간</th>
+        <th scope="col" width="180">제목</th>
+        <th scope="col" width="130">대상 톡방</th>
+        <th scope="col" width="80">카테고리</th>
+        <th scope="col" width="70">주기</th>
+        <th scope="col" width="130">발송 시간</th>
         <th scope="col" width="60">상태</th>
-        <th scope="col" width="120">다음 발송</th>
-        <th scope="col" width="60">횟수</th>
-        <th scope="col" width="80">등록일</th>
+        <th scope="col" width="100">다음 발송</th>
+        <th scope="col" width="50">횟수</th>
+        <th scope="col" width="70">등록일</th>
         <th scope="col" width="100">관리</th>
     </tr>
     </thead>
@@ -515,6 +516,29 @@ function moveTooltip(event) {
     <?php
     for ($i=0; $row=sql_fetch_array($result); $i++) {
         $bg = 'bg'.($i%2);
+        
+        // 메시지 타입 표시
+        $message_type_text = '';
+        switch($row['message_type']) {
+            case 'schedule':
+                $message_type_text = '<span style="color:#333;">일반</span>';
+                break;
+            case 'order_placed':
+                $message_type_text = '<span style="color:#0066cc;">상품주문</span>';
+                break;
+            case 'order_complete':
+                $message_type_text = '<span style="color:#009900;">주문완료</span>';
+                break;
+            case 'stock_warning':
+                $message_type_text = '<span style="color:#ff9900;">품절임박</span>';
+                break;
+            case 'stock_out':
+                $message_type_text = '<span style="color:#cc0000;">품절</span>';
+                break;
+            default:
+                $message_type_text = '<span style="color:#333;">일반</span>';
+                break;
+        }
         
         // 스케줄 타입 표시
         $schedule_type_text = '';
@@ -650,25 +674,26 @@ function moveTooltip(event) {
         }
     ?>
     <tr class="schedule-row <?php echo $bg; ?>">
-        <td colspan="10" style="padding: 0;">
+        <td colspan="11" style="padding: 0;">
             <table width="100%">
                 <tr class="schedule-info">
                     <td class="td_num" width="50"><?php echo $row['id'] ?></td>
-                    <td class="td_left" width="200"><?php echo get_text($row['title']) ?></td>
-                    <td class="td_left" width="150"><?php echo get_text($room_name) ?></td>
-                    <td class="td_category" width="80"><?php echo $schedule_type_text ?></td>
-                    <td class="td_datetime" width="150"><?php echo $send_time_text ?></td>
+                    <td class="td_left" width="180"><?php echo get_text($row['title']) ?></td>
+                    <td class="td_left" width="130"><?php echo get_text($room_name) ?></td>
+                    <td class="td_category" width="80"><?php echo $message_type_text ?></td>
+                    <td class="td_category" width="70"><?php echo $schedule_type_text ?></td>
+                    <td class="td_datetime" width="130"><?php echo $send_time_text ?></td>
                     <td class="td_boolean" width="60"><?php echo $status_text ?></td>
-                    <td class="td_datetime" width="120"><?php echo $row['next_send_at'] ? substr($row['next_send_at'], 0, 16) : '-' ?></td>
-                    <td class="td_num" width="60"><?php echo number_format($row['send_count']) ?>회</td>
-                    <td class="td_datetime" width="80"><?php echo substr($row['created_at'], 0, 10) ?></td>
+                    <td class="td_datetime" width="100"><?php echo $row['next_send_at'] ? substr($row['next_send_at'], 0, 16) : '-' ?></td>
+                    <td class="td_num" width="50"><?php echo number_format($row['send_count']) ?>회</td>
+                    <td class="td_datetime" width="70"><?php echo substr($row['created_at'], 0, 10) ?></td>
                     <td class="td_mng td_mng_m" width="100">
                         <a href="./bot_schedule_form.php?w=u&amp;id=<?php echo $row['id'] ?>&amp;<?php echo $qstr ?>" class="btn btn_03">수정</a>
                         <a href="./bot_schedule_delete.php?id=<?php echo $row['id'] ?>&amp;<?php echo $qstr ?>" onclick="return confirm('정말로 삭제하시겠습니까?');" class="btn btn_02">삭제</a>
                     </td>
                 </tr>
                 <tr class="schedule-preview">
-                    <td colspan="10">
+                    <td colspan="11">
                         <?php if ($message_preview): ?>
                         <div class="message-preview" 
                              onmouseover="showTooltip(event, <?php echo htmlspecialchars(json_encode($message_full), ENT_QUOTES) ?>)" 
