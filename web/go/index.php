@@ -461,7 +461,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             <form class="flex flex-col" id="orderForm" method="post" action="<?php echo G5_DMK_URL ?>/adm/branch_admin/order_process.php">
                 <input type="hidden" name="br_id" value="<?php echo $br_id ?>">
                 <input type="hidden" name="order_date" value="<?php echo $selected_date ?>" id="selectedDate">
-                <input type="hidden" name="return_url" value="<?php echo $_SERVER['REQUEST_URI'] ?>">
+                <!-- return_url 제거: 주문 후 주문내역 페이지로 이동 -->
                 
                 <!-- Products will be populated by JavaScript -->
                 <div id="productList">
@@ -1128,6 +1128,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             const customerName = document.querySelector('input[name="customer_name"]').value;
             const customerPhone = document.querySelector('input[name="customer_phone"]').value;
             const customerAddress = document.querySelector('input[name="customer_address"]').value;
+            const customerMessage = document.querySelector('input[name="customer_message"]').value;
             const deliveryType = document.querySelector('input[name="delivery_type"]:checked').value;
             const deliveryTypeText = deliveryType === 'PICKUP' ? '매장 픽업' : '배송 수령';
             
@@ -1136,6 +1137,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 <p>연락처: ${customerPhone}</p>
                 <p>수령방식: ${deliveryTypeText}</p>
                 ${deliveryType === 'DELIVERY' ? `<p>배송주소: ${customerAddress}</p>` : ''}
+                ${customerMessage ? `<p>요청사항: ${customerMessage}</p>` : ''}
             `;
             
             // Update modal content

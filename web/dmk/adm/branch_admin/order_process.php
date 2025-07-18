@@ -32,13 +32,10 @@ if (empty($items)) {
 }
 
 // 지점 정보 확인 (대리점, 총판 정보 포함)
-$branch_sql = "SELECT b.*, m.mb_name as br_name, 
-                      a.ag_id, a.ag_name,
-                      d.dt_id, d.dt_name
+// 먼저 지점 정보를 가져옴
+$branch_sql = "SELECT b.*, m.mb_name as br_name 
                FROM dmk_branch b 
                JOIN {$g5['member_table']} m ON b.br_id = m.mb_id 
-               LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id
-               LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id
                WHERE b.br_id = '$branch_id' AND b.br_status = 1";
 $branch_info = sql_fetch($branch_sql);
 
@@ -47,9 +44,22 @@ if (!$branch_info) {
     exit;
 }
 
-// 계층 구조 ID 확인
-$dt_id = $branch_info['dt_id'] ? $branch_info['dt_id'] : '';  // 총판 ID
-$ag_id = $branch_info['ag_id'] ? $branch_info['ag_id'] : '';  // 대리점 ID
+// 대리점 정보 조회
+$ag_id = $branch_info['ag_id'] ? $branch_info['ag_id'] : '';
+$dt_id = '';
+
+if ($ag_id) {
+    // dmk_agency 테이블에서 직접 dt_id를 가져옴
+    $agency_sql = "SELECT dt_id FROM dmk_agency WHERE ag_id = '".sql_real_escape_string($ag_id)."'";
+    $agency_info = sql_fetch($agency_sql);
+    
+    if ($agency_info && $agency_info['dt_id']) {
+        $dt_id = $agency_info['dt_id'];
+    }
+}
+
+// 디버깅: 계층 ID 값 확인
+error_log("Order Debug - Branch ID: $branch_id, Agency ID: $ag_id, Distributor ID: $dt_id");
 
 // 상품 권한 확인 및 재고 검증
 $order_items = array();
@@ -132,6 +142,18 @@ if ($is_member && $member['mb_id']) {
     }
 }
 
+// 필드 존재 여부 확인 (디버깅용)
+$columns_check = sql_query("SHOW COLUMNS FROM g5_shop_order LIKE 'dmk_od_%'");
+$has_hierarchy_fields = false;
+while ($col = sql_fetch_array($columns_check)) {
+    if ($col['Field'] == 'dmk_od_dt_id' || $col['Field'] == 'dmk_od_ag_id') {
+        $has_hierarchy_fields = true;
+    }
+}
+if (!$has_hierarchy_fields) {
+    error_log("Warning: dmk_od_dt_id or dmk_od_ag_id columns not found in g5_shop_order table. Please run 007_add_hierarchy_to_order.sql");
+}
+
 // 트랜잭션 시작
 sql_query("BEGIN");
 
@@ -183,9 +205,9 @@ try {
                 od_settle_case = '무통장',
                 od_other_pay_type = '',
                 od_test = '0',
-                dmk_od_br_id = '".sql_real_escape_string($branch_id)."',
-                dmk_od_ag_id = '".sql_real_escape_string($ag_id)."',
-                dmk_od_dt_id = '".sql_real_escape_string($dt_id)."',
+                `dmk_od_br_id` = '".sql_real_escape_string($branch_id)."',
+                `dmk_od_ag_id` = '".sql_real_escape_string($ag_id)."',
+                `dmk_od_dt_id` = '".sql_real_escape_string($dt_id)."',
                 od_mobile = '0',
                 od_pg = '',
                 od_tno = '',
@@ -206,11 +228,24 @@ try {
                 od_pwd = '',
                 od_ip = '{$_SERVER['REMOTE_ADDR']}'";
     
+    // 디버깅: SQL 쿼리 확인
+    error_log("Order Insert SQL - dmk_od_dt_id: '$dt_id', dmk_od_ag_id: '$ag_id', dmk_od_br_id: '$branch_id'");
+    
     $result = sql_query($sql);
     if (!$result) {
         sql_query("ROLLBACK");
+        error_log("Order SQL Error: " . sql_error_info());
         alert('주문 저장 중 오류가 발생했습니다.');
         exit;
+    }
+    
+    // 디버깅: 저장된 데이터 확인
+    $check_sql = "SELECT od_id, dmk_od_dt_id, dmk_od_ag_id, dmk_od_br_id FROM g5_shop_order WHERE od_id = '".sql_real_escape_string($order_id)."'";
+    $check_result = sql_fetch($check_sql);
+    if ($check_result) {
+        error_log("Order Save Check - Order ID: {$check_result['od_id']}, DT: {$check_result['dmk_od_dt_id']}, AG: {$check_result['dmk_od_ag_id']}, BR: {$check_result['dmk_od_br_id']}");
+    } else {
+        error_log("Order Save Check - Order not found with ID: $order_id");
     }
     
     // 주문 상품 저장
@@ -271,14 +306,15 @@ try {
     $success_msg = "주문이 성공적으로 접수되었습니다.\\n\\n";
     $success_msg .= "주문번호: $order_id\\n";
     $success_msg .= "주문금액: " . number_format($total_amount) . "원\\n";
-    $success_msg .= "주문상품: " . count($order_items) . "개\\n\\n";
-    $success_msg .= "주문 확인 후 연락드리겠습니다.";
-    
-    // 원래 주문 페이지로 리다이렉트
-    $return_url = '/go/' . $branch_id;
-    if (!empty($_POST['return_url'])) {
-        $return_url = $_POST['return_url'];
+    $success_msg .= "주문상품: " . count($order_items) . "개\\n";
+    if (!empty($order_memo)) {
+        $success_msg .= "요청사항: " . str_replace("\n", "\\n", $order_memo) . "\\n";
     }
+
+    $success_msg .= "\\n주문내역 페이지로 이동합니다.";
+    
+    // 주문내역 페이지로 리다이렉트 (noredirect 파라미터 추가하여 자동 리다이렉트 방지)
+    $return_url = '/go/orderlist.php?noredirect=1';
     
     // alert 함수 대신 직접 JavaScript 출력
     ?>
@@ -293,17 +329,14 @@ try {
     // 롤백
     sql_query("ROLLBACK");
     
-    // 원래 주문 페이지로 리다이렉트
-    $return_url = '/go/' . $branch_id;
-    if (!empty($_POST['return_url'])) {
-        $return_url = $_POST['return_url'];
-    }
+    // 주문내역 페이지로 리다이렉트 (noredirect 파라미터 추가하여 자동 리다이렉트 방지)
+    $return_url = '/go/orderlist.php?noredirect=1';
     
     // alert 함수 대신 직접 JavaScript 출력
     ?>
     <script>
     alert("주문 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
-    location.href = "<?php echo $return_url; ?>";
+    history.back();
     </script>
     <?php
     exit;

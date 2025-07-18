@@ -83,4 +83,16 @@
     - 테스트 상품 (ITEM001~005, 소유권별 분류)
 -   **주의사항**: 실행 후 반드시 `004_update_admin_passwords.php` 실행 필요
 
+### 2025-01-18 g5_shop_order 테이블 수정
+-   **수정 파일 경로**: 테이블 스키마 (g5_shop_order)
+-   **수정 일자**: `2025-01-18T12:00:00Z (UTC ISO 8601)`
+-   **수정자**: `Domaeka Development Team`
+-   **수정 내용 요약**: `주문별 통계를 위한 계층 ID 필드 추가`
+-   **상세 변경 내역**:
+    - dmk_od_ag_id 필드 추가 (대리점 ID)
+    - dmk_od_dt_id 필드 추가 (총판 ID)
+    - 계층별 인덱스 추가
+-   **SQL 파일**: `main/dmk/sql/007_add_hierarchy_to_order.sql`
+-   **관련 기능**: 총판별, 대리점별 주문 통계 집계 기능
+
 --- 
