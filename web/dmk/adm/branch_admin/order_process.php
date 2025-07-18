@@ -31,10 +31,14 @@ if (empty($items)) {
     exit;
 }
 
-// 지점 정보 확인
-$branch_sql = "SELECT b.*, m.mb_name as br_name 
+// 지점 정보 확인 (대리점, 총판 정보 포함)
+$branch_sql = "SELECT b.*, m.mb_name as br_name, 
+                      a.ag_id, a.ag_name,
+                      d.dt_id, d.dt_name
                FROM dmk_branch b 
                JOIN {$g5['member_table']} m ON b.br_id = m.mb_id 
+               LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id
+               LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id
                WHERE b.br_id = '$branch_id' AND b.br_status = 1";
 $branch_info = sql_fetch($branch_sql);
 
@@ -42,6 +46,10 @@ if (!$branch_info) {
     alert('지점 정보를 찾을 수 없습니다.');
     exit;
 }
+
+// 계층 구조 ID 확인
+$dt_id = $branch_info['dt_id'] ? $branch_info['dt_id'] : '';  // 총판 ID
+$ag_id = $branch_info['ag_id'] ? $branch_info['ag_id'] : '';  // 대리점 ID
 
 // 상품 권한 확인 및 재고 검증
 $order_items = array();
@@ -176,6 +184,8 @@ try {
                 od_other_pay_type = '',
                 od_test = '0',
                 dmk_od_br_id = '".sql_real_escape_string($branch_id)."',
+                dmk_od_ag_id = '".sql_real_escape_string($ag_id)."',
+                dmk_od_dt_id = '".sql_real_escape_string($dt_id)."',
                 od_mobile = '0',
                 od_pg = '',
                 od_tno = '',
