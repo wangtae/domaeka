@@ -43,13 +43,13 @@ $br_info = null; // 변수 초기화
 // dmk_br_id가 있는지 확인
 if (isset($member['dmk_br_id']) && $member['dmk_br_id']) {
     // 지점의 shortcut_code 조회
-    $br_sql = " SELECT br_id, br_shortcut_code, br_name 
+    $br_sql = " SELECT br_id, br_shortcut_code 
                FROM dmk_branch 
                WHERE br_id = '".sql_real_escape_string($member['dmk_br_id'])."' 
                AND br_status = 1
                LIMIT 1 ";
     $br_info = sql_fetch($br_sql);
-    
+
     if ($br_info && isset($br_info['br_id'])) {
         // shortcut_code가 있고 비어있지 않으면 사용
         if (isset($br_info['br_shortcut_code']) && trim($br_info['br_shortcut_code']) !== '') {
@@ -58,7 +58,7 @@ if (isset($member['dmk_br_id']) && $member['dmk_br_id']) {
             // shortcut_code가 없으면 br_id 사용
             $order_page_url = '/go/' . $br_info['br_id'];
         }
-        $branch_name = (isset($br_info['br_name']) && $br_info['br_name']) ? $br_info['br_name'] : '도매까';
+        $branch_name = (isset($br_info['mb_name']) && $br_info['mb_name']) ? $br_info['mb_name'] : '도매까';
     } else {
         // 지점 정보를 찾을 수 없으면 dmk_br_id 사용
         $order_page_url = '/go/' . $member['dmk_br_id'];
@@ -67,8 +67,7 @@ if (isset($member['dmk_br_id']) && $member['dmk_br_id']) {
 
 // 주문 내역 조회 (로그인한 회원의 모든 주문)
 $sql = " SELECT o.*, 
-         (SELECT COUNT(*) FROM g5_shop_cart WHERE od_id = o.od_id) as item_count,
-         b.br_name as branch_name
+         (SELECT COUNT(*) FROM g5_shop_cart WHERE od_id = o.od_id) as item_count
          FROM g5_shop_order o 
          LEFT JOIN dmk_branch b ON o.dmk_od_br_id = b.br_id
          WHERE o.mb_id = '$mb_id' 

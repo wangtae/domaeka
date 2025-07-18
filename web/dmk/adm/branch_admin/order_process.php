@@ -1,5 +1,5 @@
 <?php
-include_once('./_common.php');
+include_once('../../../common.php');
 
 // POST 데이터 검증
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -51,7 +51,7 @@ foreach ($items as $item_id => $item_data) {
     // 상품 정보 조회
     $sql = "SELECT it_id, it_name, it_cust_price, it_stock_qty
             FROM g5_shop_item 
-            WHERE it_id = '$item_id' AND it_use = '1' AND it_soldout = '0'";
+            WHERE it_id = '".sql_real_escape_string($item_id)."' AND it_use = '1' AND it_soldout = '0'";
     $item_row = sql_fetch($sql);
     
     if (!$item_row) {
@@ -84,25 +84,63 @@ if (empty($order_items)) {
 // 주문번호 생성
 $order_id = date('YmdHis') . '_' . $branch_id;
 
+// 회원 정보 업데이트 (로그인한 경우에만)
+if ($is_member && $member['mb_id']) {
+    // 회원의 현재 정보 확인
+    $mb_sql = "SELECT mb_name, mb_hp FROM {$g5['member_table']} WHERE mb_id = '{$member['mb_id']}'";
+    $mb_info = sql_fetch($mb_sql);
+    
+    $need_update = false;
+    $update_fields = array();
+    
+    // 이름 업데이트 필요 여부 확인
+    if (empty($mb_info['mb_name']) || trim($mb_info['mb_name']) === '') {
+        $need_update = true;
+        $update_fields[] = "mb_name = '".sql_real_escape_string($orderer_name)."'";
+    } else {
+        // 카카오 기본 이름인지 확인
+        if (strpos($member['mb_id'], 'kakao_') === 0) {
+            $kakao_id = str_replace('kakao_', '', $member['mb_id']);
+            if ($mb_info['mb_name'] === $kakao_id) {
+                $need_update = true;
+                $update_fields[] = "mb_name = '".sql_real_escape_string($orderer_name)."'";
+            }
+        }
+    }
+    
+    // 전화번호 업데이트 필요 여부 확인  
+    if (empty($mb_info['mb_hp']) || trim($mb_info['mb_hp']) === '') {
+        $need_update = true;
+        $update_fields[] = "mb_hp = '".sql_real_escape_string($orderer_phone)."'";
+    }
+    
+    // 업데이트 실행
+    if ($need_update && count($update_fields) > 0) {
+        $update_sql = "UPDATE {$g5['member_table']} SET " . implode(', ', $update_fields) . " WHERE mb_id = '".sql_real_escape_string($member['mb_id'])."'";
+        sql_query($update_sql);
+    }
+}
+
 // 트랜잭션 시작
 sql_query("BEGIN");
 
 try {
     // 주문 정보 저장 (g5_shop_order 테이블 활용)
+    $mb_id = ($is_member && $member['mb_id']) ? $member['mb_id'] : '';
     $sql = "INSERT INTO g5_shop_order SET
-                od_id = '$order_id',
-                mb_id = '',
-                od_name = '$orderer_name',
+                od_id = '".sql_real_escape_string($order_id)."',
+                mb_id = '".sql_real_escape_string($mb_id)."',
+                od_name = '".sql_real_escape_string($orderer_name)."',
                 od_email = '',
                 od_tel = '',
-                od_hp = '$orderer_phone',
+                od_hp = '".sql_real_escape_string($orderer_phone)."',
                 od_zip1 = '',
                 od_zip2 = '',
-                od_addr1 = '$delivery_address',
+                od_addr1 = '".sql_real_escape_string($delivery_address)."',
                 od_addr2 = '',
                 od_addr3 = '',
                 od_addr_jibeon = '',
-                od_deposit_name = '$orderer_name',
+                od_deposit_name = '".sql_real_escape_string($orderer_name)."',
                 od_b_name = '',
                 od_b_tel = '',
                 od_b_hp = '',
@@ -112,9 +150,9 @@ try {
                 od_b_addr2 = '',
                 od_b_addr3 = '',
                 od_b_addr_jibeon = '',
-                od_memo = '$order_memo',
+                od_memo = '".sql_real_escape_string($order_memo)."',
                 od_cart_count = '".count($order_items)."',
-                od_cart_price = '$total_amount',
+                od_cart_price = '".intval($total_amount)."',
                 od_cart_coupon = '0',
                 od_send_cost = '0',
                 od_send_cost2 = '0',
@@ -126,15 +164,15 @@ try {
                 od_bank_account = '',
                 od_receipt_time = '0000-00-00 00:00:00',
                 od_coupon = '0',
-                od_misu = '$total_amount',
+                od_misu = '".intval($total_amount)."',
                 od_shop_memo = '',
                 od_mod_history = '',
                 od_status = '주문',
-                od_hope_date = '$order_date',
+                od_hope_date = '".sql_real_escape_string($order_date)."',
                 od_settle_case = '무통장',
                 od_other_pay_type = '',
                 od_test = '0',
-                dmk_od_br_id = '$branch_id',
+                dmk_od_br_id = '".sql_real_escape_string($branch_id)."',
                 od_mobile = '0',
                 od_pg = '',
                 od_tno = '',
@@ -155,15 +193,20 @@ try {
                 od_pwd = '',
                 od_ip = '{$_SERVER['REMOTE_ADDR']}'";
     
-    sql_query($sql);
+    $result = sql_query($sql);
+    if (!$result) {
+        sql_query("ROLLBACK");
+        alert('주문 저장 중 오류가 발생했습니다.');
+        exit;
+    }
     
     // 주문 상품 저장
     foreach ($order_items as $item) {
         $sql = "INSERT INTO g5_shop_cart SET
-                    od_id = '$order_id',
-                    mb_id = '',
-                    it_id = '{$item['it_id']}',
-                    it_name = '{$item['it_name']}',
+                    od_id = '".sql_real_escape_string($order_id)."',
+                    mb_id = '".sql_real_escape_string($mb_id)."',
+                    it_id = '".sql_real_escape_string($item['it_id'])."',
+                    it_name = '".sql_real_escape_string($item['it_name'])."',
                     it_sc_type = '0',
                     it_sc_method = '0',
                     it_sc_price = '0',
@@ -171,13 +214,13 @@ try {
                     it_sc_qty = '0',
                     ct_status = '주문',
                     ct_history = '',
-                    ct_price = '{$item['it_price']}',
+                    ct_price = '".intval($item['it_price'])."',
                     ct_point = '0',
                     cp_price = '0',
                     ct_point_use = '0',
                     ct_stock_use = '0',
                     ct_option = '',
-                    ct_qty = '{$item['ct_qty']}',
+                    ct_qty = '".intval($item['ct_qty'])."',
                     ct_notax = '0',
                     io_id = '',
                     io_type = '0',
@@ -189,13 +232,23 @@ try {
                     ct_select = '0',
                     ct_select_time = '0000-00-00 00:00:00'";
         
-        sql_query($sql);
+        $result = sql_query($sql);
+        if (!$result) {
+            sql_query("ROLLBACK");
+            alert('주문 상품 저장 중 오류가 발생했습니다.');
+            exit;
+        }
         
         // 재고 차감
         $sql = "UPDATE g5_shop_item SET 
-                    it_stock_qty = it_stock_qty - {$item['ct_qty']}
-                WHERE it_id = '{$item['it_id']}'";
-        sql_query($sql);
+                    it_stock_qty = it_stock_qty - ".intval($item['ct_qty'])."
+                WHERE it_id = '".sql_real_escape_string($item['it_id'])."'";
+        $result = sql_query($sql);
+        if (!$result) {
+            sql_query("ROLLBACK");
+            alert('주문 상품 저장 중 오류가 발생했습니다.');
+            exit;
+        }
     }
     
     // 커밋
@@ -208,14 +261,24 @@ try {
     $success_msg .= "주문상품: " . count($order_items) . "개\\n\\n";
     $success_msg .= "주문 확인 후 연락드리겠습니다.";
     
-    alert($success_msg);
-    goto_url(G5_URL);
+    // 원래 주문 페이지로 리다이렉트
+    $return_url = '/go/' . $branch_id;
+    if (!empty($_POST['return_url'])) {
+        $return_url = $_POST['return_url'];
+    }
+    
+    alert($success_msg, $return_url);
     
 } catch (Exception $e) {
     // 롤백
     sql_query("ROLLBACK");
     
-    alert('주문 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
-    goto_url(G5_URL);
+    // 원래 주문 페이지로 리다이렉트
+    $return_url = '/go/' . $branch_id;
+    if (!empty($_POST['return_url'])) {
+        $return_url = $_POST['return_url'];
+    }
+    
+    alert('주문 처리 중 오류가 발생했습니다. 다시 시도해주세요.', $return_url);
 }
 ?> 

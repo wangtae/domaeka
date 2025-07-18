@@ -2,6 +2,16 @@
 // 사용자 유형별 기본 메뉴 설정
 require_once './_common.php';
 
+if ( !$member['mb_id'] ) {
+    goto_url(G5_URL.'/index.adm.php');
+    exit;
+}
+
+if ( $member['mb_level'] == 2 ) {
+    goto_url(G5_URL.'/index.adm.php');
+    exit;
+}
+
 // 도매까 권한 정보 조회
 $dmk_auth = dmk_get_admin_auth();
 
@@ -286,7 +296,7 @@ if (!auth_check_menu($auth, '200100', 'r', true)) {
                         echo '<tr><td colspan="' . $colspan . '" class="empty_table">자료가 없습니다.</td></tr>';
                     }
                     ?>
-                </tbody>
+                </tbody> 
             </table>
         </div>
 

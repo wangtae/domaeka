@@ -461,6 +461,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
             <form class="flex flex-col" id="orderForm" method="post" action="<?php echo G5_DMK_URL ?>/adm/branch_admin/order_process.php">
                 <input type="hidden" name="br_id" value="<?php echo $br_id ?>">
                 <input type="hidden" name="order_date" value="<?php echo $selected_date ?>" id="selectedDate">
+                <input type="hidden" name="return_url" value="<?php echo $_SERVER['REQUEST_URI'] ?>">
                 
                 <!-- Products will be populated by JavaScript -->
                 <div id="productList">
@@ -597,12 +598,23 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 <div class="mx-8 flex flex-col gap-y-3 py-5">
                     <div class="flex flex-col space-y-1 w-full">
                         <label class="text-sm font-medium text-gray-700">주문자명 <span class="text-red-500">*</span></label>
-                        <input type="text" name="customer_name" class="input-field" placeholder="처음 한 번만 입력하면 이후에는 자동으로 입력됩니다." required>
+                        <?php 
+                        // 카카오 로그인으로 생성된 기본 이름인지 확인
+                        $is_default_name = false;
+                        if (strpos($member['mb_id'], 'kakao_') === 0) {
+                            $kakao_id = str_replace('kakao_', '', $member['mb_id']);
+                            if ($member['mb_name'] === $kakao_id) {
+                                $is_default_name = true;
+                            }
+                        }
+                        $customer_name = (!$is_default_name && $member['mb_name']) ? $member['mb_name'] : '';
+                        ?>
+                        <input type="text" name="customer_name" class="input-field" value="<?php echo $customer_name; ?>" placeholder="처음 한 번만 입력하면 이후에는 자동으로 입력됩니다." required>
                     </div>
                     
                     <div class="flex flex-col space-y-1 w-full">
                         <label class="text-sm font-medium text-gray-700">전화번호 <span class="text-red-500">*</span></label>
-                        <input type="tel" name="customer_phone" class="input-field" placeholder="알림톡 발송을 위해 정확한 전화번호를 입력해주세요" required>
+                        <input type="tel" name="customer_phone" class="input-field" value="<?php echo $member['mb_hp']; ?>" placeholder="알림톡 발송을 위해 정확한 전화번호를 입력해주세요" required>
                     </div>
                     
                     <div class="flex flex-col space-y-1 w-full" id="addressField" style="display: none;">
