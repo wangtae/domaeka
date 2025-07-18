@@ -302,6 +302,51 @@ try {
     // 커밋
     sql_query("COMMIT");
     
+    // 통합 메시지 스케줄 라이브러리 포함
+    include_once(G5_DMK_PATH . '/lib/message.schedule.lib.php');
+    
+    // 상품주문 메시지 등록
+    if ($branch_info['br_order_placed_msg_enabled']) {
+        $schedule_id = dmk_register_order_placed_message($order_id, $branch_id, $mb_id);
+        
+        if ($schedule_id) {
+            error_log("Order placed message scheduled - Order ID: $order_id, Schedule ID: $schedule_id");
+        }
+    }
+    
+    // 품절 임박/품절 체크 및 메시지 등록
+    foreach ($order_items as $item) {
+        $item_id = $item['it_id'];
+        
+        // 현재 재고 조회 (주문 후)
+        $stock_sql = "SELECT it_stock_qty, it_name FROM g5_shop_item WHERE it_id = '".sql_real_escape_string($item_id)."'";
+        $stock_info = sql_fetch($stock_sql);
+        
+        if ($stock_info) {
+            $current_stock = $stock_info['it_stock_qty'];
+            
+            // 지점의 품절 임박 기준 수량 조회
+            $branch_sql = "SELECT br_stock_warning_qty FROM dmk_branch WHERE br_id = '".sql_real_escape_string($branch_id)."'";
+            $branch_settings = sql_fetch($branch_sql);
+            $warning_qty = $branch_settings['br_stock_warning_qty'] ?: 10;
+            
+            // 품절 체크
+            if ($current_stock <= 0) {
+                // 이미 등록된 활성 품절 메시지가 없는 경우에만 등록
+                if (!dmk_has_active_schedule('item', $item_id, 'stock_out')) {
+                    dmk_register_stock_out_message($item_id, $branch_id);
+                }
+            }
+            // 품절 임박 체크
+            else if ($current_stock <= $warning_qty) {
+                // 이미 등록된 활성 품절 임박 메시지가 없는 경우에만 등록
+                if (!dmk_has_active_schedule('item', $item_id, 'stock_warning')) {
+                    dmk_register_stock_warning_message($item_id, $branch_id, $current_stock, $warning_qty);
+                }
+            }
+        }
+    }
+    
     // 성공 메시지
     $success_msg = "주문이 성공적으로 접수되었습니다.\\n\\n";
     $success_msg .= "주문번호: $order_id\\n";

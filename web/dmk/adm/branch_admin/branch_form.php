@@ -350,11 +350,101 @@ if (!$auth['is_super']) {
     <tr>
         <th scope="row" colspan="2" style="background-color: #f0f0f0; font-size: 1.1em; padding: 15px;">카카오톡 메시지 템플릿 설정</th>
     </tr>
+    
+    <?php
+    // 해당 지점과 연결된 승인된 봇 목록 조회
+    $bot_list_sql = "SELECT DISTINCT d.bot_name, d.device_id, d.device_model
+                     FROM kb_bot_devices d
+                     JOIN kb_rooms r ON d.bot_name = r.bot_name AND d.device_id = r.device_id
+                     WHERE r.branch_id = '".sql_real_escape_string($br['br_id'])."'
+                     AND d.approved = 1
+                     AND r.approved = 1
+                     ORDER BY d.bot_name, d.device_id";
+    $bot_list_result = sql_query($bot_list_sql);
+    $bot_list = [];
+    while ($bot = sql_fetch_array($bot_list_result)) {
+        $bot_list[] = $bot;
+    }
+    ?>
+    
+    <!-- 메시지 발송 봇 선택 -->
+    <tr>
+        <th scope="row"><label for="br_message_bot">메시지 발송 봇</label></th>
+        <td>
+            <?php if (count($bot_list) > 0) { ?>
+            <select name="br_message_bot" id="br_message_bot" class="frm_input">
+                <option value="">선택하세요</option>
+                <?php foreach ($bot_list as $bot) { 
+                    $bot_value = $bot['bot_name'] . '|' . $bot['device_id'];
+                    $selected = ($br['br_message_bot_name'] == $bot['bot_name'] && $br['br_message_device_id'] == $bot['device_id']) ? 'selected' : '';
+                ?>
+                <option value="<?php echo $bot_value; ?>" <?php echo $selected; ?>>
+                    <?php echo $bot['bot_name']; ?> - <?php echo $bot['device_model']; ?> (<?php echo substr($bot['device_id'], 0, 8); ?>...)
+                </option>
+                <?php } ?>
+            </select>
+            <p class="frm_info">이벤트 트리거형 메시지(상품주문, 주문완료, 품절임박, 품절)를 발송할 봇을 선택하세요.</p>
+            <?php } else { ?>
+            <p class="text-red-500">승인된 봇이 없습니다. 봇을 먼저 등록하고 승인받아주세요.</p>
+            <?php } ?>
+        </td>
+    </tr>
+    
+    <tr>
+        <th scope="row"><label for="br_order_placed_msg_enabled">상품주문 메시지 사용</label></th>
+        <td>
+            <label><input type="checkbox" name="br_order_placed_msg_enabled" id="br_order_placed_msg_enabled" value="1" <?php echo ($branch['br_order_placed_msg_enabled'] ?? 0) ? 'checked' : ''; ?>> 사용</label>
+            <span class="frm_info">체크하면 고객 주문 즉시 카카오톡 메시지가 발송됩니다.</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_order_placed_msg_delay">상품주문 메시지 발송 지연</label></th>
+        <td>
+            <input type="number" name="br_order_placed_msg_delay" id="br_order_placed_msg_delay" value="<?php echo $branch['br_order_placed_msg_delay'] ?? 0; ?>" class="frm_input" size="5" min="0" max="1440"> 분
+            <span class="frm_info">주문 접수 후 메시지 발송까지 대기 시간 (0~1440분, 0은 즉시 발송)</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_order_placed_msg_template">상품주문 메시지 템플릿</label></th>
+        <td>
+            <textarea name="br_order_placed_msg_template" id="br_order_placed_msg_template" class="frm_input" rows="5" style="width: 100%;"><?php echo get_text($branch['br_order_placed_msg_template']) ?></textarea>
+            <div class="frm_info">
+                <strong>고객 주문 시 카카오톡으로 발송될 메시지 템플릿입니다.</strong><br>
+                사용 가능한 변수:<br>
+                • <code>{핸드폰뒷자리}</code> - 주문자 핸드폰 번호 뒤 4자리<br>
+                • <code>{주문자명}</code> - 주문자 이름<br>
+                • <code>{주문번호}</code> - 주문 번호<br>
+                • <code>{주문일시}</code> - 주문 일시 (예: 2025-01-18 14:30)<br>
+                • <code>{상품목록}</code> - 주문 상품 목록 (자동 생성)<br>
+                • <code>{총금액}</code> - 주문 총 금액<br>
+                • <code>{수령방식}</code> - 매장픽업/배송수령<br>
+                • <code>{배송주소}</code> - 배송 주소 (배송수령 시)<br><br>
+                <strong>예시:</strong><br>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">[주문접수] {핸드폰뒷자리}님의 주문이 접수되었습니다.
+
+주문번호: {주문번호}
+{상품목록}
+총 {총금액}
+
+주문일시: {주문일시}
+수령방식: {수령방식}
+
+주문 확인 후 준비하겠습니다.</pre>
+            </div>
+        </td>
+    </tr>
     <tr>
         <th scope="row"><label for="br_order_msg_enabled">주문 완료 메시지 사용</label></th>
         <td>
             <label><input type="checkbox" name="br_order_msg_enabled" id="br_order_msg_enabled" value="1" <?php echo ($branch['br_order_msg_enabled'] ?? 1) ? 'checked' : ''; ?>> 사용</label>
             <span class="frm_info">체크하면 주문 완료 시 카카오톡 메시지가 발송됩니다.</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_order_msg_delay">주문 완료 메시지 발송 지연</label></th>
+        <td>
+            <input type="number" name="br_order_msg_delay" id="br_order_msg_delay" value="<?php echo $branch['br_order_msg_delay'] ?? 5; ?>" class="frm_input" size="5" min="0" max="1440"> 분
+            <span class="frm_info">주문 완료 상태 변경 후 메시지 발송까지 대기 시간 (0~1440분)</span>
         </td>
     </tr>
     <tr>
@@ -385,6 +475,13 @@ if (!$auth['is_super']) {
         <td>
             <label><input type="checkbox" name="br_stock_warning_msg_enabled" id="br_stock_warning_msg_enabled" value="1" <?php echo ($branch['br_stock_warning_msg_enabled'] ?? 1) ? 'checked' : ''; ?>> 사용</label>
             <span class="frm_info">체크하면 상품이 품절 임박 시 카카오톡 메시지가 발송됩니다.</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_stock_warning_msg_delay">품절 임박 메시지 발송 지연</label></th>
+        <td>
+            <input type="number" name="br_stock_warning_msg_delay" id="br_stock_warning_msg_delay" value="<?php echo $branch['br_stock_warning_msg_delay'] ?? 10; ?>" class="frm_input" size="5" min="0" max="1440"> 분
+            <span class="frm_info">품절 임박 감지 후 메시지 발송까지 대기 시간 (0~1440분)</span>
         </td>
     </tr>
     <tr>
@@ -421,6 +518,13 @@ if (!$auth['is_super']) {
         <td>
             <label><input type="checkbox" name="br_stock_out_msg_enabled" id="br_stock_out_msg_enabled" value="1" <?php echo ($branch['br_stock_out_msg_enabled'] ?? 1) ? 'checked' : ''; ?>> 사용</label>
             <span class="frm_info">체크하면 상품 품절 시 카카오톡 메시지가 발송됩니다.</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_stock_out_msg_delay">품절 메시지 발송 지연</label></th>
+        <td>
+            <input type="number" name="br_stock_out_msg_delay" id="br_stock_out_msg_delay" value="<?php echo $branch['br_stock_out_msg_delay'] ?? 5; ?>" class="frm_input" size="5" min="0" max="1440"> 분
+            <span class="frm_info">품절 감지 후 메시지 발송까지 대기 시간 (0~1440분)</span>
         </td>
     </tr>
     <tr>

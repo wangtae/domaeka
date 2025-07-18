@@ -214,23 +214,49 @@ if ($w == 'u') {
     // 지점 정보 업데이트
     // 지점 관리자는 dmk_branch 테이블의 정보를 수정할 수 없습니다.
     if ($current_admin['mb_type'] != DMK_MB_TYPE_BRANCH) {
+        // 메시지 봇 정보 처리
+        $br_message_bot_name = '';
+        $br_message_device_id = '';
+        if (!empty($_POST['br_message_bot'])) {
+            $bot_parts = explode('|', $_POST['br_message_bot']);
+            if (count($bot_parts) == 2) {
+                $br_message_bot_name = clean_xss_tags($bot_parts[0]);
+                $br_message_device_id = clean_xss_tags($bot_parts[1]);
+            }
+        }
+        
         // 체크박스 값 처리 (체크되지 않으면 0으로 저장)
+        $br_order_placed_msg_enabled = isset($_POST['br_order_placed_msg_enabled']) ? 1 : 0;
         $br_order_msg_enabled = isset($_POST['br_order_msg_enabled']) ? 1 : 0;
         $br_stock_warning_msg_enabled = isset($_POST['br_stock_warning_msg_enabled']) ? 1 : 0;
         $br_stock_out_msg_enabled = isset($_POST['br_stock_out_msg_enabled']) ? 1 : 0;
         $br_stock_warning_qty = isset($_POST['br_stock_warning_qty']) ? (int)$_POST['br_stock_warning_qty'] : 10;
         
+        // 발송 지연 시간 처리 (분 단위, 0~1440)
+        $br_order_placed_msg_delay = isset($_POST['br_order_placed_msg_delay']) ? max(0, min(1440, (int)$_POST['br_order_placed_msg_delay'])) : 0;
+        $br_order_msg_delay = isset($_POST['br_order_msg_delay']) ? max(0, min(1440, (int)$_POST['br_order_msg_delay'])) : 5;
+        $br_stock_warning_msg_delay = isset($_POST['br_stock_warning_msg_delay']) ? max(0, min(1440, (int)$_POST['br_stock_warning_msg_delay'])) : 10;
+        $br_stock_out_msg_delay = isset($_POST['br_stock_out_msg_delay']) ? max(0, min(1440, (int)$_POST['br_stock_out_msg_delay'])) : 5;
+        
         $sql = " UPDATE dmk_branch SET 
                     ag_id = '" . sql_escape_string($ag_id_for_update) . "',
                     br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
                     br_status = $br_status,
+                    br_order_placed_msg_template = '" . sql_escape_string($_POST['br_order_placed_msg_template']) . "',
                     br_order_msg_template = '" . sql_escape_string($_POST['br_order_msg_template']) . "',
                     br_stock_warning_msg_template = '" . sql_escape_string($_POST['br_stock_warning_msg_template']) . "',
                     br_stock_out_msg_template = '" . sql_escape_string($_POST['br_stock_out_msg_template']) . "',
                     br_stock_warning_qty = " . $br_stock_warning_qty . ",
+                    br_order_placed_msg_enabled = " . $br_order_placed_msg_enabled . ",
                     br_order_msg_enabled = " . $br_order_msg_enabled . ",
                     br_stock_warning_msg_enabled = " . $br_stock_warning_msg_enabled . ",
-                    br_stock_out_msg_enabled = " . $br_stock_out_msg_enabled . "
+                    br_stock_out_msg_enabled = " . $br_stock_out_msg_enabled . ",
+                    br_order_placed_msg_delay = " . $br_order_placed_msg_delay . ",
+                    br_order_msg_delay = " . $br_order_msg_delay . ",
+                    br_stock_warning_msg_delay = " . $br_stock_warning_msg_delay . ",
+                    br_stock_out_msg_delay = " . $br_stock_out_msg_delay . ",
+                    br_message_bot_name = '" . sql_escape_string($br_message_bot_name) . "',
+                    br_message_device_id = '" . sql_escape_string($br_message_device_id) . "'
                  WHERE br_id = '" . sql_escape_string($br_id) . "' ";
         sql_query($sql);
     }
@@ -349,11 +375,29 @@ if ($w == 'u') {
                 dmk_admin_type = '" . DMK_BRANCH_ADMIN_TYPE . "';";
     sql_query($sql);
 
+    // 메시지 봇 정보 처리
+    $br_message_bot_name = '';
+    $br_message_device_id = '';
+    if (!empty($_POST['br_message_bot'])) {
+        $bot_parts = explode('|', $_POST['br_message_bot']);
+        if (count($bot_parts) == 2) {
+            $br_message_bot_name = clean_xss_tags($bot_parts[0]);
+            $br_message_device_id = clean_xss_tags($bot_parts[1]);
+        }
+    }
+    
     // 체크박스 값 처리 (체크되지 않으면 0으로 저장)
+    $br_order_placed_msg_enabled = isset($_POST['br_order_placed_msg_enabled']) ? 1 : 0;
     $br_order_msg_enabled = isset($_POST['br_order_msg_enabled']) ? 1 : 0;
     $br_stock_warning_msg_enabled = isset($_POST['br_stock_warning_msg_enabled']) ? 1 : 0;
     $br_stock_out_msg_enabled = isset($_POST['br_stock_out_msg_enabled']) ? 1 : 0;
     $br_stock_warning_qty = isset($_POST['br_stock_warning_qty']) ? (int)$_POST['br_stock_warning_qty'] : 10;
+    
+    // 발송 지연 시간 처리 (분 단위, 0~1440)
+    $br_order_placed_msg_delay = isset($_POST['br_order_placed_msg_delay']) ? max(0, min(1440, (int)$_POST['br_order_placed_msg_delay'])) : 0;
+    $br_order_msg_delay = isset($_POST['br_order_msg_delay']) ? max(0, min(1440, (int)$_POST['br_order_msg_delay'])) : 5;
+    $br_stock_warning_msg_delay = isset($_POST['br_stock_warning_msg_delay']) ? max(0, min(1440, (int)$_POST['br_stock_warning_msg_delay'])) : 10;
+    $br_stock_out_msg_delay = isset($_POST['br_stock_out_msg_delay']) ? max(0, min(1440, (int)$_POST['br_stock_out_msg_delay'])) : 5;
     
     // dmk_branch 테이블에 지점 정보 등록
     $sql = " INSERT INTO dmk_branch SET 
@@ -363,13 +407,21 @@ if ($w == 'u') {
                 br_status = '" . sql_escape_string($br_status) . "',
                 br_created_by = '" . sql_escape_string($current_admin['mb_id']) . "',
                 br_admin_type = '" . DMK_BRANCH_ADMIN_TYPE . "',
+                br_order_placed_msg_template = '" . sql_escape_string($_POST['br_order_placed_msg_template']) . "',
                 br_order_msg_template = '" . sql_escape_string($_POST['br_order_msg_template']) . "',
                 br_stock_warning_msg_template = '" . sql_escape_string($_POST['br_stock_warning_msg_template']) . "',
                 br_stock_out_msg_template = '" . sql_escape_string($_POST['br_stock_out_msg_template']) . "',
                 br_stock_warning_qty = " . $br_stock_warning_qty . ",
+                br_order_placed_msg_enabled = " . $br_order_placed_msg_enabled . ",
                 br_order_msg_enabled = " . $br_order_msg_enabled . ",
                 br_stock_warning_msg_enabled = " . $br_stock_warning_msg_enabled . ",
-                br_stock_out_msg_enabled = " . $br_stock_out_msg_enabled . ";";
+                br_stock_out_msg_enabled = " . $br_stock_out_msg_enabled . ",
+                br_order_placed_msg_delay = " . $br_order_placed_msg_delay . ",
+                br_order_msg_delay = " . $br_order_msg_delay . ",
+                br_stock_warning_msg_delay = " . $br_stock_warning_msg_delay . ",
+                br_stock_out_msg_delay = " . $br_stock_out_msg_delay . ",
+                br_message_bot_name = '" . sql_escape_string($br_message_bot_name) . "',
+                br_message_device_id = '" . sql_escape_string($br_message_device_id) . "';";
     sql_query($sql);
 
     // 관리자 액션 로깅
