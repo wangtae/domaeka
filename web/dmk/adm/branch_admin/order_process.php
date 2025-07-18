@@ -1,10 +1,13 @@
 <?php
-include_once('../../../common.php');
+define('_GNUBOARD_', true);
+$order_process_dir = dirname(__FILE__);
+$web_root = dirname(dirname(dirname($order_process_dir)));
+include_once($web_root . '/common.php');
 
 // POST 데이터 검증
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     alert('잘못된 접근입니다.');
-    goto_url(G5_URL);
+    exit;
 }
 
 $branch_id = trim($_POST['br_id']);
@@ -19,13 +22,13 @@ $items = isset($_POST['items']) ? $_POST['items'] : array();
 // 필수 항목 검증
 if (empty($branch_id) || empty($orderer_name) || empty($orderer_phone)) {
     alert('필수 항목을 모두 입력해주세요.');
-    goto_url(G5_URL);
+    exit;
 }
 
 // 주문 상품 검증
 if (empty($items)) {
     alert('주문할 상품을 선택해주세요.');
-    goto_url(G5_URL);
+    exit;
 }
 
 // 지점 정보 확인
@@ -37,7 +40,7 @@ $branch_info = sql_fetch($branch_sql);
 
 if (!$branch_info) {
     alert('지점 정보를 찾을 수 없습니다.');
-    goto_url(G5_URL);
+    exit;
 }
 
 // 상품 권한 확인 및 재고 검증
@@ -56,13 +59,13 @@ foreach ($items as $item_id => $item_data) {
     
     if (!$item_row) {
         alert('주문할 수 없는 상품이 포함되어 있습니다: ' . $item_id);
-        goto_url(G5_URL);
+        exit;
     }
     
     // 재고 확인
     if ($quantity > $item_row['it_stock_qty']) {
         alert($item_row['it_name'] . '의 재고가 부족합니다. (주문: ' . $quantity . '개, 재고: ' . $item_row['it_stock_qty'] . '개)');
-        goto_url(G5_URL);
+        exit;
     }
     
     $order_items[] = array(
@@ -78,7 +81,7 @@ foreach ($items as $item_id => $item_data) {
 
 if (empty($order_items)) {
     alert('주문할 상품이 없습니다.');
-    goto_url(G5_URL);
+    exit;
 }
 
 // 주문번호 생성
@@ -267,7 +270,14 @@ try {
         $return_url = $_POST['return_url'];
     }
     
-    alert($success_msg, $return_url);
+    // alert 함수 대신 직접 JavaScript 출력
+    ?>
+    <script>
+    alert("<?php echo str_replace('"', '\"', $success_msg); ?>");
+    location.href = "<?php echo $return_url; ?>";
+    </script>
+    <?php
+    exit;
     
 } catch (Exception $e) {
     // 롤백
@@ -279,6 +289,13 @@ try {
         $return_url = $_POST['return_url'];
     }
     
-    alert('주문 처리 중 오류가 발생했습니다. 다시 시도해주세요.', $return_url);
+    // alert 함수 대신 직접 JavaScript 출력
+    ?>
+    <script>
+    alert("주문 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+    location.href = "<?php echo $return_url; ?>";
+    </script>
+    <?php
+    exit;
 }
 ?> 
