@@ -658,7 +658,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     
                     <div class="flex flex-col space-y-1 w-full">
                         <label class="text-sm font-medium text-gray-700">전화번호 <span class="text-red-500">*</span></label>
-                        <input type="tel" name="customer_phone" class="input-field" value="<?php echo $member['mb_hp']; ?>" placeholder="알림톡 발송을 위해 정확한 전화번호를 입력해주세요" required>
+                        <input type="tel" name="customer_phone" id="customer_phone" class="input-field" value="<?php echo $member['mb_hp']; ?>" placeholder="알림톡 발송을 위해 정확한 전화번호를 입력해주세요" required>
                     </div>
                     
                     <div class="flex flex-col space-y-1 w-full" id="addressField" style="display: none;">
@@ -884,7 +884,83 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             updateOrderSummary();
+            
+            // 전화번호 자동 포맷팅
+            const phoneInput = document.getElementById('customer_phone');
+            if (phoneInput) {
+                phoneInput.addEventListener('input', function(e) {
+                    formatPhoneNumber(e.target);
+                });
+                
+                // 초기값도 포맷팅
+                formatPhoneNumber(phoneInput);
+            }
         });
+        
+        // 전화번호 포맷팅 함수
+        function formatPhoneNumber(input) {
+            // 숫자만 추출
+            let value = input.value.replace(/[^\d]/g, '');
+            
+            // 11자리 이상은 자르기
+            if (value.length > 11) {
+                value = value.substring(0, 11);
+            }
+            
+            // 포맷팅
+            let formatted = '';
+            
+            if (value.length <= 3) {
+                formatted = value;
+            } else if (value.length <= 4) {
+                formatted = value.substring(0, 3) + '-' + value.substring(3);
+            } else if (value.length <= 7) {
+                formatted = value.substring(0, 3) + '-' + value.substring(3);
+            } else if (value.length <= 8) {
+                formatted = value.substring(0, 3) + '-' + value.substring(3, 4) + '-' + value.substring(4);
+            } else {
+                // 010-0000-0000 또는 010-000-0000 형식 판단
+                if (value.substring(0, 2) === '02') {
+                    // 서울 지역번호
+                    if (value.length <= 9) {
+                        formatted = value.substring(0, 2) + '-' + value.substring(2, 5) + '-' + value.substring(5);
+                    } else {
+                        formatted = value.substring(0, 2) + '-' + value.substring(2, 6) + '-' + value.substring(6);
+                    }
+                } else if (value.substring(0, 3) === '010' || value.substring(0, 3) === '011' || 
+                          value.substring(0, 3) === '016' || value.substring(0, 3) === '017' || 
+                          value.substring(0, 3) === '018' || value.substring(0, 3) === '019') {
+                    // 휴대폰 번호
+                    if (value.length <= 10) {
+                        formatted = value.substring(0, 3) + '-' + value.substring(3, 6) + '-' + value.substring(6);
+                    } else {
+                        formatted = value.substring(0, 3) + '-' + value.substring(3, 7) + '-' + value.substring(7);
+                    }
+                } else {
+                    // 기타 지역번호
+                    if (value.length <= 10) {
+                        formatted = value.substring(0, 3) + '-' + value.substring(3, 6) + '-' + value.substring(6);
+                    } else {
+                        formatted = value.substring(0, 3) + '-' + value.substring(3, 7) + '-' + value.substring(7);
+                    }
+                }
+            }
+            
+            // 커서 위치 계산
+            const cursorPosition = input.selectionStart;
+            const oldLength = input.value.length;
+            const newLength = formatted.length;
+            const diff = newLength - oldLength;
+            
+            // 값 설정
+            input.value = formatted;
+            
+            // 커서 위치 복원
+            if (cursorPosition) {
+                const newCursorPosition = cursorPosition + diff;
+                input.setSelectionRange(newCursorPosition, newCursorPosition);
+            }
+        }
 
         // Filter products
         function filterProducts(category) {
