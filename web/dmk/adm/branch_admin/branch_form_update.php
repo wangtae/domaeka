@@ -239,17 +239,10 @@ if ($w == 'u') {
         $br_stock_out_msg_delay = isset($_POST['br_stock_out_msg_delay']) ? max(0, min(1440, (int)$_POST['br_stock_out_msg_delay'])) : 5;
         
         // 주문페이지 스킨
-        $br_order_page_skin = isset($_POST['br_order_page_skin']) ? clean_xss_tags($_POST['br_order_page_skin']) : 'basic';
+        $br_order_page_skin = isset($_POST['br_order_page_skin']) ? clean_xss_tags($_POST['br_order_page_skin']) : 'basic_1col';
         
-        // 스킨 옵션 처리
+        // 스킨 옵션은 이제 사용하지 않음 (레이아웃이 스킨 이름에 포함됨)
         $br_order_page_skin_options = '';
-        if (isset($_POST['skin_options']) && is_array($_POST['skin_options'])) {
-            $skin_options = array();
-            foreach ($_POST['skin_options'] as $key => $value) {
-                $skin_options[clean_xss_tags($key)] = clean_xss_tags($value);
-            }
-            $br_order_page_skin_options = json_encode($skin_options);
-        }
         
         $sql = " UPDATE dmk_branch SET 
                     ag_id = '" . sql_escape_string($ag_id_for_update) . "',
@@ -415,17 +408,10 @@ if ($w == 'u') {
     $br_stock_out_msg_delay = isset($_POST['br_stock_out_msg_delay']) ? max(0, min(1440, (int)$_POST['br_stock_out_msg_delay'])) : 5;
     
     // 주문페이지 스킨
-    $br_order_page_skin = isset($_POST['br_order_page_skin']) ? clean_xss_tags($_POST['br_order_page_skin']) : 'basic';
+    $br_order_page_skin = isset($_POST['br_order_page_skin']) ? clean_xss_tags($_POST['br_order_page_skin']) : 'basic_1col';
     
-    // 스킨 옵션 처리
+    // 스킨 옵션은 이제 사용하지 않음 (레이아웃이 스킨 이름에 포함됨)
     $br_order_page_skin_options = '';
-    if (isset($_POST['skin_options']) && is_array($_POST['skin_options'])) {
-        $skin_options = array();
-        foreach ($_POST['skin_options'] as $key => $value) {
-            $skin_options[clean_xss_tags($key)] = clean_xss_tags($value);
-        }
-        $br_order_page_skin_options = json_encode($skin_options);
-    }
     
     // dmk_branch 테이블에 지점 정보 등록
     $sql = " INSERT INTO dmk_branch SET 

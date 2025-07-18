@@ -3,6 +3,14 @@ $sub_menu = "";
 include_once(__DIR__ . '/../common.php');
 include_once(__DIR__ . '/lib/order.lib.php');
 
+// 카카오 JavaScript 키 가져오기
+$kakao_js_key = '';
+$config_sql = "SELECT cf_kakao_js_apikey FROM {$g5['config_table']} LIMIT 1";
+$config_result = sql_fetch($config_sql);
+if ($config_result && isset($config_result['cf_kakao_js_apikey'])) {
+    $kakao_js_key = $config_result['cf_kakao_js_apikey'];
+}
+
 // 로그인 체크
 if (!$member['mb_id']) {
     // 현재 페이지 URL을 인코딩하여 로그인 후 돌아올 URL로 설정
@@ -41,7 +49,10 @@ $branch_sql = " SELECT b.*,
                     COALESCE(br_m.mb_nick, '') AS br_nick_from_member, 
                     COALESCE(br_m.mb_tel, '') AS br_phone, 
                     COALESCE(br_m.mb_hp, '') AS br_hp, 
-                    COALESCE(br_m.mb_addr1, '') AS br_address, 
+                    COALESCE(br_m.mb_addr1, '') AS br_address,
+                    COALESCE(br_m.mb_addr2, '') AS br_address2,
+                    COALESCE(br_m.mb_addr3, '') AS br_address3,
+                    COALESCE(br_m.mb_addr_jibeon, '') AS br_addr_jibeon,
                     COALESCE(ag_m.mb_nick, '') AS ag_name 
                 FROM dmk_branch b 
                 JOIN g5_member br_m ON b.br_id = br_m.mb_id 
@@ -766,7 +777,13 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 <div class="flex-1 overflow-y-auto px-6 py-4">
                     <div class="mb-4">
                         <h4 class="font-bold text-lg mb-2"><?php echo htmlspecialchars($branch['br_name']) ?></h4>
-                        <p class="text-gray-600 mb-2"><?php echo htmlspecialchars($branch['br_address']) ?></p>
+                        <?php 
+                        $full_address = $branch['br_address'];
+                        if ($branch['br_address2']) {
+                            $full_address .= ' ' . $branch['br_address2'];
+                        }
+                        ?>
+                        <p class="text-gray-600 mb-2"><?php echo htmlspecialchars($full_address) ?></p>
                         <?php 
                         $display_phone = $branch['br_hp'] ?: $branch['br_phone'];
                         if ($display_phone) { 
@@ -777,7 +794,14 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                     
                     <!-- Map Container -->
                     <div id="mapContainer" class="w-full h-96 bg-gray-100 rounded-lg">
-                        <!-- 카카오맵 API를 사용하여 지도 표시 -->
+                        <?php if (!$kakao_js_key || !$branch['br_address']) { ?>
+                        <div class="flex items-center justify-center h-full text-gray-500 text-center">
+                            <div>
+                                <i class="fas fa-map-marker-alt text-4xl mb-2"></i>
+                                <p><?php echo !$kakao_js_key ? '지도 서비스가 설정되지 않았습니다.' : '주소 정보가 없습니다.' ?></p>
+                            </div>
+                        </div>
+                        <?php } ?>
                     </div>
                 </div>
                 
@@ -829,7 +853,9 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
     </div>
 
     <!-- Kakao Map API -->
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_APP_KEY&libraries=services"></script>
+    <?php if ($kakao_js_key) { ?>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=<?php echo $kakao_js_key ?>&libraries=services"></script>
+    <?php } ?>
 
     <!-- JavaScript -->
     <script>
@@ -1076,15 +1102,20 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
         function initializeMap() {
             const container = document.getElementById('mapContainer');
             
-            // 주소 정보가 있는 경우에만 지도 표시
-            const address = '<?php echo addslashes($branch['br_address']) ?>';
-            
-            if (address && typeof kakao !== 'undefined') {
+            <?php if ($kakao_js_key && $branch['br_address']) { ?>
+            // 카카오맵 API가 로드되었는지 확인
+            if (typeof kakao !== 'undefined' && kakao.maps) {
+                // 주소 정보
+                const address = '<?php echo addslashes($branch['br_address']) ?>';
+                const branchName = '<?php echo addslashes($branch['br_name']) ?>';
+                
+                // 지도 초기 옵션
                 const options = {
                     center: new kakao.maps.LatLng(37.566826, 126.9786567), // 기본 위치 (서울시청)
                     level: 3
                 };
                 
+                // 지도 생성
                 const map = new kakao.maps.Map(container, options);
                 
                 // 주소-좌표 변환 객체를 생성
@@ -1101,14 +1132,36 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                             position: coords
                         });
                         
+                        // 인포윈도우로 장소에 대한 설명을 표시
+                        const infowindow = new kakao.maps.InfoWindow({
+                            content: '<div style="width:150px;text-align:center;padding:6px 0;">' + branchName + '</div>'
+                        });
+                        infowindow.open(map, marker);
+                        
                         // 지도의 중심을 결과값으로 받은 위치로 이동
                         map.setCenter(coords);
+                    } else {
+                        // 주소 검색 실패
+                        container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500"><i class="fas fa-exclamation-circle text-4xl mb-2"></i><p>주소를 찾을 수 없습니다.</p></div>';
                     }
                 });
+                
+                // 지도 컨트롤 추가
+                const zoomControl = new kakao.maps.ZoomControl();
+                map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+                
+                const mapTypeControl = new kakao.maps.MapTypeControl();
+                map.addControl(mapTypeControl, kakao.maps.ControlPosition.TOPRIGHT);
             } else {
-                // 카카오맵을 사용할 수 없는 경우 대체 컨텐츠 표시
-                container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500"><p>지도를 표시할 수 없습니다.</p></div>';
+                // 카카오맵 API가 아직 로드되지 않음
+                container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500"><i class="fas fa-spinner fa-spin text-4xl mb-2"></i><p>지도를 불러오는 중...</p></div>';
+                
+                // 1초 후 다시 시도
+                setTimeout(initializeMap, 1000);
             }
+            <?php } else { ?>
+            // 카카오맵을 사용할 수 없는 경우 이미 PHP에서 처리됨
+            <?php } ?>
         }
 
         // Handle form submission

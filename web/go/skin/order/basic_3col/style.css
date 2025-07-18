@@ -1,0 +1,33 @@
+/* 기본 스킨 (3열) 스타일 */
+.quantity-btn-3col {
+    font-weight: bold;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quantity-btn-3col:hover {
+    background-color: var(--default-100);
+}
+
+.quantity-btn-3col:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 작은 화면에서도 3열 유지 */
+@media (max-width: 640px) {
+    .grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    
+    /* 3열에서 텍스트 크기 조정 */
+    .product-list .text-xs {
+        font-size: 0.625rem !important; /* 10px */
+    }
+    
+    .product-list .text-sm {
+        font-size: 0.75rem !important; /* 12px */
+    }
+}

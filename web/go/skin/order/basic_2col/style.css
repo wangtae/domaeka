@@ -1,0 +1,27 @@
+/* 기본 스킨 (2열) 스타일 */
+.quantity-btn-2col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quantity-btn-2col:hover {
+    background-color: var(--default-100);
+}
+
+.quantity-btn-2col:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 작은 화면에서도 2열 유지 */
+@media (max-width: 640px) {
+    .grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}

@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - mysql mcp 가 연결되어 있습니다.
 - playwright mcp가 연결되어 있습니다.
 - filesystem mcp가 연결되어 있습니다. 
+- 카카오 소셜 로그인 모듈은 영카트 기본 구현을 절대로 수정해서는 안됩니다. (오랜 기간 검증된 모델입니다. 새로운 시도를 하려면 복사본을 만들어서 별도로 진행해야 합니다.)
 
 ## 주요 개발 명령어
 

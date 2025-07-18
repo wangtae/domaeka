@@ -36,44 +36,31 @@ function get_order_skin_config($branch_id) {
     global $g5;
     
     // 지점 정보에서 스킨 설정 가져오기
-    $sql = "SELECT br_order_page_skin, br_order_page_skin_options 
+    $sql = "SELECT br_order_page_skin 
             FROM dmk_branch 
             WHERE br_id = '".sql_real_escape_string($branch_id)."'";
     $branch = sql_fetch($sql);
     
-    if (!$branch) {
-        return array('skin' => 'basic', 'options' => array());
+    if (!$branch || !$branch['br_order_page_skin']) {
+        return array('skin' => 'basic_1col', 'options' => array());
     }
     
-    $skin_name = $branch['br_order_page_skin'] ?: 'basic';
+    $skin_name = $branch['br_order_page_skin'];
     
-    // 스킨 옵션 파싱
-    $options = array();
-    if ($branch['br_order_page_skin_options']) {
-        $options = json_decode($branch['br_order_page_skin_options'], true);
-        if (!is_array($options)) {
-            $options = array();
-        }
+    // 기존 basic 스킨이면 basic_1col로 변경
+    if ($skin_name == 'basic') {
+        $skin_name = 'basic_1col';
     }
     
     // 스킨 정보 가져오기
     $skin_info = get_order_skin_info($skin_name);
     if (!$skin_info) {
-        return array('skin' => 'basic', 'options' => array());
-    }
-    
-    // 기본값 설정
-    if (isset($skin_info['options']) && is_array($skin_info['options'])) {
-        foreach ($skin_info['options'] as $key => $option) {
-            if (!isset($options[$key]) && isset($option['default'])) {
-                $options[$key] = $option['default'];
-            }
-        }
+        return array('skin' => 'basic_1col', 'options' => array());
     }
     
     return array(
         'skin' => $skin_name,
-        'options' => $options,
+        'options' => array(), // 옵션은 이제 사용하지 않음
         'info' => $skin_info
     );
 }
