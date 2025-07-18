@@ -1137,7 +1137,7 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 <p>연락처: ${customerPhone}</p>
                 <p>수령방식: ${deliveryTypeText}</p>
                 ${deliveryType === 'DELIVERY' ? `<p>배송주소: ${customerAddress}</p>` : ''}
-                ${customerMessage ? `<p>요청사항: ${customerMessage}</p>` : ''}
+                ${customerMessage ? `<p class="mt-2 p-2 bg-yellow-50 rounded"><strong>요청사항:</strong> ${customerMessage}</p>` : ''}
             `;
             
             // Update modal content

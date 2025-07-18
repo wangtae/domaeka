@@ -347,6 +347,104 @@ if (!$auth['is_super']) {
         </td>
     </tr>
     <?php } ?>
+    <tr>
+        <th scope="row" colspan="2" style="background-color: #f0f0f0; font-size: 1.1em; padding: 15px;">카카오톡 메시지 템플릿 설정</th>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_order_msg_enabled">주문 완료 메시지 사용</label></th>
+        <td>
+            <label><input type="checkbox" name="br_order_msg_enabled" id="br_order_msg_enabled" value="1" <?php echo ($branch['br_order_msg_enabled'] ?? 1) ? 'checked' : ''; ?>> 사용</label>
+            <span class="frm_info">체크하면 주문 완료 시 카카오톡 메시지가 발송됩니다.</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_order_msg_template">주문 완료 메시지 템플릿</label></th>
+        <td>
+            <textarea name="br_order_msg_template" id="br_order_msg_template" class="frm_input" rows="5" style="width: 100%;"><?php echo get_text($branch['br_order_msg_template']) ?></textarea>
+            <div class="frm_info">
+                <strong>주문 완료 시 카카오톡으로 발송될 메시지 템플릿입니다.</strong><br>
+                사용 가능한 변수:<br>
+                • <code>{핸드폰뒷자리}</code> - 주문자 핸드폰 번호 뒤 4자리<br>
+                • <code>{주문자명}</code> - 주문자 이름<br>
+                • <code>{주문번호}</code> - 주문 번호<br>
+                • <code>{주문일시}</code> - 주문 일시 (예: 2025-01-18 14:30)<br>
+                • <code>{상품목록}</code> - 주문 상품 목록 (자동 생성)<br>
+                • <code>{총금액}</code> - 주문 총 금액<br>
+                • <code>{배송예정일}</code> - 배송 예정일<br><br>
+                <strong>예시:</strong><br>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">{핸드폰뒷자리}님 주문!
+{상품목록}
+총 {총금액}
+
+배송예정일: {배송예정일}</pre>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_stock_warning_msg_enabled">품절 임박 메시지 사용</label></th>
+        <td>
+            <label><input type="checkbox" name="br_stock_warning_msg_enabled" id="br_stock_warning_msg_enabled" value="1" <?php echo ($branch['br_stock_warning_msg_enabled'] ?? 1) ? 'checked' : ''; ?>> 사용</label>
+            <span class="frm_info">체크하면 상품이 품절 임박 시 카카오톡 메시지가 발송됩니다.</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_stock_warning_qty">품절 임박 기준 수량</label></th>
+        <td>
+            <input type="number" name="br_stock_warning_qty" id="br_stock_warning_qty" value="<?php echo $branch['br_stock_warning_qty'] ?? 10; ?>" class="frm_input" size="5" min="1" max="999"> 개
+            <span class="frm_info">재고가 이 수량 이하가 되면 품절 임박 메시지를 발송합니다.</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_stock_warning_msg_template">품절 임박 메시지 템플릿</label></th>
+        <td>
+            <textarea name="br_stock_warning_msg_template" id="br_stock_warning_msg_template" class="frm_input" rows="5" style="width: 100%;"><?php echo get_text($branch['br_stock_warning_msg_template']) ?></textarea>
+            <div class="frm_info">
+                <strong>상품이 품절 임박 시 카카오톡으로 발송될 메시지 템플릿입니다.</strong><br>
+                사용 가능한 변수:<br>
+                • <code>{상품명}</code> - 품절 임박 상품명<br>
+                • <code>{상품코드}</code> - 상품 코드<br>
+                • <code>{현재재고}</code> - 현재 남은 재고 수량<br>
+                • <code>{품절임박기준}</code> - 설정된 품절 임박 기준 수량<br>
+                • <code>{지점명}</code> - 해당 지점명<br><br>
+                <strong>예시:</strong><br>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">[품절임박] {상품명}
+
+현재 재고: {현재재고}개
+품절 임박 상품입니다.
+
+빠른 주문 부탁드립니다.</pre>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_stock_out_msg_enabled">품절 메시지 사용</label></th>
+        <td>
+            <label><input type="checkbox" name="br_stock_out_msg_enabled" id="br_stock_out_msg_enabled" value="1" <?php echo ($branch['br_stock_out_msg_enabled'] ?? 1) ? 'checked' : ''; ?>> 사용</label>
+            <span class="frm_info">체크하면 상품 품절 시 카카오톡 메시지가 발송됩니다.</span>
+        </td>
+    </tr>
+    <tr>
+        <th scope="row"><label for="br_stock_out_msg_template">품절 메시지 템플릿</label></th>
+        <td>
+            <textarea name="br_stock_out_msg_template" id="br_stock_out_msg_template" class="frm_input" rows="5" style="width: 100%;"><?php echo get_text($branch['br_stock_out_msg_template']) ?></textarea>
+            <div class="frm_info">
+                <strong>상품 품절 시 카카오톡으로 발송될 메시지 템플릿입니다.</strong><br>
+                사용 가능한 변수:<br>
+                • <code>{상품명}</code> - 품절된 상품명<br>
+                • <code>{상품코드}</code> - 상품 코드<br>
+                • <code>{입고예정일}</code> - 입고 예정일 (설정된 경우)<br>
+                • <code>{대체상품}</code> - 대체 가능 상품 목록<br>
+                • <code>{지점명}</code> - 해당 지점명<br><br>
+                <strong>예시:</strong><br>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">[품절] {상품명}
+
+품절되었습니다.
+입고 예정일: {입고예정일}
+
+다른 상품으로 대체 가능합니다.</pre>
+            </div>
+        </td>
+    </tr>
     </tbody>
     </table>
 </div>

@@ -214,10 +214,23 @@ if ($w == 'u') {
     // 지점 정보 업데이트
     // 지점 관리자는 dmk_branch 테이블의 정보를 수정할 수 없습니다.
     if ($current_admin['mb_type'] != DMK_MB_TYPE_BRANCH) {
+        // 체크박스 값 처리 (체크되지 않으면 0으로 저장)
+        $br_order_msg_enabled = isset($_POST['br_order_msg_enabled']) ? 1 : 0;
+        $br_stock_warning_msg_enabled = isset($_POST['br_stock_warning_msg_enabled']) ? 1 : 0;
+        $br_stock_out_msg_enabled = isset($_POST['br_stock_out_msg_enabled']) ? 1 : 0;
+        $br_stock_warning_qty = isset($_POST['br_stock_warning_qty']) ? (int)$_POST['br_stock_warning_qty'] : 10;
+        
         $sql = " UPDATE dmk_branch SET 
                     ag_id = '" . sql_escape_string($ag_id_for_update) . "',
                     br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
-                    br_status = $br_status
+                    br_status = $br_status,
+                    br_order_msg_template = '" . sql_escape_string($_POST['br_order_msg_template']) . "',
+                    br_stock_warning_msg_template = '" . sql_escape_string($_POST['br_stock_warning_msg_template']) . "',
+                    br_stock_out_msg_template = '" . sql_escape_string($_POST['br_stock_out_msg_template']) . "',
+                    br_stock_warning_qty = " . $br_stock_warning_qty . ",
+                    br_order_msg_enabled = " . $br_order_msg_enabled . ",
+                    br_stock_warning_msg_enabled = " . $br_stock_warning_msg_enabled . ",
+                    br_stock_out_msg_enabled = " . $br_stock_out_msg_enabled . "
                  WHERE br_id = '" . sql_escape_string($br_id) . "' ";
         sql_query($sql);
     }
@@ -336,6 +349,12 @@ if ($w == 'u') {
                 dmk_admin_type = '" . DMK_BRANCH_ADMIN_TYPE . "';";
     sql_query($sql);
 
+    // 체크박스 값 처리 (체크되지 않으면 0으로 저장)
+    $br_order_msg_enabled = isset($_POST['br_order_msg_enabled']) ? 1 : 0;
+    $br_stock_warning_msg_enabled = isset($_POST['br_stock_warning_msg_enabled']) ? 1 : 0;
+    $br_stock_out_msg_enabled = isset($_POST['br_stock_out_msg_enabled']) ? 1 : 0;
+    $br_stock_warning_qty = isset($_POST['br_stock_warning_qty']) ? (int)$_POST['br_stock_warning_qty'] : 10;
+    
     // dmk_branch 테이블에 지점 정보 등록
     $sql = " INSERT INTO dmk_branch SET 
                 br_id = '" . sql_escape_string($br_id) . "',
@@ -343,7 +362,14 @@ if ($w == 'u') {
                 br_shortcut_code = '" . sql_escape_string($br_shortcut_code) . "',
                 br_status = '" . sql_escape_string($br_status) . "',
                 br_created_by = '" . sql_escape_string($current_admin['mb_id']) . "',
-                br_admin_type = '" . DMK_BRANCH_ADMIN_TYPE . "';";
+                br_admin_type = '" . DMK_BRANCH_ADMIN_TYPE . "',
+                br_order_msg_template = '" . sql_escape_string($_POST['br_order_msg_template']) . "',
+                br_stock_warning_msg_template = '" . sql_escape_string($_POST['br_stock_warning_msg_template']) . "',
+                br_stock_out_msg_template = '" . sql_escape_string($_POST['br_stock_out_msg_template']) . "',
+                br_stock_warning_qty = " . $br_stock_warning_qty . ",
+                br_order_msg_enabled = " . $br_order_msg_enabled . ",
+                br_stock_warning_msg_enabled = " . $br_stock_warning_msg_enabled . ",
+                br_stock_out_msg_enabled = " . $br_stock_out_msg_enabled . ";";
     sql_query($sql);
 
     // 관리자 액션 로깅
