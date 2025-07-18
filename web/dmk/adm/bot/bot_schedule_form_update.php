@@ -6,6 +6,9 @@
 $sub_menu = "180600";
 include_once('./_common.php');
 
+// 썸네일 생성 라이브러리 포함
+include_once(G5_PATH.'/dmk/lib/thumbnail.lib.php');
+
 // PHP 업로드 설정 (가능한 경우)
 @ini_set('upload_max_filesize', '10M');
 @ini_set('post_max_size', '100M');
@@ -374,6 +377,26 @@ echo "<!-- DEBUG: message_images_2 result: " . print_r($message_images_2, true) 
 $message_images_1_json = !empty($message_images_1) ? json_encode($message_images_1) : null;
 $message_images_2_json = !empty($message_images_2) ? json_encode($message_images_2) : null;
 
+// 썸네일 생성
+$message_thumbnails_1 = null;
+$message_thumbnails_2 = null;
+
+if (!empty($message_images_1)) {
+    $thumbnails_1 = create_thumbnails_from_array($message_images_1);
+    if (!empty($thumbnails_1)) {
+        $message_thumbnails_1 = json_encode($thumbnails_1);
+        echo "<!-- DEBUG: Created " . count($thumbnails_1) . " thumbnails for group 1 -->\n";
+    }
+}
+
+if (!empty($message_images_2)) {
+    $thumbnails_2 = create_thumbnails_from_array($message_images_2);
+    if (!empty($thumbnails_2)) {
+        $message_thumbnails_2 = json_encode($thumbnails_2);
+        echo "<!-- DEBUG: Created " . count($thumbnails_2) . " thumbnails for group 2 -->\n";
+    }
+}
+
 // 다음 발송 시간 계산 (복수 시간 지원)
 function calculate_next_send_time($schedule_type, $schedule_date, $schedule_times_json, $schedule_weekdays, $valid_from, $valid_until) {
     $now = time();
@@ -459,6 +482,8 @@ if ($w == '' || $w == 'a') {
              message_text = '".sql_escape_string($message_text)."',
              message_images_1 = " . ($message_images_1_json ? "'".sql_escape_string($message_images_1_json)."'" : "NULL") . ",
              message_images_2 = " . ($message_images_2_json ? "'".sql_escape_string($message_images_2_json)."'" : "NULL") . ",
+             message_thumbnails_1 = " . ($message_thumbnails_1 ? "'".sql_escape_string($message_thumbnails_1)."'" : "NULL") . ",
+             message_thumbnails_2 = " . ($message_thumbnails_2 ? "'".sql_escape_string($message_thumbnails_2)."'" : "NULL") . ",
              send_interval_seconds = '".sql_escape_string($send_interval_seconds)."',
              media_wait_time_1 = '".sql_escape_string($media_wait_time_1)."',
              media_wait_time_2 = '".sql_escape_string($media_wait_time_2)."',
@@ -542,6 +567,8 @@ if ($w == '' || $w == 'a') {
              message_text = '".sql_escape_string($message_text)."',
              message_images_1 = " . ($message_images_1_json ? "'".sql_escape_string($message_images_1_json)."'" : "NULL") . ",
              message_images_2 = " . ($message_images_2_json ? "'".sql_escape_string($message_images_2_json)."'" : "NULL") . ",
+             message_thumbnails_1 = " . ($message_thumbnails_1 ? "'".sql_escape_string($message_thumbnails_1)."'" : "NULL") . ",
+             message_thumbnails_2 = " . ($message_thumbnails_2 ? "'".sql_escape_string($message_thumbnails_2)."'" : "NULL") . ",
              send_interval_seconds = '".sql_escape_string($send_interval_seconds)."',
              media_wait_time_1 = '".sql_escape_string($media_wait_time_1)."',
              media_wait_time_2 = '".sql_escape_string($media_wait_time_2)."',
