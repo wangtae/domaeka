@@ -44,6 +44,17 @@ if (!$is_admin && $dmk_auth && $dmk_auth['mb_type'] > 0) {
     $is_admin = 'dmk_admin'; // 도매까 관리자를 위한 특별한 값
 }
 
+if ( !$member['mb_id'] ) {
+    // 비로그인 상태에서는 로그인 폼 표시
+    include_once(G5_PATH.'/index.adm.php');
+    exit;
+}
+
+if ( $member['mb_level'] == 2 ) {
+    goto_url(G5_URL.'/index.adm.php');
+    exit;
+}
+
 // 일반 회원이 관리자 페이지에 접속한 경우 로그아웃 후 메인으로 이동
 if (!$is_admin && $is_member && (!$dmk_auth || $dmk_auth['mb_type'] == 0)) {
     // 로그아웃 처리

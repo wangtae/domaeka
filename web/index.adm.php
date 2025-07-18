@@ -10,7 +10,11 @@ if ($is_admin || $is_member) {
 
 // 로그인 액션 URL
 $login_action_url = G5_BBS_URL . "/login_check.php";
-$login_url = G5_URL; // 로그인 성공 후 이동할 기본 URL
+
+// 로그인 성공 후 이동할 URL 설정
+// 현재 URL이 /adm 인 경우 관리자 페이지로, 아니면 메인으로
+$return_url = ($_SERVER['REQUEST_URI'] == '/adm' || $_SERVER['REQUEST_URI'] == '/adm/') ? G5_ADMIN_URL : G5_URL;
+$login_url = urlencode($return_url);
 
 // CSRF 토큰 생성 (필요한 경우)
 // if (function_exists(\'get_login_token\')) {
@@ -144,7 +148,7 @@ $g5['title'] = '관리자 로그인';
     <div class="login-container">
         <h1>도매까 관리 시스템</h1>
         <form name="flogin" action="<?php echo $login_action_url; ?>" onsubmit="return flogin_submit(this);" method="post">
-            <input type="hidden" name="url" value="<?php echo $login_url; ?>">
+            <input type="hidden" name="url" value="<?php echo $return_url; ?>">
             <?php // if ($token) { ?>
                 <!-- <input type="hidden" name="token" value="<?php echo $token; ?>"> -->
             <?php // } ?>
