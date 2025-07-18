@@ -1,0 +1,46 @@
+/* 기본 스킨 스타일 */
+
+/* 2열/3열 레이아웃 스타일 */
+.product-list.grid {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* 상품 카드 호버 효과 */
+.product-list .border.rounded-lg {
+    transition: all 0.3s ease;
+}
+
+.product-list .border.rounded-lg:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* 수량 버튼 개선 */
+.product-list .quantity-btn {
+    transition: all 0.2s ease;
+}
+
+.product-list .quantity-btn:not(:disabled):hover {
+    background-color: #f3f4f6;
+}
+
+.product-list .quantity-btn:not(:disabled):active {
+    background-color: #e5e7eb;
+}
+
+/* 반응형 그리드 */
+@media (max-width: 768px) {
+    .product-list .grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* 상품 이미지 스타일 */
+.product-list img {
+    transition: transform 0.3s ease;
+}
+
+.product-list .border.rounded-lg:hover img {
+    transform: scale(1.05);
+}

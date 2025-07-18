@@ -1,6 +1,7 @@
 <?php
 $sub_menu = "";
 include_once(__DIR__ . '/../common.php');
+include_once(__DIR__ . '/lib/order.lib.php');
 
 // 로그인 체크
 if (!$member['mb_id']) {
@@ -58,6 +59,16 @@ if (!$branch) {
 }
 
 $br_id = $branch['br_id']; // 실제 br_id
+
+// 스킨 설정 가져오기
+$skin_config = get_order_skin_config($br_id);
+$skin_name = $skin_config['skin'];
+$skin_options = $skin_config['options'];
+$skin_path = get_order_skin_path($skin_name);
+$skin_url = get_order_skin_path($skin_name, true);
+
+// 디버그: 스킨 설정 확인
+echo "<!-- Debug: Skin: {$skin_name}, Layout: " . (isset($skin_options['layout']) ? $skin_options['layout'] : 'default') . " -->";
 
 // 현재 날짜 가져오기
 $current_date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
@@ -128,6 +139,13 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <?php
+    // 스킨 CSS 파일 로드
+    if (file_exists($skin_path . '/style.css')) {
+        echo '<link rel="stylesheet" href="' . $skin_url . '/style.css">';
+    }
+    ?>
     
     <!-- Custom Styles -->
     <style>
@@ -466,6 +484,19 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                 <!-- Products will be populated by JavaScript -->
                 <div id="productList">
                     <?php
+                    // 스킨 파일 include
+                    if (file_exists($skin_path . '/item_list.php')) {
+                        // 스킨에 필요한 변수 설정
+                        $skin_config['layout'] = isset($skin_options['layout']) ? $skin_options['layout'] : '1col';
+                        
+                        include($skin_path . '/item_list.php');
+                    } else {
+                        // 스킨 파일이 없을 경우 기본 처리
+                        echo '<div class="product-card text-center py-10">';
+                        echo '<p class="text-lg font-medium text-red-500">스킨 파일을 찾을 수 없습니다.</p>';
+                        echo '</div>';
+                    }
+                    /*
                     $has_products = false;
                     while ($item = sql_fetch_array($items_result)) {
                         $has_products = true;
@@ -549,6 +580,8 @@ $g5['title'] = $branch['br_name'] . ' 주문페이지';
                         </div>
                     </div>
                     <?php } ?>
+                    */
+                    ?>
                 </div>
 
                 <!-- Order Summary -->

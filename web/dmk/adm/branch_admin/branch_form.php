@@ -347,6 +347,131 @@ if (!$auth['is_super']) {
         </td>
     </tr>
     <?php } ?>
+    
+    <!-- 주문페이지 스킨 설정 -->
+    <tr>
+        <th scope="row"><label for="br_order_page_skin">주문페이지 스킨</label></th>
+        <td>
+            <?php
+            // 사용 가능한 스킨 목록 가져오기
+            $skin_dir = G5_PATH . '/go/skin/order';
+            $skins = array();
+            if (is_dir($skin_dir)) {
+                $d = dir($skin_dir);
+                while ($entry = $d->read()) {
+                    if ($entry != '.' && $entry != '..' && is_dir($skin_dir . '/' . $entry)) {
+                        $config_file = $skin_dir . '/' . $entry . '/skin.config.php';
+                        if (file_exists($config_file)) {
+                            include($config_file);
+                            if (isset($skin_info)) {
+                                $skins[$entry] = $skin_info;
+                                unset($skin_info);
+                            }
+                        }
+                    }
+                }
+                $d->close();
+            }
+            
+            // 현재 스킨 옵션 가져오기
+            $current_skin_options = array();
+            if (isset($branch['br_order_page_skin_options']) && $branch['br_order_page_skin_options']) {
+                $current_skin_options = json_decode($branch['br_order_page_skin_options'], true);
+                if (!is_array($current_skin_options)) {
+                    $current_skin_options = array();
+                }
+            }
+            
+            // 필드가 없는 경우 기본값 설정
+            if (!isset($branch['br_order_page_skin'])) {
+                $branch['br_order_page_skin'] = 'basic';
+            }
+            
+            // 디버그: 현재 스킨 옵션 출력
+            if ($w == 'u') {
+                echo "<!-- PHP Debug: br_order_page_skin_options = " . htmlspecialchars($branch['br_order_page_skin_options']) . " -->";
+                echo "<!-- PHP Debug: current_skin_options = " . htmlspecialchars(json_encode($current_skin_options)) . " -->";
+            }
+            ?>
+            <select name="br_order_page_skin" id="br_order_page_skin" class="frm_input" onchange="loadSkinOptions(this.value)">
+                <?php foreach ($skins as $skin_name => $skin_info) { ?>
+                <option value="<?php echo $skin_name; ?>" <?php echo ($branch['br_order_page_skin'] == $skin_name || (!$branch['br_order_page_skin'] && $skin_name == 'basic')) ? 'selected' : ''; ?>>
+                    <?php echo $skin_info['name']; ?>
+                </option>
+                <?php } ?>
+            </select>
+            <p class="frm_info">주문 페이지에서 사용할 스킨을 선택하세요.</p>
+        </td>
+    </tr>
+    
+    <!-- 스킨 옵션 영역 -->
+    <tr id="skin_options_row" style="display:none;">
+        <th scope="row">스킨 옵션</th>
+        <td id="skin_options_container">
+            <!-- 스킨 옵션이 동적으로 로드됨 -->
+        </td>
+    </tr>
+    
+    <script>
+    // 스킨 정보를 JavaScript 객체로 변환
+    var skinInfos = <?php echo json_encode($skins); ?>;
+    var currentSkinOptions = <?php echo json_encode($current_skin_options); ?>;
+    
+    function loadSkinOptions(skinName) {
+        var container = document.getElementById('skin_options_container');
+        var row = document.getElementById('skin_options_row');
+        
+        if (!skinInfos[skinName] || !skinInfos[skinName].options) {
+            row.style.display = 'none';
+            return;
+        }
+        
+        var options = skinInfos[skinName].options;
+        var html = '';
+        
+        for (var key in options) {
+            var option = options[key];
+            var currentValue = currentSkinOptions[key] || option.default || '';
+            
+            html += '<div class="frm_row">';
+            html += '<label for="skin_option_' + key + '">' + option.label + '</label> ';
+            
+            if (option.type === 'select' && option.values) {
+                html += '<select name="skin_options[' + key + ']" id="skin_option_' + key + '" class="frm_input">';
+                for (var val in option.values) {
+                    var isSelected = (currentValue == val) ? ' selected' : '';
+                    html += '<option value="' + val + '"' + isSelected + '>' + option.values[val] + '</option>';
+                }
+                html += '</select>';
+            } else if (option.type === 'text') {
+                html += '<input type="text" name="skin_options[' + key + ']" id="skin_option_' + key + '" value="' + currentValue + '" class="frm_input">';
+            }
+            
+            if (option.description) {
+                html += '<p class="frm_info">' + option.description + '</p>';
+            }
+            
+            html += '</div>';
+        }
+        
+        container.innerHTML = html;
+        row.style.display = html ? '' : 'none';
+        
+        // 디버그
+        console.log('Skin:', skinName, 'Options:', options, 'Current values:', currentSkinOptions);
+    }
+    
+    // 페이지 로드 시 현재 스킨의 옵션 로드
+    document.addEventListener('DOMContentLoaded', function() {
+        var currentSkin = document.getElementById('br_order_page_skin').value;
+        // 수정 모드인 경우 현재 옵션 값 업데이트
+        <?php if ($w == 'u' && isset($current_skin_options['layout'])) { ?>
+        currentSkinOptions = <?php echo json_encode($current_skin_options); ?>;
+        <?php } ?>
+        loadSkinOptions(currentSkin);
+    });
+    </script>
+    
     <tr>
         <th scope="row" colspan="2" style="background-color: #f0f0f0; font-size: 1.1em; padding: 15px;">카카오톡 메시지 템플릿 설정</th>
     </tr>

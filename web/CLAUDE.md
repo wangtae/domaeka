@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+
+- mysql mcp 가 연결되어 있습니다.
+- playwright mcp가 연결되어 있습니다.
+- filesystem mcp가 연결되어 있습니다. 
+
 ## 주요 개발 명령어
 
 ### 테스트 실행
