@@ -770,10 +770,9 @@ function showTooltip(event, text) {
     tooltip.textContent = text;
     tooltip.style.display = 'block';
     
-    // 마우스 포인터가 툴팁 내부에 위치하도록 설정
-    // 툴팁 좌상단에서 20px 안쪽에 마우스가 위치
-    var x = event.pageX - 20;
-    var y = event.pageY - 20;
+    // 마우스 포인터 기준 팝업 위치 (스크롤 고려)
+    var x = event.clientX + 15;
+    var y = event.clientY + 15;
     
     // 화면 경계 체크
     var tooltipWidth = 400; // max-width
@@ -784,9 +783,9 @@ function showTooltip(event, text) {
         x = 10;
     }
     
-    // 화면 오른쪽 벗어나면 마우스가 툴팁 오른쪽 내부에 위치하도록
-    if (x + tooltipWidth > window.innerWidth + window.pageXOffset - 20) {
-        x = event.pageX - tooltipWidth + 20;
+    // 화면 오른쪽 벗어나면 왼쪽에 표시
+    if (x + tooltipWidth > window.innerWidth - 20) {
+        x = event.clientX - tooltipWidth - 15;
     }
     
     // 화면 위쪽 벗어나면 조정
@@ -794,11 +793,13 @@ function showTooltip(event, text) {
         y = 10;
     }
     
-    // 화면 아래쪽 벗어나면 마우스가 툴팁 아래쪽 내부에 위치하도록
-    if (y + tooltipHeight > window.innerHeight + window.pageYOffset - 20) {
-        y = event.pageY - tooltipHeight + 20;
+    // 화면 아래쪽 벗어나면 위쪽에 표시
+    if (y + tooltipHeight > window.innerHeight - 20) {
+        y = event.clientY - tooltipHeight - 15;
     }
     
+    // position: fixed로 변경하여 스크롤과 무관하게 위치 설정
+    tooltip.style.position = 'fixed';
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
 }
@@ -1036,7 +1037,7 @@ function moveTooltip(event) {
                                             $thumbnails_1 = json_decode($row['message_thumbnails_1'], true);
                                             if ($thumbnails_1) {
                                                 foreach ($thumbnails_1 as $idx => $thumb) {
-                                                    if ($idx >= 4) break; // 최대 4개만 표시
+                                                    // 모든 이미지 표시
                                                     $thumb_path = G5_DATA_PATH.'/'.$thumb['path'];
                                                     $thumb_url = G5_DATA_URL.'/'.$thumb['path'];
                                                     if (file_exists($thumb_path)) {
@@ -1045,9 +1046,6 @@ function moveTooltip(event) {
                                                         $original_url = G5_DATA_URL.'/'.$original_path;
                                                         echo '<img src="'.$thumb_url.'" alt="" class="schedule-thumb" onclick="viewOriginalImage(\''.$original_url.'\')" style="cursor:pointer;">';
                                                     }
-                                                }
-                                                if (count($thumbnails_1) > 4) {
-                                                    echo '<span class="more-images">+'.(count($thumbnails_1) - 4).'</span>';
                                                 }
                                             }
                                         } else {
@@ -1071,7 +1069,7 @@ function moveTooltip(event) {
                                             $thumbnails_2 = json_decode($row['message_thumbnails_2'], true);
                                             if ($thumbnails_2) {
                                                 foreach ($thumbnails_2 as $idx => $thumb) {
-                                                    if ($idx >= 4) break; // 최대 4개만 표시
+                                                    // 모든 이미지 표시
                                                     $thumb_path = G5_DATA_PATH.'/'.$thumb['path'];
                                                     $thumb_url = G5_DATA_URL.'/'.$thumb['path'];
                                                     if (file_exists($thumb_path)) {
@@ -1080,9 +1078,6 @@ function moveTooltip(event) {
                                                         $original_url = G5_DATA_URL.'/'.$original_path;
                                                         echo '<img src="'.$thumb_url.'" alt="" class="schedule-thumb" onclick="viewOriginalImage(\''.$original_url.'\')" style="cursor:pointer;">';
                                                     }
-                                                }
-                                                if (count($thumbnails_2) > 4) {
-                                                    echo '<span class="more-images">+'.(count($thumbnails_2) - 4).'</span>';
                                                 }
                                             }
                                         } else {
