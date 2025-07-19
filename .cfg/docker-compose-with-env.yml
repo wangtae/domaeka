@@ -1,0 +1,86 @@
+version: '3.8'
+
+# 환경 변수를 사용하는 버전
+# .env 파일과 함께 사용하세요
+
+services:
+  domaeka-web:
+    image: nginx-php8
+    container_name: domaeka-web
+    networks:
+      - docker-network
+    ports:
+      - "${WEB_PORT:-8089}:80"
+    volumes:
+      - ./domaeka.live/web:/var/www/html
+      - ./conf/nginx:/etc/nginx
+      - ./conf/php:/usr/local/etc/php
+      - ./logs/nginx:/var/log/nginx
+      - ./logs/php:/var/log/php
+      - ./supervisor:/etc/supervisor
+    restart: always
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+  domaeka-dev-web:
+    image: nginx-php8
+    container_name: domaeka-dev-web
+    networks:
+      - docker-network
+    ports:
+      - "${DEV_WEB_PORT:-8090}:80"
+    volumes:
+      - ./domaeka.test/web:/var/www/html
+      - ./conf/nginx:/etc/nginx
+      - ./conf/php:/usr/local/etc/php
+      - ./logs/nginx_dev:/var/log/nginx
+      - ./logs/php_dev:/var/log/php
+      - ./supervisor:/etc/supervisor
+    restart: always
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+  domaeka-bot-server:
+    build: 
+      context: ./domaeka.live/server
+      dockerfile: Dockerfile
+    container_name: domaeka-bot-server
+    networks:
+      - docker-network
+    ports:
+      - "${BOT_TEST_PORT:-1490}:1490"
+      - "${BOT_LIVE_PORT:-1491}:1491"
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./domaeka.live/web/data:/web/data:ro
+      - ./logs/python:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-Asia/Seoul}
+    restart: always
+    depends_on:
+      - domaeka-mariadb
+
+  domaeka-mariadb:
+    image: mariadb:10.3.7
+    container_name: domaeka-mariadb
+    mem_limit: 1g
+    memswap_limit: 1g
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-domaeka}
+      MYSQL_USER: ${MYSQL_USER:-domaeka}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./conf/mysql:/etc/mysql/conf.d
+      - ./initdb:/docker-entrypoint-initdb.d
+      - /etc/localtime:/etc/localtime:ro
+      - ./logs/mysql:/var/log/mysql
+    networks:
+      - docker-network
+
+networks:
+  docker-network:
+    external: true

@@ -174,12 +174,97 @@ async def main():
     
     # 유틸리티 옵션
     parser.add_argument("--list", action="store_true", help="서버 프로세스 목록 출력")
+    parser.add_argument("--test-db", action="store_true", help="데이터베이스 연결 테스트")
     
     args = parser.parse_args()
     
     # --list 옵션 처리
     if args.list:
+        # 설정 파일 내용 출력
+        from config.loader import load_config
+        config = load_config()
+        print("\n[현재 로드된 설정 파일 정보]")
+        print("-" * 50)
+        if 'DBs' in config:
+            for db_name, db_config in config['DBs'].items():
+                print(f"\n[{db_name} 데이터베이스 설정]")
+                print(f"  HOST: {db_config.get('HOST', 'N/A')}")
+                print(f"  PORT: {db_config.get('PORT', 'N/A')}")
+                print(f"  USER: {db_config.get('USER', 'N/A')}")
+                print(f"  NAME: {db_config.get('NAME', 'N/A')}")
+                print(f"  PASS: {'*' * len(str(db_config.get('PASS', '')))}")
+        print("-" * 50)
+        
         await print_server_processes()
+        return
+    
+    # --test-db 옵션 처리
+    if args.test_db:
+        # 설정 파일 내용 출력
+        from config.loader import load_config
+        config = load_config()
+        print("\n[데이터베이스 연결 테스트]")
+        print("-" * 50)
+        
+        # test와 live DB 모두 테스트
+        for db_name in ['test', 'live']:
+            if db_name not in config.get('DBs', {}):
+                print(f"\n[{db_name}] 설정이 없습니다.")
+                continue
+                
+            db_config = config['DBs'][db_name]
+            print(f"\n[{db_name} 데이터베이스]")
+            print(f"  HOST: {db_config.get('HOST')}")
+            print(f"  PORT: {db_config.get('PORT')}")
+            print(f"  USER: {db_config.get('USER')}")
+            print(f"  NAME: {db_config.get('NAME')}")
+            
+            # 실제 연결 테스트
+            try:
+                g.DB_NAME = db_name
+                import aiomysql
+                import socket
+                
+                # DNS 해결 테스트
+                host = db_config.get('HOST')
+                print(f"  DNS 해결 시도: {host}")
+                try:
+                    ip = socket.gethostbyname(host)
+                    print(f"  ✅ DNS 해결 성공: {host} -> {ip}")
+                except socket.gaierror as e:
+                    print(f"  ❌ DNS 해결 실패: {e}")
+                    print(f"  💡 힌트: /etc/hosts 파일에 '{host}' 항목을 추가하거나 실제 IP 주소를 사용하세요")
+                    continue
+                
+                print(f"  연결 시도 중...")
+                conn = await aiomysql.connect(
+                    host=db_config.get('HOST'),
+                    port=db_config.get('PORT'),
+                    user=db_config.get('USER'),
+                    password=db_config.get('PASS'),
+                    db=db_config.get('NAME'),
+                    charset='utf8mb4'
+                )
+                
+                # 간단한 쿼리 실행
+                async with conn.cursor() as cursor:
+                    await cursor.execute("SELECT VERSION()")
+                    version = await cursor.fetchone()
+                    print(f"  ✅ 연결 성공! MySQL 버전: {version[0]}")
+                    
+                    # kb_servers 테이블 확인
+                    await cursor.execute("SHOW TABLES LIKE 'kb_servers'")
+                    if await cursor.fetchone():
+                        print(f"  ✅ kb_servers 테이블 존재 확인")
+                    else:
+                        print(f"  ❌ kb_servers 테이블이 없습니다")
+                
+                conn.close()
+                
+            except Exception as e:
+                print(f"  ❌ 연결 실패: {e}")
+        
+        print("-" * 50)
         return
     
     # 서버 설정 결정

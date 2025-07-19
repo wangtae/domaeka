@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  domaeka-web:
+    build:
+      context: ./domaeka.live/web
+      dockerfile: Dockerfile
+    container_name: domaeka-web
+    networks:
+      - docker-network
+    ports:
+      - "8089:80"
+    volumes:
+      - ./domaeka.live/web:/var/www/html
+      - ./conf/nginx:/etc/nginx
+      - ./conf/php:/usr/local/etc/php
+      - ./logs/nginx:/var/log/nginx
+      - ./logs/php:/var/log/php
+      - ./supervisor:/etc/supervisor
+    restart: always
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+  domaeka-dev-web:
+    build:
+      context: ./domaeka.test/web
+      dockerfile: Dockerfile
+    container_name: domaeka-dev-web
+    networks:
+      - docker-network
+    ports:
+      - "8090:80"
+    volumes:
+      - ./domaeka.test/web:/var/www/html
+      - ./conf/nginx:/etc/nginx
+      - ./conf/php:/usr/local/etc/php
+      - ./logs/nginx_dev:/var/log/nginx
+      - ./logs/php_dev:/var/log/php
+      - ./supervisor:/etc/supervisor
+    restart: always
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+  domaeka-bot-server:
+    build: 
+      context: ./domaeka.live/server
+      dockerfile: Dockerfile
+    container_name: domaeka-bot-server
+    networks:
+      - docker-network
+    ports:
+      - "1490:1490"  # 테스트 서버 포트
+      - "1491:1491"  # 라이브 서버 포트
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./domaeka.live/web/data:/web/data:ro  # 웹 데이터 읽기 전용
+      - ./logs/python:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Seoul
+    restart: always
+    depends_on:
+      - domaeka-mariadb
+
+  domaeka-mariadb:
+    image: mariadb:10.3.7
+    container_name: domaeka-mariadb
+    mem_limit: 1g
+    memswap_limit: 1g
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: jtmariadbroot$@
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./conf/mysql:/etc/mysql/conf.d
+      - ./initdb:/docker-entrypoint-initdb.d
+      - /etc/localtime:/etc/localtime:ro
+      - ./logs/mysql:/var/log/mysql
+    networks:
+      - docker-network
+
+networks:
+  docker-network:
+    external: true

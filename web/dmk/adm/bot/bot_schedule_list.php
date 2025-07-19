@@ -43,8 +43,8 @@ $message_type = isset($_GET['message_type']) ? $_GET['message_type'] : '';
 // 유효기간 필터 (valid, pending, expired) - 기본값은 valid
 $validity_filter = isset($_GET['validity_filter']) ? $_GET['validity_filter'] : 'valid';
 
-// 상태 필터 (active, inactive, completed, error) - 기본값은 전체
-$status_filter = isset($_GET['status_filter']) ? $_GET['status_filter'] : '';
+// 상태 필터 (active, inactive, completed, error) - 기본값은 active
+$status_filter = isset($_GET['status_filter']) ? $_GET['status_filter'] : 'active';
 
 // 권한별 조회 조건
 $where = " WHERE 1=1 ";
@@ -593,6 +593,10 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&validity_filter=$validity
     border-radius: 5px;
     cursor: help;
     position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 .message-tooltip {
     display: none;
@@ -760,7 +764,7 @@ function closeModal() {
 }
 
 // 툴팁 표시 함수
-function showTooltip(event, text) {
+function showTooltip(element, text) {
     // 숨기기 타이머가 있으면 취소
     if (hideTimeout) {
         clearTimeout(hideTimeout);
@@ -770,38 +774,57 @@ function showTooltip(event, text) {
     tooltip.textContent = text;
     tooltip.style.display = 'block';
     
-    // 마우스 포인터 기준 팝업 위치 (스크롤 고려)
-    var x = event.clientX + 15;
-    var y = event.clientY + 15;
+    // 요소의 위치 가져오기
+    var rect = element.getBoundingClientRect();
     
-    // 화면 경계 체크
+    // 해당 행의 td_mng(수정/삭제 버튼) 영역 찾기
+    var row = element.closest('tr');
+    var tdMng = row.querySelector('.td_mng');
+    var tdMngRect = tdMng ? tdMng.getBoundingClientRect() : null;
+    
+    // 툴팁 크기
     var tooltipWidth = 400; // max-width
-    var tooltipHeight = 300; // max-height
+    
+    // 툴팁을 td_mng 왼쪽에 배치 (10px 간격)
+    var x = tdMngRect ? tdMngRect.left - tooltipWidth - 10 : window.innerWidth - tooltipWidth - 120;
+    
+    // 텍스트 메시지 영역의 중앙에 툴팁 중앙이 오도록 Y 위치 계산
+    var elementCenterY = rect.top + (rect.height / 2);
+    var tooltipHeight = 300; // 예상 높이 (실제로는 동적으로 변함)
+    var y = elementCenterY - (tooltipHeight / 2);
+    
+    // 화면 위/아래 경계 체크
+    if (y < 10) {
+        y = 10;
+    }
+    if (y + tooltipHeight > window.innerHeight - 10) {
+        y = window.innerHeight - tooltipHeight - 10;
+    }
     
     // 화면 왼쪽 벗어나면 조정
     if (x < 10) {
         x = 10;
     }
     
-    // 화면 오른쪽 벗어나면 왼쪽에 표시
-    if (x + tooltipWidth > window.innerWidth - 20) {
-        x = event.clientX - tooltipWidth - 15;
-    }
-    
-    // 화면 위쪽 벗어나면 조정
-    if (y < 10) {
-        y = 10;
-    }
-    
-    // 화면 아래쪽 벗어나면 위쪽에 표시
-    if (y + tooltipHeight > window.innerHeight - 20) {
-        y = event.clientY - tooltipHeight - 15;
-    }
-    
-    // position: fixed로 변경하여 스크롤과 무관하게 위치 설정
+    // position: fixed로 스크롤과 무관하게 위치 설정
     tooltip.style.position = 'fixed';
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
+    
+    // 툴팁이 실제로 렌더링된 후 높이를 기준으로 위치 재조정
+    setTimeout(function() {
+        var actualHeight = tooltip.offsetHeight;
+        var newY = elementCenterY - (actualHeight / 2);
+        
+        if (newY < 10) {
+            newY = 10;
+        }
+        if (newY + actualHeight > window.innerHeight - 10) {
+            newY = window.innerHeight - actualHeight - 10;
+        }
+        
+        tooltip.style.top = newY + 'px';
+    }, 0);
 }
 
 var hideTimeout;
@@ -980,15 +1003,23 @@ function moveTooltip(event) {
         $room_row = sql_fetch($room_sql);
         $room_name = $room_row['room_name'] ? $room_row['room_name'] : $row['target_room_id'];
         
-        // 메시지 미리보기 (30자)
+        // 메시지 미리보기 (1줄만 표시)
         $message_preview = '';
         $message_full = '';
         if ($row['message_text']) {
             $message_full = $row['message_text'];
-            if (mb_strlen($message_full, 'utf-8') > 30) {
-                $message_preview = mb_substr($message_full, 0, 30, 'utf-8') . '...';
+            // 줄바꿈 기준으로 첫 줄만 추출
+            $lines = explode("\n", $message_full);
+            $first_line = trim($lines[0]);
+            
+            // 첫 줄이 너무 길면 50자로 자르기
+            if (mb_strlen($first_line, 'utf-8') > 50) {
+                $message_preview = mb_substr($first_line, 0, 50, 'utf-8') . '...';
+            } else if (count($lines) > 1) {
+                // 여러 줄이 있으면 첫 줄만 표시하고 ... 추가
+                $message_preview = $first_line . '...';
             } else {
-                $message_preview = $message_full;
+                $message_preview = $first_line;
             }
         }
         
@@ -1019,10 +1050,9 @@ function moveTooltip(event) {
                     <td colspan="11">
                         <?php if ($message_preview): ?>
                         <div class="message-preview" 
-                             onmouseover="showTooltip(event, <?php echo htmlspecialchars(json_encode($message_full), ENT_QUOTES) ?>)" 
-                             onmouseout="hideTooltip()"
-                             onmousemove="moveTooltip(event)">
-                            <?php echo nl2br(htmlspecialchars($message_preview)) ?>
+                             onmouseover="showTooltip(this, <?php echo htmlspecialchars(json_encode($message_full), ENT_QUOTES) ?>)" 
+                             onmouseout="hideTooltip()">
+                            <?php echo htmlspecialchars($message_preview) ?>
                         </div>
                         <?php endif; ?>
                         
@@ -1100,7 +1130,7 @@ function moveTooltip(event) {
     }
     
     if ($i == 0)
-        echo '<tr><td colspan="10" class="empty_table">자료가 없습니다.</td></tr>';
+        echo '<tr><td colspan="11" class="empty_table">자료가 없습니다.</td></tr>';
     ?>
     </tbody>
     </table>
