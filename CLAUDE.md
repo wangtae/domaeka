@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 mysql mcp 연결되어 있습니다. 
 
+* 작업이 완료되면 설명 가장 마지막에 수정한 파일 목록과 수정 내용을 간략하게 표시해 주세요.
+
 ## 프로젝트 개요
 
 **Domaeka 공동구매 시스템**은 카카오톡 봇을 활용한 공동구매 플랫폼입니다. 세 가지 주요 컴포넌트로 구성되어 있습니다:

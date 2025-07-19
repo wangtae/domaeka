@@ -40,8 +40,11 @@ $stx = $_GET['stx'];
 // 메시지 타입 필터
 $message_type = isset($_GET['message_type']) ? $_GET['message_type'] : '';
 
-// 상태 필터 (active, inactive, expired) - 기본값은 active
-$status_filter = isset($_GET['status_filter']) ? $_GET['status_filter'] : 'active';
+// 유효기간 필터 (valid, pending, expired) - 기본값은 valid
+$validity_filter = isset($_GET['validity_filter']) ? $_GET['validity_filter'] : 'valid';
+
+// 상태 필터 (active, inactive, completed, error) - 기본값은 전체
+$status_filter = isset($_GET['status_filter']) ? $_GET['status_filter'] : '';
 
 // 권한별 조회 조건
 $where = " WHERE 1=1 ";
@@ -54,19 +57,22 @@ if ($message_type) {
     $where .= " AND (message_type = 'schedule' OR message_type IS NULL) ";
 }
 
-// 상태별 필터링
+// 유효기간별 필터링
 $today = date('Y-m-d H:i:s');
-if ($status_filter == 'active') {
-    // 활성 스케줄: 유효기간 내이고 상태가 active인 스케줄
-    $where .= " AND status = 'active' ";
+if ($validity_filter == 'valid') {
+    // 유효 스케줄: 현재 유효기간 내
     $where .= " AND valid_from <= '$today' AND valid_until >= '$today' ";
-} else if ($status_filter == 'inactive') {
-    // 비활성 스케줄: 상태가 inactive인 스케줄
-    $where .= " AND status = 'inactive' ";
-} else if ($status_filter == 'expired') {
-    // 만료 스케줄: 상태는 active지만 유효기간이 지난 스케줄
-    $where .= " AND status = 'active' ";
+} else if ($validity_filter == 'pending') {
+    // 대기 스케줄: 아직 시작 안함
+    $where .= " AND valid_from > '$today' ";
+} else if ($validity_filter == 'expired') {
+    // 만료 스케줄: 유효기간 지남
     $where .= " AND valid_until < '$today' ";
+}
+
+// 상태별 필터링
+if ($status_filter) {
+    $where .= " AND status = '".sql_real_escape_string($status_filter)."' ";
 }
 
 // 각 메시지 타입별 활성 스케줄 수 계산을 위한 기본 where 조건 구성
@@ -229,6 +235,76 @@ foreach ($message_types as $type => $name) {
     $active_counts[$type] = $count_row['cnt'];
 }
 
+// 현재 메시지 타입에 대한 유효기간별/상태별 카운트 계산
+$validity_counts = [];
+$status_counts = [];
+
+// 유효기간별 카운트
+$validity_types = [
+    'valid' => '유효 스케줄',
+    'pending' => '대기 스케줄', 
+    'expired' => '만료 스케줄'
+];
+
+foreach ($validity_types as $v_type => $v_name) {
+    $count_where = " WHERE 1=1 " . $auth_where;
+    
+    // 메시지 타입 필터
+    if ($message_type) {
+        $count_where .= " AND message_type = '".sql_real_escape_string($message_type)."' ";
+    } else {
+        $count_where .= " AND (message_type = 'schedule' OR message_type IS NULL) ";
+    }
+    
+    // 유효기간 필터
+    if ($v_type == 'valid') {
+        $count_where .= " AND valid_from <= '$today' AND valid_until >= '$today' ";
+    } else if ($v_type == 'pending') {
+        $count_where .= " AND valid_from > '$today' ";
+    } else if ($v_type == 'expired') {
+        $count_where .= " AND valid_until < '$today' ";
+    }
+    
+    $count_sql = "SELECT COUNT(*) as cnt FROM kb_schedule $count_where";
+    $count_row = sql_fetch($count_sql);
+    $validity_counts[$v_type] = $count_row['cnt'];
+}
+
+// 현재 유효기간 필터에 대한 상태별 카운트
+$status_types = [
+    'active' => '활성',
+    'inactive' => '비활성',
+    'completed' => '완료',
+    'error' => '에러'
+];
+
+foreach ($status_types as $s_type => $s_name) {
+    $count_where = " WHERE 1=1 " . $auth_where;
+    
+    // 메시지 타입 필터
+    if ($message_type) {
+        $count_where .= " AND message_type = '".sql_real_escape_string($message_type)."' ";
+    } else {
+        $count_where .= " AND (message_type = 'schedule' OR message_type IS NULL) ";
+    }
+    
+    // 유효기간 필터 (현재 선택된 유효기간 필터 적용)
+    if ($validity_filter == 'valid') {
+        $count_where .= " AND valid_from <= '$today' AND valid_until >= '$today' ";
+    } else if ($validity_filter == 'pending') {
+        $count_where .= " AND valid_from > '$today' ";
+    } else if ($validity_filter == 'expired') {
+        $count_where .= " AND valid_until < '$today' ";
+    }
+    
+    // 상태 필터
+    $count_where .= " AND status = '".sql_real_escape_string($s_type)."' ";
+    
+    $count_sql = "SELECT COUNT(*) as cnt FROM kb_schedule $count_where";
+    $count_row = sql_fetch($count_sql);
+    $status_counts[$s_type] = $count_row['cnt'];
+}
+
 // 검색
 if ($stx) {
     switch ($sfl) {
@@ -273,7 +349,7 @@ $sql = " SELECT DISTINCT s.*, r.room_name
 $sql = " SELECT s.* FROM kb_schedule s $where $order_by LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
-$qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&status_filter=$status_filter";
+$qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&validity_filter=$validity_filter&status_filter=$status_filter";
 ?>
 
 <style>
@@ -310,31 +386,75 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&status_filter=$status_fil
     color: #000;
     font-weight: bold;
 }
-.status-filters {
-    margin-bottom: 20px;
+.validity-filters {
+    margin-bottom: 15px;
     padding: 10px;
     background: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 4px;
 }
-.status-filter {
+.validity-filter {
     display: inline-block;
-    padding: 5px 15px;
+    padding: 8px 20px;
     margin-right: 10px;
     background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 20px;
+    border: 2px solid #ddd;
+    border-radius: 25px;
     text-decoration: none;
     color: #333;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 500;
 }
-.status-filter:hover {
+.validity-filter:hover {
     background: #e9ecef;
 }
-.status-filter.active {
+.validity-filter.active {
     background: #435ffe;
     color: #fff;
     border-color: #435ffe;
+}
+.validity-filter .count {
+    color: #666;
+    font-weight: normal;
+    font-size: 14px;
+}
+.validity-filter.active .count {
+    color: #fff;
+}
+.status-filters {
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #e8f0fe;
+    border: 1px solid #c6d7f4;
+    border-radius: 4px;
+}
+.status-filter {
+    display: inline-block;
+    padding: 5px 15px;
+    margin-right: 8px;
+    margin-bottom: 5px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 18px;
+    text-decoration: none;
+    color: #333;
+    font-size: 13px;
+}
+.status-filter:hover {
+    background: #f0f0f0;
+}
+.status-filter.active {
+    background: #1a73e8;
+    color: #fff;
+    border-color: #1a73e8;
+}
+.status-filter .count {
+    color: #666;
+    font-weight: normal;
+    font-size: 12px;
+}
+.status-filter.active .count {
+    color: #fff;
 }
 </style>
 
@@ -361,13 +481,42 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&status_filter=$status_fil
     </a>
 </div>
 
+<div class="validity-filters">
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['validity_filter' => 'valid', 'status_filter' => '', 'page' => 1])); ?>" 
+       class="validity-filter <?php echo ($validity_filter == 'valid') ? 'active' : ''; ?>">
+       유효 스케줄 <span class="count">(<?php echo number_format($validity_counts['valid']); ?>)</span>
+    </a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['validity_filter' => 'pending', 'status_filter' => '', 'page' => 1])); ?>" 
+       class="validity-filter <?php echo ($validity_filter == 'pending') ? 'active' : ''; ?>">
+       대기 스케줄 <span class="count">(<?php echo number_format($validity_counts['pending']); ?>)</span>
+    </a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['validity_filter' => 'expired', 'status_filter' => '', 'page' => 1])); ?>" 
+       class="validity-filter <?php echo ($validity_filter == 'expired') ? 'active' : ''; ?>">
+       만료 스케줄 <span class="count">(<?php echo number_format($validity_counts['expired']); ?>)</span>
+    </a>
+</div>
+
 <div class="status-filters">
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => '', 'page' => 1])); ?>" 
+       class="status-filter <?php echo (!$status_filter) ? 'active' : ''; ?>">
+       전체
+    </a>
     <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => 'active', 'page' => 1])); ?>" 
-       class="status-filter <?php echo ($status_filter == 'active') ? 'active' : ''; ?>">활성 스케줄</a>
+       class="status-filter <?php echo ($status_filter == 'active') ? 'active' : ''; ?>">
+       활성 <span class="count">(<?php echo number_format($status_counts['active']); ?>)</span>
+    </a>
     <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => 'inactive', 'page' => 1])); ?>" 
-       class="status-filter <?php echo ($status_filter == 'inactive') ? 'active' : ''; ?>">비활성 스케줄</a>
-    <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => 'expired', 'page' => 1])); ?>" 
-       class="status-filter <?php echo ($status_filter == 'expired') ? 'active' : ''; ?>">만료 스케줄</a>
+       class="status-filter <?php echo ($status_filter == 'inactive') ? 'active' : ''; ?>">
+       비활성 <span class="count">(<?php echo number_format($status_counts['inactive']); ?>)</span>
+    </a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => 'completed', 'page' => 1])); ?>" 
+       class="status-filter <?php echo ($status_filter == 'completed') ? 'active' : ''; ?>">
+       완료 <span class="count">(<?php echo number_format($status_counts['completed']); ?>)</span>
+    </a>
+    <a href="?<?php echo http_build_query(array_merge($_GET, ['status_filter' => 'error', 'page' => 1])); ?>" 
+       class="status-filter <?php echo ($status_filter == 'error') ? 'active' : ''; ?>">
+       에러 <span class="count">(<?php echo number_format($status_counts['error']); ?>)</span>
+    </a>
 </div>
 
 <div class="local_ov01 local_ov">
@@ -377,6 +526,7 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&status_filter=$status_fil
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
 <input type="hidden" name="message_type" value="<?php echo $message_type; ?>">
+<input type="hidden" name="validity_filter" value="<?php echo $validity_filter; ?>">
 <input type="hidden" name="status_filter" value="<?php echo $status_filter; ?>">
 <label for="sfl" class="sound_only">검색대상</label>
 <select name="sfl" id="sfl">
@@ -390,7 +540,7 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&status_filter=$status_fil
 </form>
 
 <div class="btn_fixed_top">
-    <a href="./bot_schedule_form.php?message_type=<?php echo $message_type; ?>&status_filter=<?php echo $status_filter; ?>" class="btn btn_01">스케줄 등록</a>
+    <a href="./bot_schedule_form.php?message_type=<?php echo $message_type; ?>&validity_filter=<?php echo $validity_filter; ?>&status_filter=<?php echo $status_filter; ?>" class="btn btn_01">스케줄 등록</a>
 </div>
 
 <style>
