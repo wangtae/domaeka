@@ -22,6 +22,7 @@ if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
         array('180400', '봇 상태 모니터링 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/ping_monitor_list.php', 'ping_monitor'),
         array('180500', '채팅방 관리 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/room_list.php', 'room_management'),
         array('180600', '스케줄링 발송 관리 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/bot_schedule_list.php', 'schedule_management'),
+        array('180610', '스케줄링 발송 로그 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/bot_schedule_log_list.php', 'schedule_log'),
         array('180700', '채팅 내역 조회 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/chat_log_list.php', 'chat_log')
     );
 } else if ($user_type === 'distributor') {
@@ -34,6 +35,7 @@ if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
         array('180400', '봇 상태 모니터링 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/ping_monitor_list.php', 'ping_monitor'),
         array('180500', '채팅방 관리 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/room_list.php', 'room_management'),
         array('180600', '스케줄링 발송 관리 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/bot_schedule_list.php', 'schedule_management'),
+        array('180610', '스케줄링 발송 로그 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/bot_schedule_log_list.php', 'schedule_log'),
         array('180700', '채팅 내역 조회 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/chat_log_list.php', 'chat_log')
     );
 } else if ($user_type === 'agency') {
@@ -44,6 +46,7 @@ if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
         array('180400', '봇 상태 모니터링 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/ping_monitor_list.php', 'ping_monitor'),
         array('180500', '채팅방 관리 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/room_list.php', 'room_management'),
         array('180600', '스케줄링 발송 관리 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/bot_schedule_list.php', 'schedule_management'),
+        array('180610', '스케줄링 발송 로그 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/bot_schedule_log_list.php', 'schedule_log'),
         array('180700', '채팅 내역 조회 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/chat_log_list.php', 'chat_log')
     );
 } else if ($user_type === 'branch') {
@@ -54,6 +57,7 @@ if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
         array('180400', '봇 상태 모니터링 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/ping_monitor_list.php', 'ping_monitor'),
         array('180500', '채팅방 관리 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/room_list.php', 'room_management'),
         array('180600', '스케줄링 발송 관리 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/bot_schedule_list.php', 'schedule_management'),
+        array('180610', '스케줄링 발송 로그 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/bot_schedule_log_list.php', 'schedule_log'),
         array('180700', '채팅 내역 조회 <i class="fa fa-star" title="NEW"></i>', G5_DMK_ADM_URL.'/bot/chat_log_list.php', 'chat_log')
     );
 } else {
