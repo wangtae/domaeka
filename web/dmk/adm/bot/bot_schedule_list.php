@@ -345,7 +345,7 @@ $sql = " SELECT DISTINCT s.*, r.room_name
          $order_by
          LIMIT $from_record, $rows ";
 
-// 목록 조회 - 대용량 이미지 데이터 제외
+// 목록 조회 - 썸네일 데이터만 포함
 $sql = " SELECT 
             s.id, s.title, s.description, s.message_type, s.reference_type, s.reference_id,
             s.created_by_type, s.created_by_id, s.created_by_mb_id,
@@ -356,6 +356,8 @@ $sql = " SELECT
             s.valid_from, s.valid_until, s.status,
             s.last_sent_at, s.next_send_at, s.send_count,
             s.created_at, s.updated_at,
+            -- 썸네일 데이터만 포함
+            s.message_thumbnails_1, s.message_thumbnails_2,
             -- 이미지 존재 여부만 확인
             CASE WHEN s.message_images_1 IS NOT NULL AND s.message_images_1 != '[]' AND s.message_images_1 != '' THEN 1 ELSE 0 END as has_images_1,
             CASE WHEN s.message_images_2 IS NOT NULL AND s.message_images_2 != '[]' AND s.message_images_2 != '' THEN 1 ELSE 0 END as has_images_2
@@ -669,6 +671,28 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&validity_filter=$validity
     display: block;
     font-size: 11px;
     margin-top: 3px;
+}
+.thumbnail-list {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.schedule-thumb {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+.more-images {
+    display: inline-block;
+    padding: 5px 10px;
+    background: #e0e0e0;
+    color: #666;
+    font-size: 12px;
+    border-radius: 3px;
+    font-weight: bold;
 }
 .total-size {
     margin-top: 5px;
@@ -1005,9 +1029,32 @@ function moveTooltip(event) {
                             <div class="image-group">
                                 <div class="image-group-title">이미지 그룹 1</div>
                                 <?php if ($has_images_1): ?>
-                                    <div class="image-status">
-                                        <i class="fa fa-image"></i> 이미지 있음
-                                        <small>(상세보기에서 확인 가능)</small>
+                                    <div class="thumbnail-list">
+                                        <?php
+                                        // 썸네일 표시
+                                        if (!empty($row['message_thumbnails_1'])) {
+                                            $thumbnails_1 = json_decode($row['message_thumbnails_1'], true);
+                                            if ($thumbnails_1) {
+                                                foreach ($thumbnails_1 as $idx => $thumb) {
+                                                    if ($idx >= 4) break; // 최대 4개만 표시
+                                                    $thumb_path = G5_DATA_PATH.'/'.$thumb['path'];
+                                                    $thumb_url = G5_DATA_URL.'/'.$thumb['path'];
+                                                    if (file_exists($thumb_path)) {
+                                                        // 원본 이미지 경로 구하기
+                                                        $original_path = str_replace('thumb_', '', $thumb['path']);
+                                                        $original_url = G5_DATA_URL.'/'.$original_path;
+                                                        echo '<img src="'.$thumb_url.'" alt="" class="schedule-thumb" onclick="viewOriginalImage(\''.$original_url.'\')" style="cursor:pointer;">';
+                                                    }
+                                                }
+                                                if (count($thumbnails_1) > 4) {
+                                                    echo '<span class="more-images">+'.(count($thumbnails_1) - 4).'</span>';
+                                                }
+                                            }
+                                        } else {
+                                            // 썸네일이 없으면 아이콘만 표시
+                                            echo '<div class="image-status"><i class="fa fa-image"></i> 이미지 있음</div>';
+                                        }
+                                        ?>
                                     </div>
                                 <?php else: ?>
                                     <div class="no-images">이미지 없음</div>
@@ -1017,9 +1064,32 @@ function moveTooltip(event) {
                             <div class="image-group">
                                 <div class="image-group-title">이미지 그룹 2</div>
                                 <?php if ($has_images_2): ?>
-                                    <div class="image-status">
-                                        <i class="fa fa-image"></i> 이미지 있음
-                                        <small>(상세보기에서 확인 가능)</small>
+                                    <div class="thumbnail-list">
+                                        <?php
+                                        // 썸네일 표시
+                                        if (!empty($row['message_thumbnails_2'])) {
+                                            $thumbnails_2 = json_decode($row['message_thumbnails_2'], true);
+                                            if ($thumbnails_2) {
+                                                foreach ($thumbnails_2 as $idx => $thumb) {
+                                                    if ($idx >= 4) break; // 최대 4개만 표시
+                                                    $thumb_path = G5_DATA_PATH.'/'.$thumb['path'];
+                                                    $thumb_url = G5_DATA_URL.'/'.$thumb['path'];
+                                                    if (file_exists($thumb_path)) {
+                                                        // 원본 이미지 경로 구하기
+                                                        $original_path = str_replace('thumb_', '', $thumb['path']);
+                                                        $original_url = G5_DATA_URL.'/'.$original_path;
+                                                        echo '<img src="'.$thumb_url.'" alt="" class="schedule-thumb" onclick="viewOriginalImage(\''.$original_url.'\')" style="cursor:pointer;">';
+                                                    }
+                                                }
+                                                if (count($thumbnails_2) > 4) {
+                                                    echo '<span class="more-images">+'.(count($thumbnails_2) - 4).'</span>';
+                                                }
+                                            }
+                                        } else {
+                                            // 썸네일이 없으면 아이콘만 표시
+                                            echo '<div class="image-status"><i class="fa fa-image"></i> 이미지 있음</div>';
+                                        }
+                                        ?>
                                     </div>
                                 <?php else: ?>
                                     <div class="no-images">이미지 없음</div>
@@ -1042,6 +1112,27 @@ function moveTooltip(event) {
 </div>
 
 <?php echo get_paging(G5_IS_MOBILE ? $config['cf_mobile_pages'] : $config['cf_write_pages'], $page, $total_page, '?'.$qstr.'&amp;page='); ?>
+
+<script>
+function viewOriginalImage(imageUrl) {
+    // 간단한 모달 팝업으로 원본 이미지 표시
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+    
+    var img = document.createElement('img');
+    img.src = imageUrl;
+    img.style.cssText = 'max-width:90%;max-height:90%;object-fit:contain;';
+    
+    modal.appendChild(img);
+    
+    // 클릭하면 닫기
+    modal.onclick = function() {
+        document.body.removeChild(modal);
+    };
+    
+    document.body.appendChild(modal);
+}
+</script>
 
 <?php
 include_once (G5_ADMIN_PATH.'/admin.tail.php');
