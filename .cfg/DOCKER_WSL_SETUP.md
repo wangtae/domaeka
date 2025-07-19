@@ -42,7 +42,7 @@ services:
     container_name: domaeka-web-dev
     networks:
       - domaeka-dev-net
-      - npm-network  # NPM 네트워크에 연결
+      - docker-network  # Docker 네트워크에 연결
     volumes:
       - ./domaeka.dev/web:/var/www/html
       - ./conf/nginx:/etc/nginx
@@ -95,8 +95,8 @@ services:
 networks:
   domaeka-dev-net:
     driver: bridge
-  npm-network:
-    external: true  # NPM 네트워크 사용
+  docker-network:
+    external: true  # Docker 네트워크 사용
 ```
 
 ## 3. Nginx Proxy Manager 설정
@@ -120,12 +120,12 @@ services:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
     networks:
-      - npm-network
+      - docker-network
 
 networks:
-  npm-network:
+  docker-network:
     driver: bridge
-    name: npm-network
+    name: docker-network
 ```
 
 ### 3.2 NPM 실행
@@ -181,8 +181,8 @@ NC='\033[0m'
 
 echo -e "${GREEN}개발 환경 시작${NC}"
 
-# NPM 네트워크 생성
-docker network create npm-network 2>/dev/null || true
+# Docker 네트워크 생성
+docker network create docker-network 2>/dev/null || true
 
 # NPM 시작
 echo -e "${YELLOW}1. Nginx Proxy Manager 시작${NC}"
@@ -307,5 +307,5 @@ Settings → Resources → WSL Integration → Enable integration 확인
 ```bash
 # Docker 네트워크 재생성
 docker network prune
-docker network create npm-network
+docker network create docker-network
 ```
