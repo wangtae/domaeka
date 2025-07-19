@@ -58,8 +58,13 @@ $total_page = ceil($total_count / $rows);
 if(!$page) $page = 1;
 $start = ($page - 1) * $rows;
 
-// 채팅방 목록 조회 - 일단 간단하게
-$sql = " SELECT * FROM kb_rooms $where ORDER BY created_at DESC LIMIT $start, $rows ";
+// 채팅방 목록 조회 - JOIN으로 지점명까지 한번에 조회
+$sql = " SELECT r.*, m.mb_name as owner_name 
+         FROM kb_rooms r 
+         LEFT JOIN {$g5['member_table']} m ON r.owner_id = m.mb_id 
+         $where 
+         ORDER BY r.created_at DESC 
+         LIMIT $start, $rows ";
 $result = sql_query($sql);
 
 // 쿼리 결과 확인
@@ -221,14 +226,8 @@ while($row = sql_fetch_array($stats_result)) {
         </td>
         <td class="td_left">
             <?php if($row['owner_id']): ?>
-                <?php 
-                // 배정된 지점 이름 조회 (g5_member 테이블에서)
-                $sql = " SELECT mb_name FROM g5_member WHERE mb_id = '".sql_escape_string($row['owner_id'])."' ";
-                $owner_info = sql_fetch($sql);
-                $owner_name = $owner_info['mb_name'];
-                ?>
-                <?php if($owner_name): ?>
-                    <?php echo get_text($owner_name)?>
+                <?php if($row['owner_name']): ?>
+                    <?php echo get_text($row['owner_name'])?>
                     <small>(<?php echo $row['owner_id']?>)</small>
                 <?php else: ?>
                     <?php echo get_text($row['owner_id'])?>

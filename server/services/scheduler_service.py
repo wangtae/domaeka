@@ -11,6 +11,8 @@ from core.logger import logger
 import core.globals as g
 from core.response_utils import send_json_response
 import os
+import aiofiles
+import base64
 
 
 class SchedulerService:
@@ -334,7 +336,7 @@ class SchedulerService:
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
     
     async def send_images(self, bot_name: str, device_id: str, room_id: str, images: List[Dict], wait_time: int):
-        """이미지 발송 (Base64 방식)"""
+        """이미지 발송 (파일시스템에서 읽어 Base64 변환)"""
         from core.globals import clients
         from core.response_utils import send_message_response
         
@@ -349,15 +351,39 @@ class SchedulerService:
                     logger.error(f"[SCHEDULER] 채팅방 이름을 찾을 수 없음: {room_id}")
                     return
                 
-                # Base64 이미지 데이터 리스트 생성
+                # 파일시스템에서 이미지 읽어 Base64 변환
                 base64_images = []
+                
+                # 프로젝트 루트 경로 설정 - server 디렉토리의 상위 디렉토리
+                server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                project_root = os.path.dirname(server_dir)
+                web_data_path = os.path.join(project_root, 'web', 'data')
+                
                 for img_info in images:
-                    # img_info는 {'base64': 'base64data...', 'name': 'filename.jpg'} 형태
-                    base64_data = img_info.get('base64', '')
-                    if base64_data:
-                        base64_images.append(base64_data)
+                    # img_info는 {'path': 'schedule/2025/01/filename.jpg', 'name': 'filename.jpg'} 형태
+                    if 'path' in img_info:
+                        # 파일시스템에서 이미지 읽기
+                        image_path = os.path.join(web_data_path, img_info['path'])
+                        
+                        if os.path.exists(image_path):
+                            try:
+                                async with aiofiles.open(image_path, 'rb') as f:
+                                    image_data = await f.read()
+                                # Base64 인코딩
+                                base64_data = base64.b64encode(image_data).decode('utf-8')
+                                base64_images.append(base64_data)
+                                logger.debug(f"[SCHEDULER] 이미지 로드 성공: {img_info['path']}")
+                            except Exception as e:
+                                logger.error(f"[SCHEDULER] 이미지 읽기 실패 {image_path}: {e}")
+                        else:
+                            logger.warning(f"[SCHEDULER] 이미지 파일 없음: {image_path}")
+                    elif 'base64' in img_info:
+                        # 레거시 지원: 기존 Base64 데이터가 있는 경우
+                        base64_data = img_info.get('base64', '')
+                        if base64_data:
+                            base64_images.append(base64_data)
                     else:
-                        logger.warning(f"[SCHEDULER] Base64 데이터 없음")
+                        logger.warning(f"[SCHEDULER] 이미지 경로 정보 없음: {img_info}")
                 
                 if base64_images:
                     # context 구성
@@ -505,10 +531,28 @@ class SchedulerService:
         components = []
         if schedule.get('message_text'):
             components.append('text')
+        
+        # 이미지 개수 정보로 변환
+        images_1_info = None
+        images_2_info = None
+        
         if schedule.get('message_images_1') and schedule['message_images_1'] != '[]':
-            components.append('images_1')
+            try:
+                images_1_list = json.loads(schedule['message_images_1'])
+                if images_1_list and isinstance(images_1_list, list):
+                    images_1_info = f"[이미지 {len(images_1_list)}장 전송]"
+                    components.append('images_1')
+            except:
+                pass
+        
         if schedule.get('message_images_2') and schedule['message_images_2'] != '[]':
-            components.append('images_2')
+            try:
+                images_2_list = json.loads(schedule['message_images_2'])
+                if images_2_list and isinstance(images_2_list, list):
+                    images_2_info = f"[이미지 {len(images_2_list)}장 전송]"
+                    components.append('images_2')
+            except:
+                pass
         
         async with self.db_pool.acquire() as conn:
             async with conn.cursor() as cursor:
@@ -516,8 +560,8 @@ class SchedulerService:
                     schedule['id'],
                     schedule['target_room_id'],
                     schedule.get('message_text'),
-                    schedule.get('message_images_1'),
-                    schedule.get('message_images_2'),
+                    images_1_info,  # 이미지 전체 데이터 대신 개수 정보
+                    images_2_info,  # 이미지 전체 데이터 대신 개수 정보
                     ','.join(components),
                     status,
                     error_message,

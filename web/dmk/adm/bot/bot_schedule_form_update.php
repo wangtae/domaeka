@@ -185,11 +185,28 @@ $created_by_mb_id = $member['mb_id'];
 
 echo "<!-- DEBUG: created_by_type: $created_by_type, created_by_id: $created_by_id -->\n";
 
-// Base64 방식으로 변경되어 업로드 디렉토리는 더 이상 필요하지 않음
-echo "<!-- DEBUG: Using Base64 encoding for images (no file storage) -->\n";
+// 업로드 디렉토리 설정
+$upload_dir = G5_DATA_PATH.'/schedule';
+$upload_url = G5_DATA_URL.'/schedule';
 
-// 이미지 처리 함수 (Base64 인코딩 방식)
+// 업로드 디렉토리 생성
+$year_month = date('Y/m');
+$upload_path = $upload_dir.'/'.$year_month;
+$upload_url_path = $upload_url.'/'.$year_month;
+
+if (!is_dir($upload_path)) {
+    @mkdir($upload_path, 0755, true);
+    // index.html 파일 생성
+    $f = fopen($upload_path.'/index.html', 'w');
+    @fclose($f);
+}
+
+echo "<!-- DEBUG: Upload directory: $upload_path -->\n";
+
+// 이미지 처리 함수 (파일시스템 저장 방식)
 function process_schedule_images($group_num, $existing_images, $new_files, $bot_name = null) {
+    global $upload_path, $upload_url_path;
+    
     $images = [];
     $max_images = 30; // 최대 이미지 개수
     
@@ -208,15 +225,16 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
         }
     }
     
-    // 기존 이미지 처리 (이미 base64로 저장되어 있음)
+    // 기존 이미지 처리 (경로 정보 유지)
     if (!empty($existing_images)) {
-        foreach ($existing_images as $base64_data) {
+        foreach ($existing_images as $image_path) {
             if (count($images) >= $max_images) break;
-            $images[] = array('base64' => $base64_data);
+            // 경로 정보만 저장
+            $images[] = array('path' => $image_path);
         }
     }
     
-    // 새 이미지 업로드 및 Base64 인코딩
+    // 새 이미지 업로드
     if (!empty($new_files['name'][0])) {
         echo "<!-- DEBUG: Processing " . count($new_files['name']) . " new files for group $group_num -->\n";
         
@@ -232,30 +250,32 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
                 // 이미지인지 확인
                 $is_image = preg_match('/\.(jpg|jpeg|png|gif)$/i', $original_name);
                 
+                // 고유한 파일명 생성
+                $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+                $unique_name = 'schedule_'.date('YmdHis').'_'.uniqid().'.'.$ext;
+                $dest_path = $upload_path.'/'.$unique_name;
+                
                 if ($is_image && $resize_enabled) {
-                    // 이미지 리사이징 후 Base64 인코딩
+                    // 이미지 리사이징 후 저장
                     echo "<!-- DEBUG: Attempting to resize image (max_width: $max_width) -->\n";
-                    $base64_data = resize_and_encode_image($tmp_path, $max_width);
+                    $saved = resize_and_save_image($tmp_path, $dest_path, $max_width);
                 } else {
-                    // 원본 파일을 Base64로 인코딩
-                    echo "<!-- DEBUG: Encoding original file to base64 -->\n";
-                    $file_content = file_get_contents($tmp_path);
-                    if ($file_content !== false) {
-                        $base64_data = base64_encode($file_content);
-                    } else {
-                        $base64_data = null;
-                    }
+                    // 원본 파일 저장
+                    echo "<!-- DEBUG: Saving original file -->\n";
+                    $saved = move_uploaded_file($tmp_path, $dest_path);
                 }
                 
-                if ($base64_data) {
+                if ($saved) {
+                    // 상대 경로로 저장 (data/schedule/2024/01/filename.jpg)
+                    $relative_path = str_replace(G5_DATA_PATH.'/', '', $dest_path);
                     $images[] = array(
-                        'base64' => $base64_data,
+                        'path' => $relative_path,
                         'name' => $original_name,
-                        'size' => strlen($base64_data)
+                        'size' => filesize($dest_path)
                     );
-                    echo "<!-- DEBUG: File successfully encoded: $original_name (base64 size: " . strlen($base64_data) . " bytes) -->\n";
+                    echo "<!-- DEBUG: File successfully saved: $unique_name (path: $relative_path) -->\n";
                 } else {
-                    echo "<!-- DEBUG: Failed to encode file -->\n";
+                    echo "<!-- DEBUG: Failed to save file -->\n";
                 }
             } else {
                 echo "<!-- DEBUG: File upload error: " . $new_files['error'][$i] . " -->\n";
@@ -267,13 +287,12 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
     return $images;
 }
 
-// 이미지 리사이징 및 Base64 인코딩 함수
-function resize_and_encode_image($source_path, $max_width) {
+// 이미지 리사이징 및 파일 저장 함수
+function resize_and_save_image($source_path, $dest_path, $max_width) {
     // GD 라이브러리 체크
     if (!extension_loaded('gd') || !function_exists('gd_info')) {
-        // GD 라이브러리가 없으면 원본을 Base64로 인코딩
-        $content = file_get_contents($source_path);
-        return $content !== false ? base64_encode($content) : null;
+        // GD 라이브러리가 없으면 원본 파일 복사
+        return copy($source_path, $dest_path);
     }
     
     // 메모리 제한 임시 증가
@@ -282,9 +301,8 @@ function resize_and_encode_image($source_path, $max_width) {
     // 이미지 정보 가져오기
     $image_info = getimagesize($source_path);
     if (!$image_info) {
-        // 이미지가 아닌 경우 원본을 Base64로 인코딩
-        $content = file_get_contents($source_path);
-        return $content !== false ? base64_encode($content) : null;
+        // 이미지가 아닌 경우 원본 파일 복사
+        return copy($source_path, $dest_path);
     }
     
     $width = $image_info[0];
@@ -293,8 +311,7 @@ function resize_and_encode_image($source_path, $max_width) {
     
     // 리사이징이 필요 없는 경우
     if ($width <= $max_width) {
-        $content = file_get_contents($source_path);
-        return $content !== false ? base64_encode($content) : null;
+        return copy($source_path, $dest_path);
     }
     
     // 새로운 크기 계산
@@ -313,14 +330,12 @@ function resize_and_encode_image($source_path, $max_width) {
             $source = imagecreatefromgif($source_path);
             break;
         default:
-            // 지원하지 않는 형식은 원본을 Base64로 인코딩
-            $content = file_get_contents($source_path);
-            return $content !== false ? base64_encode($content) : null;
+            // 지원하지 않는 형식은 원본 파일 복사
+            return copy($source_path, $dest_path);
     }
     
     if (!$source) {
-        $content = file_get_contents($source_path);
-        return $content !== false ? base64_encode($content) : null;
+        return copy($source_path, $dest_path);
     }
     
     // 새 이미지 생성
@@ -336,28 +351,25 @@ function resize_and_encode_image($source_path, $max_width) {
     // 리사이징
     imagecopyresampled($dest, $source, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
     
-    // 메모리 스트림으로 출력하여 Base64 인코딩
-    ob_start();
+    // 파일로 저장
+    $result = false;
     switch ($type) {
         case IMAGETYPE_JPEG:
-            imagejpeg($dest, null, 90);
+            $result = imagejpeg($dest, $dest_path, 90);
             break;
         case IMAGETYPE_PNG:
-            imagepng($dest, null, 9);
+            $result = imagepng($dest, $dest_path, 9);
             break;
         case IMAGETYPE_GIF:
-            imagegif($dest);
+            $result = imagegif($dest, $dest_path);
             break;
     }
-    $image_data = ob_get_contents();
-    ob_end_clean();
     
     // 메모리 해제
     imagedestroy($source);
     imagedestroy($dest);
     
-    // Base64 인코딩하여 반환
-    return base64_encode($image_data);
+    return $result;
 }
 
 // 이미지 그룹 처리
@@ -377,12 +389,57 @@ echo "<!-- DEBUG: message_images_2 result: " . print_r($message_images_2, true) 
 $message_images_1_json = !empty($message_images_1) ? json_encode($message_images_1) : null;
 $message_images_2_json = !empty($message_images_2) ? json_encode($message_images_2) : null;
 
+// 썸네일 생성 함수 정의
+function create_thumbnails_from_path_array($images_array) {
+    global $upload_path, $upload_url_path;
+    
+    $thumbnails = [];
+    $thumb_width = 300; // 썸네일 너비
+    
+    foreach ($images_array as $image) {
+        if (empty($image['path'])) continue;
+        
+        // 원본 파일 경로
+        $original_path = G5_DATA_PATH.'/'.$image['path'];
+        
+        // 썸네일 파일명 생성
+        $path_info = pathinfo($image['path']);
+        $thumb_filename = 'thumb_'.basename($path_info['basename']);
+        $thumb_relative_path = $path_info['dirname'].'/'.$thumb_filename;
+        $thumb_full_path = G5_DATA_PATH.'/'.$thumb_relative_path;
+        
+        // 썸네일이 이미 존재하는지 확인
+        if (!file_exists($thumb_full_path)) {
+            // 원본 파일이 존재하면 썸네일 생성
+            if (file_exists($original_path)) {
+                $saved = resize_and_save_image($original_path, $thumb_full_path, $thumb_width);
+                if ($saved) {
+                    $thumbnails[] = array(
+                        'path' => $thumb_relative_path,
+                        'name' => 'thumb_'.$image['name'],
+                        'size' => filesize($thumb_full_path)
+                    );
+                }
+            }
+        } else {
+            // 이미 존재하는 썸네일 정보 추가
+            $thumbnails[] = array(
+                'path' => $thumb_relative_path,
+                'name' => 'thumb_'.$image['name'],
+                'size' => filesize($thumb_full_path)
+            );
+        }
+    }
+    
+    return $thumbnails;
+}
+
 // 썸네일 생성
 $message_thumbnails_1 = null;
 $message_thumbnails_2 = null;
 
 if (!empty($message_images_1)) {
-    $thumbnails_1 = create_thumbnails_from_array($message_images_1);
+    $thumbnails_1 = create_thumbnails_from_path_array($message_images_1);
     if (!empty($thumbnails_1)) {
         $message_thumbnails_1 = json_encode($thumbnails_1);
         echo "<!-- DEBUG: Created " . count($thumbnails_1) . " thumbnails for group 1 -->\n";
@@ -390,7 +447,7 @@ if (!empty($message_images_1)) {
 }
 
 if (!empty($message_images_2)) {
-    $thumbnails_2 = create_thumbnails_from_array($message_images_2);
+    $thumbnails_2 = create_thumbnails_from_path_array($message_images_2);
     if (!empty($thumbnails_2)) {
         $message_thumbnails_2 = json_encode($thumbnails_2);
         echo "<!-- DEBUG: Created " . count($thumbnails_2) . " thumbnails for group 2 -->\n";

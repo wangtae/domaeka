@@ -290,9 +290,17 @@ while($row = sql_fetch_array($result_rooms)) {
                     <?php if (!empty($schedule['message_images_1'])): ?>
                         <?php foreach($schedule['message_images_1'] as $idx => $img): ?>
                         <div class="preview_item" data-index="<?php echo $idx?>">
-                            <img src="data:image/jpeg;base64,<?php echo $img['base64']?>" alt="">
+                            <?php 
+                            $img_path = G5_DATA_PATH.'/'.$img['path'];
+                            $img_url = G5_DATA_URL.'/'.$img['path'];
+                            if (file_exists($img_path)):
+                            ?>
+                            <img src="<?php echo $img_url?>" alt="">
+                            <?php else: ?>
+                            <img src="<?php echo G5_ADMIN_URL?>/img/no_image.png" alt="이미지 없음">
+                            <?php endif; ?>
                             <button type="button" class="btn_delete" onclick="removeImage(this, 1)">×</button>
-                            <input type="hidden" name="existing_images_1[]" value="<?php echo $img['base64']?>">
+                            <input type="hidden" name="existing_images_1[]" value="<?php echo $img['path']?>">
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -319,9 +327,17 @@ while($row = sql_fetch_array($result_rooms)) {
                     <?php if (!empty($schedule['message_images_2'])): ?>
                         <?php foreach($schedule['message_images_2'] as $idx => $img): ?>
                         <div class="preview_item" data-index="<?php echo $idx?>">
-                            <img src="data:image/jpeg;base64,<?php echo $img['base64']?>" alt="">
+                            <?php 
+                            $img_path = G5_DATA_PATH.'/'.$img['path'];
+                            $img_url = G5_DATA_URL.'/'.$img['path'];
+                            if (file_exists($img_path)):
+                            ?>
+                            <img src="<?php echo $img_url?>" alt="">
+                            <?php else: ?>
+                            <img src="<?php echo G5_ADMIN_URL?>/img/no_image.png" alt="이미지 없음">
+                            <?php endif; ?>
                             <button type="button" class="btn_delete" onclick="removeImage(this, 2)">×</button>
-                            <input type="hidden" name="existing_images_2[]" value="<?php echo $img['base64']?>">
+                            <input type="hidden" name="existing_images_2[]" value="<?php echo $img['path']?>">
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>

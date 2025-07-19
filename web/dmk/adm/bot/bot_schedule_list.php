@@ -345,8 +345,24 @@ $sql = " SELECT DISTINCT s.*, r.room_name
          $order_by
          LIMIT $from_record, $rows ";
 
-// 목록 조회
-$sql = " SELECT s.* FROM kb_schedule s $where $order_by LIMIT $from_record, $rows ";
+// 목록 조회 - 대용량 이미지 데이터 제외
+$sql = " SELECT 
+            s.id, s.title, s.description, s.message_type, s.reference_type, s.reference_id,
+            s.created_by_type, s.created_by_id, s.created_by_mb_id,
+            s.target_bot_name, s.target_device_id, s.target_room_id,
+            s.message_text,
+            s.send_interval_seconds, s.media_wait_time_1, s.media_wait_time_2,
+            s.schedule_type, s.schedule_date, s.schedule_time, s.schedule_times, s.schedule_weekdays,
+            s.valid_from, s.valid_until, s.status,
+            s.last_sent_at, s.next_send_at, s.send_count,
+            s.created_at, s.updated_at,
+            -- 이미지 존재 여부만 확인
+            CASE WHEN s.message_images_1 IS NOT NULL AND s.message_images_1 != '[]' AND s.message_images_1 != '' THEN 1 ELSE 0 END as has_images_1,
+            CASE WHEN s.message_images_2 IS NOT NULL AND s.message_images_2 != '[]' AND s.message_images_2 != '' THEN 1 ELSE 0 END as has_images_2
+         FROM kb_schedule s 
+         $where 
+         $order_by 
+         LIMIT $from_record, $rows ";
 $result = sql_query($sql);
 
 $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&validity_filter=$validity_filter&status_filter=$status_filter";
@@ -640,6 +656,19 @@ $qstr = "&sfl=$sfl&stx=$stx&message_type=$message_type&validity_filter=$validity
 .no-images {
     color: #999;
     font-style: italic;
+}
+.image-status {
+    color: #28a745;
+    padding: 5px;
+}
+.image-status i {
+    margin-right: 5px;
+}
+.image-status small {
+    color: #666;
+    display: block;
+    font-size: 11px;
+    margin-top: 3px;
 }
 .total-size {
     margin-top: 5px;
@@ -938,46 +967,9 @@ function moveTooltip(event) {
             }
         }
         
-        // 이미지 정보 파싱
-        $images_1 = $row['message_images_1'] ? json_decode($row['message_images_1'], true) : [];
-        $images_2 = $row['message_images_2'] ? json_decode($row['message_images_2'], true) : [];
-        
-        // 썸네일 정보 파싱
-        $thumbnails_1 = $row['message_thumbnails_1'] ? json_decode($row['message_thumbnails_1'], true) : [];
-        $thumbnails_2 = $row['message_thumbnails_2'] ? json_decode($row['message_thumbnails_2'], true) : [];
-        
-        // 이미지 용량 계산 (Base64 방식)
-        $total_size = 0;
-        $image_sizes_1 = [];
-        $image_sizes_2 = [];
-        
-        foreach ($images_1 as $idx => $img) {
-            if (isset($img['base64'])) {
-                // Base64 데이터 크기 (실제 파일 크기는 약 3/4)
-                $size = strlen($img['base64']) * 3 / 4;
-                $image_sizes_1[$idx] = $size;
-                $total_size += $size;
-            } elseif (isset($img['file'])) {
-                // 이전 방식 호환성
-                $size = get_file_size($img['file']);
-                $image_sizes_1[$img['file']] = $size;
-                $total_size += $size;
-            }
-        }
-        
-        foreach ($images_2 as $idx => $img) {
-            if (isset($img['base64'])) {
-                // Base64 데이터 크기 (실제 파일 크기는 약 3/4)
-                $size = strlen($img['base64']) * 3 / 4;
-                $image_sizes_2[$idx] = $size;
-                $total_size += $size;
-            } elseif (isset($img['file'])) {
-                // 이전 방식 호환성
-                $size = get_file_size($img['file']);
-                $image_sizes_2[$img['file']] = $size;
-                $total_size += $size;
-            }
-        }
+        // 이미지 존재 여부만 확인 (목록에서는 전체 데이터를 가져오지 않음)
+        $has_images_1 = $row['has_images_1'];
+        $has_images_2 = $row['has_images_2'];
     ?>
     <tr class="schedule-row <?php echo $bg; ?>">
         <td colspan="11" style="padding: 0;">
@@ -1012,47 +1004,10 @@ function moveTooltip(event) {
                         <div class="image-thumbnails">
                             <div class="image-group">
                                 <div class="image-group-title">이미지 그룹 1</div>
-                                <?php if (count($images_1) > 0): ?>
-                                    <div class="thumbnails">
-                                        <?php 
-                                        // 썸네일이 있으면 썸네일 사용, 없으면 원본 이미지 사용
-                                        $has_thumbnails_1 = !empty($thumbnails_1);
-                                        
-                                        foreach ($images_1 as $idx => $img): 
-                                            // 해당 인덱스의 썸네일 찾기
-                                            $thumbnail = null;
-                                            if ($has_thumbnails_1) {
-                                                foreach ($thumbnails_1 as $thumb) {
-                                                    if (isset($thumb['original_idx']) && $thumb['original_idx'] == $idx) {
-                                                        $thumbnail = $thumb;
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        ?>
-                                            <?php if ($thumbnail && isset($thumbnail['base64'])): ?>
-                                            <!-- 썸네일 사용 -->
-                                            <div class="thumbnail-item" data-original-idx="<?php echo $idx ?>">
-                                                <img src="data:image/jpeg;base64,<?php echo $thumbnail['base64'] ?>" 
-                                                     alt="" 
-                                                     onclick="showModal('data:image/jpeg;base64,<?php echo $img['base64'] ?>')"
-                                                     title="썸네일 (클릭하여 원본 보기)">
-                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_1[$idx]) ?></div>
-                                            </div>
-                                            <?php elseif (isset($img['base64'])): ?>
-                                            <!-- 원본 이미지 사용 (썸네일 없음) -->
-                                            <div class="thumbnail-item">
-                                                <img src="data:image/jpeg;base64,<?php echo $img['base64'] ?>" alt="" onclick="showModal(this.src)">
-                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_1[$idx]) ?></div>
-                                            </div>
-                                            <?php elseif (isset($img['file'])): ?>
-                                            <!-- 이전 방식 호환 -->
-                                            <div class="thumbnail-item">
-                                                <img src="<?php echo G5_DATA_URL ?>/schedule/<?php echo $img['file'] ?>" alt="" onclick="showModal(this.src)">
-                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_1[$img['file']]) ?></div>
-                                            </div>
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
+                                <?php if ($has_images_1): ?>
+                                    <div class="image-status">
+                                        <i class="fa fa-image"></i> 이미지 있음
+                                        <small>(상세보기에서 확인 가능)</small>
                                     </div>
                                 <?php else: ?>
                                     <div class="no-images">이미지 없음</div>
@@ -1061,57 +1016,16 @@ function moveTooltip(event) {
                             
                             <div class="image-group">
                                 <div class="image-group-title">이미지 그룹 2</div>
-                                <?php if (count($images_2) > 0): ?>
-                                    <div class="thumbnails">
-                                        <?php 
-                                        // 썸네일이 있으면 썸네일 사용, 없으면 원본 이미지 사용
-                                        $has_thumbnails_2 = !empty($thumbnails_2);
-                                        
-                                        foreach ($images_2 as $idx => $img): 
-                                            // 해당 인덱스의 썸네일 찾기
-                                            $thumbnail = null;
-                                            if ($has_thumbnails_2) {
-                                                foreach ($thumbnails_2 as $thumb) {
-                                                    if (isset($thumb['original_idx']) && $thumb['original_idx'] == $idx) {
-                                                        $thumbnail = $thumb;
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        ?>
-                                            <?php if ($thumbnail && isset($thumbnail['base64'])): ?>
-                                            <!-- 썸네일 사용 -->
-                                            <div class="thumbnail-item" data-original-idx="<?php echo $idx ?>">
-                                                <img src="data:image/jpeg;base64,<?php echo $thumbnail['base64'] ?>" 
-                                                     alt="" 
-                                                     onclick="showModal('data:image/jpeg;base64,<?php echo $img['base64'] ?>')"
-                                                     title="썸네일 (클릭하여 원본 보기)">
-                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_2[$idx]) ?></div>
-                                            </div>
-                                            <?php elseif (isset($img['base64'])): ?>
-                                            <!-- 원본 이미지 사용 (썸네일 없음) -->
-                                            <div class="thumbnail-item">
-                                                <img src="data:image/jpeg;base64,<?php echo $img['base64'] ?>" alt="" onclick="showModal(this.src)">
-                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_2[$idx]) ?></div>
-                                            </div>
-                                            <?php elseif (isset($img['file'])): ?>
-                                            <!-- 이전 방식 호환 -->
-                                            <div class="thumbnail-item">
-                                                <img src="<?php echo G5_DATA_URL ?>/schedule/<?php echo $img['file'] ?>" alt="" onclick="showModal(this.src)">
-                                                <div class="thumbnail-size"><?php echo format_bytes($image_sizes_2[$img['file']]) ?></div>
-                                            </div>
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
+                                <?php if ($has_images_2): ?>
+                                    <div class="image-status">
+                                        <i class="fa fa-image"></i> 이미지 있음
+                                        <small>(상세보기에서 확인 가능)</small>
                                     </div>
                                 <?php else: ?>
                                     <div class="no-images">이미지 없음</div>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        
-                        <?php if ($total_size > 0): ?>
-                        <div class="total-size">전체 이미지 용량: <?php echo format_bytes($total_size) ?></div>
-                        <?php endif; ?>
                     </td>
                 </tr>
             </table>
