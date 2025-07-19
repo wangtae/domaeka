@@ -104,8 +104,8 @@ function dmk_register_message_schedule($message_type, $params) {
     // 메시지 파싱 (PHP에서 처리)
     $processed_message = dmk_parse_message_template($template, $template_variables);
     
-    // 발송 시간 계산
-    $schedule_datetime = date('Y-m-d H:i:s', strtotime("+{$delay_minutes} minutes"));
+    // 발송 시간 계산 (초는 00으로 설정)
+    $schedule_datetime = date('Y-m-d H:i:00', strtotime("+{$delay_minutes} minutes"));
     
     // 봇 정보 확인 (지점에 설정된 봇 사용)
     $target_bot_name = $branch['br_message_bot_name'];
@@ -128,7 +128,8 @@ function dmk_register_message_schedule($message_type, $params) {
             send_interval_seconds = 1,
             schedule_type = 'once',
             schedule_date = '".date('Y-m-d', strtotime($schedule_datetime))."',
-            schedule_time = '".date('H:i:s', strtotime($schedule_datetime))."',
+            schedule_time = '".date('H:i:00', strtotime($schedule_datetime))."',
+            next_send_at = '".sql_real_escape_string($schedule_datetime)."',
             valid_from = NOW(),
             valid_until = DATE_ADD(NOW(), INTERVAL 7 DAY),
             status = 'active',
