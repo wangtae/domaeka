@@ -226,12 +226,15 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
         }
     }
     
-    // 기존 이미지 처리 (경로 정보 유지)
+    // 기존 이미지 처리 (이미 clean_existing_images로 정리됨)
     if (!empty($existing_images)) {
-        foreach ($existing_images as $image_path) {
+        foreach ($existing_images as $image_data) {
             if (count($images) >= $max_images) break;
-            // 경로 정보만 저장
-            $images[] = array('path' => $image_path);
+            
+            // 이미 정리된 배열 데이터
+            if (is_array($image_data)) {
+                $images[] = $image_data;
+            }
         }
     }
     
@@ -393,11 +396,12 @@ function process_schedule_images_base64($group_num, $existing_images, $new_files
         }
     }
     
-    // 기존 이미지 처리 (Base64 형식)
+    // 기존 이미지 처리 (이미 clean_existing_images로 정리됨)
     if (!empty($existing_images)) {
         foreach ($existing_images as $image_data) {
             if (count($images) >= $max_images) break;
-            // 기존 Base64 데이터 유지
+            
+            // 이미 정리된 배열 데이터
             if (is_array($image_data) && isset($image_data['base64'])) {
                 $images[] = $image_data;
             }
@@ -452,6 +456,53 @@ echo "<!-- DEBUG: Storage mode: $image_storage_mode -->\n";
 echo "<!-- DEBUG: FILES data: " . print_r($_FILES, true) . " -->\n";
 echo "<!-- DEBUG: POST existing_images_1: " . print_r($_POST['existing_images_1'] ?? [], true) . " -->\n";
 echo "<!-- DEBUG: POST existing_images_2: " . print_r($_POST['existing_images_2'] ?? [], true) . " -->\n";
+
+// 디버깅: 첫 번째 existing_images 값 확인
+if (!empty($_POST['existing_images_1'][0])) {
+    echo "<!-- DEBUG: First existing_image_1 raw: " . substr($_POST['existing_images_1'][0], 0, 200) . "... -->\n";
+    $test_decode = json_decode($_POST['existing_images_1'][0], true);
+    echo "<!-- DEBUG: First decode result: " . print_r($test_decode, true) . " -->\n";
+    if (isset($test_decode['path']) && is_string($test_decode['path'])) {
+        echo "<!-- DEBUG: Path is string, checking if it's JSON: " . substr($test_decode['path'], 0, 100) . "... -->\n";
+        $double_decode = json_decode($test_decode['path'], true);
+        if ($double_decode !== null) {
+            echo "<!-- DEBUG: DOUBLE ENCODING DETECTED! -->\n";
+        }
+    }
+}
+
+// 기존 이미지 데이터 정리 함수
+function clean_existing_images($existing_images) {
+    $cleaned = [];
+    if (!empty($existing_images)) {
+        foreach ($existing_images as $image_data) {
+            if (is_string($image_data)) {
+                $decoded = json_decode($image_data, true);
+                if ($decoded && is_array($decoded)) {
+                    // path나 base64가 다시 JSON 문자열인지 확인
+                    if (isset($decoded['path']) && is_string($decoded['path'])) {
+                        // path가 JSON처럼 보이는 경우
+                        if (strpos($decoded['path'], '{') === 0 || strpos($decoded['path'], '"') === 0) {
+                            $path_decoded = json_decode($decoded['path'], true);
+                            if ($path_decoded !== null) {
+                                $cleaned[] = $path_decoded;
+                                continue;
+                            }
+                        }
+                    }
+                    $cleaned[] = $decoded;
+                }
+            } else if (is_array($image_data)) {
+                $cleaned[] = $image_data;
+            }
+        }
+    }
+    return $cleaned;
+}
+
+// existing_images 정리
+$_POST['existing_images_1'] = clean_existing_images($_POST['existing_images_1'] ?? []);
+$_POST['existing_images_2'] = clean_existing_images($_POST['existing_images_2'] ?? []);
 
 // 저장 방식에 따라 다른 함수 호출
 if ($image_storage_mode == 'base64') {
@@ -516,27 +567,47 @@ function create_thumbnails_from_path_array($images_array) {
     return $thumbnails;
 }
 
-// 썸네일 생성 (파일 시스템 방식일 때만)
-$message_thumbnails_1 = null;
-$message_thumbnails_2 = null;
-
-if ($image_storage_mode == 'file') {
-    if (!empty($message_images_1)) {
-        $thumbnails_1 = create_thumbnails_from_path_array($message_images_1);
-        if (!empty($thumbnails_1)) {
-            $message_thumbnails_1 = json_encode($thumbnails_1);
-            echo "<!-- DEBUG: Created " . count($thumbnails_1) . " thumbnails for group 1 -->\n";
+// Base64 썸네일 생성 함수
+function create_thumbnails_from_base64_array($images_array) {
+    $thumbnails = [];
+    $thumb_width = 300; // 썸네일 너비
+    
+    foreach ($images_array as $image) {
+        if (empty($image['base64'])) continue;
+        
+        // Base64를 이미지로 디코드
+        $image_data = base64_decode($image['base64']);
+        
+        // 임시 파일로 저장
+        $temp_path = sys_get_temp_dir() . '/' . uniqid('thumb_') . '.jpg';
+        file_put_contents($temp_path, $image_data);
+        
+        // 썸네일용 임시 파일
+        $thumb_path = sys_get_temp_dir() . '/' . uniqid('thumb_resized_') . '.jpg';
+        
+        // 썸네일 생성
+        if (resize_and_save_image($temp_path, $thumb_path, $thumb_width)) {
+            $thumb_data = file_get_contents($thumb_path);
+            $thumb_base64 = base64_encode($thumb_data);
+            
+            $thumbnails[] = array(
+                'base64' => $thumb_base64,
+                'name' => 'thumb_' . ($image['name'] ?? 'image.jpg'),
+                'size' => strlen($thumb_data)
+            );
+            
+            unlink($thumb_path);
         }
+        
+        unlink($temp_path);
     }
     
-    if (!empty($message_images_2)) {
-        $thumbnails_2 = create_thumbnails_from_path_array($message_images_2);
-        if (!empty($thumbnails_2)) {
-            $message_thumbnails_2 = json_encode($thumbnails_2);
-            echo "<!-- DEBUG: Created " . count($thumbnails_2) . " thumbnails for group 2 -->\n";
-        }
-    }
+    return $thumbnails;
 }
+
+// 초기화
+$message_thumbnails_1 = null;
+$message_thumbnails_2 = null;
 
 // 다음 발송 시간 계산 (복수 시간 지원)
 function calculate_next_send_time($schedule_type, $schedule_date, $schedule_times_json, $schedule_weekdays, $valid_from, $valid_until) {
@@ -694,6 +765,239 @@ if ($w == '' || $w == 'a') {
         
         if (!$can_edit) {
             alert('이 스케줄을 수정할 권한이 없습니다.');
+        }
+    }
+    
+    // 저장 방식 변경 시 데이터 변환 처리
+    $old_storage_mode = $schedule['image_storage_mode'] ?? 'file';
+    $new_storage_mode = $image_storage_mode;
+    
+    echo "<!-- DEBUG: Storage mode change: $old_storage_mode -> $new_storage_mode -->\n";
+    
+    // 저장 방식이 변경된 경우만 변환 처리
+    if ($old_storage_mode != $new_storage_mode) {
+        echo "<!-- DEBUG: Storage mode changed, converting data -->\n";
+        
+        // 기존 이미지 데이터 변환
+        $converted_images_1 = [];
+        $converted_images_2 = [];
+        
+        if ($old_storage_mode == 'file' && $new_storage_mode == 'base64') {
+            // 파일 -> Base64 변환
+            echo "<!-- DEBUG: Converting from file to base64 -->\n";
+            
+            // 기존 이미지 1 변환
+            if ($schedule['message_images_1']) {
+                $old_images_1 = json_decode($schedule['message_images_1'], true);
+                if ($old_images_1) {
+                    foreach ($old_images_1 as $img) {
+                        if (isset($img['path'])) {
+                            $file_path = G5_DATA_PATH.'/'.$img['path'];
+                            if (file_exists($file_path)) {
+                                $image_data = file_get_contents($file_path);
+                                $base64_data = base64_encode($image_data);
+                                $converted_images_1[] = array(
+                                    'base64' => $base64_data,
+                                    'name' => $img['name'] ?? basename($img['path']),
+                                    'size' => filesize($file_path)
+                                );
+                                echo "<!-- DEBUG: Converted image 1: {$img['path']} -->\n";
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 기존 이미지 2 변환
+            if ($schedule['message_images_2']) {
+                $old_images_2 = json_decode($schedule['message_images_2'], true);
+                if ($old_images_2) {
+                    foreach ($old_images_2 as $img) {
+                        if (isset($img['path'])) {
+                            $file_path = G5_DATA_PATH.'/'.$img['path'];
+                            if (file_exists($file_path)) {
+                                $image_data = file_get_contents($file_path);
+                                $base64_data = base64_encode($image_data);
+                                $converted_images_2[] = array(
+                                    'base64' => $base64_data,
+                                    'name' => $img['name'] ?? basename($img['path']),
+                                    'size' => filesize($file_path)
+                                );
+                                echo "<!-- DEBUG: Converted image 2: {$img['path']} -->\n";
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 새로운 이미지와 병합
+            $message_images_1 = array_merge($converted_images_1, $message_images_1);
+            $message_images_2 = array_merge($converted_images_2, $message_images_2);
+            
+        } else if ($old_storage_mode == 'base64' && $new_storage_mode == 'file') {
+            // Base64 -> 파일 변환
+            echo "<!-- DEBUG: Converting from base64 to file -->\n";
+            
+            // 기존 이미지 1 변환
+            if ($schedule['message_images_1']) {
+                $old_images_1 = json_decode($schedule['message_images_1'], true);
+                if ($old_images_1) {
+                    foreach ($old_images_1 as $img) {
+                        if (isset($img['base64'])) {
+                            // Base64를 파일로 저장
+                            $image_data = base64_decode($img['base64']);
+                            $ext = 'jpg'; // 기본 확장자
+                            if (isset($img['name'])) {
+                                $ext = strtolower(pathinfo($img['name'], PATHINFO_EXTENSION));
+                            }
+                            
+                            $unique_name = 'schedule_'.date('YmdHis').'_'.uniqid().'.'.$ext;
+                            $dest_path = $upload_path.'/'.$unique_name;
+                            
+                            if (file_put_contents($dest_path, $image_data)) {
+                                $relative_path = str_replace(G5_DATA_PATH.'/', '', $dest_path);
+                                $converted_images_1[] = array(
+                                    'path' => $relative_path,
+                                    'name' => $img['name'] ?? $unique_name,
+                                    'size' => strlen($image_data)
+                                );
+                                echo "<!-- DEBUG: Saved base64 to file: $relative_path -->\n";
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 기존 이미지 2 변환
+            if ($schedule['message_images_2']) {
+                $old_images_2 = json_decode($schedule['message_images_2'], true);
+                if ($old_images_2) {
+                    foreach ($old_images_2 as $img) {
+                        if (isset($img['base64'])) {
+                            // Base64를 파일로 저장
+                            $image_data = base64_decode($img['base64']);
+                            $ext = 'jpg'; // 기본 확장자
+                            if (isset($img['name'])) {
+                                $ext = strtolower(pathinfo($img['name'], PATHINFO_EXTENSION));
+                            }
+                            
+                            $unique_name = 'schedule_'.date('YmdHis').'_'.uniqid().'.'.$ext;
+                            $dest_path = $upload_path.'/'.$unique_name;
+                            
+                            if (file_put_contents($dest_path, $image_data)) {
+                                $relative_path = str_replace(G5_DATA_PATH.'/', '', $dest_path);
+                                $converted_images_2[] = array(
+                                    'path' => $relative_path,
+                                    'name' => $img['name'] ?? $unique_name,
+                                    'size' => strlen($image_data)
+                                );
+                                echo "<!-- DEBUG: Saved base64 to file: $relative_path -->\n";
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Base64 -> 파일 변환 시에는 변환된 이미지만 사용 (기존 Base64 데이터는 제거)
+            $message_images_1 = $converted_images_1;
+            $message_images_2 = $converted_images_2;
+        }
+        
+        // JSON 인코딩 다시 (저장 방식 변환이 없었던 경우를 위해)
+        if (!isset($message_images_1_json)) {
+            $message_images_1_json = !empty($message_images_1) ? json_encode($message_images_1) : null;
+        }
+        if (!isset($message_images_2_json)) {
+            $message_images_2_json = !empty($message_images_2) ? json_encode($message_images_2) : null;
+        }
+        
+        echo "<!-- DEBUG: Converted images 1: " . count($message_images_1) . " -->\n";
+        echo "<!-- DEBUG: Converted images 2: " . count($message_images_2) . " -->\n";
+        
+        // 변환 후 기존 데이터 정리
+        if ($old_storage_mode == 'file' && $new_storage_mode == 'base64') {
+            // 파일에서 Base64로 변환했으므로 기존 파일 삭제
+            if ($schedule['message_images_1']) {
+                $old_images_1 = json_decode($schedule['message_images_1'], true);
+                if ($old_images_1) {
+                    foreach ($old_images_1 as $img) {
+                        if (isset($img['path'])) {
+                            $file_path = G5_DATA_PATH.'/'.$img['path'];
+                            if (file_exists($file_path)) {
+                                @unlink($file_path);
+                                echo "<!-- DEBUG: Deleted old file: {$img['path']} -->\n";
+                            }
+                            // 썸네일도 삭제
+                            $thumb_info = pathinfo($img['path']);
+                            $thumb_path = G5_DATA_PATH.'/'.$thumb_info['dirname'].'/thumb_'.$thumb_info['basename'];
+                            if (file_exists($thumb_path)) {
+                                @unlink($thumb_path);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if ($schedule['message_images_2']) {
+                $old_images_2 = json_decode($schedule['message_images_2'], true);
+                if ($old_images_2) {
+                    foreach ($old_images_2 as $img) {
+                        if (isset($img['path'])) {
+                            $file_path = G5_DATA_PATH.'/'.$img['path'];
+                            if (file_exists($file_path)) {
+                                @unlink($file_path);
+                                echo "<!-- DEBUG: Deleted old file: {$img['path']} -->\n";
+                            }
+                            // 썸네일도 삭제
+                            $thumb_info = pathinfo($img['path']);
+                            $thumb_path = G5_DATA_PATH.'/'.$thumb_info['dirname'].'/thumb_'.$thumb_info['basename'];
+                            if (file_exists($thumb_path)) {
+                                @unlink($thumb_path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 최종 썸네일 생성 (저장 방식 변환 여부와 관계없이)
+    if (!isset($message_thumbnails_1) || $old_storage_mode != $new_storage_mode) {
+        // 썸네일이 없거나 저장 방식이 변경된 경우 재생성
+        if ($image_storage_mode == 'file') {
+            // 파일 시스템 방식
+            if (!empty($message_images_1)) {
+                $thumbnails_1 = create_thumbnails_from_path_array($message_images_1);
+                if (!empty($thumbnails_1)) {
+                    $message_thumbnails_1 = json_encode($thumbnails_1);
+                    echo "<!-- DEBUG: Created " . count($thumbnails_1) . " file thumbnails for group 1 (final) -->\n";
+                }
+            }
+            
+            if (!empty($message_images_2)) {
+                $thumbnails_2 = create_thumbnails_from_path_array($message_images_2);
+                if (!empty($thumbnails_2)) {
+                    $message_thumbnails_2 = json_encode($thumbnails_2);
+                    echo "<!-- DEBUG: Created " . count($thumbnails_2) . " file thumbnails for group 2 (final) -->\n";
+                }
+            }
+        } else if ($image_storage_mode == 'base64') {
+            // Base64 방식
+            if (!empty($message_images_1)) {
+                $thumbnails_1 = create_thumbnails_from_base64_array($message_images_1);
+                if (!empty($thumbnails_1)) {
+                    $message_thumbnails_1 = json_encode($thumbnails_1);
+                    echo "<!-- DEBUG: Created " . count($thumbnails_1) . " base64 thumbnails for group 1 (final) -->\n";
+                }
+            }
+            
+            if (!empty($message_images_2)) {
+                $thumbnails_2 = create_thumbnails_from_base64_array($message_images_2);
+                if (!empty($thumbnails_2)) {
+                    $message_thumbnails_2 = json_encode($thumbnails_2);
+                    echo "<!-- DEBUG: Created " . count($thumbnails_2) . " base64 thumbnails for group 2 (final) -->\n";
+                }
+            }
         }
     }
     

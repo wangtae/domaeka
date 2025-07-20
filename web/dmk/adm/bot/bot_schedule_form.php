@@ -301,16 +301,31 @@ while($row = sql_fetch_array($result_rooms)) {
                         <?php foreach($schedule['message_images_1'] as $idx => $img): ?>
                         <div class="preview_item" data-index="<?php echo $idx?>">
                             <?php 
-                            $img_path = G5_DATA_PATH.'/'.$img['path'];
-                            $img_url = G5_DATA_URL.'/'.$img['path'];
-                            if (file_exists($img_path)):
+                            // 저장 방식에 따라 다른 처리
+                            if (isset($img['path'])) {
+                                // 파일 방식
+                                $img_path = G5_DATA_PATH.'/'.$img['path'];
+                                $img_url = G5_DATA_URL.'/'.$img['path'];
+                                if (file_exists($img_path)) {
+                                    echo '<img src="'.$img_url.'" alt="">';
+                                } else {
+                                    echo '<img src="'.G5_ADMIN_URL.'/img/no_image.png" alt="이미지 없음">';
+                                }
+                            } else if (isset($img['base64'])) {
+                                // Base64 방식
+                                // 파일 확장자로 MIME 타입 추론
+                                $mimeType = 'image/jpeg'; // 기본값
+                                if (isset($img['filename'])) {
+                                    $ext = strtolower(pathinfo($img['filename'], PATHINFO_EXTENSION));
+                                    if ($ext == 'png') $mimeType = 'image/png';
+                                    else if ($ext == 'gif') $mimeType = 'image/gif';
+                                    else if ($ext == 'webp') $mimeType = 'image/webp';
+                                }
+                                echo '<img src="data:'.$mimeType.';base64,'.$img['base64'].'" alt="" data-base64="true" style="max-width: 150px; max-height: 150px;">';
+                            }
                             ?>
-                            <img src="<?php echo $img_url?>" alt="">
-                            <?php else: ?>
-                            <img src="<?php echo G5_ADMIN_URL?>/img/no_image.png" alt="이미지 없음">
-                            <?php endif; ?>
                             <button type="button" class="btn_delete" onclick="removeImage(this, 1)">×</button>
-                            <input type="hidden" name="existing_images_1[]" value="<?php echo $img['path']?>">
+                            <input type="hidden" name="existing_images_1[]" value='<?php echo htmlspecialchars(json_encode($img), ENT_QUOTES, 'UTF-8'); ?>'>
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -338,16 +353,31 @@ while($row = sql_fetch_array($result_rooms)) {
                         <?php foreach($schedule['message_images_2'] as $idx => $img): ?>
                         <div class="preview_item" data-index="<?php echo $idx?>">
                             <?php 
-                            $img_path = G5_DATA_PATH.'/'.$img['path'];
-                            $img_url = G5_DATA_URL.'/'.$img['path'];
-                            if (file_exists($img_path)):
+                            // 저장 방식에 따라 다른 처리
+                            if (isset($img['path'])) {
+                                // 파일 방식
+                                $img_path = G5_DATA_PATH.'/'.$img['path'];
+                                $img_url = G5_DATA_URL.'/'.$img['path'];
+                                if (file_exists($img_path)) {
+                                    echo '<img src="'.$img_url.'" alt="">';
+                                } else {
+                                    echo '<img src="'.G5_ADMIN_URL.'/img/no_image.png" alt="이미지 없음">';
+                                }
+                            } else if (isset($img['base64'])) {
+                                // Base64 방식
+                                // 파일 확장자로 MIME 타입 추론
+                                $mimeType = 'image/jpeg'; // 기본값
+                                if (isset($img['filename'])) {
+                                    $ext = strtolower(pathinfo($img['filename'], PATHINFO_EXTENSION));
+                                    if ($ext == 'png') $mimeType = 'image/png';
+                                    else if ($ext == 'gif') $mimeType = 'image/gif';
+                                    else if ($ext == 'webp') $mimeType = 'image/webp';
+                                }
+                                echo '<img src="data:'.$mimeType.';base64,'.$img['base64'].'" alt="" data-base64="true" style="max-width: 150px; max-height: 150px;">';
+                            }
                             ?>
-                            <img src="<?php echo $img_url?>" alt="">
-                            <?php else: ?>
-                            <img src="<?php echo G5_ADMIN_URL?>/img/no_image.png" alt="이미지 없음">
-                            <?php endif; ?>
                             <button type="button" class="btn_delete" onclick="removeImage(this, 2)">×</button>
-                            <input type="hidden" name="existing_images_2[]" value="<?php echo $img['path']?>">
+                            <input type="hidden" name="existing_images_2[]" value='<?php echo htmlspecialchars(json_encode($img), ENT_QUOTES, 'UTF-8'); ?>'>
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>

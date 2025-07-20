@@ -345,7 +345,7 @@ $sql = " SELECT DISTINCT s.*, r.room_name
          $order_by
          LIMIT $from_record, $rows ";
 
-// 목록 조회 - 썸네일 데이터만 포함
+// 목록 조회 - 썸네일 데이터와 저장 방식 포함
 $sql = " SELECT 
             s.id, s.title, s.description, s.message_type, s.reference_type, s.reference_id,
             s.created_by_type, s.created_by_id, s.created_by_mb_id,
@@ -360,7 +360,16 @@ $sql = " SELECT
             s.message_thumbnails_1, s.message_thumbnails_2,
             -- 이미지 존재 여부만 확인
             CASE WHEN s.message_images_1 IS NOT NULL AND s.message_images_1 != '[]' AND s.message_images_1 != '' THEN 1 ELSE 0 END as has_images_1,
-            CASE WHEN s.message_images_2 IS NOT NULL AND s.message_images_2 != '[]' AND s.message_images_2 != '' THEN 1 ELSE 0 END as has_images_2
+            CASE WHEN s.message_images_2 IS NOT NULL AND s.message_images_2 != '[]' AND s.message_images_2 != '' THEN 1 ELSE 0 END as has_images_2,
+            -- 저장 방식 추가
+            s.image_storage_mode,
+            -- Base64 이미지인 경우 첫 번째 이미지만 가져오기 (썸네일용)
+            CASE WHEN s.image_storage_mode = 'base64' AND s.message_images_1 != '[]' AND s.message_images_1 != '' 
+                 THEN s.message_images_1 
+                 ELSE NULL END as base64_images_1,
+            CASE WHEN s.image_storage_mode = 'base64' AND s.message_images_2 != '[]' AND s.message_images_2 != '' 
+                 THEN s.message_images_2 
+                 ELSE NULL END as base64_images_2
          FROM kb_schedule s 
          $where 
          $order_by 
@@ -1063,7 +1072,26 @@ function moveTooltip(event) {
                                     <div class="thumbnail-list">
                                         <?php
                                         // 썸네일 표시
-                                        if (!empty($row['message_thumbnails_1'])) {
+                                        if ($row['image_storage_mode'] == 'base64' && !empty($row['message_thumbnails_1'])) {
+                                            // Base64 썸네일 표시
+                                            $base64_thumbnails = json_decode($row['message_thumbnails_1'], true);
+                                            if ($base64_thumbnails && is_array($base64_thumbnails)) {
+                                                foreach ($base64_thumbnails as $idx => $thumb) {
+                                                    if (isset($thumb['base64'])) {
+                                                        // MIME 타입 추론
+                                                        $mimeType = 'image/jpeg';
+                                                        if (isset($thumb['name'])) {
+                                                            $ext = strtolower(pathinfo($thumb['name'], PATHINFO_EXTENSION));
+                                                            if ($ext == 'png') $mimeType = 'image/png';
+                                                            else if ($ext == 'gif') $mimeType = 'image/gif';
+                                                            else if ($ext == 'webp') $mimeType = 'image/webp';
+                                                        }
+                                                        echo '<img src="data:'.$mimeType.';base64,'.$thumb['base64'].'" alt="" class="schedule-thumb" style="cursor:pointer;" onclick="viewBase64Original(\''.$row['id'].'\', 1, '.$idx.')">';
+                                                    }
+                                                }
+                                            }
+                                        } else if (!empty($row['message_thumbnails_1'])) {
+                                            // 파일 방식 썸네일 표시
                                             $thumbnails_1 = json_decode($row['message_thumbnails_1'], true);
                                             if ($thumbnails_1) {
                                                 foreach ($thumbnails_1 as $idx => $thumb) {
@@ -1095,7 +1123,26 @@ function moveTooltip(event) {
                                     <div class="thumbnail-list">
                                         <?php
                                         // 썸네일 표시
-                                        if (!empty($row['message_thumbnails_2'])) {
+                                        if ($row['image_storage_mode'] == 'base64' && !empty($row['message_thumbnails_2'])) {
+                                            // Base64 썸네일 표시
+                                            $base64_thumbnails = json_decode($row['message_thumbnails_2'], true);
+                                            if ($base64_thumbnails && is_array($base64_thumbnails)) {
+                                                foreach ($base64_thumbnails as $idx => $thumb) {
+                                                    if (isset($thumb['base64'])) {
+                                                        // MIME 타입 추론
+                                                        $mimeType = 'image/jpeg';
+                                                        if (isset($thumb['name'])) {
+                                                            $ext = strtolower(pathinfo($thumb['name'], PATHINFO_EXTENSION));
+                                                            if ($ext == 'png') $mimeType = 'image/png';
+                                                            else if ($ext == 'gif') $mimeType = 'image/gif';
+                                                            else if ($ext == 'webp') $mimeType = 'image/webp';
+                                                        }
+                                                        echo '<img src="data:'.$mimeType.';base64,'.$thumb['base64'].'" alt="" class="schedule-thumb" style="cursor:pointer;" onclick="viewBase64Original(\''.$row['id'].'\', 2, '.$idx.')">';
+                                                    }
+                                                }
+                                            }
+                                        } else if (!empty($row['message_thumbnails_2'])) {
+                                            // 파일 방식 썸네일 표시
                                             $thumbnails_2 = json_decode($row['message_thumbnails_2'], true);
                                             if ($thumbnails_2) {
                                                 foreach ($thumbnails_2 as $idx => $thumb) {
@@ -1156,6 +1203,52 @@ function viewOriginalImage(imageUrl) {
     };
     
     document.body.appendChild(modal);
+}
+
+// Base64 원본 이미지 보기를 위한 AJAX 호출
+function viewBase64Original(scheduleId, groupNum, imageIndex) {
+    // AJAX로 원본 이미지 데이터 가져오기
+    $.ajax({
+        url: './bot_schedule_get_image.php',
+        type: 'POST',
+        data: {
+            id: scheduleId,
+            group: groupNum,
+            index: imageIndex
+        },
+        success: function(response) {
+            if (response.success && response.base64) {
+                // Base64 데이터로 모달 표시
+                var modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+                
+                var img = document.createElement('img');
+                var mimeType = 'image/jpeg';
+                if (response.name) {
+                    var ext = response.name.split('.').pop().toLowerCase();
+                    if (ext == 'png') mimeType = 'image/png';
+                    else if (ext == 'gif') mimeType = 'image/gif';
+                    else if (ext == 'webp') mimeType = 'image/webp';
+                }
+                img.src = 'data:' + mimeType + ';base64,' + response.base64;
+                img.style.cssText = 'max-width:90%;max-height:90%;object-fit:contain;';
+                
+                modal.appendChild(img);
+                
+                // 클릭하면 닫기
+                modal.onclick = function() {
+                    document.body.removeChild(modal);
+                };
+                
+                document.body.appendChild(modal);
+            } else {
+                alert('이미지를 불러올 수 없습니다.');
+            }
+        },
+        error: function() {
+            alert('이미지 로드 중 오류가 발생했습니다.');
+        }
+    });
 }
 </script>
 

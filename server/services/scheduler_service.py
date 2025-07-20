@@ -341,8 +341,8 @@ class SchedulerService:
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
     
-    async def send_images(self, bot_name: str, device_id: str, room_id: str, images: List[Dict], wait_time: int):
-        """이미지 발송 (파일시스템에서 읽어 Base64 변환)"""
+    async def send_images(self, bot_name: str, device_id: str, room_id: str, images: List[Dict], wait_time: int, storage_mode: str = 'file'):
+        """이미지 발송 (저장 방식에 따라 처리)"""
         from core.globals import clients
         from core.response_utils import send_message_response
         
@@ -365,39 +365,50 @@ class SchedulerService:
                     logger.error(f"[SCHEDULER] 채팅방 이름을 찾을 수 없음: {room_id}")
                     return
                 
-                # 파일시스템에서 이미지 읽어 Base64 변환
+                # 저장 방식에 따라 다른 처리
                 base64_images = []
                 
-                # 프로젝트 루트 경로 설정 - server 디렉토리의 상위 디렉토리
-                server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                project_root = os.path.dirname(server_dir)
-                web_data_path = os.path.join(project_root, 'web', 'data')
-                
-                for img_info in images:
-                    # img_info는 {'path': 'schedule/2025/01/filename.jpg', 'name': 'filename.jpg'} 형태
-                    if 'path' in img_info:
-                        # 파일시스템에서 이미지 읽기
-                        image_path = os.path.join(web_data_path, img_info['path'])
-                        
-                        if os.path.exists(image_path):
-                            try:
-                                async with aiofiles.open(image_path, 'rb') as f:
-                                    image_data = await f.read()
-                                # Base64 인코딩
-                                base64_data = base64.b64encode(image_data).decode('utf-8')
+                if storage_mode == 'base64':
+                    # Base64 방식 - DB에서 직접 Base64 데이터 사용
+                    for img_info in images:
+                        if 'base64' in img_info:
+                            base64_data = img_info.get('base64', '')
+                            if base64_data:
                                 base64_images.append(base64_data)
-                                logger.debug(f"[SCHEDULER] 이미지 로드 성공: {img_info['path']}")
-                            except Exception as e:
-                                logger.error(f"[SCHEDULER] 이미지 읽기 실패 {image_path}: {e}")
+                                logger.debug(f"[SCHEDULER] Base64 데이터 사용 (크기: {len(base64_data)} bytes)")
                         else:
-                            logger.warning(f"[SCHEDULER] 이미지 파일 없음: {image_path}")
-                    elif 'base64' in img_info:
-                        # 레거시 지원: 기존 Base64 데이터가 있는 경우
-                        base64_data = img_info.get('base64', '')
-                        if base64_data:
-                            base64_images.append(base64_data)
-                    else:
-                        logger.warning(f"[SCHEDULER] 이미지 경로 정보 없음: {img_info}")
+                            logger.warning(f"[SCHEDULER] Base64 데이터 없음: {img_info}")
+                else:
+                    # 파일 시스템 방식 (기본) - 파일에서 읽어 Base64 변환
+                    # 프로젝트 루트 경로 설정 - server 디렉토리의 상위 디렉토리
+                    server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    project_root = os.path.dirname(server_dir)
+                    web_data_path = os.path.join(project_root, 'web', 'data')
+                    
+                    for img_info in images:
+                        if 'path' in img_info:
+                            # 파일시스템에서 이미지 읽기
+                            image_path = os.path.join(web_data_path, img_info['path'])
+                            
+                            if os.path.exists(image_path):
+                                try:
+                                    async with aiofiles.open(image_path, 'rb') as f:
+                                        image_data = await f.read()
+                                    # Base64 인코딩
+                                    base64_data = base64.b64encode(image_data).decode('utf-8')
+                                    base64_images.append(base64_data)
+                                    logger.debug(f"[SCHEDULER] 이미지 로드 성공: {img_info['path']}")
+                                except Exception as e:
+                                    logger.error(f"[SCHEDULER] 이미지 읽기 실패 {image_path}: {e}")
+                            else:
+                                logger.warning(f"[SCHEDULER] 이미지 파일 없음: {image_path}")
+                        elif 'base64' in img_info:
+                            # 파일 방식이지만 base64 데이터가 있는 경우 (호환성)
+                            base64_data = img_info.get('base64', '')
+                            if base64_data:
+                                base64_images.append(base64_data)
+                        else:
+                            logger.warning(f"[SCHEDULER] 이미지 경로 정보 없음: {img_info}")
                 
                 if base64_images:
                     # 로그 디렉토리 생성
