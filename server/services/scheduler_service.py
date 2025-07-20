@@ -258,6 +258,7 @@ class SchedulerService:
             
             # 메시지 구성 요소
             text = schedule.get('message_text')
+            
             # 빈 문자열 처리 추가
             images_1_str = schedule.get('message_images_1', '[]')
             images_2_str = schedule.get('message_images_2', '[]')
@@ -273,8 +274,10 @@ class SchedulerService:
                 components.append(('text', text, None))
             if images_1:
                 components.append(('images', images_1, media_wait_1))
+                logger.info(f"[SCHEDULER] 이미지1 컴포넌트 추가됨: {len(images_1)}개")
             if images_2:
                 components.append(('images', images_2, media_wait_2))
+                logger.info(f"[SCHEDULER] 이미지2 컴포넌트 추가됨: {len(images_2)}개")
             
             if not components:
                 logger.warning(f"[SCHEDULER] 발송할 내용 없음: {schedule['id']}")
@@ -288,6 +291,7 @@ class SchedulerService:
                     if i < len(components) - 1 and components[i+1][0] == 'images':
                         continue
                 elif comp_type == 'images':
+                    logger.info(f"[SCHEDULER] 이미지 발송 시작: {len(content)}개")
                     await self.send_images(bot_name, device_id, room_id, content, wait_time)
                 
                 # 이미지1 다음 이미지2 사이에만 interval 적용
@@ -325,10 +329,6 @@ class SchedulerService:
                     'bot_name': bot_name,
                     'writer': writer
                 }
-                # 디버깅: 전송 전 텍스트 확인
-                sample = text[:100] if len(text) > 100 else text
-                logger.debug(f"[SCHEDULER] 전송할 텍스트 샘플: {repr(sample)}")
-                
                 await send_message_response(context, text)
                 logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_name} ({room_id})")
                 return
