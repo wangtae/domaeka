@@ -518,12 +518,38 @@ var MediaHandler = (function() {
         _processMedia(data.room, docDataList, "application", data.is_group_chat);
     }
 
+    // 레거시 호환성을 위한 함수 (삭제 예정)
+    function handleMediaResponse(data) {
+        var text = data.text;
+        if (!text || typeof text !== 'string') return false;
+
+        // IMAGE_BASE64: 프리픽스 처리 (레거시)
+        if (text.startsWith("IMAGE_BASE64:")) {
+            var base64Data = text.substring(13);
+            var images = base64Data.split("|||");
+            Log.i("[MEDIA_LEGACY] Base64 이미지 " + images.length + "개 처리");
+            _processMedia(data.room, images, "image", data.is_group_chat);
+            return true;
+        }
+
+        // MEDIA_URL: 프리픽스 처리 (레거시)
+        if (text.startsWith("MEDIA_URL:")) {
+            var urlData = text.substring(10);
+            var urls = urlData.split("|||");
+            Log.i("[MEDIA_LEGACY] URL 미디어 " + urls.length + "개 처리");
+            _processMedia(data.room, urls, "*", data.is_group_chat);
+            return true;
+        }
+
+        return false;
+    }
 
     return {
         processImages: processImages,
         processAudios: processAudios,
         processVideos: processVideos,
-        processDocuments: processDocuments
+        processDocuments: processDocuments,
+        handleMediaResponse: handleMediaResponse  // 레거시 호환성
     };
 })();
 
@@ -792,8 +818,8 @@ var BotCore = (function() {
         try {
             var packet = "";
             
-            if (messageContent && event === "message") {
-                // v3.3.0 새 프로토콜: message 이벤트에 적용
+            if (messageContent && NEW_PROTOCOL_EVENTS.indexOf(event) === -1) {
+                // v3.3.0 새 프로토콜: message 이벤트만 적용
                 data.message_positions = [0, messageContent.length];
                 var jsonPart = JSON.stringify({event: event, data: data});
                 packet = jsonPart + messageContent + "\n";
@@ -802,7 +828,7 @@ var BotCore = (function() {
                 packet = JSON.stringify({event: event, data: data}) + "\n";
             }
             
-            outputStream.write(packet.getBytes("UTF-8"));
+            outputStream.write(packet);
             outputStream.flush();
             
             // 중요 메시지 전송 로깅
@@ -1298,6 +1324,16 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName,
         
         BotCore.sendMessage(messageData);
         
+        // 미디어 메시지 처리 (레거시 호환성)
+        if (msg.startsWith("MEDIA_") && msg.includes("|||")) {
+            var parts = msg.split("|||");
+            if (parts.length >= 2) {
+                var mediaType = parts[0]; // MEDIA_URL, MEDIA_BASE64 등
+                
+                Log.i("[MEDIA_RECEIVED] " + room + ": " + mediaType);
+                // 미디어 처리 로직은 서버에서 담당
+            }
+        }
         
     } catch (e) {
         Log.e("[RESPONSE] 메시지 처리 실패: " + e);

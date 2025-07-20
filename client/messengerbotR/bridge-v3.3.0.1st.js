@@ -397,7 +397,7 @@ var MediaHandler = (function() {
         } catch (e) {}
     }
 
-    function _sendIntentToKakaoTalk(room, uris, mimeType) {
+    function _sendIntentToKakaoTalk(room, uris, mimeType, isGroup) {
         try {
             var intent = new P.Intent(P.Intent.ACTION_SEND_MULTIPLE);
             intent.setType(mimeType);
@@ -487,7 +487,7 @@ var MediaHandler = (function() {
             return;
         }
 
-        _sendIntentToKakaoTalk(room, uris, commonMimeType || mimeTypePrefix + "/*");
+        _sendIntentToKakaoTalk(room, uris, commonMimeType || mimeTypePrefix + "/*", isGroup);
 
         var sendDelay = _calculateSendDelay(preparedFiles.length, totalSize, isGroup);
         setTimeout(function() {
@@ -518,12 +518,38 @@ var MediaHandler = (function() {
         _processMedia(data.room, docDataList, "application", data.is_group_chat);
     }
 
+    // 레거시 호환성을 위한 함수 (삭제 예정)
+    function handleMediaResponse(data) {
+        var text = data.text;
+        if (!text || typeof text !== 'string') return false;
+
+        // IMAGE_BASE64: 프리픽스 처리 (레거시)
+        if (text.startsWith("IMAGE_BASE64:")) {
+            var base64Data = text.substring(13);
+            var images = base64Data.split("|||");
+            Log.i("[MEDIA_LEGACY] Base64 이미지 " + images.length + "개 처리");
+            _processMedia(data.room, images, "image", data.is_group_chat);
+            return true;
+        }
+
+        // MEDIA_URL: 프리픽스 처리 (레거시)
+        if (text.startsWith("MEDIA_URL:")) {
+            var urlData = text.substring(10);
+            var urls = urlData.split("|||");
+            Log.i("[MEDIA_LEGACY] URL 미디어 " + urls.length + "개 처리");
+            _processMedia(data.room, urls, "*", data.is_group_chat);
+            return true;
+        }
+
+        return false;
+    }
 
     return {
         processImages: processImages,
         processAudios: processAudios,
         processVideos: processVideos,
-        processDocuments: processDocuments
+        processDocuments: processDocuments,
+        handleMediaResponse: handleMediaResponse  // 레거시 호환성
     };
 })();
 
@@ -576,8 +602,8 @@ var BotCore = (function() {
     var isProcessingQueue = false;
     var lastPingTime = Date.now();
     var cleanupInterval = null;
+    var lastResourceLog = Date.now();
     var roomLastActive = {};
-    var currentRooms = {};  // 채널ID-방이름 매핑
 
     // 시작 함수 
     function initializeEventListeners() { _attemptConnectionToAllServers(); }
@@ -792,8 +818,8 @@ var BotCore = (function() {
         try {
             var packet = "";
             
-            if (messageContent && event === "message") {
-                // v3.3.0 새 프로토콜: message 이벤트에 적용
+            if (messageContent && NEW_PROTOCOL_EVENTS.indexOf(event) === -1) {
+                // v3.3.0 새 프로토콜: message 이벤트만 적용
                 data.message_positions = [0, messageContent.length];
                 var jsonPart = JSON.stringify({event: event, data: data});
                 packet = jsonPart + messageContent + "\n";
@@ -802,7 +828,7 @@ var BotCore = (function() {
                 packet = JSON.stringify({event: event, data: data}) + "\n";
             }
             
-            outputStream.write(packet.getBytes("UTF-8"));
+            outputStream.write(packet);
             outputStream.flush();
             
             // 중요 메시지 전송 로깅
@@ -1105,30 +1131,8 @@ var BotCore = (function() {
         }
     }
 
-    // 채널ID로 방 이름 찾기
-    function findChannelIdByRoomName(roomName) {
-        for (var cid in currentRooms) {
-            if (currentRooms[cid].room === roomName) return cid;
-        }
-        return null;
-    }
-
-    // 방 정보 업데이트
-    function updateRoomInfo(channelId, roomName) {
-        currentRooms[channelId] = {
-            room: roomName,
-            lastActivity: Date.now()
-        };
-        roomLastActive[roomName] = Date.now();
-    }
-
     // 메시지 전송 함수 (v3.3.0 - analyze 대신 message 이벤트 사용)
     function sendMessage(messageData) {
-        // 방 정보 업데이트
-        if (messageData.channelId && messageData.room) {
-            updateRoomInfo(messageData.channelId, messageData.room);
-        }
-        
         // v3.3.0: 텍스트 메시지는 Base64로 인코딩
         var encodedContent = Utils.base64Encode(messageData.text);
         
@@ -1190,8 +1194,6 @@ var BotCore = (function() {
         initializeEventListeners: initializeEventListeners,
         sendMessage: sendMessage,
         sendAnalyzeMessage: sendAnalyzeMessage,  // 레거시 호환성
-        findChannelIdByRoomName: findChannelIdByRoomName,
-        updateRoomInfo: updateRoomInfo,
         cleanup: cleanup
     };
 })();
@@ -1257,6 +1259,10 @@ var MainModule = (function() {
         }, BOT_CONFIG.INITIALIZATION_DELAY);
     }
 
+    // Bot 객체 초기화
+    function ensureBotInitialized() {
+        BotCore.initializeEventListeners();
+    }
 
     return {
         initializeEventListeners: initializeEventListeners
@@ -1298,6 +1304,16 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName,
         
         BotCore.sendMessage(messageData);
         
+        // 미디어 메시지 처리 (레거시 호환성)
+        if (msg.startsWith("MEDIA_") && msg.includes("|||")) {
+            var parts = msg.split("|||");
+            if (parts.length >= 2) {
+                var mediaType = parts[0]; // MEDIA_URL, MEDIA_BASE64 등
+                
+                Log.i("[MEDIA_RECEIVED] " + room + ": " + mediaType);
+                // 미디어 처리 로직은 서버에서 담당
+            }
+        }
         
     } catch (e) {
         Log.e("[RESPONSE] 메시지 처리 실패: " + e);

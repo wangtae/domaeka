@@ -802,7 +802,7 @@ var BotCore = (function() {
                 packet = JSON.stringify({event: event, data: data}) + "\n";
             }
             
-            outputStream.write(packet.getBytes("UTF-8"));
+            outputStream.write(packet);
             outputStream.flush();
             
             // 중요 메시지 전송 로깅
