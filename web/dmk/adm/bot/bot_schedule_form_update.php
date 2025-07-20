@@ -108,6 +108,7 @@ $target_bot_name = trim($_POST['target_bot_name']);
 $target_device_id = trim($_POST['target_device_id']);
 $target_room_id = trim($_POST['target_room_id']);
 $message_text = trim($_POST['message_text']);
+$image_storage_mode = isset($_POST['image_storage_mode']) && $_POST['image_storage_mode'] == 'base64' ? 'base64' : 'file';
 
 // 메시지 텍스트 인코딩 처리
 if ($message_text) {
@@ -372,15 +373,96 @@ function resize_and_save_image($source_path, $dest_path, $max_width) {
     return $result;
 }
 
+// Base64 방식의 이미지 처리 함수
+function process_schedule_images_base64($group_num, $existing_images, $new_files, $bot_name = null) {
+    $images = [];
+    $max_images = 30; // 최대 이미지 개수
+    
+    // 봇 설정에서 리사이징 크기 가져오기
+    $max_width = 900; // 기본값
+    $resize_enabled = true; // 기본값
+    
+    if ($bot_name) {
+        $sql = "SELECT image_resize_width, image_resize_enabled FROM kb_bot_devices WHERE bot_name = '".sql_escape_string($bot_name)."' AND status = 'approved' LIMIT 1";
+        $bot_config = sql_fetch($sql);
+        if ($bot_config) {
+            $resize_enabled = $bot_config['image_resize_enabled'];
+            if ($bot_config['image_resize_width'] > 0) {
+                $max_width = $bot_config['image_resize_width'];
+            }
+        }
+    }
+    
+    // 기존 이미지 처리 (Base64 형식)
+    if (!empty($existing_images)) {
+        foreach ($existing_images as $image_data) {
+            if (count($images) >= $max_images) break;
+            // 기존 Base64 데이터 유지
+            if (is_array($image_data) && isset($image_data['base64'])) {
+                $images[] = $image_data;
+            }
+        }
+    }
+    
+    // 새 이미지 업로드 및 Base64 변환
+    if (!empty($new_files['name'][0])) {
+        for ($i = 0; $i < count($new_files['name']); $i++) {
+            if (count($images) >= $max_images) break;
+            
+            if ($new_files['error'][$i] == 0) {
+                $original_name = $new_files['name'][$i];
+                $tmp_path = $new_files['tmp_name'][$i];
+                
+                // 이미지인지 확인
+                $is_image = preg_match('/\.(jpg|jpeg|png|gif)$/i', $original_name);
+                
+                if ($is_image) {
+                    // 리사이징이 필요한 경우 임시 파일로 처리
+                    if ($resize_enabled) {
+                        $temp_resized = sys_get_temp_dir() . '/' . uniqid('resize_') . '.' . pathinfo($original_name, PATHINFO_EXTENSION);
+                        if (resize_and_save_image($tmp_path, $temp_resized, $max_width)) {
+                            $image_data = file_get_contents($temp_resized);
+                            unlink($temp_resized);
+                        } else {
+                            $image_data = file_get_contents($tmp_path);
+                        }
+                    } else {
+                        $image_data = file_get_contents($tmp_path);
+                    }
+                    
+                    // Base64 인코딩
+                    $base64_data = base64_encode($image_data);
+                    
+                    $images[] = array(
+                        'base64' => $base64_data,
+                        'name' => $original_name,
+                        'size' => strlen($image_data)
+                    );
+                }
+            }
+        }
+    }
+    
+    return $images;
+}
+
 // 이미지 그룹 처리
 echo "<!-- DEBUG: Processing images -->\n";
+echo "<!-- DEBUG: Storage mode: $image_storage_mode -->\n";
 echo "<!-- DEBUG: FILES data: " . print_r($_FILES, true) . " -->\n";
 echo "<!-- DEBUG: POST existing_images_1: " . print_r($_POST['existing_images_1'] ?? [], true) . " -->\n";
 echo "<!-- DEBUG: POST existing_images_2: " . print_r($_POST['existing_images_2'] ?? [], true) . " -->\n";
 
-// 봇 이름을 process_schedule_images 함수에 전달
-$message_images_1 = process_schedule_images(1, $_POST['existing_images_1'] ?? [], $_FILES['new_images_1'] ?? [], $target_bot_name);
-$message_images_2 = process_schedule_images(2, $_POST['existing_images_2'] ?? [], $_FILES['new_images_2'] ?? [], $target_bot_name);
+// 저장 방식에 따라 다른 함수 호출
+if ($image_storage_mode == 'base64') {
+    // Base64 방식
+    $message_images_1 = process_schedule_images_base64(1, $_POST['existing_images_1'] ?? [], $_FILES['new_images_1'] ?? [], $target_bot_name);
+    $message_images_2 = process_schedule_images_base64(2, $_POST['existing_images_2'] ?? [], $_FILES['new_images_2'] ?? [], $target_bot_name);
+} else {
+    // 파일 시스템 방식 (기본)
+    $message_images_1 = process_schedule_images(1, $_POST['existing_images_1'] ?? [], $_FILES['new_images_1'] ?? [], $target_bot_name);
+    $message_images_2 = process_schedule_images(2, $_POST['existing_images_2'] ?? [], $_FILES['new_images_2'] ?? [], $target_bot_name);
+}
 
 echo "<!-- DEBUG: message_images_1 result: " . print_r($message_images_1, true) . " -->\n";
 echo "<!-- DEBUG: message_images_2 result: " . print_r($message_images_2, true) . " -->\n";
@@ -434,23 +516,25 @@ function create_thumbnails_from_path_array($images_array) {
     return $thumbnails;
 }
 
-// 썸네일 생성
+// 썸네일 생성 (파일 시스템 방식일 때만)
 $message_thumbnails_1 = null;
 $message_thumbnails_2 = null;
 
-if (!empty($message_images_1)) {
-    $thumbnails_1 = create_thumbnails_from_path_array($message_images_1);
-    if (!empty($thumbnails_1)) {
-        $message_thumbnails_1 = json_encode($thumbnails_1);
-        echo "<!-- DEBUG: Created " . count($thumbnails_1) . " thumbnails for group 1 -->\n";
+if ($image_storage_mode == 'file') {
+    if (!empty($message_images_1)) {
+        $thumbnails_1 = create_thumbnails_from_path_array($message_images_1);
+        if (!empty($thumbnails_1)) {
+            $message_thumbnails_1 = json_encode($thumbnails_1);
+            echo "<!-- DEBUG: Created " . count($thumbnails_1) . " thumbnails for group 1 -->\n";
+        }
     }
-}
-
-if (!empty($message_images_2)) {
-    $thumbnails_2 = create_thumbnails_from_path_array($message_images_2);
-    if (!empty($thumbnails_2)) {
-        $message_thumbnails_2 = json_encode($thumbnails_2);
-        echo "<!-- DEBUG: Created " . count($thumbnails_2) . " thumbnails for group 2 -->\n";
+    
+    if (!empty($message_images_2)) {
+        $thumbnails_2 = create_thumbnails_from_path_array($message_images_2);
+        if (!empty($thumbnails_2)) {
+            $message_thumbnails_2 = json_encode($thumbnails_2);
+            echo "<!-- DEBUG: Created " . count($thumbnails_2) . " thumbnails for group 2 -->\n";
+        }
     }
 }
 
@@ -541,6 +625,7 @@ if ($w == '' || $w == 'a') {
              message_images_2 = " . ($message_images_2_json ? "'".sql_escape_string($message_images_2_json)."'" : "NULL") . ",
              message_thumbnails_1 = " . ($message_thumbnails_1 ? "'".sql_escape_string($message_thumbnails_1)."'" : "NULL") . ",
              message_thumbnails_2 = " . ($message_thumbnails_2 ? "'".sql_escape_string($message_thumbnails_2)."'" : "NULL") . ",
+             image_storage_mode = '".sql_escape_string($image_storage_mode)."',
              send_interval_seconds = '".sql_escape_string($send_interval_seconds)."',
              media_wait_time_1 = '".sql_escape_string($media_wait_time_1)."',
              media_wait_time_2 = '".sql_escape_string($media_wait_time_2)."',
@@ -626,6 +711,7 @@ if ($w == '' || $w == 'a') {
              message_images_2 = " . ($message_images_2_json ? "'".sql_escape_string($message_images_2_json)."'" : "NULL") . ",
              message_thumbnails_1 = " . ($message_thumbnails_1 ? "'".sql_escape_string($message_thumbnails_1)."'" : "NULL") . ",
              message_thumbnails_2 = " . ($message_thumbnails_2 ? "'".sql_escape_string($message_thumbnails_2)."'" : "NULL") . ",
+             image_storage_mode = '".sql_escape_string($image_storage_mode)."',
              send_interval_seconds = '".sql_escape_string($send_interval_seconds)."',
              media_wait_time_1 = '".sql_escape_string($media_wait_time_1)."',
              media_wait_time_2 = '".sql_escape_string($media_wait_time_2)."',

@@ -13,6 +13,8 @@ from core.response_utils import send_json_response
 import os
 import aiofiles
 import base64
+from pathlib import Path
+import inspect
 
 
 class SchedulerService:
@@ -256,6 +258,10 @@ class SchedulerService:
                 logger.warning(f"[SCHEDULER] device_id 없음, 스케줄 {schedule['id']} 건너뜀")
                 return False
             
+            # 이미지 저장 방식 확인
+            image_storage_mode = schedule.get('image_storage_mode', 'file')
+            logger.info(f"[SCHEDULER] 이미지 저장 방식: {image_storage_mode}")
+            
             # 메시지 구성 요소
             text = schedule.get('message_text')
             
@@ -291,8 +297,8 @@ class SchedulerService:
                     if i < len(components) - 1 and components[i+1][0] == 'images':
                         continue
                 elif comp_type == 'images':
-                    logger.info(f"[SCHEDULER] 이미지 발송 시작: {len(content)}개")
-                    await self.send_images(bot_name, device_id, room_id, content, wait_time)
+                    logger.info(f"[SCHEDULER] 이미지 발송 시작: {len(content)}개, 저장 방식: {image_storage_mode}")
+                    await self.send_images(bot_name, device_id, room_id, content, wait_time, image_storage_mode)
                 
                 # 이미지1 다음 이미지2 사이에만 interval 적용
                 if i < len(components) - 1 and comp_type == 'images' and components[i+1][0] == 'images':
@@ -330,7 +336,7 @@ class SchedulerService:
                     'writer': writer
                 }
                 await send_message_response(context, text)
-                logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_name} ({room_id})")
+                logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_name} ({room_id}), 메시지: {text[:100]}..." if len(text) > 100 else f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_name} ({room_id}), 메시지: {text}")
                 return
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
@@ -339,6 +345,14 @@ class SchedulerService:
         """이미지 발송 (파일시스템에서 읽어 Base64 변환)"""
         from core.globals import clients
         from core.response_utils import send_message_response
+        
+        # 스케줄 ID 가져오기 (로그 파일명에 사용)
+        schedule_id = None
+        for frame_info in inspect.stack():
+            frame_locals = frame_info.frame.f_locals
+            if 'schedule' in frame_locals:
+                schedule_id = frame_locals['schedule'].get('id')
+                break
         
         # bot_name과 device_id로 정확한 클라이언트 찾기
         client_key = (bot_name, device_id)
@@ -386,6 +400,38 @@ class SchedulerService:
                         logger.warning(f"[SCHEDULER] 이미지 경로 정보 없음: {img_info}")
                 
                 if base64_images:
+                    # 로그 디렉토리 생성
+                    log_dir = Path("log/schedule_images")
+                    log_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # 이미지 패킷 로그 파일 저장
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    log_filename = f"{schedule_id}_{timestamp}.json" if schedule_id else f"unknown_{timestamp}.json"
+                    log_path = log_dir / log_filename
+                    
+                    # 로그 데이터 구성
+                    log_data = {
+                        'schedule_id': schedule_id,
+                        'timestamp': datetime.now().isoformat(),
+                        'bot_name': bot_name,
+                        'device_id': device_id,
+                        'room_name': room_name,
+                        'room_id': room_id,
+                        'image_count': len(base64_images),
+                        'total_size_bytes': sum(len(img) for img in base64_images),
+                        'images': [{
+                            'index': i,
+                            'size_bytes': len(img),
+                            'base64_data': img  # 전체 Base64 데이터 저장
+                        } for i, img in enumerate(base64_images)]
+                    }
+                    
+                    # JSON 파일로 저장
+                    async with aiofiles.open(log_path, 'w', encoding='utf-8') as f:
+                        await f.write(json.dumps(log_data, indent=2, ensure_ascii=False))
+                    
+                    logger.info(f"[SCHEDULER] 이미지 패킷 로그 저장: {log_path}")
+                    
                     # context 구성
                     context = {
                         'client_key': client_key,
@@ -398,7 +444,7 @@ class SchedulerService:
                     # IMAGE_BASE64 형식으로 전송
                     image_message = f"IMAGE_BASE64:{'|||'.join(base64_images)}"
                     await send_message_response(context, image_message, media_wait_time=wait_time)
-                    logger.info(f"[SCHEDULER] 이미지 {len(base64_images)}개 발송: {bot_name}@{device_id} -> {room_name} ({room_id})")
+                    logger.info(f"[SCHEDULER] 이미지 {len(base64_images)}개 발송: {bot_name}@{device_id} -> {room_name} ({room_id}), 로그: {log_filename}")
                     return
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")

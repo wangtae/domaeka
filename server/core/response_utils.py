@@ -151,7 +151,18 @@ async def send_message_response(context: Union[Dict[str, Any], asyncio.StreamWri
 
     try:
         await send_message(writer, packet)
-        logger.debug(f"[MESSAGE_RESPONSE] 단일 메시지 전송 성공 → room: {room_name}, 메시지: {message[:50]}...")
+        # 스케줄러에서 보낸 메시지인지 확인
+        is_scheduler_message = bot_name and '[SCHEDULER]' in str(bot_name) or 'scheduler' in str(bot_name).lower()
+        
+        if is_scheduler_message:
+            # 스케줄 메시지는 상세 로그
+            if message.startswith('IMAGE_BASE64:'):
+                image_count = len(message.split('|||'))
+                logger.info(f"[MESSAGE_RESPONSE] 스케줄 이미지 메시지 전송 성공 → room: {room_name}, 이미지 {image_count}개")
+            else:
+                logger.info(f"[MESSAGE_RESPONSE] 스케줄 텍스트 메시지 전송 성공 → room: {room_name}, 메시지: {message[:100]}..." if len(message) > 100 else f"[MESSAGE_RESPONSE] 스케줄 텍스트 메시지 전송 성공 → room: {room_name}, 메시지: {message}")
+        else:
+            logger.debug(f"[MESSAGE_RESPONSE] 단일 메시지 전송 성공 → room: {room_name}, 메시지: {message[:50]}...")
         return True
     except Exception as e:
         logger.error(f"[MESSAGE_RESPONSE] 단일 메시지 전송 실패: {e}")

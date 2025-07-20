@@ -201,6 +201,16 @@ while($row = sql_fetch_array($result_rooms)) {
                 </option>
                 <?php endforeach; ?>
             </select>
+            
+            <div style="margin-top: 10px;">
+                <input type="checkbox" name="image_storage_mode" id="image_storage_mode" value="base64" <?php echo ($schedule['image_storage_mode'] == 'base64') ? 'checked' : ''; ?>>
+                <label for="image_storage_mode">이미지를 DB에 Base64로 저장 (구식 방식)</label>
+                <div class="frm_info">
+                    <strong>체크 해제 (기본)</strong>: 이미지 파일을 서버에 저장하고 경로만 DB에 저장<br>
+                    <strong>체크</strong>: 이미지를 Base64로 변환하여 DB에 직접 저장 (대용량 이미지 시 DB 부하 증가)
+                </div>
+            </div>
+            
             <?php if(count($room_list) == 0): ?>
             <div class="frm_info fc_red">지점이 배정된 승인된 톡방이 없습니다.</div>
             <?php else: ?>

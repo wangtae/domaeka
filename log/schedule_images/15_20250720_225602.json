@@ -1,0 +1,47 @@
+{
+  "schedule_id": 15,
+  "timestamp": "2025-07-20T22:56:02.269311",
+  "bot_name": "LOA.i",
+  "device_id": "ccbd8eee1012327e",
+  "room_name": "mybot",
+  "room_id": "18445682959392711",
+  "image_count": 7,
+  "total_size_bytes": 681788,
+  "images": [
+    {
+      "index": 0,
+      "size_bytes": 57540,
+      "base64_preview": "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2NjIpLCBxdWFsaXR5..."
+    },
+    {
+      "index": 1,
+      "size_bytes": 55328,
+      "base64_preview": "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2NjIpLCBxdWFsaXR5..."
+    },
+    {
+      "index": 2,
+      "size_bytes": 79584,
+      "base64_preview": "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2NjIpLCBxdWFsaXR5..."
+    },
+    {
+      "index": 3,
+      "size_bytes": 90304,
+      "base64_preview": "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2NjIpLCBxdWFsaXR5..."
+    },
+    {
+      "index": 4,
+      "size_bytes": 115300,
+      "base64_preview": "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2NjIpLCBxdWFsaXR5..."
+    },
+    {
+      "index": 5,
+      "size_bytes": 151148,
+      "base64_preview": "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2NjIpLCBxdWFsaXR5..."
+    },
+    {
+      "index": 6,
+      "size_bytes": 132584,
+      "base64_preview": "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2NjIpLCBxdWFsaXR5..."
+    }
+  ]
+}
