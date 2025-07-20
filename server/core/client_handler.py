@@ -245,10 +245,16 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     logger.error(f"[CLIENT] 디코딩된 메시지 크기 초과: {client_addr} - {len(message)} 바이트 (제한: {client_max_size} 바이트)")
                     break
                     
-                logger.debug(f"[RECV] {client_addr}: {message}")
-                
                 # 일반 메시지 처리 (핸드셰이크 완료 후에만)
                 json_message = json.loads(message)
+                
+                # ping 메시지는 LOG_CONFIG에 따라 로그 출력 제어
+                if json_message.get('event') == 'ping':
+                    ping_config = g.LOG_CONFIG.get('ping', {})
+                    if ping_config.get('enabled', True) and ping_config.get('detailed', False):
+                        logger.debug(f"[RECV] {client_addr}: {message}")
+                else:
+                    logger.debug(f"[RECV] {client_addr}: {message}")
                 
                 # 카카오톡 메시지 내용 길이 체크
                 if json_message.get('event') == 'analyze':

@@ -183,7 +183,13 @@ async def send_json_response(writer: asyncio.StreamWriter, response: Dict[str, A
         writer.write(encoded_message)
         await writer.drain()
         
-        logger.debug(f"[JSON_RESPONSE] 전송 완료: {message.strip()[:100]}...")
+        # ping 응답은 LOG_CONFIG에 따라 로그 출력 제어
+        if response.get('event') == 'ping':
+            ping_config = g.LOG_CONFIG.get('ping', {})
+            if ping_config.get('enabled', True) and ping_config.get('detailed', False):
+                logger.debug(f"[JSON_RESPONSE] 전송 완료: {message.strip()[:100]}...")
+        else:
+            logger.debug(f"[JSON_RESPONSE] 전송 완료: {message.strip()[:100]}...")
         
     except Exception as e:
         logger.error(f"[JSON_RESPONSE] 전송 실패: {e}")

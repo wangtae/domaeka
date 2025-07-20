@@ -102,7 +102,10 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
                     datetime.now()
                 ))
                 
-                logger.debug(f"[PING_MONITOR] ping 결과 저장 완료: {bot_name}@{device_id} - {ping_time_ms}ms")
+                # ping 로그는 LOG_CONFIG에 따라 출력 제어
+                ping_config = g.LOG_CONFIG.get('ping', {})
+                if ping_config.get('enabled', True) and ping_config.get('detailed', False):
+                    logger.debug(f"[PING_MONITOR] ping 결과 저장 완료: {bot_name}@{device_id} - {ping_time_ms}ms")
                 return True
                 
     except Exception as e:

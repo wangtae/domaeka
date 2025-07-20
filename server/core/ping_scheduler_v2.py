@@ -21,17 +21,25 @@ class ClientPingScheduler:
         
     async def start(self):
         """ping 스케줄러 시작"""
-        logger.info(f"[PING_SCHEDULER] 클라이언트별 ping 스케줄러 시작 (주기: {g.PING_INTERVAL_SECONDS}초)")
+        ping_config = g.LOG_CONFIG.get('ping', {})
+        if ping_config.get('enabled', True):
+            logger.info(f"[PING_SCHEDULER] 클라이언트별 ping 스케줄러 시작 (주기: {g.PING_INTERVAL_SECONDS}초)")
         
     async def stop(self):
         """ping 스케줄러 중지"""
-        logger.info("[PING_SCHEDULER] ping 스케줄러 중지 시작")
+        ping_config = g.LOG_CONFIG.get('ping', {})
+        is_enabled = ping_config.get('enabled', True)
+        is_detailed = ping_config.get('detailed', False)
+        
+        if is_enabled:
+            logger.info("[PING_SCHEDULER] ping 스케줄러 중지 시작")
         
         # 모든 ping 태스크 취소
         for client_key, task in list(self.ping_tasks.items()):
             if not task.done():
                 task.cancel()
-                logger.debug(f"[PING_SCHEDULER] ping 태스크 취소: {client_key}")
+                if is_enabled and is_detailed:
+                    logger.debug(f"[PING_SCHEDULER] ping 태스크 취소: {client_key}")
                 
         # 모든 태스크 완료 대기
         if self.ping_tasks:
@@ -39,7 +47,9 @@ class ClientPingScheduler:
             
         self.ping_tasks.clear()
         self.client_last_ping.clear()
-        logger.info("[PING_SCHEDULER] ping 스케줄러 중지 완료")
+        
+        if is_enabled:
+            logger.info("[PING_SCHEDULER] ping 스케줄러 중지 완료")
         
     async def add_client(self, bot_name: str, device_id: str, writer: Any):
         """새 클라이언트 추가 및 ping 태스크 시작
@@ -51,19 +61,25 @@ class ClientPingScheduler:
         """
         client_key = (bot_name, device_id)
         
+        ping_config = g.LOG_CONFIG.get('ping', {})
+        is_enabled = ping_config.get('enabled', True)
+        is_detailed = ping_config.get('detailed', False)
+        
         # 기존 태스크가 있으면 취소
         if client_key in self.ping_tasks:
             old_task = self.ping_tasks[client_key]
             if not old_task.done():
                 old_task.cancel()
-                logger.debug(f"[PING_SCHEDULER] 기존 ping 태스크 취소: {client_key}")
+                if is_enabled and is_detailed:
+                    logger.debug(f"[PING_SCHEDULER] 기존 ping 태스크 취소: {client_key}")
         
         # 새 ping 태스크 생성
         task = asyncio.create_task(self._client_ping_loop(bot_name, device_id))
         self.ping_tasks[client_key] = task
         self.client_last_ping[client_key] = time.time()
         
-        logger.info(f"[PING_SCHEDULER] ping 태스크 시작: {client_key}")
+        if is_enabled:
+            logger.info(f"[PING_SCHEDULER] ping 태스크 시작: {client_key}")
         
     async def remove_client(self, bot_name: str, device_id: str):
         """클라이언트 제거 및 ping 태스크 중지
@@ -73,6 +89,9 @@ class ClientPingScheduler:
             device_id: 디바이스 ID
         """
         client_key = (bot_name, device_id)
+        
+        ping_config = g.LOG_CONFIG.get('ping', {})
+        is_enabled = ping_config.get('enabled', True)
         
         # ping 태스크 취소
         if client_key in self.ping_tasks:
@@ -85,7 +104,8 @@ class ClientPingScheduler:
         if client_key in self.client_last_ping:
             del self.client_last_ping[client_key]
             
-        logger.info(f"[PING_SCHEDULER] ping 태스크 제거: {client_key}")
+        if is_enabled:
+            logger.info(f"[PING_SCHEDULER] ping 태스크 제거: {client_key}")
         
     async def _client_ping_loop(self, bot_name: str, device_id: str):
         """개별 클라이언트의 ping 루프
@@ -96,22 +116,29 @@ class ClientPingScheduler:
         """
         client_key = (bot_name, device_id)
         
+        ping_config = g.LOG_CONFIG.get('ping', {})
+        is_enabled = ping_config.get('enabled', True)
+        is_detailed = ping_config.get('detailed', False)
+        
         # 초기 지연 (0-5초 랜덤) - 동시 시작 방지
         initial_delay = random.uniform(0, 5)
         await asyncio.sleep(initial_delay)
         
-        logger.debug(f"[PING_SCHEDULER] ping 루프 시작: {client_key}, 초기 지연: {initial_delay:.1f}초")
+        if is_enabled and is_detailed:
+            logger.debug(f"[PING_SCHEDULER] ping 루프 시작: {client_key}, 초기 지연: {initial_delay:.1f}초")
         
         while not g.shutdown_event.is_set():
             try:
                 # 클라이언트가 아직 연결되어 있는지 확인
                 if client_key not in g.clients:
-                    logger.debug(f"[PING_SCHEDULER] 클라이언트 연결 해제됨: {client_key}")
+                    if is_enabled and is_detailed:
+                        logger.debug(f"[PING_SCHEDULER] 클라이언트 연결 해제됨: {client_key}")
                     break
                     
                 writer = g.clients[client_key]
                 if writer.is_closing():
-                    logger.debug(f"[PING_SCHEDULER] Writer 닫힘: {client_key}")
+                    if is_enabled and is_detailed:
+                        logger.debug(f"[PING_SCHEDULER] Writer 닫힘: {client_key}")
                     break
                 
                 # ping 전송
@@ -122,13 +149,15 @@ class ClientPingScheduler:
                 await asyncio.sleep(g.PING_INTERVAL_SECONDS)
                 
             except asyncio.CancelledError:
-                logger.debug(f"[PING_SCHEDULER] ping 루프 취소됨: {client_key}")
+                if is_enabled and is_detailed:
+                    logger.debug(f"[PING_SCHEDULER] ping 루프 취소됨: {client_key}")
                 break
             except Exception as e:
                 logger.error(f"[PING_SCHEDULER] ping 루프 오류 {client_key}: {e}")
                 await asyncio.sleep(5)  # 오류 시 잠시 대기 후 재시도
                 
-        logger.debug(f"[PING_SCHEDULER] ping 루프 종료: {client_key}")
+        if is_enabled and is_detailed:
+            logger.debug(f"[PING_SCHEDULER] ping 루프 종료: {client_key}")
         
     async def _send_ping(self, bot_name: str, device_id: str, writer: Any):
         """개별 클라이언트에게 ping 전송
@@ -139,6 +168,11 @@ class ClientPingScheduler:
             writer: StreamWriter 객체
         """
         client_key = (bot_name, device_id)
+        
+        # 로그 설정 확인
+        ping_config = g.LOG_CONFIG.get('ping', {})
+        is_enabled = ping_config.get('enabled', True)
+        is_detailed = ping_config.get('detailed', False)
         
         # 주소 찾기 (역방향 조회)
         client_addr = None
@@ -172,7 +206,13 @@ class ClientPingScheduler:
         
         try:
             await send_json_response(writer, ping_data)
-            logger.debug(f"[PING_SCHEDULER] ping 전송 성공: {client_key}")
+            # 로그 설정에 따라 출력
+            if is_enabled:
+                if is_detailed:
+                    logger.debug(f"[PING_SCHEDULER] ping 전송 성공: {client_key}")
+                else:
+                    # 간소화된 로그
+                    logger.info(f"[PING_SCHEDULER] ping 전송 성공: {client_key}")
         except Exception as e:
             logger.error(f"[PING_SCHEDULER] ping 전송 실패 {client_key}: {e}")
             raise

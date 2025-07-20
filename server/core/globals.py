@@ -122,3 +122,32 @@ COMMAND_PREFIX_MAP = {
 
 # 활성화된 명령어 접두어 리스트
 ENABLED_PREFIXES = list(COMMAND_PREFIX_MAP.keys())
+
+# 로그 설정
+LOG_CONFIG = {
+    'ping': {
+        'enabled': True,
+        'level': 'INFO',  # DEBUG, INFO, WARNING, ERROR
+        'detailed': False  # True: 상세 로그, False: 간소화 로그
+    },
+    'scheduler': {
+        'enabled': True,
+        'level': 'INFO',
+        'detailed': True
+    },
+    'message': {
+        'enabled': True,
+        'level': 'DEBUG',
+        'detailed': True
+    },
+    'database': {
+        'enabled': True,
+        'level': 'INFO',
+        'detailed': False
+    },
+    'client': {
+        'enabled': True,
+        'level': 'INFO',
+        'detailed': True
+    }
+}
