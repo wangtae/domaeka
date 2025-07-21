@@ -73,6 +73,13 @@ for ($i=0; $i<$cnt; $i++)
                       and od_id = '$od_id' ";
         sql_query($sql);
         $mod_history .= G5_TIME_YMDHIS.' '.$ct['ct_option'].' 수량변경 '.$ct['ct_qty'].' -> '.$ct_qty."\n";
+        
+        // 도매까 품절임박 체크
+        if($ct['ct_stock_use'] && $diff_qty > 0 && !$ct['io_id']) { // 재고가 감소한 경우 (옵션이 아닌 경우만)
+            // 훅 라이브러리 포함
+            include_once(G5_DMK_PATH . '/lib/order.status.hook.php');
+            dmk_check_stock_warning_simple($ct['it_id'], $od_id);
+        }
     }
 
     // 재고를 이미 사용했다면 (재고에서 이미 뺐다면)
@@ -96,6 +103,13 @@ for ($i=0; $i<$cnt; $i++)
             }
 
             sql_query($sql);
+            
+            // 도매까 품절임박 해제 체크 (재고 추가 시)
+            if(!$ct['io_id']) { // 옵션이 아닌 경우만 처리
+                // 훅 라이브러리 포함
+                include_once(G5_DMK_PATH . '/lib/order.status.hook.php');
+                dmk_check_stock_warning_simple($ct['it_id'], $od_id);
+            }
         }
     }
     else
@@ -118,6 +132,13 @@ for ($i=0; $i<$cnt; $i++)
             }
 
             sql_query($sql);
+            
+            // 도매까 품절임박 체크 (재고 차감 시)
+            if(!$ct['io_id']) { // 옵션이 아닌 경우만 처리
+                // 훅 라이브러리 포함
+                include_once(G5_DMK_PATH . '/lib/order.status.hook.php');
+                dmk_check_stock_warning_simple($ct['it_id'], $od_id);
+            }
         }
         /* 주문 수정에서 "품절" 선택시 해당 상품 자동 품절 처리하기
         else if ($ct_status == '품절') {

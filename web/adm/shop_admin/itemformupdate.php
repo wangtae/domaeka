@@ -590,14 +590,95 @@ if ($w == "")
                 set it_id = '$it_id',
 					$sql_common	";
     sql_query($sql);
+    
+    // 도매까 품절임박 체크 (상품 등록 시)
+    if($it_stock_qty > 0) { // 재고가 있는 경우만 체크
+        // 지점 정보 확인
+        $branch_id = null;
+        if($dmk_br_id) {
+            $branch_id = $dmk_br_id;
+        } else if($dmk_ag_id) {
+            // 대리점의 경우 대리점 소속 첫 번째 지점 사용
+            $br_sql = "SELECT br_id FROM dmk_branch WHERE br_ag_id = '$dmk_ag_id' ORDER BY br_id LIMIT 1";
+            $br_info = sql_fetch($br_sql);
+            if($br_info) $branch_id = $br_info['br_id'];
+        } else if($dmk_dt_id) {
+            // 총판의 경우 총판 소속 첫 번째 지점 사용
+            $br_sql = "SELECT br_id FROM dmk_branch WHERE br_dt_id = '$dmk_dt_id' ORDER BY br_id LIMIT 1";
+            $br_info = sql_fetch($br_sql);
+            if($br_info) $branch_id = $br_info['br_id'];
+        }
+        
+        if($branch_id) {
+            // 임시 주문번호 생성 (지점 정보 전달용)
+            $temp_od_id = 'STOCK_CHECK_' . $branch_id;
+            
+            // 주문 정보 임시 생성
+            $temp_sql = "INSERT INTO {$g5['g5_shop_order_table']} (od_id, dmk_od_br_id, od_time) 
+                         VALUES ('$temp_od_id', '$branch_id', NOW()) 
+                         ON DUPLICATE KEY UPDATE dmk_od_br_id = '$branch_id'";
+            sql_query($temp_sql);
+            
+            // 훅 라이브러리 포함
+            include_once(G5_DMK_PATH . '/lib/order.status.hook.php');
+            dmk_check_stock_warning_simple($it_id, $temp_od_id);
+            
+            // 임시 주문 정보 삭제
+            $del_sql = "DELETE FROM {$g5['g5_shop_order_table']} WHERE od_id = '$temp_od_id'";
+            sql_query($del_sql);
+        }
+    }
 }
 else if ($w == "u")
 {
+    // 도매까 품절임박 체크를 위해 기존 재고 수량 먼저 확인
+    $old_stock_sql = "SELECT it_stock_qty FROM {$g5['g5_shop_item_table']} WHERE it_id = '$it_id'";
+    $old_stock = sql_fetch($old_stock_sql);
+    $old_stock_qty = $old_stock ? $old_stock['it_stock_qty'] : 0;
+    
     $sql_common .= " , it_update_time = '".G5_TIME_YMDHIS."' ";
     $sql = " update {$g5['g5_shop_item_table']}
                 set $sql_common
               where it_id = '$it_id' ";
     sql_query($sql);
+    
+    // 도매까 품절임박 체크 (상품 수정 시)
+    if($old_stock_qty != $it_stock_qty) {
+            // 지점 정보 확인
+            $branch_id = null;
+            if($dmk_br_id) {
+                $branch_id = $dmk_br_id;
+            } else if($dmk_ag_id) {
+                // 대리점의 경우 대리점 소속 첫 번째 지점 사용
+                $br_sql = "SELECT br_id FROM dmk_branch WHERE br_ag_id = '$dmk_ag_id' ORDER BY br_id LIMIT 1";
+                $br_info = sql_fetch($br_sql);
+                if($br_info) $branch_id = $br_info['br_id'];
+            } else if($dmk_dt_id) {
+                // 총판의 경우 총판 소속 첫 번째 지점 사용
+                $br_sql = "SELECT br_id FROM dmk_branch WHERE br_dt_id = '$dmk_dt_id' ORDER BY br_id LIMIT 1";
+                $br_info = sql_fetch($br_sql);
+                if($br_info) $branch_id = $br_info['br_id'];
+            }
+            
+            if($branch_id) {
+                // 임시 주문번호 생성 (지점 정보 전달용)
+                $temp_od_id = 'STOCK_CHECK_' . $branch_id;
+                
+                // 주문 정보 임시 생성
+                $temp_sql = "INSERT INTO {$g5['g5_shop_order_table']} (od_id, dmk_od_br_id, od_time) 
+                             VALUES ('$temp_od_id', '$branch_id', NOW()) 
+                             ON DUPLICATE KEY UPDATE dmk_od_br_id = '$branch_id'";
+                sql_query($temp_sql);
+                
+                // 훅 라이브러리 포함
+                include_once(G5_DMK_PATH . '/lib/order.status.hook.php');
+                dmk_check_stock_warning_simple($it_id, $temp_od_id);
+                
+                // 임시 주문 정보 삭제
+                $del_sql = "DELETE FROM {$g5['g5_shop_order_table']} WHERE od_id = '$temp_od_id'";
+                sql_query($del_sql);
+            }
+    }
 }
 
 
