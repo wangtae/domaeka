@@ -205,14 +205,15 @@ class ClientPingScheduler:
         }
         
         try:
+            # v3.3.0: send_json_response가 자동으로 v3.3.0 필드들을 추가함
             await send_json_response(writer, ping_data)
             # 로그 설정에 따라 출력
             if is_enabled:
                 if is_detailed:
-                    logger.debug(f"[PING_SCHEDULER] ping 전송 성공: {client_key}")
+                    logger.debug(f"[PING_SCHEDULER] v3.3.0 ping 전송 성공: {client_key}")
                 else:
                     # 간소화된 로그
-                    logger.info(f"[PING_SCHEDULER] ping 전송 성공: {client_key}")
+                    logger.info(f"[PING_SCHEDULER] v3.3.0 ping 전송 성공: {client_key}")
         except Exception as e:
             logger.error(f"[PING_SCHEDULER] ping 전송 실패 {client_key}: {e}")
             raise

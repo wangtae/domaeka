@@ -625,8 +625,39 @@ var MediaHandler = (function() {
         }
     }
 
+    // v3.2.x 호환성을 위한 레거시 처리 (제거 예정)
+    function handleLegacyMediaResponse(data) {
+        var messageText = data.text;
+        var roomName = data.room;
+        var channelId = data.channel_id;
+        var sources = [];
+        var serverWaitTime = data.media_wait_time || null;
+
+        if (messageText.startsWith("MEDIA_URL:")) {
+            sources = messageText.substring(10).split("|||");
+        } else if (messageText.startsWith("IMAGE_BASE64:")) {
+            sources = messageText.substring(13).split("|||");
+        } else {
+            return false;
+        }
+
+        if (!channelId && roomName) {
+            channelId = BotCore.findChannelIdByRoomName(roomName);
+        }
+
+        if (channelId) {
+            Log.i("[MEDIA] 레거시 미디어 전송: " + sources.length + "개" + 
+                  (serverWaitTime ? " (서버 지정 대기시간: " + serverWaitTime + "ms)" : ""));
+            send(channelId, sources, serverWaitTime);
+        } else {
+            Log.e("[MEDIA] 전송 실패 - channelId 없음: " + roomName);
+        }
+        return true;
+    }
+
     return { 
-        handleMediaResponse: handleMediaResponse
+        handleMediaResponse: handleMediaResponse,
+        handleLegacyMediaResponse: handleLegacyMediaResponse 
     };
 })();
 
@@ -825,186 +856,135 @@ var BotCore = (function() {
         isProcessingQueue = false;
     }
 
-    // v3.3.0: 통합된 서버 응답 처리 (모든 이벤트 JSON+Raw)
+    // v3.3.0: 새로운 서버 응답 처리
     function _handleServerResponse(rawMsg) {
         try {
-            // 🟢 단일 파싱 로직 (모든 이벤트 동일)
-            var trimmedMsg = rawMsg.trim();
-            var jsonEndIndex = trimmedMsg.lastIndexOf('}');
-            
-            if (jsonEndIndex === -1) {
-                Log.e("[RESPONSE] 유효하지 않은 패킷 형식");
-                return;
-            }
-            
-            var jsonPart = trimmedMsg.substring(0, jsonEndIndex + 1);
+            // JSON 끝 위치 찾기
+            var jsonEndIndex = rawMsg.lastIndexOf('}');
+            var jsonPart = rawMsg.substring(0, jsonEndIndex + 1);
             var packet = JSON.parse(jsonPart);
-            var rawData = trimmedMsg.substring(jsonEndIndex + 1);
+            var event = packet.event, data = packet.data;
             
-            var event = packet.event;
-            var data = packet.data;
+            if (!data) { 
+                Log.e("[RESPONSE] 데이터 없음"); 
+                return; 
+            }
+
+            // v3.3.0 프로토콜 적용 이벤트 확인
+            var newProtocolEvents = ["messageResponse", "scheduleMessage", "broadcastMessage"];
+            var isNewProtocol = newProtocolEvents.indexOf(event) !== -1;
             
-            if (!data) {
-                Log.e("[RESPONSE] 데이터 필드 없음");
+            if (BOT_CONFIG.LOGGING.MESSAGE_TRANSFER) {
+                if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL) {
+                    Log.i("[RECV] " + event + " 메시지 수신 (" + (isNewProtocol ? "v3.3.0" : "레거시") + ") - 전체: " + rawMsg.substring(0, 500) + (rawMsg.length > 500 ? "..." : ""));
+                } else if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT) {
+                    Log.i("[RECV] " + event + " 메시지 수신 (" + (isNewProtocol ? "v3.3.0" : "레거시") + ") - 크기: " + rawMsg.length + "bytes");
+                } else {
+                    Log.i("[RECV] " + event + " 메시지 수신");
+                }
+            }
+
+            if (event === 'handshakeComplete') {
+                // 핸드셰이크 완료 응답 처리 (기존 방식 유지)
+                Log.i("[HANDSHAKE] 서버로부터 핸드셰이크 응답 수신: " + (data.success ? "성공" : "실패"));
+                if (data.success) {
+                    Log.i("[HANDSHAKE] 승인 상태: " + (data.approved ? "승인됨" : "대기중") + " - " + data.message);
+                    Log.i("[HANDSHAKE] 서버 버전: " + data.server_version);
+                } else {
+                    Log.e("[HANDSHAKE] 핸드셰이크 실패");
+                    _closeSocket();
+                    _scheduleReconnect();
+                }
+            } else if (isNewProtocol && data.message_positions) {
+                // v3.3.0: 새로운 프로토콜 처리
+                var baseOffset = jsonEndIndex + 1;
+                var positions = data.message_positions;
+                var messageContent = "";
+
+                if (positions.length === 2) {
+                    // 단일 메시지: 끝 위치 무시하고 전체 사용
+                    messageContent = rawMsg.substring(baseOffset);
+                    if (messageContent.endsWith('\n')) {
+                        messageContent = messageContent.substring(0, messageContent.length - 1);
+                    }
+                } else if (positions.length > 2) {
+                    // 멀티 메시지: 위치 배열로 처리
+                    messageContent = rawMsg.substring(baseOffset);
+                    if (messageContent.endsWith('\n')) {
+                        messageContent = messageContent.substring(0, messageContent.length - 1);
+                    }
+                }
+
+                // 메시지 타입별 처리
+                var messageType = data.message_type;
+                if (messageType === BOT_CONFIG.MESSAGE_TYPES.TEXT) {
+                    // Base64 디코딩
+                    if (data.content_encoding === "base64") {
+                        messageContent = Utils.base64Decode(messageContent);
+                    }
+                    bot.send(data.room, messageContent);
+                } else if ([BOT_CONFIG.MESSAGE_TYPES.IMAGE, BOT_CONFIG.MESSAGE_TYPES.AUDIO, 
+                           BOT_CONFIG.MESSAGE_TYPES.VIDEO, BOT_CONFIG.MESSAGE_TYPES.DOCUMENT].indexOf(messageType) !== -1) {
+                    MediaHandler.handleMediaResponse(data, messageContent);
+                }
+            } else if (event === 'messageResponse') {
+                // 레거시 호환성 처리 (v3.2.x)
+                if (MediaHandler.handleLegacyMediaResponse(data)) {
+                    return;
+                }
+                bot.send(data.room, data.text);
+            } else if (event === 'ping') {
+                // ping 이벤트 처리 (기존 방식 유지)
+                var pingData = {
+                    bot_name: data.bot_name,
+                    server_timestamp: data.server_timestamp
+                };
+                
+                if (BOT_CONFIG.MONITORING_ENABLED) {
+                    try {
+                        var runtime = java.lang.Runtime.getRuntime();
+                        var totalMemory = 0, freeMemory = 0, maxMemory = 0;
+                        
+                        try {
+                            totalMemory = runtime.totalMemory() / 1024 / 1024;
+                            freeMemory = runtime.freeMemory() / 1024 / 1024;
+                            maxMemory = runtime.maxMemory() / 1024 / 1024;
+                        } catch (memErr) {
+                            Log.w("[PING] 메모리 정보 수집 실패: " + memErr);
+                        }
+                        
+                        var usedMemory = totalMemory - freeMemory;
+                        var memoryPercent = maxMemory > 0 ? (usedMemory / maxMemory) * 100 : 0;
+                        
+                        var monitoringData = {
+                            total_memory: parseFloat(maxMemory.toFixed(1)),
+                            memory_usage: parseFloat(usedMemory.toFixed(1)),
+                            memory_percent: parseFloat(memoryPercent.toFixed(1)),
+                            message_queue_size: messageQueue.length || 0,
+                            active_rooms: Object.keys(currentRooms).length || 0
+                        };
+                        
+                        pingData.monitoring = monitoringData;
+                        
+                    } catch (e) {
+                        Log.e("[PING] 모니터링 데이터 수집 실패: " + e);
+                    }
+                }
+                
+                if (BOT_CONFIG.LOGGING.PING_EVENTS) {
+                    if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL && pingData.monitoring) {
+                        Log.i("[PING] ping 응답 전송 (모니터링 데이터 포함) - 전체내용: " + JSON.stringify(pingData));
+                    } else if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT && pingData.monitoring) {
+                        Log.i("[PING] ping 응답 전송 (모니터링 데이터 포함) - 내용: " + JSON.stringify(pingData.monitoring));
+                    } else {
+                        Log.i("[PING] ping 응답 전송" + (pingData.monitoring ? " (모니터링 데이터 포함)" : ""));
+                    }
+                }
+                sendMessage('ping', pingData);
                 return;
             }
-            
-            var positions = data.message_positions || [0, 0];
-            
-            // 통합 로깅
-            _logReceivedPacket(event, jsonPart.length, rawData.length);
-            
-            // 이벤트별 분기 처리
-            switch(event) {
-                case "handshakeComplete":
-                    _handleHandshakeResponse(data);
-                    break;
-                case "ping":
-                    _handlePingResponse(data);
-                    break;
-                case "messageResponse":
-                case "scheduleMessage":
-                case "broadcastMessage":
-                    _handleMessageResponse(data, rawData, positions);
-                    break;
-                default:
-                    Log.w("[RECV] 알 수 없는 이벤트: " + event);
-            }
-            
-        } catch (e) {
-            Log.e("[RESPONSE] 응답 처리 실패: " + e);
-        }
-    }
-
-    // 통합 패킷 로깅
-    function _logReceivedPacket(event, jsonSize, rawSize) {
-        if (!BOT_CONFIG.LOGGING.MESSAGE_TRANSFER) return;
-        
-        if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL) {
-            if (rawSize > 0) {
-                Log.i("[RECV] " + event + " - JSON: " + jsonSize + "bytes, Raw: " + rawSize + "bytes");
-            } else {
-                Log.i("[RECV] " + event + " - JSON: " + jsonSize + "bytes");
-            }
-        } else if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT) {
-            Log.i("[RECV] " + event + " - 총 크기: " + (jsonSize + rawSize) + "bytes");
-        } else {
-            Log.i("[RECV] " + event + " 메시지 수신");
-        }
-    }
-
-    // Handshake 응답 처리
-    function _handleHandshakeResponse(data) {
-        Log.i("[HANDSHAKE] 서버 응답: " + (data.success ? "성공" : "실패"));
-        if (data.success) {
-            Log.i("[HANDSHAKE] 승인 상태: " + (data.approved ? "승인됨" : "대기중") + " - " + data.message);
-            Log.i("[HANDSHAKE] 서버 버전: " + data.server_version);
-        } else {
-            Log.e("[HANDSHAKE] 핸드셰이크 실패");
-            _closeSocket();
-            _scheduleReconnect();
-        }
-    }
-
-    // Ping 응답 처리
-    function _handlePingResponse(data) {
-        var pingData = {
-            bot_name: data.bot_name || BOT_CONFIG.BOT_NAME,
-            server_timestamp: data.server_timestamp
-        };
-        
-        // 모니터링 데이터 수집
-        if (BOT_CONFIG.MONITORING_ENABLED) {
-            pingData.monitoring = _collectMonitoringData();
-        }
-        
-        // Auth 데이터 추가
-        pingData.auth = Auth.createAuthData();
-        
-        if (BOT_CONFIG.LOGGING.PING_EVENTS) {
-            _logPingData(pingData);
-        }
-        
-        // 🟢 통합된 전송 함수 사용
-        _sendV330Message('ping', pingData, "");
-    }
-
-    // 메시지 응답 처리
-    function _handleMessageResponse(data, rawData, positions) {
-        if (positions.length === 2 && positions[1] === 0) {
-            // Raw 데이터 없음 (빈 응답)
-            return;
-        }
-        
-        var messageType = data.message_type;
-        var content = rawData;
-        
-        // 줄바꿈 제거
-        if (content.endsWith('\n')) {
-            content = content.substring(0, content.length - 1);
-        }
-        
-        if (messageType === BOT_CONFIG.MESSAGE_TYPES.TEXT) {
-            // 텍스트 메시지 처리
-            if (data.content_encoding === "base64") {
-                content = Utils.base64Decode(content);
-            }
-            bot.send(data.room, content);
-            
-            if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT) {
-                var preview = content.length > 100 ? content.substring(0, 100) + "..." : content;
-                Log.i("[MESSAGE] 텍스트: " + preview);
-            }
-        } else if ([BOT_CONFIG.MESSAGE_TYPES.IMAGE, BOT_CONFIG.MESSAGE_TYPES.AUDIO, 
-                   BOT_CONFIG.MESSAGE_TYPES.VIDEO, BOT_CONFIG.MESSAGE_TYPES.DOCUMENT].indexOf(messageType) !== -1) {
-            // 미디어 메시지 처리
-            MediaHandler.handleMediaResponse(data, content);
-            
-            if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT) {
-                var mediaCount = positions.length > 2 ? positions.length - 1 : 1;
-                Log.i("[MESSAGE] " + messageType + ": " + mediaCount + "개");
-            }
-        }
-    }
-
-    // 모니터링 데이터 수집
-    function _collectMonitoringData() {
-        try {
-            var runtime = java.lang.Runtime.getRuntime();
-            var totalMemory = 0, freeMemory = 0, maxMemory = 0;
-            
-            try {
-                totalMemory = runtime.totalMemory() / 1024 / 1024;
-                freeMemory = runtime.freeMemory() / 1024 / 1024;
-                maxMemory = runtime.maxMemory() / 1024 / 1024;
-            } catch (memErr) {
-                Log.w("[PING] 메모리 정보 수집 실패: " + memErr);
-            }
-            
-            var usedMemory = totalMemory - freeMemory;
-            var memoryPercent = maxMemory > 0 ? (usedMemory / maxMemory) * 100 : 0;
-            
-            return {
-                total_memory: parseFloat(maxMemory.toFixed(1)),
-                memory_usage: parseFloat(usedMemory.toFixed(1)),
-                memory_percent: parseFloat(memoryPercent.toFixed(1)),
-                message_queue_size: messageQueue.length || 0,
-                active_rooms: Object.keys(currentRooms).length || 0
-            };
-        } catch (e) {
-            Log.e("[MONITORING] 데이터 수집 실패: " + e);
-            return {};
-        }
-    }
-
-    // Ping 데이터 로깅
-    function _logPingData(pingData) {
-        if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL && pingData.monitoring) {
-            Log.i("[PING] 응답 전송 (모니터링 포함) - 전체: " + JSON.stringify(pingData));
-        } else if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT && pingData.monitoring) {
-            Log.i("[PING] 응답 전송 (모니터링 포함) - 데이터: " + JSON.stringify(pingData.monitoring));
-        } else {
-            Log.i("[PING] 응답 전송" + (pingData.monitoring ? " (모니터링 포함)" : ""));
+        } catch (e) { 
+            Log.e("[RESPONSE] 응답 처리 실패: " + e); 
         }
     }
 
@@ -1056,15 +1036,15 @@ var BotCore = (function() {
             DeviceInfo.setSocket(socket);
             Auth.setSocket(socket);
             
-            // 🟢 v3.3.0: JSON+Raw 구조로 핸드셰이크 전송
-            var handshakeData = DeviceInfo.createHandshakeData();
+            // 🔴 강화된 핸드셰이크 메시지 생성
+            var handshake = DeviceInfo.createHandshakeData();
             
             if (BOT_CONFIG.LOGGING.CONNECTION_EVENTS) {
-                Log.i("[HANDSHAKE] 전송: " + JSON.stringify(handshakeData));
+                Log.i("[HANDSHAKE] 전송: " + JSON.stringify(handshake));
             }
             
-            // v3.3.0 프로토콜로 전송 (Raw 데이터 없음)
-            _sendV330Message('handshake', handshakeData, "");
+            outputStream.write(JSON.stringify(handshake) + "\n");
+            outputStream.flush();
             isConnected = true; reconnectAttempts = 0;
             
             if (BOT_CONFIG.LOGGING.CONNECTION_EVENTS) {
@@ -1112,8 +1092,7 @@ var BotCore = (function() {
             if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL) {
                 Log.i("[MSG] 메시지 처리: " + msg.room + " / " + msg.author.name + " - 전체내용: " + sanitizedContent);
             } else if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT) {
-                var contentPreviewLength = Math.min(100, sanitizedContent.length);
-                Log.i("[MSG] 메시지 처리: " + msg.room + " / " + msg.author.name + " - 내용: " + sanitizedContent.substring(0, contentPreviewLength) + (sanitizedContent.length > contentPreviewLength ? "..." : ""));
+                Log.i("[MSG] 메시지 처리: " + msg.room + " / " + msg.author.name + " - 내용: " + sanitizedContent.substring(0, 100) + (sanitizedContent.length > 100 ? "..." : ""));
             } else {
                 Log.i("[MSG] 메시지 처리: " + msg.room + " / " + msg.author.name);
             }
@@ -1144,31 +1123,10 @@ var BotCore = (function() {
         sendMessage('message', messageData, encodedContent);
     }
 
-    // v3.3.0: 통합된 메시지 전송 함수
-    function _sendV330Message(event, data, rawContent) {
-        // 공통 필드 자동 추가
-        data.timestamp = Utils.formatTimestamp(new Date());
-        data.timezone = "Asia/Seoul";
-        
-        // message_positions 자동 계산
-        if (rawContent && rawContent.length > 0) {
-            var contentBytes = rawContent.length; // JavaScript에서는 UTF-8 바이트 계산 근사치
-            data.message_positions = [0, contentBytes];
-        } else {
-            data.message_positions = [0, 0];
-        }
-        
-        var packet = { event: event, data: data };
-        return _sendMessageInternal(packet, rawContent || "");
-    }
-
     function sendMessage(event, data, rawContent) {
-        // Auth 데이터 자동 추가 (ping, handshake 등은 별도 처리)
-        if (event !== 'handshake' && !data.auth) {
-            data.auth = Auth.createAuthData();
-        }
-        
-        return _sendV330Message(event, data, rawContent || "");
+        data.auth = Auth.createAuthData();
+        var packet = { event: event, data: data };
+        _sendMessageInternal(packet, rawContent);
     }
 
     function findChannelIdByRoomName(roomName) {
@@ -1183,6 +1141,13 @@ var BotCore = (function() {
             room: roomName,
             lastActivity: Date.now()
         };
+    }
+
+    function sendAnalyzeMessage(messageData) {
+        if (messageData.channelId) {
+            updateRoomInfo(messageData.channelId, messageData.room);
+        }
+        sendMessage('analyze', messageData);
     }
 
     function _performPeriodicCleanup() {
@@ -1290,6 +1255,7 @@ var BotCore = (function() {
         start: start, 
         findChannelIdByRoomName: findChannelIdByRoomName,
         updateRoomInfo: updateRoomInfo,
+        sendAnalyzeMessage: sendAnalyzeMessage,
         cleanup: cleanup,
         initializeEventListeners: initializeEventListeners
     };

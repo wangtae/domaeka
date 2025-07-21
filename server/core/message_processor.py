@@ -1,9 +1,11 @@
 """
-메시지 처리 모듈
+메시지 처리 모듈 - v3.3.0 프로토콜 지원
 """
 import json
 import asyncio
 import time
+from datetime import datetime, timezone
+import pytz
 from typing import Dict, Any, Optional
 from core.logger import logger
 from core.response_utils import send_message_response, send_json_response
@@ -17,9 +19,40 @@ from core.ping_scheduler import ping_manager
 import core.globals as g
 
 
+def convert_utc_to_kst(utc_timestamp_str: str, timezone_str: str = 'Asia/Seoul') -> str:
+    """
+    UTC 타임스탬프를 한국시간으로 변환
+    
+    Args:
+        utc_timestamp_str: UTC 타임스탬프 문자열 (ISO 8601 형식)
+        timezone_str: 타임존 문자열
+        
+    Returns:
+        str: 한국시간 타임스탬프 문자열 (YYYY-MM-DD HH:MM:SS 형식)
+    """
+    try:
+        # UTC 타임스탬프 파싱
+        if utc_timestamp_str.endswith('Z'):
+            utc_dt = datetime.fromisoformat(utc_timestamp_str[:-1]).replace(tzinfo=timezone.utc)
+        else:
+            utc_dt = datetime.fromisoformat(utc_timestamp_str).replace(tzinfo=timezone.utc)
+        
+        # 지정된 타임존으로 변환 (기본: 한국시간)
+        target_tz = pytz.timezone(timezone_str)
+        local_dt = utc_dt.astimezone(target_tz)
+        
+        # YYYY-MM-DD HH:MM:SS 형식으로 반환
+        return local_dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+    except Exception as e:
+        logger.warning(f"[TIMESTAMP] UTC 변환 실패: {e}, 원본: {utc_timestamp_str}")
+        # 변환 실패 시 현재 시간 반환
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
 async def process_message(received_message: dict):
     """
-    메시지 처리 및 응답 - kkobot 호환 구조
+    메시지 처리 및 응답 - v3.3.0 프로토콜 지원
     
     Args:
         received_message: 클라이언트로부터 받은 메시지 딕셔너리
@@ -53,6 +86,19 @@ async def process_message(received_message: dict):
                 'client_key': received_message.get('client_key'),
                 'client_addr': str(received_message.get('client_addr', '')),
             }
+            
+            # v3.3.0: UTC 타임스탬프 처리
+            if context['timestamp']:
+                timezone_info = data.get('timezone', 'Asia/Seoul')
+                try:
+                    # UTC 타임스탬프인지 확인 (ISO 8601 형식)
+                    if 'T' in context['timestamp'] and ('Z' in context['timestamp'] or '+' in context['timestamp']):
+                        # UTC → 로컬 시간 변환
+                        context['timestamp'] = convert_utc_to_kst(context['timestamp'], timezone_info)
+                        logger.debug(f"[MSG] UTC 타임스탬프 변환: {data.get('timestamp')} → {context['timestamp']}")
+                except Exception as e:
+                    logger.warning(f"[MSG] 타임스탬프 변환 실패: {e}")
+            
             await handle_analyze_event(context)
             
             # analyze 메시지 처리 후 ping 카운터 체크 (비활성화 - 30초 주기 방식으로 변경)
@@ -72,7 +118,7 @@ async def process_message(received_message: dict):
 
 async def handle_analyze_event(context: Dict[str, Any]):
     """
-    analyze 이벤트 처리 (메시지 분석)
+    analyze 이벤트 처리 (메시지 분석) - v3.3.0 지원
     
     Args:
         context: 메시지 컨텍스트 (kkobot 호환 구조)

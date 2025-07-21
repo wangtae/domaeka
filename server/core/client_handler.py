@@ -1,8 +1,9 @@
 """
-클라이언트 연결 처리 모듈
+클라이언트 연결 처리 모듈 - v3.3.0 프로토콜 지원
 """
 import asyncio
 import json
+import base64
 from typing import Dict, Any
 from core.logger import logger
 from core.message_processor import process_message
@@ -66,9 +67,54 @@ async def read_limited_line(reader: asyncio.StreamReader, max_size: int = None):
         return None
 
 
+def parse_v330_message(raw_msg: str) -> tuple:
+    """
+    v3.3.0 프로토콜 메시지 파싱 (JSON + Raw 데이터)
+    
+    Args:
+        raw_msg: 원본 메시지 문자열
+        
+    Returns:
+        tuple: (json_message, raw_content) 또는 (json_message, None) for 레거시
+    """
+    try:
+        # JSON 끝 위치 찾기
+        json_end_index = raw_msg.rfind('}')
+        
+        if json_end_index == -1:
+            # JSON 형태가 아님
+            return None, None
+        
+        # JSON 부분 추출
+        json_part = raw_msg[:json_end_index + 1]
+        json_message = json.loads(json_part)
+        
+        # v3.3.0 프로토콜 이벤트 확인
+        event = json_message.get('event', '')
+        data = json_message.get('data', {})
+        new_protocol_events = ["message", "scheduleMessage", "broadcastMessage"]
+        
+        if event in new_protocol_events and 'message_positions' in data:
+            # v3.3.0: Raw 데이터 추출
+            raw_content = raw_msg[json_end_index + 1:]
+            if raw_content.endswith('\n'):
+                raw_content = raw_content[:-1]
+            return json_message, raw_content
+        else:
+            # 레거시 프로토콜 (ping, handshake 등)
+            return json_message, None
+            
+    except json.JSONDecodeError:
+        logger.error(f"[PARSE] JSON 파싱 실패")
+        return None, None
+    except Exception as e:
+        logger.error(f"[PARSE] 메시지 파싱 오류: {e}")
+        return None, None
+
+
 async def ping_client_periodically(writer: asyncio.StreamWriter, client_addr, bot_name: str):
     """
-    클라이언트에게 주기적으로 ping 전송
+    클라이언트에게 주기적으로 ping 전송 - v3.3.0 프로토콜 지원
     
     Args:
         writer: 스트림 라이터
@@ -86,7 +132,7 @@ async def ping_client_periodically(writer: asyncio.StreamWriter, client_addr, bo
                 logger.debug(f"[PING] Writer가 닫혀있음, ping 중단: {client_addr}")
                 break
                 
-            # ping 메시지 전송
+            # v3.3.0: ping 메시지 전송 (JSON+Raw 구조)
             from core.response_utils import send_json_response
             ping_message = {
                 'event': 'ping',
@@ -95,8 +141,9 @@ async def ping_client_periodically(writer: asyncio.StreamWriter, client_addr, bo
                     'server_timestamp': int(asyncio.get_event_loop().time() * 1000)
                 }
             }
+            # send_json_response가 자동으로 v3.3.0 필드들을 추가함
             await send_json_response(writer, ping_message)
-            logger.debug(f"[PING] 전송 완료: {client_addr}")
+            logger.debug(f"[PING] v3.3.0 전송 완료: {client_addr}")
             
             # 다음 ping까지 대기
             await asyncio.sleep(g.PING_INTERVAL_SECONDS)
@@ -108,7 +155,7 @@ async def ping_client_periodically(writer: asyncio.StreamWriter, client_addr, bo
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     """
-    클라이언트 연결 처리
+    클라이언트 연결 처리 - v3.3.0 프로토콜 지원
     
     Args:
         reader: 스트림 리더
@@ -235,7 +282,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 logger.warning(f"[CLIENT] 클라이언트 연결 종료: {client_addr}")
                 break
             
-            # JSON 메시지 파싱 및 처리
+            # 메시지 파싱 및 처리
             try:
                 message = data.decode('utf-8').strip()
                 
@@ -244,17 +291,59 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 if len(message) > client_max_size:
                     logger.error(f"[CLIENT] 디코딩된 메시지 크기 초과: {client_addr} - {len(message)} 바이트 (제한: {client_max_size} 바이트)")
                     break
-                    
-                # 일반 메시지 처리 (핸드셰이크 완료 후에만)
-                json_message = json.loads(message)
+                
+                # v3.3.0 프로토콜 파싱
+                json_message, raw_content = parse_v330_message(message)
+                
+                if json_message is None:
+                    logger.error(f"[CLIENT] 메시지 파싱 실패: {client_addr}")
+                    continue
                 
                 # ping 메시지는 LOG_CONFIG에 따라 로그 출력 제어
-                if json_message.get('event') == 'ping':
+                event = json_message.get('event', '')
+                if event == 'ping':
                     ping_config = g.LOG_CONFIG.get('ping', {})
                     if ping_config.get('enabled', True) and ping_config.get('detailed', False):
                         logger.debug(f"[RECV] {client_addr}: {message}")
                 else:
-                    logger.debug(f"[RECV] {client_addr}: {message}")
+                    logger.debug(f"[RECV] {client_addr}: {message[:200]}..." if len(message) > 200 else f"[RECV] {client_addr}: {message}")
+                
+                # v3.3.0: message 이벤트 처리 (Base64 디코딩)
+                if event == 'message' and raw_content is not None:
+                    msg_data = json_message.get('data', {})
+                    
+                    # Base64 디코딩
+                    if msg_data.get('content_encoding') == 'base64':
+                        try:
+                            decoded_content = base64.b64decode(raw_content).decode('utf-8')
+                            # 디코딩된 내용을 data에 설정
+                            msg_data['text'] = decoded_content
+                            logger.debug(f"[CLIENT] Base64 디코딩 완료: {len(raw_content)} -> {len(decoded_content)} chars")
+                        except Exception as e:
+                            logger.error(f"[CLIENT] Base64 디코딩 실패: {e}")
+                            msg_data['text'] = raw_content  # 실패 시 원본 사용
+                    else:
+                        msg_data['text'] = raw_content
+                    
+                    # 기존 analyze 호환 필드 매핑
+                    compat_data = {
+                        'room': msg_data.get('room'),
+                        'text': msg_data.get('text'),
+                        'sender': msg_data.get('sender'),
+                        'isGroupChat': msg_data.get('is_group_chat'),
+                        'channelId': msg_data.get('channel_id'),
+                        'logId': msg_data.get('log_id'),
+                        'userHash': msg_data.get('user_hash'),
+                        'isMention': msg_data.get('is_mention'),
+                        'timestamp': msg_data.get('timestamp'),
+                        'botName': msg_data.get('bot_name'),
+                        'clientType': msg_data.get('client_type'),
+                        'auth': msg_data.get('auth')
+                    }
+                    
+                    # analyze 이벤트로 변환하여 기존 로직 재사용
+                    json_message['event'] = 'analyze'
+                    json_message['data'] = compat_data
                 
                 # 카카오톡 메시지 내용 길이 체크
                 if json_message.get('event') == 'analyze':
@@ -323,7 +412,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
 async def handle_handshake(message: str, client_addr, writer):
     """
-    클라이언트 핸드셰이크 처리 및 kb_bot_devices 테이블 연동
+    클라이언트 핸드셰이크 처리 및 kb_bot_devices 테이블 연동 - v3.3.0 프로토콜 지원
     
     Args:
         message: 핸드셰이크 메시지
@@ -335,7 +424,17 @@ async def handle_handshake(message: str, client_addr, writer):
     """
     try:
         # 핸드셰이크 메시지는 JSON 형태여야 함
-        handshake_data = json.loads(message)
+        handshake_message = json.loads(message)
+        
+        # v3.3.0 프로토콜 확인
+        if handshake_message.get('event') == 'handshake' and 'data' in handshake_message:
+            # v3.3.0: data 객체에서 필드 추출
+            handshake_data = handshake_message.get('data', {})
+            logger.debug(f"[HANDSHAKE] v3.3.0 프로토콜 감지: {client_addr}")
+        else:
+            # 레거시: 최상위 레벨에서 필드 추출
+            handshake_data = handshake_message
+            logger.debug(f"[HANDSHAKE] 레거시 프로토콜: {client_addr}")
         
         # 필수 필드 확인 (구 버전 호환성 지원)
         bot_name = handshake_data.get('botName', '')
@@ -347,12 +446,17 @@ async def handle_handshake(message: str, client_addr, writer):
         device_ip = handshake_data.get('deviceIP', str(client_addr).split(':')[0] if ':' in str(client_addr) else 'unknown')
         device_info = handshake_data.get('deviceInfo', '')
         
-        # 핵심 필드 검증 (구 버전 호환)
+        # 핵심 필드 검증
         required_fields = ['botName', 'version', 'deviceID']
+        missing_fields = []
         for field in required_fields:
             if not handshake_data.get(field):
-                logger.error(f"[HANDSHAKE] {field} 필드 누락: {client_addr}")
-                return False
+                missing_fields.append(field)
+        
+        if missing_fields:
+            logger.error(f"[HANDSHAKE] 필수 필드 누락: {client_addr} - {missing_fields}")
+            logger.debug(f"[HANDSHAKE] 수신된 데이터: {handshake_data}")
+            return False
         
         logger.info(f"[HANDSHAKE] 수신: {client_addr} - {client_type} {bot_name} v{version}")
         logger.info(f"[HANDSHAKE] Device: {device_id}, IP: {device_ip}, Info: {device_info}")
@@ -372,7 +476,7 @@ async def handle_handshake(message: str, client_addr, writer):
         
         logger.info(f"[HANDSHAKE] 성공: {client_addr} - {bot_name} v{version} (상태: {handshake_data['approval_status']}, 메시지 크기 제한: {max_message_size/1024/1024:.1f}MB)")
         
-        # 핸드셰이크 성공 응답 전송
+        # v3.3.0: 핸드셰이크 성공 응답 전송 (JSON+Raw 구조)
         from core.response_utils import send_json_response
         handshake_response = {
             'event': 'handshakeComplete',
@@ -383,8 +487,9 @@ async def handle_handshake(message: str, client_addr, writer):
                 'server_version': '1.0.0'
             }
         }
+        # send_json_response가 자동으로 v3.3.0 필드들을 추가함
         await send_json_response(writer, handshake_response)
-        logger.info(f"[HANDSHAKE] 응답 전송 완료: {client_addr}")
+        logger.info(f"[HANDSHAKE] v3.3.0 응답 전송 완료: {client_addr}")
         
         return True, bot_name, device_id, max_message_size, is_approved
         

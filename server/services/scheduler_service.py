@@ -314,7 +314,7 @@ class SchedulerService:
         """텍스트 메시지 발송"""
         # 연결된 클라이언트 찾기
         from core.globals import clients
-        from core.response_utils import send_message_response
+        from core.response_utils import send_v330_message
         
         # bot_name과 device_id로 정확한 클라이언트 찾기
         client_key = (bot_name, device_id)
@@ -327,24 +327,24 @@ class SchedulerService:
                     logger.error(f"[SCHEDULER] 채팅방 이름을 찾을 수 없음: {room_id}")
                     return
                 
-                # context 구성
-                context = {
-                    'client_key': client_key,
-                    'room': room_name,  # room_id가 아닌 room_name 사용
+                # v3.3.0 프로토콜로 전송
+                data = {
+                    'room': room_name,
                     'channel_id': room_id,
                     'bot_name': bot_name,
-                    'writer': writer
+                    'message_type': 'text'
                 }
-                await send_message_response(context, text)
+                
+                await send_v330_message(writer, 'scheduleMessage', data, text)
                 logger.info(f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_name} ({room_id}), 메시지: {text[:100]}..." if len(text) > 100 else f"[SCHEDULER] 텍스트 발송: {bot_name}@{device_id} -> {room_name} ({room_id}), 메시지: {text}")
                 return
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")
     
     async def send_images(self, bot_name: str, device_id: str, room_id: str, images: List[Dict], wait_time: int, storage_mode: str = 'file'):
-        """이미지 발송 (저장 방식에 따라 처리)"""
+        """이미지 발송 (저장 방식에 따라 처리) - v3.3.0 프로토콜"""
         from core.globals import clients
-        from core.response_utils import send_message_response
+        from core.response_utils import send_v330_message
         
         # 스케줄 ID 가져오기 (로그 파일명에 사용)
         schedule_id = None
@@ -430,6 +430,7 @@ class SchedulerService:
                         'room_id': room_id,
                         'image_count': len(base64_images),
                         'total_size_bytes': sum(len(img) for img in base64_images),
+                        'protocol_version': 'v3.3.0',
                         'images': [{
                             'index': i,
                             'size_bytes': len(img),
@@ -443,19 +444,25 @@ class SchedulerService:
                     
                     logger.info(f"[SCHEDULER] 이미지 패킷 로그 저장: {log_path}")
                     
-                    # context 구성
-                    context = {
-                        'client_key': client_key,
-                        'room': room_name,  # room_id가 아닌 room_name 사용
+                    # v3.3.0 프로토콜로 전송
+                    data = {
+                        'room': room_name,
                         'channel_id': room_id,
                         'bot_name': bot_name,
-                        'writer': writer
+                        'message_type': 'image',
+                        'message_format': 'jpg'
                     }
                     
-                    # IMAGE_BASE64 형식으로 전송
-                    image_message = f"IMAGE_BASE64:{'|||'.join(base64_images)}"
-                    await send_message_response(context, image_message, media_wait_time=wait_time)
-                    logger.info(f"[SCHEDULER] 이미지 {len(base64_images)}개 발송: {bot_name}@{device_id} -> {room_name} ({room_id}), 로그: {log_filename}")
+                    if wait_time and wait_time > 0:
+                        data['media_wait_time'] = wait_time
+                    
+                    # 멀티 이미지인 경우 리스트로 전송, 단일 이미지는 문자열로 전송
+                    if len(base64_images) > 1:
+                        await send_v330_message(writer, 'scheduleMessage', data, base64_images)
+                        logger.info(f"[SCHEDULER] v3.3.0 멀티 이미지 {len(base64_images)}개 발송: {bot_name}@{device_id} -> {room_name} ({room_id}), 로그: {log_filename}")
+                    else:
+                        await send_v330_message(writer, 'scheduleMessage', data, base64_images[0])
+                        logger.info(f"[SCHEDULER] v3.3.0 단일 이미지 발송: {bot_name}@{device_id} -> {room_name} ({room_id}), 로그: {log_filename}")
                     return
         
         logger.warning(f"[SCHEDULER] 봇 연결 없음: {bot_name}@{device_id}")

@@ -335,10 +335,116 @@ $g5['title'] = '주문 페이지 - ' . $branch_info['br_name'];
         .dmk-label-type1 { background-color: #dc3545; } /* 총판 */
         .dmk-label-type2 { background-color: #007bff; } /* 대리점 */
         .dmk-label-type3 { background-color: #28a745; } /* 지점 */
+        
+        /* Modal Styles for Mobile Viewport Changes */
+        #productModal {
+            --safe-area-inset-top: env(safe-area-inset-top, 0);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0);
+        }
+        
+        /* 모달 컨테이너가 전체 visible viewport를 차지하도록 설정 */
+        #modalContainer {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+        
+        #modalContent {
+            --modal-max-height: calc(var(--viewport-height, 100vh) - 2rem);
+            max-height: var(--modal-max-height);
+            transition: max-height 0.3s ease;
+        }
+        
+        #modalBody {
+            max-height: calc(var(--modal-max-height) - 120px); /* Header + Footer height */
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        }
+        
+        @supports (height: 100dvh) {
+            #modalContent {
+                --modal-max-height: calc(100dvh - 2rem);
+                max-height: calc(100dvh - 2rem);
+            }
+            
+            #modalBody {
+                max-height: calc(100dvh - 2rem - 120px);
+            }
+        }
+        
+        /* iOS Safari specific fixes */
+        @supports (-webkit-touch-callout: none) {
+            #productModal.modal-open {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+            }
+        }
+        
+        /* Responsive modal sizing */
+        @media (max-width: 640px) {
+            #modalContent {
+                margin: 0.5rem;
+                max-width: calc(100vw - 1rem);
+            }
+            
+            #modalBody {
+                max-height: calc(var(--viewport-height, 100vh) - 1rem - 120px);
+            }
+        }
+        
+        /* Handle landscape orientation */
+        @media (orientation: landscape) and (max-height: 600px) {
+            #modalContent {
+                max-height: calc(var(--viewport-height, 100vh) - 1rem);
+            }
+            
+            #modalBody {
+                max-height: calc(var(--viewport-height, 100vh) - 1rem - 100px);
+            }
+            
+            .modal-header, .modal-footer {
+                padding: 0.5rem 1rem;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="bg-white min-h-screen">
+        <!-- Product Detail Modal -->
+        <div id="productModal" class="fixed inset-0 z-[9999] hidden">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-black/50" onclick="closeProductModal()"></div>
+            
+            <!-- Modal Container -->
+            <div id="modalContainer" class="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto">
+                <!-- Modal Content -->
+                <div id="modalContent" class="relative w-full max-w-lg bg-white rounded-lg shadow-xl overflow-hidden my-auto">
+                    <!-- Modal Header -->
+                    <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                        <h3 class="text-lg font-semibold">상품 상세정보</h3>
+                        <button type="button" onclick="closeProductModal()" class="p-2 hover:bg-gray-100 rounded-full transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Modal Body -->
+                    <div id="modalBody" class="p-4 overflow-y-auto">
+                        <!-- Content will be loaded here -->
+                    </div>
+                    
+                    <!-- Modal Footer -->
+                    <div class="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3">
+                        <button type="button" onclick="closeProductModal()" class="w-full btn-primary">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- Navigation -->
         <nav class="flex z-40 w-full h-auto items-center justify-center sticky top-0 inset-x-0 border-b border-gray-200 backdrop-blur-lg bg-white/70" style="--navbar-height: 4rem;">
             <header class="z-40 flex px-6 gap-4 w-full flex-row relative flex-nowrap items-center justify-between h-16 max-w-4xl">
@@ -480,6 +586,22 @@ $g5['title'] = '주문 페이지 - ' . $branch_info['br_name'];
         document.addEventListener('DOMContentLoaded', function() {
             renderProducts();
             updateOrderSummary();
+            
+            // Initialize viewport height
+            updateViewportHeight();
+            
+            // Force initial viewport calculation
+            if (window.visualViewport) {
+                // 초기 높이 설정
+                document.documentElement.style.setProperty('--initial-viewport-height', `${window.visualViewport.height}px`);
+            }
+            
+            // Add ESC key handler for modal
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !document.getElementById('productModal').classList.contains('hidden')) {
+                    closeProductModal();
+                }
+            });
         });
 
         // Render products
@@ -621,9 +743,242 @@ $g5['title'] = '주문 페이지 - ' . $branch_info['br_name'];
         function showProductDetail(productId) {
             const product = products.find(p => p.it_id === productId);
             if (product) {
-                window.open(`<?php echo G5_SHOP_URL; ?>/item.php?it_id=${productId}`, '_blank');
+                showProductModal(product);
             }
         }
+        
+        // Show product modal
+        function showProductModal(product) {
+            const modal = document.getElementById('productModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            // 스크롤 위치 저장
+            const scrollY = window.scrollY || window.pageYOffset;
+            
+            // Generate modal content
+            const imageSrc = `<?php echo G5_DATA_URL; ?>/item/${product.it_id}_0`;
+            const ownerLabel = getOwnerLabel(product.dmk_it_owner_type);
+            
+            modalBody.innerHTML = `
+                <div class="space-y-4">
+                    <!-- Product Image -->
+                    <div class="w-full">
+                        <img src="${imageSrc}" 
+                             alt="${product.it_name}" 
+                             class="w-full h-auto max-h-64 object-contain rounded-lg bg-gray-50"
+                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjFGNUY5Ii8+CjxwYXRoIGQ9Ik01MCA2NUw2MCA0NUg0MEw1MCA2NVoiIGZpbGw9IiM2NDc0OEIiLz4KPC9zdmc+'" />
+                    </div>
+                    
+                    <!-- Product Info -->
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <h4 class="text-lg font-semibold">${product.it_name}</h4>
+                            ${ownerLabel}
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <span class="text-gray-500">상품코드</span>
+                                <p class="font-medium">${product.it_id}</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">판매가격</span>
+                                <p class="font-medium">${parseInt(product.it_cust_price).toLocaleString()}원</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">재고수량</span>
+                                <p class="font-medium">${product.it_stock_qty}개</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">카테고리</span>
+                                <p class="font-medium">${categories[product.ca_id] || '기타'}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Info (if needed) -->
+                        <div class="pt-3 border-t">
+                            <p class="text-sm text-gray-600">
+                                더 자세한 정보가 필요하시면 관리자에게 문의해주세요.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Order Section -->
+                    <div class="pt-3 border-t">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium">빠른 주문</span>
+                            <div class="flex items-center space-x-2">
+                                <button type="button" 
+                                        class="w-8 h-8 flex items-center justify-center rounded border hover:bg-gray-50"
+                                        onclick="updateQuantityFromModal('${product.it_id}', -1)">
+                                    <span class="text-lg font-bold">-</span>
+                                </button>
+                                <span class="w-12 text-center font-medium" id="modal-qty-${product.it_id}">
+                                    ${cart[product.it_id] || 0}개
+                                </span>
+                                <button type="button" 
+                                        class="w-8 h-8 flex items-center justify-center rounded border hover:bg-gray-50"
+                                        onclick="updateQuantityFromModal('${product.it_id}', 1)">
+                                    <span class="text-lg font-bold">+</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            modal.classList.add('modal-open');
+            document.body.style.overflow = 'hidden';
+            
+            // 모달 열린 직후 viewport 높이 강제 업데이트
+            requestAnimationFrame(() => {
+                updateViewportHeight();
+                
+                // 모달 컨텐츠가 화면 중앙에 위치하도록 보장
+                const modalContainer = document.getElementById('modalContainer');
+                if (modalContainer) {
+                    modalContainer.scrollTop = 0;
+                }
+                
+                // viewport 변경 이벤트 강제 트리거
+                if (window.visualViewport) {
+                    window.visualViewport.dispatchEvent(new Event('resize'));
+                }
+                window.dispatchEvent(new Event('resize'));
+                
+                // 한 번 더 업데이트
+                setTimeout(updateViewportHeight, 100);
+            });
+            
+            // Prevent scrolling on iOS
+            if (isIOS()) {
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+                document.body.style.top = `-${scrollY}px`;
+            }
+        }
+        
+        // Close product modal
+        function closeProductModal() {
+            const modal = document.getElementById('productModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            
+            // iOS 스크롤 위치 복원
+            if (isIOS() && document.body.style.position === 'fixed') {
+                const scrollY = Math.abs(parseInt(document.body.style.top || '0'));
+                document.body.style.position = '';
+                document.body.style.width = '';
+                document.body.style.top = '';
+                window.scrollTo(0, scrollY);
+            }
+        }
+        
+        // Update quantity from modal
+        function updateQuantityFromModal(productId, change) {
+            updateQuantity(productId, change);
+            const modalQtyElement = document.getElementById(`modal-qty-${productId}`);
+            if (modalQtyElement) {
+                modalQtyElement.textContent = `${cart[productId] || 0}개`;
+            }
+        }
+        
+        // Check if iOS
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        }
+        
+        // Update viewport height for mobile browsers
+        function updateViewportHeight() {
+            // Visual Viewport API 사용 (실제 보이는 영역)
+            const visualViewport = window.visualViewport;
+            let actualHeight;
+            let offsetTop = 0;
+            
+            if (visualViewport) {
+                // Visual Viewport가 지원되는 경우 (대부분의 모던 모바일 브라우저)
+                actualHeight = visualViewport.height;
+                offsetTop = visualViewport.offsetTop || 0;
+                
+                // 모바일 브라우저 UI로 인한 오프셋 처리
+                if (offsetTop > 0) {
+                    actualHeight = Math.min(actualHeight, window.innerHeight - offsetTop);
+                }
+            } else {
+                // Fallback: window.innerHeight 사용
+                actualHeight = window.innerHeight;
+            }
+            
+            // CSS 변수 업데이트
+            document.documentElement.style.setProperty('--viewport-height', `${actualHeight}px`);
+            
+            // 모달이 열려있을 때만 업데이트
+            const modal = document.getElementById('productModal');
+            const modalContent = document.getElementById('modalContent');
+            const modalBody = document.getElementById('modalBody');
+            const modalContainer = document.getElementById('modalContainer');
+            
+            if (modal && !modal.classList.contains('hidden') && modalContent && modalBody) {
+                // 실제 보이는 영역 기준으로 계산
+                const padding = 32; // 상하 패딩 16px씩
+                const headerFooterHeight = 120; // 헤더와 푸터 공간
+                
+                // 모바일에서 브라우저 UI가 변경될 때를 대비한 안전한 계산
+                let safeHeight = actualHeight;
+                if (visualViewport && window.innerHeight > actualHeight) {
+                    // 브라우저 UI가 표시된 상태에서는 더 작은 값 사용
+                    safeHeight = Math.min(actualHeight, window.innerHeight * 0.9);
+                }
+                
+                const maxContentHeight = safeHeight - padding;
+                const maxBodyHeight = safeHeight - padding - headerFooterHeight;
+                
+                modalContent.style.maxHeight = `${maxContentHeight}px`;
+                modalBody.style.maxHeight = `${maxBodyHeight}px`;
+                
+                // 모달 컨테이너가 전체 화면을 차지하도록 보장
+                if (modalContainer) {
+                    modalContainer.style.height = `${actualHeight}px`;
+                    
+                    // Visual Viewport API를 사용한 정확한 위치 조정
+                    if (visualViewport) {
+                        const scrollY = visualViewport.pageTop || 0;
+                        const offsetY = visualViewport.offsetTop || 0;
+                        
+                        if (scrollY > 0 || offsetY > 0) {
+                            modalContainer.style.transform = `translateY(${-scrollY}px)`;
+                        } else {
+                            modalContainer.style.transform = '';
+                        }
+                    }
+                }
+                
+                // 디버그 정보
+                console.log(`Viewport updated - Visual: ${actualHeight}px, Safe: ${safeHeight}px, Window: ${window.innerHeight}px`);
+            }
+        }
+        
+        // Handle viewport changes
+        let viewportTimeout;
+        function handleViewportChange() {
+            clearTimeout(viewportTimeout);
+            viewportTimeout = setTimeout(() => {
+                updateViewportHeight();
+            }, 100);
+        }
+        
+        // Visual Viewport API for better mobile support
+        if ('visualViewport' in window) {
+            window.visualViewport.addEventListener('resize', handleViewportChange);
+            window.visualViewport.addEventListener('scroll', handleViewportChange);
+        }
+        
+        // Fallback for browsers without Visual Viewport API
+        window.addEventListener('resize', handleViewportChange);
+        window.addEventListener('orientationchange', handleViewportChange);
 
         // Select date
         function selectDate(date) {
