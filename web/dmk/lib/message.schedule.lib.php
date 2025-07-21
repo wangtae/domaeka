@@ -16,12 +16,27 @@ if (!defined('_GNUBOARD_')) exit; // 개별 페이지 접근 불가
 function dmk_register_message_schedule($message_type, $params) {
     global $g5;
     
+    error_log("DMK: dmk_register_message_schedule called - Type: {$message_type}, Branch: " . ($params['branch_id'] ?? 'none'));
+    
+    // 디버깅용 로그 테이블에 저장
+    $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                  ('schedule_register', '".sql_real_escape_string("Type: {$message_type}, Branch: " . ($params['branch_id'] ?? 'none') . ", Params: " . json_encode($params))."', NOW())";
+    @sql_query($debug_sql);
+    
     // 필수 파라미터 검증
     if (!in_array($message_type, ['order_placed', 'order_complete', 'stock_warning', 'stock_out'])) {
+        error_log("DMK: Invalid message type: {$message_type}");
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('schedule_error', '".sql_real_escape_string("Invalid message type: {$message_type}")."', NOW())";
+        @sql_query($debug_sql);
         return false;
     }
     
     if (empty($params['branch_id'])) {
+        error_log("DMK: Empty branch_id");
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('schedule_error', 'Empty branch_id', NOW())";
+        @sql_query($debug_sql);
         return false;
     }
     
@@ -35,12 +50,22 @@ function dmk_register_message_schedule($message_type, $params) {
     
     if (!$branch) {
         error_log("DMK: Branch not found for ID: " . $params['branch_id']);
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('schedule_error', '".sql_real_escape_string("Branch not found for ID: " . $params['branch_id'])."', NOW())";
+        @sql_query($debug_sql);
         return false;
     }
+    
+    $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                  ('schedule_debug', '".sql_real_escape_string("Branch found: " . json_encode($branch))."', NOW())";
+    @sql_query($debug_sql);
     
     // 메시지 발송 봇이 설정되어 있지 않으면 종료
     if (empty($branch['br_message_bot_name']) || empty($branch['br_message_device_id'])) {
         error_log("DMK: No bot configured for branch: {$branch['br_id']}");
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('schedule_error', '".sql_real_escape_string("No bot configured - bot_name: " . ($branch['br_message_bot_name'] ?? 'empty') . ", device_id: " . ($branch['br_message_device_id'] ?? 'empty'))."', NOW())";
+        @sql_query($debug_sql);
         return false;
     }
     
@@ -51,7 +76,7 @@ function dmk_register_message_schedule($message_type, $params) {
                      FROM kb_rooms
                      WHERE room_id = '".sql_real_escape_string($branch['br_message_room_id'])."'
                      AND owner_id = '".sql_real_escape_string($params['branch_id'])."'
-                     AND owner_type = 'branch'
+                     AND (owner_type = 'branch' OR owner_type IS NULL)
                      AND bot_name = '".sql_real_escape_string($branch['br_message_bot_name'])."'
                      AND device_id = '".sql_real_escape_string($branch['br_message_device_id'])."'
                      AND status = 'approved'";
@@ -60,7 +85,7 @@ function dmk_register_message_schedule($message_type, $params) {
         $room_sql = "SELECT room_name, room_id
                      FROM kb_rooms
                      WHERE owner_id = '".sql_real_escape_string($params['branch_id'])."'
-                     AND owner_type = 'branch'
+                     AND (owner_type = 'branch' OR owner_type IS NULL)
                      AND bot_name = '".sql_real_escape_string($branch['br_message_bot_name'])."'
                      AND device_id = '".sql_real_escape_string($branch['br_message_device_id'])."'
                      AND status = 'approved'";
@@ -69,8 +94,15 @@ function dmk_register_message_schedule($message_type, $params) {
     
     if (!$room) {
         error_log("DMK: No approved room found for branch: " . $params['branch_id'] . " with bot: " . $branch['br_message_bot_name'] . "@" . $branch['br_message_device_id'] . " room_id: " . ($branch['br_message_room_id'] ?? 'none'));
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('schedule_error', '".sql_real_escape_string("No approved room found - SQL: " . $room_sql)."', NOW())";
+        @sql_query($debug_sql);
         return false;
     }
+    
+    $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                  ('schedule_debug', '".sql_real_escape_string("Room found: " . json_encode($room))."', NOW())";
+    @sql_query($debug_sql);
     
     // 메시지 타입별 처리
     $template = '';
@@ -106,11 +138,21 @@ function dmk_register_message_schedule($message_type, $params) {
     // 메시지 발송이 비활성화되어 있으면 종료
     if (!$enabled) {
         error_log("DMK: Message type '$message_type' is not enabled for branch: " . $params['branch_id']);
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('schedule_error', '".sql_real_escape_string("Message type '$message_type' is not enabled - enabled value: " . var_export($enabled, true))."', NOW())";
+        @sql_query($debug_sql);
         return false;
     }
     
+    $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                  ('schedule_debug', '".sql_real_escape_string("Message enabled check passed - type: $message_type, enabled: " . var_export($enabled, true))."', NOW())";
+    @sql_query($debug_sql);
+    
     if (empty($template)) {
         error_log("DMK: Empty template for message type '$message_type' in branch: " . $params['branch_id']);
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('schedule_error', '".sql_real_escape_string("Empty template for message type '$message_type'")."', NOW())";
+        @sql_query($debug_sql);
         return false;
     }
     
@@ -280,13 +322,18 @@ function dmk_get_item_info($item_id) {
  * 상품주문 메시지 등록
  */
 function dmk_register_order_placed_message($order_id, $branch_id, $mb_id = 'system') {
-    return dmk_register_message_schedule('order_placed', [
+    error_log("DMK: dmk_register_order_placed_message called - Order: {$order_id}, Branch: {$branch_id}, MB: {$mb_id}");
+    
+    $result = dmk_register_message_schedule('order_placed', [
         'order_id' => $order_id,
         'branch_id' => $branch_id,
         'mb_id' => $mb_id,
         'reference_type' => 'order',
         'reference_id' => $order_id
     ]);
+    
+    error_log("DMK: dmk_register_order_placed_message result: " . ($result ? "success (ID: {$result})" : "failed"));
+    return $result;
 }
 
 /**

@@ -918,8 +918,12 @@ if (file_exists(G5_PATH.'/dmk/lib/message.schedule.lib.php')) {
     $od_info = sql_fetch($od_info_sql);
     
     if ($od_info && !empty($od_info['dmk_od_br_id'])) {
-        $result = dmk_register_order_placed_message($od_id, $od_info['dmk_od_br_id']);
-        error_log("DMK: Order placed message registration for order {$od_id}, branch {$od_info['dmk_od_br_id']}, result: " . ($result ? "success (ID: {$result})" : "failed"));
+        // 주문자의 mb_id 가져오기
+        $order_mb_id = $member['mb_id'] ?? 'guest';
+        $result = dmk_register_order_placed_message($od_id, $od_info['dmk_od_br_id'], $order_mb_id);
+        error_log("DMK: Order placed message registration for order {$od_id}, branch {$od_info['dmk_od_br_id']}, mb_id {$order_mb_id}, result: " . ($result ? "success (ID: {$result})" : "failed"));
+    } else {
+        error_log("DMK: No branch info for order {$od_id}, dmk_od_br_id: " . ($od_info['dmk_od_br_id'] ?? 'none'));
     }
 }
 
