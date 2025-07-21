@@ -913,9 +913,13 @@ if(function_exists('add_order_post_log')) add_order_post_log('', 'delete');
 if (file_exists(G5_PATH.'/dmk/lib/message.schedule.lib.php')) {
     include_once(G5_PATH.'/dmk/lib/message.schedule.lib.php');
     
-    // 회원의 지점 정보 확인
-    if ($is_member && !empty($member['dmk_br_id'])) {
-        dmk_register_order_placed_message($od_id, $member['dmk_br_id']);
+    // 주문의 지점 정보 확인 (주문 테이블에서 가져옴)
+    $od_info_sql = "SELECT dmk_od_br_id FROM {$g5['g5_shop_order_table']} WHERE od_id = '{$od_id}'";
+    $od_info = sql_fetch($od_info_sql);
+    
+    if ($od_info && !empty($od_info['dmk_od_br_id'])) {
+        $result = dmk_register_order_placed_message($od_id, $od_info['dmk_od_br_id']);
+        error_log("DMK: Order placed message registration for order {$od_id}, branch {$od_info['dmk_od_br_id']}, result: " . ($result ? "success (ID: {$result})" : "failed"));
     }
 }
 

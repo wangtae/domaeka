@@ -217,11 +217,13 @@ if ($w == 'u') {
         // 메시지 봇 정보 처리
         $br_message_bot_name = '';
         $br_message_device_id = '';
+        $br_message_room_id = '';
         if (!empty($_POST['br_message_bot'])) {
             $bot_parts = explode('|', $_POST['br_message_bot']);
-            if (count($bot_parts) == 2) {
-                $br_message_bot_name = clean_xss_tags($bot_parts[0]);
-                $br_message_device_id = clean_xss_tags($bot_parts[1]);
+            if (count($bot_parts) == 3) {
+                $br_message_room_id = clean_xss_tags($bot_parts[0]);
+                $br_message_bot_name = clean_xss_tags($bot_parts[1]);
+                $br_message_device_id = clean_xss_tags($bot_parts[2]);
             }
         }
         
@@ -263,6 +265,7 @@ if ($w == 'u') {
                     br_stock_out_msg_delay = " . $br_stock_out_msg_delay . ",
                     br_message_bot_name = '" . sql_escape_string($br_message_bot_name) . "',
                     br_message_device_id = '" . sql_escape_string($br_message_device_id) . "',
+                    br_message_room_id = '" . sql_escape_string($br_message_room_id) . "',
                     br_order_page_skin = '" . sql_escape_string($br_order_page_skin) . "',
                     br_order_page_skin_options = '" . sql_escape_string($br_order_page_skin_options) . "'
                  WHERE br_id = '" . sql_escape_string($br_id) . "' ";
@@ -386,11 +389,13 @@ if ($w == 'u') {
     // 메시지 봇 정보 처리
     $br_message_bot_name = '';
     $br_message_device_id = '';
+    $br_message_room_id = '';
     if (!empty($_POST['br_message_bot'])) {
         $bot_parts = explode('|', $_POST['br_message_bot']);
-        if (count($bot_parts) == 2) {
-            $br_message_bot_name = clean_xss_tags($bot_parts[0]);
-            $br_message_device_id = clean_xss_tags($bot_parts[1]);
+        if (count($bot_parts) == 3) {
+            $br_message_room_id = clean_xss_tags($bot_parts[0]);
+            $br_message_bot_name = clean_xss_tags($bot_parts[1]);
+            $br_message_device_id = clean_xss_tags($bot_parts[2]);
         }
     }
     
@@ -436,6 +441,7 @@ if ($w == 'u') {
                 br_stock_out_msg_delay = " . $br_stock_out_msg_delay . ",
                 br_message_bot_name = '" . sql_escape_string($br_message_bot_name) . "',
                 br_message_device_id = '" . sql_escape_string($br_message_device_id) . "',
+                br_message_room_id = '" . sql_escape_string($br_message_room_id) . "',
                 br_order_page_skin = '" . sql_escape_string($br_order_page_skin) . "',
                 br_order_page_skin_options = '" . sql_escape_string($br_order_page_skin_options) . "';";
     sql_query($sql);

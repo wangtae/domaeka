@@ -305,7 +305,7 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
     <?php
     // 지점별 주문 상품 정보 조회
     $branch_order_sql = " SELECT 
-                            c.dmk_br_id,
+                            o.dmk_od_br_id as dmk_br_id,
                             b.br_name,
                             a.ag_name,
                             c.it_id,
@@ -317,12 +317,13 @@ add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
                             c.ct_status,
                             i.it_img1
                           FROM {$g5['g5_shop_cart_table']} c
-                          LEFT JOIN dmk_branch b ON c.dmk_br_id = b.br_id
+                          JOIN {$g5['g5_shop_order_table']} o ON c.od_id = o.od_id
+                          LEFT JOIN dmk_branch b ON o.dmk_od_br_id = b.br_id
                           LEFT JOIN dmk_agency a ON b.ag_id = a.ag_id
                           LEFT JOIN {$g5['g5_shop_item_table']} i ON c.it_id = i.it_id
                           WHERE c.od_id = '" . sql_escape_string($od_id) . "' 
-                          AND c.dmk_br_id IS NOT NULL 
-                          AND c.dmk_br_id != ''
+                          AND o.dmk_od_br_id IS NOT NULL 
+                          AND o.dmk_od_br_id != ''
                           ORDER BY a.ag_name, b.br_name, c.it_name ";
     
     $branch_order_result = sql_query($branch_order_sql);

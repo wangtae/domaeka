@@ -16,6 +16,8 @@ if (!defined('_GNUBOARD_')) exit; // 개별 페이지 접근 불가
 function dmk_order_status_changed($od_id, $old_status, $new_status) {
     global $g5;
     
+    error_log("DMK: dmk_order_status_changed called - Order: {$od_id}, Old: {$old_status}, New: {$new_status}");
+    
     // 주문 완료 상태로 변경된 경우
     if ($new_status === '완료' && $old_status !== '완료') {
         // 주문 정보 조회
@@ -25,12 +27,16 @@ function dmk_order_status_changed($od_id, $old_status, $new_status) {
                       WHERE o.od_id = '".sql_real_escape_string($od_id)."'";
         $order = sql_fetch($order_sql);
         
+        error_log("DMK: Order complete - Branch ID: " . ($order && $order['br_id'] ? $order['br_id'] : 'none'));
+        
         if ($order && $order['br_id']) {
             // 통합 메시지 스케줄 라이브러리 포함
             include_once(G5_DMK_PATH . '/lib/message.schedule.lib.php');
             
             // 주문 완료 메시지 등록
             $schedule_id = dmk_register_order_complete_message($od_id, $order['br_id'], $order['mb_id']);
+            
+            error_log("DMK: Order complete message registration result: " . ($schedule_id ? "success (ID: {$schedule_id})" : "failed"));
             
             if ($schedule_id) {
                 // 로그 기록
@@ -230,15 +236,19 @@ function dmk_check_stock_warning_simple($it_id, $od_id) {
     }
     
     // 품절 체크 (재고가 0 이하)
-    if ($new_stock <= 0 && $branch_info['br_stock_out_msg_enabled']) {
+    if ($new_stock <= 0 && $branch_info['br_stock_out_msg_enabled'] == 1) {
+        error_log("DMK: Stock out detected for item {$it_id}, branch {$item_branch_id}, stock: {$new_stock}");
         if (!dmk_has_active_schedule('item', $it_id, 'stock_out')) {
-            dmk_register_stock_out_message($it_id, $item_branch_id);
+            $result = dmk_register_stock_out_message($it_id, $item_branch_id);
+            error_log("DMK: Stock out schedule registration result: " . ($result ? "success (ID: {$result})" : "failed"));
         }
     }
     // 품절임박 체크 (재고가 경고 수량 이하)
-    else if ($new_stock > 0 && $new_stock <= $warning_qty && $branch_info['br_stock_warning_msg_enabled']) {
+    else if ($new_stock > 0 && $new_stock <= $warning_qty && $branch_info['br_stock_warning_msg_enabled'] == 1) {
+        error_log("DMK: Stock warning detected for item {$it_id}, branch {$item_branch_id}, stock: {$new_stock}, warning_qty: {$warning_qty}");
         if (!dmk_has_active_schedule('item', $it_id, 'stock_warning')) {
-            dmk_register_stock_warning_message($it_id, $item_branch_id, $new_stock, $warning_qty);
+            $result = dmk_register_stock_warning_message($it_id, $item_branch_id, $new_stock, $warning_qty);
+            error_log("DMK: Stock warning schedule registration result: " . ($result ? "success (ID: {$result})" : "failed"));
         }
     }
 }

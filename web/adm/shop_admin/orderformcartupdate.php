@@ -179,6 +179,8 @@ for ($i=0; $i<$cnt; $i++)
         $od_sql = "SELECT dmk_od_br_id FROM {$g5['g5_shop_order_table']} WHERE od_id = '$od_id'";
         $od_info = sql_fetch($od_sql);
         
+        error_log("DMK: Cart item status changed to complete. Order: {$od_id}, Branch: " . ($od_info ? $od_info['dmk_od_br_id'] : 'none'));
+        
         if($od_info && $od_info['dmk_od_br_id']) {
             // 훅 라이브러리 포함
             include_once(G5_DMK_PATH . '/lib/order.status.hook.php');
@@ -189,9 +191,12 @@ for ($i=0; $i<$cnt; $i++)
                           AND ct_status NOT IN ('완료', '취소', '반품', '품절')";
             $check = sql_fetch($check_sql);
             
+            error_log("DMK: Remaining non-complete items: " . $check['cnt']);
+            
             if($check['cnt'] == 0) {
                 // 모든 상품이 완료/취소 상태면 주문 전체를 완료로 처리
                 dmk_order_status_changed($od_id, '', '완료');
+                error_log("DMK: Called dmk_order_status_changed for order {$od_id}");
             }
         }
     }

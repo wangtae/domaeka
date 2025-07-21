@@ -45,17 +45,30 @@ function dmk_register_message_schedule($message_type, $params) {
     }
     
     // 지점에 설정된 봇으로 정확한 room 정보 조회
-    $room_sql = "SELECT room_name, room_id
-                 FROM kb_rooms
-                 WHERE owner_id = '".sql_real_escape_string($params['branch_id'])."'
-                 AND owner_type = 'branch'
-                 AND bot_name = '".sql_real_escape_string($branch['br_message_bot_name'])."'
-                 AND device_id = '".sql_real_escape_string($branch['br_message_device_id'])."'
-                 AND status = 'approved'";
+    // br_message_room_id가 있으면 사용, 없으면 기존 방식으로 조회
+    if (!empty($branch['br_message_room_id'])) {
+        $room_sql = "SELECT room_name, room_id
+                     FROM kb_rooms
+                     WHERE room_id = '".sql_real_escape_string($branch['br_message_room_id'])."'
+                     AND owner_id = '".sql_real_escape_string($params['branch_id'])."'
+                     AND owner_type = 'branch'
+                     AND bot_name = '".sql_real_escape_string($branch['br_message_bot_name'])."'
+                     AND device_id = '".sql_real_escape_string($branch['br_message_device_id'])."'
+                     AND status = 'approved'";
+    } else {
+        // 하위 호환성을 위한 기존 방식
+        $room_sql = "SELECT room_name, room_id
+                     FROM kb_rooms
+                     WHERE owner_id = '".sql_real_escape_string($params['branch_id'])."'
+                     AND owner_type = 'branch'
+                     AND bot_name = '".sql_real_escape_string($branch['br_message_bot_name'])."'
+                     AND device_id = '".sql_real_escape_string($branch['br_message_device_id'])."'
+                     AND status = 'approved'";
+    }
     $room = sql_fetch($room_sql);
     
     if (!$room) {
-        error_log("DMK: No approved room found for branch: " . $params['branch_id'] . " with bot: " . $branch['br_message_bot_name'] . "@" . $branch['br_message_device_id']);
+        error_log("DMK: No approved room found for branch: " . $params['branch_id'] . " with bot: " . $branch['br_message_bot_name'] . "@" . $branch['br_message_device_id'] . " room_id: " . ($branch['br_message_room_id'] ?? 'none'));
         return false;
     }
     

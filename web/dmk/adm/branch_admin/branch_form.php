@@ -413,13 +413,13 @@ if (!$auth['is_super']) {
     <?php
     // 해당 지점과 연결된 승인된 봇 목록 조회
     // kb_rooms의 owner_id를 기준으로 조회 (bot_schedule_form.php와 동일한 방식)
-    $bot_list_sql = "SELECT DISTINCT r.bot_name, r.device_id, r.room_name,
+    $bot_list_sql = "SELECT r.bot_name, r.device_id, r.room_name, r.room_id,
                             COALESCE(d.client_type, 'Unknown') as client_type
                      FROM kb_rooms r
                      LEFT JOIN kb_bot_devices d ON r.bot_name = d.bot_name AND r.device_id = d.device_id
                      WHERE r.owner_id = '".sql_real_escape_string($branch['br_id'])."'
                      AND r.status = 'approved'
-                     ORDER BY r.bot_name, r.device_id";
+                     ORDER BY r.room_name, r.bot_name, r.device_id";
     $bot_list_result = sql_query($bot_list_sql);
     $bot_list = [];
     while ($bot = sql_fetch_array($bot_list_result)) {
@@ -435,11 +435,14 @@ if (!$auth['is_super']) {
             <select name="br_message_bot" id="br_message_bot" class="frm_input">
                 <option value="">선택하세요</option>
                 <?php foreach ($bot_list as $bot) { 
-                    $bot_value = $bot['bot_name'] . '|' . $bot['device_id'];
-                    $selected = ($branch['br_message_bot_name'] == $bot['bot_name'] && $branch['br_message_device_id'] == $bot['device_id']) ? 'selected' : '';
+                    // 방ID, 봇이름, 디바이스ID를 모두 포함
+                    $bot_value = $bot['room_id'] . '|' . $bot['bot_name'] . '|' . $bot['device_id'];
+                    $selected = ($branch['br_message_bot_name'] == $bot['bot_name'] && 
+                                $branch['br_message_device_id'] == $bot['device_id'] && 
+                                $branch['br_message_room_id'] == $bot['room_id']) ? 'selected' : '';
                 ?>
                 <option value="<?php echo $bot_value; ?>" <?php echo $selected; ?>>
-                    <?php echo $bot['bot_name']; ?> - <?php echo $bot['room_name']; ?> (<?php echo substr($bot['device_id'], 0, 8); ?>...)
+                    <?php echo htmlspecialchars($bot['room_name']); ?> - <?php echo $bot['bot_name']; ?> (<?php echo substr($bot['device_id'], 0, 8); ?>...)
                 </option>
                 <?php } ?>
             </select>
