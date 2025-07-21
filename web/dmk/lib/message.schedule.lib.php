@@ -353,10 +353,15 @@ function dmk_register_order_complete_message($order_id, $branch_id, $mb_id = 'sy
  * 품절 임박 메시지 등록
  */
 function dmk_register_stock_warning_message($item_id, $branch_id, $current_stock, $warning_qty) {
-    $item = dmk_get_item_info($item_id);
-    if (!$item) return false;
+    error_log("DMK: dmk_register_stock_warning_message called - Item: {$item_id}, Branch: {$branch_id}, Stock: {$current_stock}, Warning: {$warning_qty}");
     
-    return dmk_register_message_schedule('stock_warning', [
+    $item = dmk_get_item_info($item_id);
+    if (!$item) {
+        error_log("DMK: Item not found for stock warning: {$item_id}");
+        return false;
+    }
+    
+    $result = dmk_register_message_schedule('stock_warning', [
         'item_id' => $item_id,
         'item_name' => $item['it_name'],
         'branch_id' => $branch_id,
@@ -365,22 +370,33 @@ function dmk_register_stock_warning_message($item_id, $branch_id, $current_stock
         'current_stock' => $current_stock,
         'warning_qty' => $warning_qty
     ]);
+    
+    error_log("DMK: Stock warning message registration result: " . ($result ? "success (ID: {$result})" : "failed"));
+    return $result;
 }
 
 /**
  * 품절 메시지 등록
  */
 function dmk_register_stock_out_message($item_id, $branch_id) {
-    $item = dmk_get_item_info($item_id);
-    if (!$item) return false;
+    error_log("DMK: dmk_register_stock_out_message called - Item: {$item_id}, Branch: {$branch_id}");
     
-    return dmk_register_message_schedule('stock_out', [
+    $item = dmk_get_item_info($item_id);
+    if (!$item) {
+        error_log("DMK: Item not found for stock out: {$item_id}");
+        return false;
+    }
+    
+    $result = dmk_register_message_schedule('stock_out', [
         'item_id' => $item_id,
         'item_name' => $item['it_name'],
         'branch_id' => $branch_id,
         'reference_type' => 'item',
         'reference_id' => $item_id
     ]);
+    
+    error_log("DMK: Stock out message registration result: " . ($result ? "success (ID: {$result})" : "failed"));
+    return $result;
 }
 
 /**

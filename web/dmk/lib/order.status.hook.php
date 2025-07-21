@@ -131,14 +131,15 @@ function dmk_check_stock_after_delivery($od_id) {
     
     while ($cart = sql_fetch_array($cart_result)) {
         // 상품 재고 확인
-        $stock_sql = "SELECT it_stock_qty, it_name, dmk_owner_id, dmk_owner_type 
+        $stock_sql = "SELECT it_stock_qty, it_name, dmk_br_id, dmk_ag_id, dmk_dt_id 
                       FROM g5_shop_item 
                       WHERE it_id = '".sql_real_escape_string($cart['it_id'])."'";
         $stock_info = sql_fetch($stock_sql);
         
         if ($stock_info) {
             $new_stock = $stock_info['it_stock_qty'];
-            $item_branch_id = ($stock_info['dmk_owner_type'] == 'branch') ? $stock_info['dmk_owner_id'] : $order_info['dmk_od_br_id'];
+            // 상품에 지점이 지정되어 있으면 그 지점을, 아니면 주문자의 지점을 사용
+            $item_branch_id = !empty($stock_info['dmk_br_id']) ? $stock_info['dmk_br_id'] : $order_info['dmk_od_br_id'];
             
             // 지점의 품절임박 기준 조회
             $branch_sql = "SELECT br_stock_warning_qty, br_stock_warning_msg_enabled, br_stock_out_msg_enabled 
@@ -175,18 +176,33 @@ function dmk_check_stock_after_delivery($od_id) {
 function dmk_check_stock_warning_simple($it_id, $od_id) {
     global $g5;
     
+    error_log("DMK: dmk_check_stock_warning_simple called - Item: {$it_id}, Order: {$od_id}");
+    
+    // 디버깅용 로그 테이블에 저장
+    $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                  ('stock_check', '".sql_real_escape_string("dmk_check_stock_warning_simple called - Item: {$it_id}, Order: {$od_id}")."', NOW())";
+    @sql_query($debug_sql);
+    
     // 통합 메시지 스케줄 라이브러리 포함
     include_once(G5_DMK_PATH . '/lib/message.schedule.lib.php');
     
     // 상품 재고 확인
-    $stock_sql = "SELECT it_stock_qty, it_name, dmk_owner_id, dmk_owner_type 
+    $stock_sql = "SELECT it_stock_qty, it_name, dmk_br_id, dmk_ag_id, dmk_dt_id 
                   FROM g5_shop_item 
                   WHERE it_id = '".sql_real_escape_string($it_id)."'";
     $stock_info = sql_fetch($stock_sql);
     
-    if (!$stock_info) return;
+    if (!$stock_info) {
+        error_log("DMK: Item not found: {$it_id}");
+        return;
+    }
     
     $new_stock = $stock_info['it_stock_qty'];
+    error_log("DMK: Stock check - Item: {$it_id}, Name: {$stock_info['it_name']}, Stock: {$new_stock}");
+    
+    $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                  ('stock_check', '".sql_real_escape_string("Stock check - Item: {$it_id}, Name: {$stock_info['it_name']}, Stock: {$new_stock}")."', NOW())";
+    @sql_query($debug_sql);
     
     // 재고가 0 초과로 회복된 경우 품절 스케줄 취소
     if ($new_stock > 0) {
@@ -207,9 +223,17 @@ function dmk_check_stock_warning_simple($it_id, $od_id) {
                   WHERE od_id = '".sql_real_escape_string($od_id)."'";
     $order_info = sql_fetch($order_sql);
     
-    if (!$order_info || !$order_info['dmk_od_br_id']) return;
+    if (!$order_info || !$order_info['dmk_od_br_id']) {
+        error_log("DMK: No branch info for order: {$od_id}");
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('stock_check', '".sql_real_escape_string("No branch info for order: {$od_id}")."', NOW())";
+        @sql_query($debug_sql);
+        return;
+    }
     
-    $item_branch_id = ($stock_info['dmk_owner_type'] == 'branch') ? $stock_info['dmk_owner_id'] : $order_info['dmk_od_br_id'];
+    // 상품에 지점이 지정되어 있으면 그 지점을, 아니면 주문자의 지점을 사용
+    $item_branch_id = !empty($stock_info['dmk_br_id']) ? $stock_info['dmk_br_id'] : $order_info['dmk_od_br_id'];
+    error_log("DMK: Branch ID determined: {$item_branch_id} (item_br_id: {$stock_info['dmk_br_id']}, order_br_id: {$order_info['dmk_od_br_id']})");
     
     // 지점의 품절임박 기준 조회
     $branch_sql = "SELECT br_stock_warning_qty, br_stock_warning_msg_enabled, br_stock_out_msg_enabled 
@@ -217,9 +241,20 @@ function dmk_check_stock_warning_simple($it_id, $od_id) {
                    WHERE br_id = '".sql_real_escape_string($item_branch_id)."'";
     $branch_info = sql_fetch($branch_sql);
     
-    if (!$branch_info) return;
+    if (!$branch_info) {
+        error_log("DMK: Branch not found: {$item_branch_id}");
+        $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                      ('stock_check', '".sql_real_escape_string("Branch not found: {$item_branch_id}")."', NOW())";
+        @sql_query($debug_sql);
+        return;
+    }
     
     $warning_qty = $branch_info['br_stock_warning_qty'] ?: 10;
+    error_log("DMK: Branch settings - warning_qty: {$warning_qty}, warning_enabled: {$branch_info['br_stock_warning_msg_enabled']}, out_enabled: {$branch_info['br_stock_out_msg_enabled']}");
+    
+    $debug_sql = "INSERT INTO dmk_debug_log (log_type, log_message, created_at) VALUES 
+                  ('stock_check', '".sql_real_escape_string("Branch settings - ID: {$item_branch_id}, warning_qty: {$warning_qty}, warning_enabled: {$branch_info['br_stock_warning_msg_enabled']}, out_enabled: {$branch_info['br_stock_out_msg_enabled']}")."', NOW())";
+    @sql_query($debug_sql);
     
     // 재고가 경고 수량을 초과한 경우 품절임박 스케줄 취소
     if ($new_stock > $warning_qty) {
