@@ -451,7 +451,7 @@ var MediaHandler = (function() {
         }, delay + 5000); // 전송 대기시간 + 5초 후 삭제
     }
 
-    function _processMedia(room, mediaList, mimeTypePrefix, isGroup) {
+    function _processMedia(room, mediaList, mimeTypePrefix, isGroup, serverWaitTime) {
         var preparedFiles = [];
         var filesToDelete = [];
         var totalSize = 0;
@@ -497,7 +497,17 @@ var MediaHandler = (function() {
 
         _sendIntentToKakaoTalk(room, uris, commonMimeType || mimeTypePrefix + "/*");
 
-        var sendDelay = _calculateSendDelay(preparedFiles.length, totalSize, isGroup);
+        // v3.3.0: 서버가 지정한 대기시간이 있으면 우선 사용
+        // serverWaitTime이 명시적으로 전달되고 0보다 큰 경우에만 사용
+        var sendDelay;
+        if (typeof serverWaitTime === 'number' && serverWaitTime > 0) {
+            sendDelay = serverWaitTime;
+            Log.d("[TIMING] 서버 지정 대기시간 사용: " + sendDelay + "ms");
+        } else {
+            // serverWaitTime이 없거나 0 이하인 경우 클라이언트 계산값 사용
+            sendDelay = _calculateSendDelay(preparedFiles.length, totalSize, isGroup);
+        }
+        
         setTimeout(function() {
             bot.send(room, ""); // 빈 메시지로 돌아오기
         }, sendDelay);
@@ -508,22 +518,22 @@ var MediaHandler = (function() {
     // v3.3.0 새로운 처리 함수들
     function processImages(data, imageDataList) {
         Log.i("[MEDIA] 이미지 " + imageDataList.length + "개 처리 시작");
-        _processMedia(data.room, imageDataList, "image", data.is_group_chat);
+        _processMedia(data.room, imageDataList, "image", data.is_group_chat, data.media_wait_time);
     }
 
     function processAudios(data, audioDataList) {
         Log.i("[MEDIA] 오디오 " + audioDataList.length + "개 처리 시작");
-        _processMedia(data.room, audioDataList, "audio", data.is_group_chat);
+        _processMedia(data.room, audioDataList, "audio", data.is_group_chat, data.media_wait_time);
     }
 
     function processVideos(data, videoDataList) {
         Log.i("[MEDIA] 비디오 " + videoDataList.length + "개 처리 시작");
-        _processMedia(data.room, videoDataList, "video", data.is_group_chat);
+        _processMedia(data.room, videoDataList, "video", data.is_group_chat, data.media_wait_time);
     }
 
     function processDocuments(data, docDataList) {
         Log.i("[MEDIA] 문서 " + docDataList.length + "개 처리 시작");
-        _processMedia(data.room, docDataList, "application", data.is_group_chat);
+        _processMedia(data.room, docDataList, "application", data.is_group_chat, data.media_wait_time);
     }
 
 

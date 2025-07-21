@@ -34,6 +34,7 @@ var BOT_CONFIG = {
     // 기본 정보
     VERSION: '3.3.0',
     BOT_NAME: 'LOA.i',
+    CLIENT_TYPE: 'MessengerBotR',
     PROTOCOL_VERSION: 3,  // v3.3.0 프로토콜 버전
 
     // 서버 및 인증 정보
@@ -173,6 +174,12 @@ var Utils = (function() {
         var second = ('0' + d.getSeconds()).slice(-2);
         return year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second;
     }
+    
+    // UTC 타임스탬프 포맷팅 (ISO 8601)
+    function formatUTCTimestamp(date) {
+        var d = date || new Date();
+        return d.toISOString().replace(/\.\d{3}/, '');
+    }
 
     function formatDate(date, format) { var d = date || new Date(); return format.replace('YYYY', d.getFullYear()).replace('MM', ('0' + (d.getMonth() + 1)).slice(-2)).replace('DD', ('0' + d.getDate()).slice(-2)); }
 
@@ -282,6 +289,7 @@ var Utils = (function() {
     return {
         generateUniqueId: generateUniqueId,
         formatTimestamp: formatTimestamp,
+        formatUTCTimestamp: formatUTCTimestamp,
         formatDate: formatDate,
         sanitizeText: sanitizeText,
         hmacSha256: hmacSha256,
@@ -443,7 +451,7 @@ var MediaHandler = (function() {
         }, delay + 5000); // 전송 대기시간 + 5초 후 삭제
     }
 
-    function _processMedia(room, mediaList, mimeTypePrefix, isGroup) {
+    function _processMedia(room, mediaList, mimeTypePrefix, isGroup, serverWaitTime) {
         var preparedFiles = [];
         var filesToDelete = [];
         var totalSize = 0;
@@ -489,7 +497,17 @@ var MediaHandler = (function() {
 
         _sendIntentToKakaoTalk(room, uris, commonMimeType || mimeTypePrefix + "/*");
 
-        var sendDelay = _calculateSendDelay(preparedFiles.length, totalSize, isGroup);
+        // v3.3.0: 서버가 지정한 대기시간이 있으면 우선 사용
+        // serverWaitTime이 명시적으로 전달되고 0보다 큰 경우에만 사용
+        var sendDelay;
+        if (typeof serverWaitTime === 'number' && serverWaitTime > 0) {
+            sendDelay = serverWaitTime;
+            Log.d("[TIMING] 서버 지정 대기시간 사용: " + sendDelay + "ms");
+        } else {
+            // serverWaitTime이 없거나 0 이하인 경우 클라이언트 계산값 사용
+            sendDelay = _calculateSendDelay(preparedFiles.length, totalSize, isGroup);
+        }
+        
         setTimeout(function() {
             bot.send(room, ""); // 빈 메시지로 돌아오기
         }, sendDelay);
@@ -500,22 +518,22 @@ var MediaHandler = (function() {
     // v3.3.0 새로운 처리 함수들
     function processImages(data, imageDataList) {
         Log.i("[MEDIA] 이미지 " + imageDataList.length + "개 처리 시작");
-        _processMedia(data.room, imageDataList, "image", data.is_group_chat);
+        _processMedia(data.room, imageDataList, "image", data.is_group_chat, data.media_wait_time);
     }
 
     function processAudios(data, audioDataList) {
         Log.i("[MEDIA] 오디오 " + audioDataList.length + "개 처리 시작");
-        _processMedia(data.room, audioDataList, "audio", data.is_group_chat);
+        _processMedia(data.room, audioDataList, "audio", data.is_group_chat, data.media_wait_time);
     }
 
     function processVideos(data, videoDataList) {
         Log.i("[MEDIA] 비디오 " + videoDataList.length + "개 처리 시작");
-        _processMedia(data.room, videoDataList, "video", data.is_group_chat);
+        _processMedia(data.room, videoDataList, "video", data.is_group_chat, data.media_wait_time);
     }
 
     function processDocuments(data, docDataList) {
         Log.i("[MEDIA] 문서 " + docDataList.length + "개 처리 시작");
-        _processMedia(data.room, docDataList, "application", data.is_group_chat);
+        _processMedia(data.room, docDataList, "application", data.is_group_chat, data.media_wait_time);
     }
 
 
@@ -646,20 +664,47 @@ var BotCore = (function() {
         }
     }
 
-    // 핸드셰이크 전송 - v3.3.0 프로토콜 버전 포함
+    // 핸드셰이크 전송 - v3.3.0 프로토콜 버전 + v3.2.0 강화된 인증
     function _sendHandshake() {
-        var handshake = {
-            botName: BOT_CONFIG.BOT_NAME, 
-            version: BOT_CONFIG.VERSION, 
-            deviceID: Auth.getDeviceId(),
-            protocolVersion: BOT_CONFIG.PROTOCOL_VERSION,
-            supportedMessageTypes: Object.values(MESSAGE_TYPES)
-        };
-        if (BOT_CONFIG.LOGGING.CONNECTION_EVENTS) {
-            Log.i("[HANDSHAKE] 전송: " + JSON.stringify(handshake));
+        try {
+            var deviceIP = socket && socket.getLocalAddress() ? socket.getLocalAddress().getHostAddress() : "unknown";
+            var deviceInfo = _getDeviceInfo();
+            
+            var handshake = {
+                clientType: BOT_CONFIG.CLIENT_TYPE,
+                botName: BOT_CONFIG.BOT_NAME, 
+                version: BOT_CONFIG.VERSION, 
+                deviceID: Auth.getDeviceId(),
+                deviceIP: deviceIP,
+                deviceInfo: deviceInfo,
+                protocolVersion: BOT_CONFIG.PROTOCOL_VERSION,
+                supportedMessageTypes: Object.values(MESSAGE_TYPES)
+            };
+            
+            if (BOT_CONFIG.LOGGING.CONNECTION_EVENTS) {
+                Log.i("[HANDSHAKE] 전송: " + JSON.stringify(handshake));
+            }
+            outputStream.write((JSON.stringify(handshake) + "\n").getBytes("UTF-8"));
+            outputStream.flush();
+        } catch (e) {
+            Log.e("[HANDSHAKE] 전송 실패: " + e);
         }
-        outputStream.write((JSON.stringify(handshake) + "\n").getBytes("UTF-8"));
-        outputStream.flush();
+    }
+    
+    // 디바이스 정보 생성
+    function _getDeviceInfo() {
+        try {
+            var P = BOT_CONFIG.PACKAGES;
+            var model = P.Build.MODEL || "unknown";
+            var brand = P.Build.BRAND || "unknown";
+            var version = P.Build.VERSION.RELEASE || "unknown";
+            var sdk = P.Build.VERSION.SDK_INT || "unknown";
+            
+            return brand + " " + model + " (Android " + version + ", API " + sdk + ")";
+        } catch (e) {
+            Log.e("[DEVICE] 디바이스 정보 가져오기 실패: " + e);
+            return "unknown device";
+        }
     }
 
     // 리더 스레드 시작
@@ -1004,7 +1049,9 @@ var BotCore = (function() {
         // 🔴 ping 응답 (모니터링 데이터 포함 여부에 따라 단일 응답)
         var pingData = {
             bot_name: data.bot_name,
-            server_timestamp: data.server_timestamp
+            server_timestamp: data.server_timestamp,
+            timestamp: Utils.formatUTCTimestamp(),
+            timezone: "Asia/Seoul"
         };
         
         // 모니터링 데이터 수집 및 ping 응답에 포함
@@ -1135,12 +1182,19 @@ var BotCore = (function() {
         var data = {
             room: messageData.room,
             channel_id: messageData.channelId ? String(messageData.channelId) : null,
-            sender: messageData.sender,
             message_type: "text",
+            message_positions: [0, encodedContent.length],
+            media_wait_time: 0,
+            timestamp: Utils.formatUTCTimestamp(),
+            timezone: "Asia/Seoul",
+            sender: messageData.sender,
+            logId: messageData.logId || Utils.generateUniqueId(),
+            userHash: messageData.userHash || Utils.generateUniqueId(),
+            isMention: messageData.isMention || false,
+            botName: messageData.botName,
+            clientType: BOT_CONFIG.CLIENT_TYPE || "MessengerBotR",
             content_encoding: "base64",
-            timestamp: messageData.timestamp,
             is_group_chat: messageData.isGroupChat,
-            bot_name: messageData.botName,
             auth: Auth.createAuthData()
         };
         
@@ -1288,7 +1342,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName,
             sender: Utils.sanitizeText(sender),
             isGroupChat: isGroupChat,
             channelId: channelId ? channelId.toString() : null,
-            timestamp: Utils.formatTimestamp(new Date()),
+            logId: threadId ? threadId.toString() : Utils.generateUniqueId(),
             botName: BOT_CONFIG.BOT_NAME,
             packageName: packageName,
             threadId: threadId,

@@ -231,8 +231,8 @@ function process_schedule_images($group_num, $existing_images, $new_files, $bot_
         foreach ($existing_images as $image_data) {
             if (count($images) >= $max_images) break;
             
-            // 이미 정리된 배열 데이터
-            if (is_array($image_data)) {
+            // 이미 정리된 배열 데이터 - path가 있는 경우만 처리
+            if (is_array($image_data) && isset($image_data['path'])) {
                 $images[] = $image_data;
             }
         }
@@ -514,6 +514,10 @@ if ($image_storage_mode == 'base64') {
     $message_images_1 = process_schedule_images(1, $_POST['existing_images_1'] ?? [], $_FILES['new_images_1'] ?? [], $target_bot_name);
     $message_images_2 = process_schedule_images(2, $_POST['existing_images_2'] ?? [], $_FILES['new_images_2'] ?? [], $target_bot_name);
 }
+
+// 디버깅: 처리 결과 확인
+echo "<!-- DEBUG: After processing - message_images_1 count: " . count($message_images_1) . " -->\n";
+echo "<!-- DEBUG: After processing - message_images_2 count: " . count($message_images_2) . " -->\n";
 
 echo "<!-- DEBUG: message_images_1 result: " . print_r($message_images_1, true) . " -->\n";
 echo "<!-- DEBUG: message_images_2 result: " . print_r($message_images_2, true) . " -->\n";
@@ -959,6 +963,30 @@ if ($w == '' || $w == 'a') {
                 }
             }
         }
+    } else {
+        // 저장 방식이 변경되지 않은 경우 - 기존처럼 처리하되 기존 이미지 보존 확실히
+        echo "<!-- DEBUG: Storage mode not changed, preserving existing data -->\n";
+        
+        // 이미 처리된 이미지가 없는 경우에만 기존 데이터 사용
+        if (empty($message_images_1) && $schedule['message_images_1']) {
+            $existing_images_1 = json_decode($schedule['message_images_1'], true);
+            if ($existing_images_1) {
+                echo "<!-- DEBUG: Preserving existing images 1: " . count($existing_images_1) . " images -->\n";
+                $message_images_1 = $existing_images_1;
+            }
+        }
+        
+        if (empty($message_images_2) && $schedule['message_images_2']) {
+            $existing_images_2 = json_decode($schedule['message_images_2'], true);
+            if ($existing_images_2) {
+                echo "<!-- DEBUG: Preserving existing images 2: " . count($existing_images_2) . " images -->\n";
+                $message_images_2 = $existing_images_2;
+            }
+        }
+        
+        // JSON 재인코딩
+        $message_images_1_json = !empty($message_images_1) ? json_encode($message_images_1) : null;
+        $message_images_2_json = !empty($message_images_2) ? json_encode($message_images_2) : null;
     }
     
     // 최종 썸네일 생성 (저장 방식 변환 여부와 관계없이)

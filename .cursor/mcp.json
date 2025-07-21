@@ -26,7 +26,7 @@
         "ALLOW_INSERT_OPERATION": "true",
         "ALLOW_UPDATE_OPERATION": "true",
         "ALLOW_DELETE_OPERATION": "true",
-        "ALLOW_DDL_OPERATIONS": "true"
+        "ALLOW_DDL_OPERATIONS": "truec"
       }
     },
     "fetch": {

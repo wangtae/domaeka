@@ -4,6 +4,8 @@
 
 v3.3.0은 모든 메시지 타입(텍스트, 이미지, 오디오, 문서 등)을 통일된 구조로 처리하며, 대용량 데이터의 JSON 파싱 부하를 제거하는 새로운 프로토콜을 도입합니다. 양방향 통신(클라이언트↔서버) 모두에 적용되는 일관된 메시지 구조를 제공합니다.
 
+**중요**: Handshake와 Ping 이벤트는 기존 v3.2.1+ 방식을 그대로 유지합니다. 본 문서는 실제 메시지 데이터 통신에 대한 새로운 프로토콜만을 정의합니다.
+
 ## 현재 구조의 문제점
 
 ### 1. 일관성 부족
@@ -29,43 +31,116 @@ var images = base64Data.split("|||");  // 추가 문자열 처리
 
 새로운 JSON + Raw 데이터 구조는 **실제 메시지 내용을 포함하는 이벤트**에만 적용됩니다:
 
-- **message** (클라이언트 → 서버): 사용자가 입력한 카카오톡 메시지
+- **message** (클라이언트 → 서버): 사용자가 입력한 카카오톡 메시지 (기존 analyze 이벤트 대체)
 - **messageResponse** (서버 → 클라이언트): 봇이 전송할 응답 메시지
 - **scheduleMessage** (서버 → 클라이언트): 예약된 메시지 전송
 - **broadcastMessage** (서버 → 클라이언트): 다중 채팅방 방송 메시지
 
-### 기존 JSON 프로토콜을 유지하는 이벤트
+### 기존 JSON 프로토콜을 유지하는 이벤트 (v3.2.1+ 방식)
 
 제어 및 상태 관련 이벤트는 **기존 JSON 구조를 그대로 사용**합니다:
 
-- **handshake**: 초기 연결 및 인증
-- **ping/pong**: 연결 상태 확인 및 모니터링
+- **handshake**: 초기 연결 및 인증 (v3.2.1+ 스펙 그대로)
+- **ping**: 연결 상태 확인 및 모니터링 (v3.2.1+ 스펙 그대로)
 - **error**: 오류 메시지
 - **status**: 봇 상태 업데이트
 - **control**: 원격 제어 명령
-- **auth**: 인증 관련 메시지
 
 ### 예시 비교
 
-**기존 프로토콜 (ping 이벤트)**:
+**기존 프로토콜 (ping 이벤트 - v3.2.1+ 유지)**:
 ```json
+// 서버 → 클라이언트 (Ping 요청)
 {
   "event": "ping",
   "data": {
-    "timestamp": "2024-01-20 15:30:45",
-    "cpu_usage": 45.2,
-    "memory_usage": 512,
-    "uptime": 3600
+    "bot_name": "LOA.i",
+    "server_timestamp": 1234567890000
+  }
+}
+
+// 클라이언트 → 서버 (Ping 응답)
+{
+  "event": "ping",
+  "data": {
+    "bot_name": "LOA.i",
+    "server_timestamp": 1234567890000,
+    "monitoring": {
+      "total_memory": 2048.0,
+      "memory_usage": 512.5,
+      "memory_percent": 25.0,
+      "message_queue_size": 5,
+      "active_rooms": 10
+    },
+    "auth": { /* Auth.createAuthData() */ }
   }
 }
 ```
 
 **새 프로토콜 (message 이벤트)**:
 ```
-{"event":"message","data":{"room":"채팅방","message_type":"text","content_encoding":"base64","message_positions":[0,100]}}Base64EncodedMessage
+[JSON 헤더] + [Raw 데이터]
+{
+    "event": "message",
+    "data": {
+        "room": "채팅방",
+        "message_type": "text",
+        "content_encoding": "base64",
+        "message_positions": [0, 100]
+    }
+}Base64EncodedMessage
+```
+
+## 기존 프로토콜 유지 사항 (v3.2.1+)
+
+### Handshake 패킷 (클라이언트 → 서버)
+```json
+{
+  "clientType": "MessengerBotR",
+  "botName": "LOA.i",
+  "version": "3.3.0",  // 버전만 업데이트
+  "deviceID": "ccbd8eee1012327e",
+  "deviceIP": "192.168.1.100",
+  "deviceInfo": "samsung SM-G991N (Android 13, API 33)"
+}
+```
+
+### Ping 이벤트 (양방향)
+v3.2.1+ 스펙을 그대로 유지합니다. 상세 내용은 bridge-v3.2.1+.md 참조.
+
+### Error 이벤트 (서버 → 클라이언트)
+```json
+{
+  "event": "error",
+  "data": {
+    "code": "AUTH_FAILED",
+    "message": "인증 실패: 서명이 올바르지 않습니다",
+    "timestamp": 1234567890000
+  }
+}
 ```
 
 ## 새로운 통합 프로토콜
+
+### 패킷 구조 시각화
+
+```
+기존 방식 (v3.2.x):
+┌─────────────────────────────────────────────────────────┐
+│  JSON 전체 (대용량 Base64 포함)                         │
+│  {"event":"messageResponse","data":{"text":"IMAGE_BASE64:│
+│  /9j/4AAQSkZJRg... (5MB 이미지 데이터) ..."}}          │
+└─────────────────────────────────────────────────────────┘
+문제: 전체 5MB JSON 파싱 필요
+
+새로운 방식 (v3.3.0):
+┌──────────────────┬──────────────────────────────────────┐
+│  JSON 헤더       │  Raw 바이너리 데이터                 │
+│  (200 bytes)     │  (5MB 이미지 데이터)                 │
+│  {"event":"..."}  │  /9j/4AAQSkZJRg...                  │
+└──────────────────┴──────────────────────────────────────┘
+장점: 200 bytes만 파싱, 5MB는 직접 처리
+```
 
 ### 1. 메시지 타입 정의
 
@@ -96,29 +171,41 @@ SUPPORTED_FORMATS = {
 
 **통일된 구조 (단일/멀티 모두 positions 배열 사용)**:
 ```
+[JSON 헤더]
 {
-    "event":"messageResponse",
-    "data":{
-        "room":"채팅방명",
-        "channel_id":"12345",
-        "message_type":"text",
-        "message_positions":[0, 100]  // 2개 요소 = 단일 메시지
+    "event": "messageResponse",
+    "data": {
+        "room": "채팅방명",
+        "channel_id": "12345",
+        "message_type": "text",
+        "message_positions": [0, 100],  // 2개 요소 = 단일 메시지
+        "media_wait_time": 0,  // 선택적, v3.2.1 추가 - 서버 지정 대기시간 (ms)
+        "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경경
+        "timezone": "Asia/Seoul", // timezone 필드 추가
     }
-}실제데이터
+}
+[Raw 데이터]
+실제데이터
 ```
 
 **멀티 데이터 예시**:
 ```
+[JSON 헤더]
 {
-    "event":"messageResponse",
-    "data":{
-        "room":"채팅방명",
-        "channel_id":"12345",
-        "message_type":"image",
-        "message_format":"jpg",
-        "message_positions":[0, 1024000, 2048000, 3072000]  // 4개 요소 = 3개 메시지
+    "event": "messageResponse",
+    "data": {
+        "room": "채팅방명",
+        "channel_id": "12345",
+        "message_type": "image",
+        "message_format": "jpg",
+        "message_positions": [0, 1024000, 2048000, 3072000],  // 4개 요소 = 3개 메시지
+        "media_wait_time": 9000,  // 이미지 3개 × 3초 = 9초
+        "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경경
+        "timezone": "Asia/Seoul", // timezone 필드 추가
     }
-}실제데이터1실제데이터2실제데이터3
+}
+[Raw 데이터 - 연속된 바이너리]
+실제데이터1실제데이터2실제데이터3
 ```
 
 **구조 설명**:
@@ -131,69 +218,214 @@ SUPPORTED_FORMATS = {
   - 구분자(|||) 없이 데이터가 연속됨
 - JSON 직후: raw 메시지 데이터 (파싱 불필요)
 
+### media_wait_time 필드 상세 (v3.2.1+)
+
+**목적**: 미디어 전송 시 카카오톡 앱에서의 대기시간 제어
+
+**동작 방식**:
+1. MessengerBotR은 미디어 전송을 위해 카카오톡 앱으로 전환
+2. 카카오톡 앱에서 미디어 파일 전송
+3. `media_wait_time` 밀리초 동안 대기
+4. MessengerBotR로 복귀
+
+**기본 동작**:
+- 클라이언트는 미디어 크기와 개수에 따라 대기시간 자동 계산
+- 예: 이미지 1개 = 3초, 이미지 3개 = 9초 (개수 × 3초)
+
+**서버 제어**:
+- `media_wait_time > 0` 값 전달 시 서버 지정값 우선 사용
+- `media_wait_time = 0` 또는 필드 없음: 클라이언트 자동 계산값 사용
+- 네트워크 상태나 서버 부하에 따른 유연한 제어 가능
+
+**예시 사용 사례**:
+```javascript
+// 서버: 대용량 이미지를 위한 긴 대기시간 지정
+{
+    "media_wait_time": 15000  // 15초 대기
+}
+
+// 서버: 작은 썸네일을 위한 짧은 대기시간
+{
+    "media_wait_time": 2000   // 2초만 대기
+}
+
+// 서버: 클라이언트 자동 계산 사용
+{
+    "media_wait_time": 0      // 또는 필드 생략
+}
+```
+
+**패킷 전송 시퀀스 (네트워크 레벨)**:
+```
+┌─────────────────────────────────────────────────────┐
+│                   TCP Socket Stream                  │
+├─────────────────────────────────────────────────────┤
+│ {"event":"messageResponse",...} │ Raw Binary Data │\n│
+└─────────────────────────────────────────────────────┘
+         ↑ JSON 헤더 부분 ↑             ↑ 실제 데이터 ↑
+```
+
 #### 예시: 텍스트 메시지 (단일)
 
 **Plain Text 방식 (보안 위험)**:
 ```
-{"event":"messageResponse","data":{"room":"가족 모임","channel_id":"12345","message_type":"text","message_positions":[0,45]}}안녕하세요. 오늘 저녁 메뉴는 뭔가요?
+[JSON 헤더]
+{
+    "event": "messageResponse",
+    "data": {
+        "room": "가족 모임",
+        "channel_id": "12345",
+        "message_type": "text",
+        "message_positions": [0, 45],
+        "media_wait_time" : 0,
+        "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경경
+        "timezone": "Asia/Seoul", // timezone 필드 추가
+    }
+}
+[Raw 텍스트]
+안녕하세요. 오늘 저녁 메뉴는 뭔가요?
 ```
 
 **Base64 인코딩 방식 (권장)**:
 ```
-{"event":"messageResponse","data":{"room":"가족 모임","channel_id":"12345","message_type":"text","content_encoding":"base64","message_positions":[0,60]}}7JWI64WV7ZWY7IS47JqULiDsmKTripgg7KCA64WBIOuplOuJtOuKlCDrrK3qsIDsmpQ/
+[JSON 헤더]
+{
+    "event": "messageResponse",
+    "data": {
+        "room": "가족 모임",
+        "channel_id": "12345",
+        "message_type": "text",
+        "content_encoding": "base64",
+        "message_positions": [0, 60],
+        "media_wait_time" : 0,
+        "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경경
+        "timezone": "Asia/Seoul", // timezone 필드 추가
+    }
+}
+[Base64 인코딩된 텍스트]
+7JWI64WV7ZWY7IS47JqULiDsmKTripgg7KCA64WBIOuplOuJtOuKlCDrrK3qsIDsmpQ/
 ```
 
 #### 예시: 단일 이미지 메시지
 ```
-{"event":"messageResponse","data":{"room":"사진 공유방","channel_id":"67890","message_type":"image","message_format":"jpg","message_positions":[0,1024000]}}iVBORw0KGgoAAAANS...
+[JSON 헤더]
+{
+    "event": "messageResponse",
+    "data": {
+        "room": "사진 공유방",
+        "channel_id": "67890",
+        "message_type": "image",
+        "message_format": "jpg",
+        "message_positions": [0, 1024000],
+        "media_wait_time" : 0,
+        "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경경
+        "timezone": "Asia/Seoul", // timezone 필드 추가
+    }
+}
+[Base64 이미지 데이터]
+iVBORw0KGgoAAAANS...
 ```
 
 #### 예시: 멀티 이미지 메시지 (3개)
 ```
-{"event":"messageResponse","data":{"room":"사진 공유방","channel_id":"67890","message_type":"image","message_format":"jpg","message_positions":[0,1024000,2048000,3072000]}}iVBORw0KGgoAAAANS...iVBORw0KGgoAAAANS...iVBORw0KGgoAAAANS...
+[JSON 헤더]
+{
+    "event": "messageResponse",
+    "data": {
+        "room": "사진 공유방",
+        "channel_id": "67890",
+        "message_type": "image",
+        "message_format": "jpg",
+        "message_positions": [0, 1024000, 2048000, 3072000],
+        "media_wait_time" : 0,
+        "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경경
+        "timezone": "Asia/Seoul", // timezone 필드 추가
+    }
+}
+[연속된 Base64 이미지 데이터 - 구분자 없음]
+iVBORw0KGgoAAAANS...iVBORw0KGgoAAAANS...iVBORw0KGgoAAAANS...
 ```
 
 #### 인코딩 안전성 예시
 ```
-// 서버가 보낸 한글 메시지
-{"event":"messageResponse","data":{"room":"테스트","message_type":"text","message_positions":[0,18]}}안녕하세요
+[서버가 보낸 한글 메시지]
+{
+    "event": "messageResponse",
+    "data": {
+        "room": "테스트",
+        "message_type": "text",
+        "message_positions": [0, 18],
+        "media_wait_time" : 0,
+        "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경경
+        "timezone": "Asia/Seoul", // timezone 필드 추가
+    }
+}
+안녕하세요
 
-// 클라이언트 처리
-// positions.length === 2 이므로 단일 메시지
-// 끝 위치(18) 무시하고 JSON 이후 전체를 사용
-// UTF-8 바이트 길이 계산 불일치 문제 회피
+[클라이언트 처리 방식]
+- positions.length === 2 이므로 단일 메시지
+- 끝 위치(18) 무시하고 JSON 이후 전체를 사용
+- UTF-8 바이트 길이 계산 불일치 문제 회피
 ```
 
 ### 3. 클라이언트→서버 패킷 구조
 
-#### 현재 구조 (v3.2.x)
+#### 기존 analyze 이벤트 (v3.2.x) - 제거 예정
 ```json
 {
   "event": "analyze",
   "data": {
     "room": "채팅방",
     "text": "사용자 메시지",
-    "sender": "발신자명",
-    "channelId": "12345",
-    "auth": { /* 인증 정보 */ }
+    "sender": "발신자 이름",
+    "isGroupChat": true,
+    "channelId": "1234567890",
+    "logId": "9876543210",
+    "userHash": "abc123def456",
+    "isMention": false,
+    "timestamp": "2025-01-20 15:30:45",
+    "botName": "LOA.i",
+    "clientType": "MessengerBotR",
+    "auth": { /* Auth.createAuthData() */ }
   }
 }
 ```
 
-#### 새로운 통합 구조 (v3.3.0)
+#### 새로운 message 이벤트 (v3.3.0)
+
+**텍스트 메시지**:
 ```
-{"event":"message","data":{"room":"채팅방","channel_id":"12345","sender":"발신자명","message_type":"text","timestamp":"2024-01-20 15:30:45","is_group_chat":true,"message_positions":[0,32],"auth":{/*인증정보*/}}}사용자가 입력한 메시지 내용
+[JSON 헤더]
+{
+    "event": "message",
+    "data": {
+        "room": "가족 모임",
+        "channel_id": "12345",
+        "message_type": "text",
+        "message_positions": [0, 45],
+        "media_wait_time" : 0,
+        "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경경
+        "timezone": "Asia/Seoul", // timezone 필드 추가
+
+        "sender": "발신자 이름",
+        "logId": "9876543210",
+        "userHash": "abc123def456",
+        "isMention": false,
+        "botName": "LOA.i",
+        "clientType": "MessengerBotR",
+        "auth": { /* Auth.createAuthData() */ }
+    }
+}
+[Base64 인코딩된 메시지]
+7JWI64WV7ZWY7IS47JqULiDsmKTripgg7KCA64WBIOuplOuJtOuKlCDrrK3qsIDsmpQ/
 ```
 
-#### 미디어 업로드 알림
-```
-{"event":"message","data":{"room":"사진 공유방","channel_id":"67890","sender":"홍길동","message_type":"image","message_format":"jpg","message_count":3,"message_size":4567890,"message_positions":[0,45],"auth":{/*인증정보*/}}}사진 3장을 업로드했습니다
-```
 
 **주의사항**:
 - 클라이언트도 동일하게 JSON + raw 데이터 구조 사용
-- 실제 미디어 데이터는 별도 전송 (카카오톡 자체 프로토콜)
-- 봇은 미디어 수신 알림만 서버로 전달
+- 텍스트 메시지는 반드시 Base64 인코딩하여 전송 (보안 강화)
+- 메신저봇 클라이언트는 서버로 미디어 전송이 불가능하나 다른 방식(iris)의 경우에는 전송이 가능하므로 호환성을 위해서 클라이언트<->서버 메시지 전송 구조는 동일하게 만들어 줌. 
+- message_positions는 클라이언트에서 [0,0] 또는 [0,대략적인길이]로 전송
 
 ## 구현 상세
 
@@ -222,6 +454,10 @@ function handleServerResponse(rawMsg) {
                 // 단일 데이터 처리 (positions 길이가 2)
                 // 끝 위치 무시하고 전체 사용 (인코딩 안전성)
                 var messageData = rawMsg.substring(baseOffset);
+                // 개행 문자 제거
+                if (messageData.endsWith('\n')) {
+                    messageData = messageData.substring(0, messageData.length - 1);
+                }
                 handleMessageResponse(packet.data, messageData);
             } else if (positions.length > 2) {
                 // 멀티 데이터 처리 (positions 길이가 3 이상)
@@ -273,18 +509,34 @@ function handleMessageResponse(data, messageContent) {
             break;
             
         case MESSAGE_TYPES.IMAGE:
+            // media_wait_time 처리 (v3.2.1+)
+            if (data.media_wait_time && data.media_wait_time > 0) {
+                MediaHandler.setWaitTime(data.media_wait_time);
+            }
             MediaHandler.processImages(data, [messageContent]);
             break;
             
         case MESSAGE_TYPES.AUDIO:
+            // media_wait_time 처리 (v3.2.1+)
+            if (data.media_wait_time && data.media_wait_time > 0) {
+                MediaHandler.setWaitTime(data.media_wait_time);
+            }
             MediaHandler.processAudios(data, [messageContent]);
             break;
             
         case MESSAGE_TYPES.VIDEO:
+            // media_wait_time 처리 (v3.2.1+)
+            if (data.media_wait_time && data.media_wait_time > 0) {
+                MediaHandler.setWaitTime(data.media_wait_time);
+            }
             MediaHandler.processVideos(data, [messageContent]);
             break;
             
         case MESSAGE_TYPES.DOCUMENT:
+            // media_wait_time 처리 (v3.2.1+)
+            if (data.media_wait_time && data.media_wait_time > 0) {
+                MediaHandler.setWaitTime(data.media_wait_time);
+            }
             MediaHandler.processDocuments(data, [messageContent]);
             break;
             
@@ -304,7 +556,11 @@ function sendMessage(event, data, messageContent) {
         data.message_positions = [0, messageContent.length];
         
         // JSON 생성 및 raw 데이터 결합
-        var jsonPart = JSON.stringify({event: event, data: data});
+        var packet = {
+            event: event,
+            data: data
+        };
+        var jsonPart = JSON.stringify(packet);
         var fullPacket = jsonPart + messageContent + "\n";
         
         outputStream.write(fullPacket);
@@ -322,11 +578,20 @@ function onMessage(msg) {
     var messageData = {
         room: msg.room,
         channel_id: msg.channelId ? msg.channelId.toString() : null,
-        sender: Utils.sanitizeText(msg.author.name),
         message_type: "text",
-        content_encoding: "base64",  // Base64 인코딩 사용
+        content_encoding: "base64",  // Base64 인코딩 필수
+        message_positions: [0, 0],  // 클라이언트는 정확한 길이 계산 어려움
+        media_wait_time: 0,
         timestamp: Utils.formatTimestamp(new Date()),
+        
+        // 기존 호환성을 위한 필드 (순서 유지)
+        sender: Utils.sanitizeText(msg.author.name),
         is_group_chat: msg.isGroupChat,
+        log_id: msg.logId ? msg.logId.toString() : null,
+        user_hash: msg.author.hash || null,
+        is_mention: msg.isMention || false,
+        bot_name: BOT_CONFIG.BOT_NAME,
+        client_type: "MessengerBotR",
         auth: Auth.createAuthData()
     };
     
@@ -393,7 +658,8 @@ def create_message_packet(
     
     # 추가 메타데이터
     for key, value in kwargs.items():
-        packet["data"][key] = value
+        if key not in ['use_base64']:  # 내부 플래그 제외
+            packet["data"][key] = value
     
     # JSON 생성 및 raw 데이터 결합
     json_str = json.dumps(packet, ensure_ascii=False)
@@ -418,13 +684,30 @@ async def send_text_message(context, room_name, text):
     await send_raw_packet(context, packet)
 
 async def send_images(context, room_name, base64_images):
+    # 이미지 개수에 따른 대기시간 계산 (선택적)
+    image_count = len(base64_images) if isinstance(base64_images, list) else 1
+    wait_time = image_count * 3000  # 이미지당 3초
+    
     packet = create_message_packet(
         room_name=room_name,
         channel_id=context['channel_id'],
         message_type="image",
         message_content=base64_images,
         message_format="jpg",
-        mime_type="image/jpeg"
+        mime_type="image/jpeg",
+        media_wait_time=wait_time  # 서버가 지정하는 대기시간
+    )
+    await send_raw_packet(context, packet)
+
+# 비디오 전송 예시
+async def send_video(context, room_name, video_base64):
+    packet = create_message_packet(
+        room_name=room_name,
+        channel_id=context['channel_id'],
+        message_type="video",
+        message_content=video_base64,
+        message_format="mp4",
+        media_wait_time=10000  # 비디오는 10초 대기
     )
     await send_raw_packet(context, packet)
 ```
@@ -489,20 +772,29 @@ async def handle_client_message(raw_message):
 2. 기존 `analyze` 이벤트 → `message` 이벤트로 변경
 3. `IMAGE_BASE64:` 프리픽스 방식 완전 제거
 4. 모든 텍스트 메시지는 Base64 인코딩 필수
+5. "timestamp": "2025-07-21T12:12:11Z", // utc 방식의 타임스템프로 변경 (서버에서 변환하는 작업 필요)
+6. "timezone": "Asia/Seoul", // timezone 필드 추가
 
 ### 마이그레이션 체크리스트
+
+#### 마이그레이션 전 소스코드와 문서를 자세히 확인 할 것.
+- [ ] bridge-v3.2.1+.js 가 기존에 사용되던 클라이언트 코드.
+- [ ] bridge-v3.2.1+.md 에 구 버전의 메시지 패킷 구조를 설명함.
+
 
 #### 클라이언트 측
 - [ ] `analyze` 이벤트를 `message` 이벤트로 변경
 - [ ] 모든 메시지 전송 시 새로운 패킷 구조 사용
 - [ ] 텍스트 메시지 Base64 인코딩 적용
 - [ ] 기존 `IMAGE_BASE64:` 프리픽스 처리 코드 제거
+- [ ] UTC 형식의 타임스템프 변경 처리, 타임존 설정정
 
 #### 서버 측
 - [ ] `analyze` 이벤트 핸들러를 `message` 이벤트로 변경
 - [ ] 모든 응답을 새로운 패킷 구조로 전송
 - [ ] 레거시 프로토콜 처리 코드 완전 제거
 - [ ] 텍스트 메시지 Base64 인코딩/디코딩 적용
+- [ ] UTC 형식의 타임스템프를 타임존에 맞게 변환환
 
 ## 성능 개선
 
@@ -677,8 +969,13 @@ async def log_message(event: str, data: dict, raw_content: bytes = None):
 
 **문제점**:
 ```
-// 위험한 텍스트 메시지 예시
-{"event":"messageResponse","data":{...}}function(){return{}}}}}}
+[위험한 텍스트 메시지 예시]
+{
+    "event": "messageResponse", 
+    "data": {...}
+}function(){return{}}}}}
+
+위 예시에서 lastIndexOf('}') 메서드는 잘못된 위치를 찾게 됩니다!}
 
 // lastIndexOf('}')는 잘못된 위치를 찾음!
 ```
@@ -835,3 +1132,278 @@ v3.3.0 프로토콜은 대용량 미디어 처리를 위해 다음과 같은 최
    - 사용자 피드백 기반 우선순위 조정
 
 **결론**: 현재 v3.3.0 프로토콜은 대용량 미디어 처리에 있어 실질적으로 달성 가능한 최적화를 모두 구현했습니다. 추가적인 복잡한 최적화보다는 현재 구조의 안정성과 신뢰성 확보에 집중하는 것이 더 중요합니다.
+
+## 전체 통신 흐름
+
+### 연결 및 초기화 (v3.2.1+ 유지)
+```mermaid
+sequenceDiagram
+    participant C as 클라이언트
+    participant S as 서버
+    
+    C->>S: TCP 연결
+    C->>S: Handshake (v3.2.1+ JSON)
+    S->>C: 연결 승인
+    
+    loop 주기적 헬스체크
+        S->>C: Ping 요청 (v3.2.1+ JSON)
+        C->>S: Ping 응답 + 모니터링 데이터 (v3.2.1+ JSON)
+    end
+```
+
+### 메시지 통신 (v3.3.0 새 프로토콜)
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant C as 클라이언트
+    participant S as 서버
+    
+    U->>C: 카카오톡 메시지 입력
+    C->>S: message 이벤트 (JSON+Base64)
+    S->>S: 메시지 처리
+    S->>C: messageResponse (JSON+Raw)
+    C->>U: 카카오톡 메시지 전송
+    
+    Note over C,S: 텍스트: Base64 인코딩<br/>미디어: Raw 바이너리
+```
+
+### 프로토콜 버전별 비교
+| 이벤트 | v3.2.x | v3.3.0 |
+|--------|--------|--------|
+| handshake | JSON (유지) | JSON (유지) |
+| ping | JSON (유지) | JSON (유지) |
+| analyze | JSON | 제거 (message로 대체) |
+| message | - | JSON + Raw 데이터 |
+| messageResponse | JSON (프리픽스 방식) | JSON + Raw 데이터 |
+
+## 마이그레이션 가이드
+
+### 클라이언트 (bridge.js) 수정사항
+
+1. **analyze 이벤트를 message 이벤트로 변경**
+```javascript
+// 기존 (v3.2.x)
+sendPacket({
+    event: "analyze",
+    data: {
+        room: msg.room,
+        text: msg.content,
+        // ...
+    }
+});
+
+// 신규 (v3.3.0)
+var encodedContent = Base64.encode(msg.content);
+sendMessage("message", messageData, encodedContent);
+```
+
+2. **messageResponse 처리 변경**
+```javascript
+// 기존 (v3.2.x)
+if (packet.data.text.startsWith("IMAGE_BASE64:")) {
+    // 프리픽스 처리
+}
+
+// 신규 (v3.3.0)
+if (packet.data.message_type === "image") {
+    // 타입별 처리
+}
+```
+
+### 서버 수정사항
+
+1. **analyze 핸들러를 message 핸들러로 변경**
+2. **모든 응답을 새 패킷 구조로 생성**
+3. **텍스트 메시지 Base64 인코딩/디코딩 적용**
+
+## bridge-v3.2.1+.js 세부 상세 체크리스트
+
+### 1. 설정 모듈 (BOT_CONFIG)
+- [x] **기본 정보 설정**
+  - [x] VERSION: '3.2.1'
+  - [x] BOT_NAME: 'LOA.i'
+  - [x] CLIENT_TYPE: 'MessengerBotR' (v3.2.0 추가)
+  - [x] PROTOCOL_VERSION 없음 (v3.3.0에서 추가됨)
+
+- [x] **서버 및 인증 정보**
+  - [x] SECRET_KEY: HMAC 인증용 비밀키
+  - [x] BOT_SPECIFIC_SALT: 봇별 고유 솔트
+  - [x] SERVER_LIST: 우선순위(priority) 기반 서버 목록
+
+- [x] **동작 설정**
+  - [x] MAX_MESSAGE_LENGTH: 65000
+  - [x] BASE_RECONNECT_DELAY: 2000ms
+  - [x] MAX_RECONNECT_DELAY: 60000ms  
+  - [x] MAX_RECONNECT_ATTEMPTS: -1 (무한 재연결)
+
+- [x] **TTL (Time To Live) 설정**
+  - [x] MESSAGE_TTL: 30000ms (30초)
+
+- [x] **미디어 처리 설정**
+  - [x] MEDIA_TEMP_DIR: "/storage/emulated/0/msgbot/server-media"
+  - [x] FILE_PROVIDER_AUTHORITY: "com.xfl.msgbot.provider"
+  - [x] KAKAOTALK_PACKAGE_NAME: "com.kakao.talk"
+
+- [x] **장기 실행 안정성 설정**
+  - [x] ROOM_INACTIVE_DAYS: 30일
+  - [x] TEMP_FILE_MAX_AGE_DAYS: 7일
+  - [x] CLEANUP_INTERVAL: 86400000ms (24시간)
+  - [x] MAX_QUEUE_SIZE: 2000
+  - [x] THREAD_JOIN_TIMEOUT: 5000ms
+
+- [x] **모니터링 설정**
+  - [x] MONITORING_ENABLED: true
+
+- [x] **로깅 설정**
+  - [x] CORE_MESSAGES: 핵심 메시지 로깅
+  - [x] CONNECTION_EVENTS: 연결 이벤트 로깅
+  - [x] MESSAGE_TRANSFER: 메시지 송수신 로깅
+  - [x] PING_EVENTS: ping 이벤트 로깅
+  - [x] QUEUE_OPERATIONS: 큐 작업 로깅
+  - [x] RESOURCE_INFO: 리소스 정보 로깅
+  - [x] MESSAGE_CONTENT: 메시지 내용 요약 표시
+  - [x] MESSAGE_CONTENT_DETAIL: 메시지 전체 내용 표시
+
+- [x] **파일 전송 대기시간 설정** (v3.2.1 핵심 기능)
+  - [x] BASE_WAIT_TIME: 1500ms
+  - [x] SIZE_BASED_WAIT_PER_MB: 2000ms
+  - [x] COUNT_BASED_WAIT_PER_FILE: 300ms
+  - [x] SINGLE_FILE: {MIN_WAIT: 4000ms, MAX_WAIT: 6000ms}
+  - [x] MULTI_FILE: {MIN_WAIT: 3000ms, MAX_WAIT: 15000ms}
+
+### 2. 유틸리티 모듈 (Utils)
+- [x] generateUniqueId(): Security.ulid() 또는 폴백 ID 생성
+- [x] formatTimestamp(): YYYY-MM-DD HH:mm:ss 형식
+- [x] sanitizeText(): 메시지 정화 및 길이 제한
+  - [x] MAX_MESSAGE_LENGTH 초과시 자르기
+  - [x] 제어 문자 제거
+  - [x] 양방향 텍스트 포맷팅 문자 제거
+
+### 3. 디바이스 정보 모듈 (DeviceInfo) - v3.2.0 신규
+- [x] **Android ID 가져오기**
+  - [x] _getAndroidId(): Android Secure Settings에서 ID 추출
+- [x] **클라이언트 IP 가져오기**
+  - [x] _getClientIP(): 소켓 로컬 주소에서 IP 추출
+- [x] **디바이스 정보 생성**
+  - [x] _getDeviceInfo(): "brand model (Android version, API sdk)" 형식
+- [x] **핸드셰이크 데이터 생성**
+  - [x] createHandshakeData(): clientType, botName, version, deviceID, deviceIP, deviceInfo
+
+### 4. 인증 모듈 (Auth)
+- [x] **디바이스 정보 수집**
+  - [x] _getDeviceUUID(): Device.getAndroidId() 
+  - [x] _getMacAddress(): WiFi MAC 주소
+  - [x] _getLocalIP(): 소켓 로컬 IP
+
+- [x] **HMAC 서명 생성**
+  - [x] _generateHMAC(): HmacSHA256 알고리즘
+  - [x] 서명 문자열: clientType|botName|deviceUUID|macAddress|ipAddress|timestamp|salt
+
+- [x] **인증 데이터 생성**
+  - [x] createAuthData(): 모든 인증 필드와 HMAC 서명 포함
+
+### 5. 미디어 핸들러 모듈 (MediaHandler)
+- [x] **MIME 타입 관리**
+  - [x] 이미지, 비디오, 오디오, 문서 MIME 타입 정의
+
+- [x] **파일 처리**
+  - [x] _downloadFromUrl(): URL에서 파일 다운로드
+  - [x] _saveBase64ToFile(): Base64를 파일로 저장
+  - [x] _prepareFile(): URL/Base64/로컬 파일 통합 처리
+  - [x] _createSafeFileUri(): FileProvider 또는 Uri.fromFile
+
+- [x] **대기시간 계산**
+  - [x] _calculateWaitTime(): 단일 파일 대기시간
+  - [x] _calculateMultiFileWaitTime(): 멀티 파일 대기시간
+
+- [x] **미디어 전송**
+  - [x] send(): 인텐트 생성 및 카카오톡 앱 실행
+  - [x] handleMediaResponse(): 서버 응답 처리 (v3.2.1 핵심)
+  - [x] **서버 지정 media_wait_time 우선 사용** (v3.2.1 핵심 기능)
+
+- [x] **유틸리티**
+  - [x] _disableStrictMode(): Android StrictMode 우회
+  - [x] _goHome(): 메신저봇 앱으로 돌아오기
+  - [x] _cleanupFiles(): 임시 파일 정리
+
+### 6. 봇 핵심 로직 모듈 (BotCore)
+- [x] **연결 관리**
+  - [x] 우선순위 기반 서버 선택 (_getSortedServers)
+  - [x] 강화된 핸드셰이크 시스템 (v3.2.0)
+  - [x] 무한 재연결 지원 (MAX_RECONNECT_ATTEMPTS: -1)
+  - [x] 지수 백오프 재연결 지연
+
+- [x] **스레드 관리**
+  - [x] _safeCloseThread(): 안전한 스레드 종료
+  - [x] _startReceiveThread(): 수신 스레드 관리
+  - [x] 스레드 인터럽트 및 타임아웃 처리
+
+- [x] **메시지 큐**
+  - [x] TTL 기반 메시지 만료 처리
+  - [x] 큐 크기 제한 (MAX_QUEUE_SIZE: 2000)
+  - [x] 배치 처리 (한 번에 최대 10개)
+
+- [x] **핸드셰이크 응답 처리**
+  - [x] handshakeComplete 이벤트 처리
+  - [x] 승인 상태 확인 (approved/pending)
+  - [x] 서버 버전 확인
+
+- [x] **ping 응답 (모니터링 데이터 포함)**
+  - [x] 메모리 사용량 (total_memory, memory_usage, memory_percent)
+  - [x] 메시지 큐 크기 (message_queue_size)
+  - [x] 활성 채팅방 수 (active_rooms)
+  - [x] Auth.createAuthData() 포함
+
+- [x] **정기 정리 작업**
+  - [x] _performPeriodicCleanup(): 24시간마다 실행
+  - [x] 30일 이상 비활성 채팅방 정리
+  - [x] 7일 이상 된 임시 파일 삭제
+  - [x] 극단적 큐 크기 제한
+
+- [x] **채널ID-방이름 매핑**
+  - [x] currentRooms 객체로 관리
+  - [x] findChannelIdByRoomName()
+  - [x] updateRoomInfo()
+
+### 7. 메인 모듈 (MainModule)
+- [x] initializeEventListeners(): BotCore 초기화 래퍼
+
+### 8. MessengerBotR 표준 이벤트 핸들러
+- [x] onStartCompile(): 컴파일 시작 로깅
+- [x] response(): 카카오톡 메시지 수신 처리
+  - [x] channelId 추출 (imageDB.getLastUid)
+  - [x] analyze 이벤트로 서버 전송
+  - [x] 미디어 메시지 감지 (MEDIA_|||)
+- [x] onCreate/onResume/onPause/onStop/onRestart/onDestroy: 생명주기 관리
+- [x] onBackPressed(): false 반환
+
+### 9. 전역 객체 및 함수
+- [x] BotManager: Bot/BotAPI 객체 추상화
+- [x] Event: MESSAGE, START_COMPILE 이벤트
+- [x] Device: Android ID 가져오기
+- [x] Api: 컨텍스트 및 시스템 서비스 접근
+- [x] Log: 로깅 유틸리티
+
+### 10. v3.2.0 → v3.2.1 주요 변경사항
+- [x] **서버 지정 미디어 전송 대기시간 지원**
+  - [x] media_wait_time 필드 처리
+  - [x] 서버 값이 있으면 클라이언트 계산값 무시
+  - [x] 0 이하 값은 무시하고 클라이언트 계산값 사용
+
+### 11. v3.2.1 → v3.3.0 업그레이드 필요사항
+- [ ] PROTOCOL_VERSION 필드 추가
+- [ ] JSON + Raw 데이터 구조 구현
+- [ ] message_positions 배열 사용
+- [ ] analyze → message 이벤트 변경
+- [ ] Base64 텍스트 인코딩
+- [ ] UTC 타임스탬프 및 timezone 필드
+- [ ] 멀티 타입 미디어 처리 (processImages, processAudios 등)
+- [ ] content_encoding 필드 지원
+
+## 문서 버전 정보
+
+- **작성일**: 2025-01-20
+- **최종 수정일**: 2025-01-21
+- **버전**: v3.3.0
+- **상태**: 개발 중 (Breaking Changes 포함)
+- **관련 문서**: bridge-v3.2.1+.md (handshake, ping 상세 스펙)
