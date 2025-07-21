@@ -25,11 +25,10 @@ function dmk_register_message_schedule($message_type, $params) {
         return false;
     }
     
-    // 지점 정보 및 메시지 템플릿 조회
-    $branch_sql = "SELECT b.*, m.mb_name as br_name, r.room_name, r.room_id
+    // 지점 정보 조회 (먼저 지점 정보만 가져옴)
+    $branch_sql = "SELECT b.*, m.mb_name as br_name
                    FROM dmk_branch b
                    JOIN {$g5['member_table']} m ON b.br_id = m.mb_id
-                   LEFT JOIN kb_rooms r ON r.owner_id = b.br_id AND r.owner_type = 'branch' AND r.status = 'approved'
                    WHERE b.br_id = '".sql_real_escape_string($params['branch_id'])."'
                    AND b.br_status = 1";
     $branch = sql_fetch($branch_sql);
@@ -39,8 +38,24 @@ function dmk_register_message_schedule($message_type, $params) {
         return false;
     }
     
-    if (empty($branch['room_id'])) {
-        error_log("DMK: No approved room found for branch: " . $params['branch_id']);
+    // 메시지 발송 봇이 설정되어 있지 않으면 종료
+    if (empty($branch['br_message_bot_name']) || empty($branch['br_message_device_id'])) {
+        error_log("DMK: No bot configured for branch: {$branch['br_id']}");
+        return false;
+    }
+    
+    // 지점에 설정된 봇으로 정확한 room 정보 조회
+    $room_sql = "SELECT room_name, room_id
+                 FROM kb_rooms
+                 WHERE owner_id = '".sql_real_escape_string($params['branch_id'])."'
+                 AND owner_type = 'branch'
+                 AND bot_name = '".sql_real_escape_string($branch['br_message_bot_name'])."'
+                 AND device_id = '".sql_real_escape_string($branch['br_message_device_id'])."'
+                 AND status = 'approved'";
+    $room = sql_fetch($room_sql);
+    
+    if (!$room) {
+        error_log("DMK: No approved room found for branch: " . $params['branch_id'] . " with bot: " . $branch['br_message_bot_name'] . "@" . $branch['br_message_device_id']);
         return false;
     }
     
@@ -86,17 +101,6 @@ function dmk_register_message_schedule($message_type, $params) {
         return false;
     }
     
-    // 발송할 톡방이 없으면 종료
-    if (empty($branch['room_id'])) {
-        error_log("DMK: No room_id found for branch: " . $params['branch_id']);
-        return false;
-    }
-    
-    // 메시지 발송 봇이 설정되어 있지 않으면 종료
-    if (empty($branch['br_message_bot_name']) || empty($branch['br_message_device_id'])) {
-        error_log("Message not sent - No bot configured for branch: {$branch['br_id']}");
-        return false;
-    }
     
     // 템플릿 변수 준비
     $template_variables = dmk_prepare_template_variables($message_type, $params);
@@ -123,7 +127,7 @@ function dmk_register_message_schedule($message_type, $params) {
             created_by_mb_id = '".sql_real_escape_string($params['mb_id'] ?? 'system')."',
             target_bot_name = '".sql_real_escape_string($target_bot_name)."',
             target_device_id = ".($target_device_id ? "'".sql_real_escape_string($target_device_id)."'" : "NULL").",
-            target_room_id = '".sql_real_escape_string($branch['room_id'])."',
+            target_room_id = '".sql_real_escape_string($room['room_id'])."',
             message_text = '".sql_real_escape_string($processed_message)."',
             send_interval_seconds = 1,
             schedule_type = 'once',

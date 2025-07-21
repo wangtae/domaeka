@@ -975,6 +975,10 @@ var BotCore = (function() {
 
             // 이벤트별 처리
             if (event === 'messageResponse' || event === 'scheduleMessage' || event === 'broadcastMessage') {
+                // 스케줄 메시지 수신 시 상세 로깅
+                if (event === 'scheduleMessage') {
+                    Log.i("[SCHEDULE] 스케줄 메시지 수신 - 방: " + data.room + ", 타입: " + data.message_type);
+                }
                 _handleMessageEvent(event, data, messageData);
             } else if (event === 'ping') {
                 _handlePingEvent(data);

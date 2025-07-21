@@ -152,6 +152,29 @@ for ($i=0; $i<$cnt; $i++)
                 and ct_id  = '$ct_id' ";
     sql_query($sql);
 
+    // 도매까 주문 상태 변경 훅 추가
+    if($ct_status == '완료' && $ct['ct_status'] != '완료') {
+        // 주문 정보 조회
+        $od_sql = "SELECT dmk_od_br_id FROM {$g5['g5_shop_order_table']} WHERE od_id = '$od_id'";
+        $od_info = sql_fetch($od_sql);
+        
+        if($od_info && $od_info['dmk_od_br_id']) {
+            // 훅 라이브러리 포함
+            include_once(G5_DMK_PATH . '/lib/order.status.hook.php');
+            
+            // 전체 주문의 모든 상품이 완료 상태인지 확인
+            $check_sql = "SELECT COUNT(*) as cnt FROM {$g5['g5_shop_cart_table']} 
+                          WHERE od_id = '$od_id' 
+                          AND ct_status NOT IN ('완료', '취소', '반품', '품절')";
+            $check = sql_fetch($check_sql);
+            
+            if($check['cnt'] == 0) {
+                // 모든 상품이 완료/취소 상태면 주문 전체를 완료로 처리
+                dmk_order_status_changed($od_id, '', '완료');
+            }
+        }
+    }
+
     // it_id를 배열에 저장
     if($ct_status == '주문' || $ct_status == '취소' || $ct_status == '반품' || $ct_status == '품절' || $ct_status == '완료')
         $arr_it_id[] = $ct['it_id'];
