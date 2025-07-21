@@ -82,8 +82,19 @@ switch($layout) {
                                         <p class="text-sm min-w-[60px] text-gray-500">가격</p>
                                         <p class="text-sm font-medium"><?php echo number_format($item['it_price']) ?>원</p>
                                     </div>
-                                    <div class="flex">
+                                    <div class="flex items-center gap-2">
                                         <p class="text-sm font-medium"><?php echo $item['it_stock_qty'] ?><span class="text-sm min-w-[60px] text-gray-500">개 재고</span></p>
+                                        <?php 
+                                        $warning_qty = isset($branch['br_stock_warning_qty']) ? $branch['br_stock_warning_qty'] : 10;
+                                        if($item['it_stock_qty'] <= $warning_qty && $item['it_stock_qty'] > 0): 
+                                        ?>
+                                        <span style="background-color: #fed7aa; color: #c2410c; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
+                                            <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            품절임박
+                                        </span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -140,7 +151,7 @@ switch($layout) {
                             <div class="flex-1">
                                 <h3 class="font-medium text-base mb-2"><?php echo htmlspecialchars($item['it_name']) ?></h3>
                                 <p class="text-lg font-bold text-primary mb-1"><?php echo number_format($item['it_price']) ?>원</p>
-                                <p class="text-sm text-gray-500 mb-4">재고: <?php echo $item['it_stock_qty'] ?>개</p>
+                                <p class="text-sm text-gray-500 mb-4"><?php echo $item['it_stock_qty'] ?>개 남았습니다.</p>
                             </div>
                             <div class="flex flex-col space-y-2">
                                 <button type="button" 

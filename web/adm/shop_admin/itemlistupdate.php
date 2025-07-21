@@ -35,9 +35,11 @@ if (!$dmk_auth || empty($dmk_auth['mb_id'])) {
 }
 
 // 2. 최고 관리자 (영카트 최고 관리자)는 모든 관리자 폼에 접근 가능
-if ($dmk_auth['is_super']) {
-    alert("관리자 권한이 없습니다.", G5_ADMIN_URL);
-    return; // 접근 허용, 함수 종료
+if (!$dmk_auth['is_super']) {
+    // 최고 관리자가 아닌 경우 추가 권한 체크
+    if ($user_type === false || $user_type > DMK_MB_TYPE_BRANCH) {
+        alert("관리자 권한이 없습니다.", G5_ADMIN_URL);
+    }
 }
 
 
