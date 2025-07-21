@@ -1,16 +1,16 @@
 /**
- * MessengerBotR 클라이언트 - 카카오톡 브릿지 스크립트 v3.1.2
+ * MessengerBotR 클라이언트 - 카카오톡 브릿지 스크립트 v3.2.1
  * 
  * @description
  * 카카오톡과 서버 간의 통신을 중개하는 브릿지 클라이언트 스크립트입니다.
- * Connection reset by peer 문제 해결을 위한 연결 안정성이 개선된 버전입니다.
+ * 강화된 핸드셰이크 인증 시스템과 kb_bot_devices 테이블 연동을 지원합니다.
  * 
  * @compatibility MessengerBotR v0.7.38a ~ v0.7.39a
  * @engine Rhino JavaScript Engine
  * 
  * @requirements
  * [필수 권한]
- * • 메신저봇R 처음 설치시 요구하는 권한들 모두 허요.
+ * • 메신저봇R 처음 설치시 요구하는 권한들 모두 허용.
  * • 다른 앱 위에 표시 (MessengerBotR) : 미디어 전송 기능을 위해 필요!
  * • 사진 및 동영상 엑세스 권한 : "항상 모두 허용"(KakaoTalk)
  * • 배터리 사용 무제한 (MessengerBotR, KakaoTalk)
@@ -22,18 +22,21 @@
  * • 'Code has no side effects' 경고는 정상 동작 (무시 가능)
  * • 🔴 메신저봇R 앱 자체가 불안정한 요소가 많아 알 수 없는 문제를 발생할 수 있습니다.
  * 
- * @version 3.1.4
+ * @version 3.2.1
  * @author kkobot.com
- * @improvements 연결 안정성 개선, 모듈화, 멀티 서버 지원, 고급 미디어 전송
+ * @improvements 
+ *   - v3.2.1: 서버 지정 미디어 전송 대기시간 지원 (media_wait_time)
+ *   - v3.2.0: 강화된 핸드셰이크 인증 시스템, kb_bot_devices 테이블 연동
  */
 
 // =============================================================================
-// 1. 설정 모듈 (BOT_CONFIG) - 장기 실행 안정성 강화
+// 1. 설정 모듈 (BOT_CONFIG) - 강화된 인증 시스템
 // =============================================================================
 var BOT_CONFIG = {
     // 기본 정보
-    VERSION: '3.1.4',
+    VERSION: '3.2.1',
     BOT_NAME: 'LOA.i',
+    CLIENT_TYPE: 'MessengerBotR',  // 새로 추가
 
     // 서버 및 인증 정보
     SECRET_KEY: "8vQw!@#4kLz9^&*1pXyZ2$%6sDq7!@#8vQw!@#4kLz9^&*1pXyZ2$%6sDq7!@#8",
@@ -68,7 +71,6 @@ var BOT_CONFIG = {
     CLEANUP_INTERVAL: 86400000,         // 24시간마다 정리 (1일)
     MAX_QUEUE_SIZE: 2000,               // 극단적 상황 대비 큐 크기 제한
     THREAD_JOIN_TIMEOUT: 5000,          // 스레드 종료 대기 시간 (5초)
-    // RESOURCE_LOG_INTERVAL: 60000, //3600000,     // 1시간마다 리소스 로그 (PING 모니터링으로 대체)
 
     // 🔴 모니터링 설정 추가
     MONITORING_ENABLED: true,           // 모니터링 기능 활성화
@@ -86,41 +88,19 @@ var BOT_CONFIG = {
     },
 
     // 🔴 파일 전송 대기시간 설정 (사용자 조절 가능)
-    // =====================================================
-    // 파일 전송 후 홈으로 돌아가기 전 대기시간 설정
-    // 
-    // 📝 설정 가이드:
-    // - 대기시간이 너무 짧으면: 파일 전송이 완료되기 전에 홈으로 돌아가서 전송 실패
-    // - 대기시간이 너무 길면: 사용자 경험 저하 (불필요한 대기)
-    // 
-    // 🔧 조절 방법:
-    // 1. 작은 파일들이 자주 실패하면 BASE_WAIT_TIME 증가
-    // 2. 큰 파일들이 자주 실패하면 SIZE_BASED_WAIT_PER_MB 증가
-    // 3. 멀티 파일 전송이 자주 실패하면 COUNT_BASED_WAIT_PER_FILE 증가
-    // 4. 전체적으로 너무 빠르면 MIN_WAIT 증가, 너무 느리면 MAX_WAIT 감소
-    // =====================================================
+    // v3.2.1: 서버에서 media_wait_time 값을 전송하면 해당 값을 우선 사용합니다.
+    // 서버 응답 예시: { "event": "messageResponse", "data": { "room": "방이름", "text": "MEDIA_URL:...", "media_wait_time": 8000 } }
     FILE_SEND_TIMING: {
-        // 기본 대기시간 (ms) - 모든 파일 전송에 공통으로 적용되는 최소 대기시간
         BASE_WAIT_TIME: 1500,
-        
-        // 용량 기반 대기시간 (MB당 추가 ms) - 파일 크기에 따른 추가 대기시간
-        // 예: 5MB 파일 = 5 × 2000 = 10000ms(10초) 추가 대기
         SIZE_BASED_WAIT_PER_MB: 2000,
-        
-        // 파일 개수 기반 대기시간 (파일 개수-1 당 추가 ms) - 멀티 파일 전송시 추가 대기
-        // 예: 3개 파일 = (3-1) × 500 = 1000ms(1초) 추가 대기
         COUNT_BASED_WAIT_PER_FILE: 300,
-        
-        // 단일 파일 대기시간 범위
         SINGLE_FILE: {
-            MIN_WAIT: 4000,    // 최소 대기시간 (4초) - 아무리 작은 파일도 최소 이 시간은 대기
-            MAX_WAIT: 6000     // 최대 대기시간 (6초) - 아무리 큰 파일도 이 시간을 초과하지 않음
+            MIN_WAIT: 4000,
+            MAX_WAIT: 6000
         },
-        
-        // 멀티 파일 대기시간 범위
         MULTI_FILE: {
-            MIN_WAIT: 3000,    // 최소 대기시간 (3초) - 멀티 파일 전송시 최소 대기시간
-            MAX_WAIT: 15000    // 최대 대기시간 (15초) - 멀티 파일 전송시 최대 대기시간
+            MIN_WAIT: 3000,
+            MAX_WAIT: 15000
         }
     },
 
@@ -203,12 +183,12 @@ var Utils = (function() {
 })();
 
 // =============================================================================
-// 3. 인증 모듈 (Auth)
+// 3. 디바이스 정보 모듈 (DeviceInfo) - 새로 추가
 // =============================================================================
-var Auth = (function() {
+var DeviceInfo = (function() {
     var socketRef; // BotCore에서 설정할 소켓 참조
 
-    // 🔴 Android ID 가져오기 (check-device.js에서 확인된 방식)
+    // 🔴 Android ID 가져오기
     function _getAndroidId() {
         try {
             return android.provider.Settings.Secure.getString(
@@ -216,10 +196,79 @@ var Auth = (function() {
                 android.provider.Settings.Secure.ANDROID_ID
             );
         } catch (e) {
-            Log.e("[AUTH] Android ID 가져오기 실패: " + e);
+            Log.e("[DEVICE] Android ID 가져오기 실패: " + e);
             return "unknown";
         }
     }
+
+    // 🔴 클라이언트 IP 주소 가져오기 (소켓 기반)
+    function _getClientIP() {
+        try {
+            if (socketRef && socketRef.isConnected()) {
+                return socketRef.getLocalAddress().getHostAddress();
+            }
+        } catch (e) {
+            Log.e("[DEVICE] 클라이언트 IP 가져오기 실패: " + e);
+        }
+        return "unknown";
+    }
+
+    // 🔴 디바이스 정보 생성
+    function _getDeviceInfo() {
+        try {
+            var model = android.os.Build.MODEL || "unknown";
+            var brand = android.os.Build.BRAND || "unknown";
+            var version = android.os.Build.VERSION.RELEASE || "unknown";
+            var sdk = android.os.Build.VERSION.SDK_INT || "unknown";
+            
+            return brand + " " + model + " (Android " + version + ", API " + sdk + ")";
+        } catch (e) {
+            Log.e("[DEVICE] 디바이스 정보 가져오기 실패: " + e);
+            return "unknown device";
+        }
+    }
+
+    function setSocket(socket) {
+        socketRef = socket;
+    }
+
+    function createHandshakeData() {
+        return {
+            clientType: BOT_CONFIG.CLIENT_TYPE,
+            botName: BOT_CONFIG.BOT_NAME,
+            version: BOT_CONFIG.VERSION,
+            deviceID: _getAndroidId(),
+            deviceIP: _getClientIP(),
+            deviceInfo: _getDeviceInfo()
+        };
+    }
+
+    function getAndroidId() {
+        return _getAndroidId();
+    }
+
+    function getClientIP() {
+        return _getClientIP();
+    }
+
+    function getDeviceInfo() {
+        return _getDeviceInfo();
+    }
+
+    return {
+        setSocket: setSocket,
+        createHandshakeData: createHandshakeData,
+        getAndroidId: getAndroidId,
+        getClientIP: getClientIP,
+        getDeviceInfo: getDeviceInfo
+    };
+})();
+
+// =============================================================================
+// 4. 인증 모듈 (Auth) - 업데이트
+// =============================================================================
+var Auth = (function() {
+    var socketRef; // BotCore에서 설정할 소켓 참조
 
     function _getDeviceUUID() { try { return Device.getAndroidId(); } catch (e) { return "unknown"; } }
     function _getMacAddress() { try { var wm = Api.getContext().getSystemService(android.content.Context.WIFI_SERVICE); return wm.getConnectionInfo().getMacAddress(); } catch (e) { return "unknown"; } }
@@ -242,16 +291,16 @@ var Auth = (function() {
 
     function createAuthData() {
         var auth = {
-            clientType: "MessengerBotR",
+            clientType: BOT_CONFIG.CLIENT_TYPE,
             botName: BOT_CONFIG.BOT_NAME,
             deviceUUID: _getDeviceUUID(),
-            deviceID: _getAndroidId(),  // 🔴 Android ID 추가
+            deviceID: DeviceInfo.getAndroidId(),
             macAddress: _getMacAddress(),
             ipAddress: _getLocalIP(),
             timestamp: Date.now(),
             version: BOT_CONFIG.VERSION
         };
-        var signString = ["MessengerBotR", auth.botName, auth.deviceUUID, auth.macAddress, auth.ipAddress, auth.timestamp, BOT_CONFIG.BOT_SPECIFIC_SALT].join('|');
+        var signString = [BOT_CONFIG.CLIENT_TYPE, auth.botName, auth.deviceUUID, auth.macAddress, auth.ipAddress, auth.timestamp, BOT_CONFIG.BOT_SPECIFIC_SALT].join('|');
         auth.signature = _generateHMAC(signString, BOT_CONFIG.SECRET_KEY);
         return auth;
     }
@@ -260,20 +309,14 @@ var Auth = (function() {
         socketRef = socket;
     }
 
-    // 🔴 Android ID 가져오기 함수 외부 노출
-    function getAndroidId() {
-        return _getAndroidId();
-    }
-
     return { 
         createAuthData: createAuthData, 
-        setSocket: setSocket,
-        getAndroidId: getAndroidId  // 🔴 추가
+        setSocket: setSocket
     };
 })();
 
 // =============================================================================
-// 4. 미디어 핸들러 모듈 (MediaHandler)
+// 5. 미디어 핸들러 모듈 (MediaHandler) - 기존과 동일
 // =============================================================================
 var MediaHandler = (function() {
     var P = BOT_CONFIG.PACKAGES;
@@ -308,8 +351,7 @@ var MediaHandler = (function() {
             return true;
         } catch (e) {
             Log.e("[DOWNLOAD] 실패: " + e); return false;
-        }
- finally {
+        } finally {
             if (outputStream) try { outputStream.close(); } catch (e) {}
             if (inputStream) try { inputStream.close(); } catch (e) {}
         }
@@ -347,7 +389,7 @@ var MediaHandler = (function() {
         } else if (isBase64) {
             targetPath = _saveBase64ToFile(source, index);
             if (!targetPath) return null;
-            downloaded = true; // Base64는 임시 파일이므로 삭제 대상
+            downloaded = true;
         } else {
             targetPath = source;
             if (!new P.File(targetPath).exists()) { Log.e("[FILE] 로컬 파일 없음: " + targetPath); return null; }
@@ -409,13 +451,11 @@ var MediaHandler = (function() {
         }
     }
 
-    // 🔴 멀티 파일용 대기 시간 계산 함수 (Config 값 사용)
     function _calculateMultiFileWaitTime(processedFiles) {
         try {
             var totalSize = 0;
             var fileCount = processedFiles.length;
             
-            // 모든 파일의 용량 합산
             for (var i = 0; i < processedFiles.length; i++) {
                 var file = new P.File(processedFiles[i].path);
                 if (file.exists()) {
@@ -423,12 +463,10 @@ var MediaHandler = (function() {
                 }
             }
             
-            // 🔴 Config 값으로 대기시간 계산
             var waitTime = BOT_CONFIG.FILE_SEND_TIMING.BASE_WAIT_TIME + 
                           (totalSize / 1048576) * BOT_CONFIG.FILE_SEND_TIMING.SIZE_BASED_WAIT_PER_MB + 
                           (fileCount - 1) * BOT_CONFIG.FILE_SEND_TIMING.COUNT_BASED_WAIT_PER_FILE;
             
-            // 🔴 멀티 파일 최소/최대 대기시간 적용
             return Math.min(Math.max(Math.round(waitTime), BOT_CONFIG.FILE_SEND_TIMING.MULTI_FILE.MIN_WAIT), 
                           BOT_CONFIG.FILE_SEND_TIMING.MULTI_FILE.MAX_WAIT);
         } catch (e) { 
@@ -453,9 +491,9 @@ var MediaHandler = (function() {
     }
 
     function _cleanupFiles(files) {
-        java.lang.Thread.sleep(1000); // 삭제 전 약간의 대기
+        java.lang.Thread.sleep(1000);
         for (var i = 0; i < files.length; i++) {
-            if (files[i].downloaded) { // downloaded 플래그가 true인 파일만 삭제
+            if (files[i].downloaded) {
                 try {
                     var tempFile = new P.File(files[i].path);
                     if (tempFile.exists()) tempFile.delete();
@@ -464,7 +502,7 @@ var MediaHandler = (function() {
         }
     }
 
-    function send(channelId, sources) {
+    function send(channelId, sources, serverWaitTime) {
         try {
             _disableStrictMode();
             var sourcesArray = Array.isArray(sources) ? sources : [sources];
@@ -487,17 +525,26 @@ var MediaHandler = (function() {
             var intent = _buildIntent(channelId, mimeType, isMultiple ? uriList : uriList.get(0), isMultiple);
             context.startActivity(intent);
 
-            // 🔴 멀티 파일 용량 계산 개선
             var waitTime;
-            if (isMultiple) {
-                waitTime = _calculateMultiFileWaitTime(processedFiles);
+            
+            // 서버에서 지정한 대기 시간이 있으면 우선 사용
+            if (serverWaitTime && typeof serverWaitTime === 'number' && serverWaitTime > 0) {
+                waitTime = serverWaitTime;
                 if (BOT_CONFIG.LOGGING.CORE_MESSAGES) {
-                    Log.i("[MEDIA] 멀티 파일 전송 대기: " + processedFiles.length + "개 파일, " + waitTime + "ms");
+                    Log.i("[MEDIA] 서버 지정 대기시간 사용: " + waitTime + "ms");
                 }
             } else {
-                waitTime = _calculateWaitTime(processedFiles[0].path);
-                if (BOT_CONFIG.LOGGING.CORE_MESSAGES) {
-                    Log.i("[MEDIA] 단일 파일 전송 대기: " + waitTime + "ms");
+                // 서버 지정 대기시간이 없으면 클라이언트 기본 로직 사용
+                if (isMultiple) {
+                    waitTime = _calculateMultiFileWaitTime(processedFiles);
+                    if (BOT_CONFIG.LOGGING.CORE_MESSAGES) {
+                        Log.i("[MEDIA] 멀티 파일 전송 대기 (클라이언트 계산): " + processedFiles.length + "개 파일, " + waitTime + "ms");
+                    }
+                } else {
+                    waitTime = _calculateWaitTime(processedFiles[0].path);
+                    if (BOT_CONFIG.LOGGING.CORE_MESSAGES) {
+                        Log.i("[MEDIA] 단일 파일 전송 대기 (클라이언트 계산): " + waitTime + "ms");
+                    }
                 }
             }
             
@@ -515,13 +562,15 @@ var MediaHandler = (function() {
         var roomName = data.room;
         var channelId = data.channel_id;
         var sources = [];
+        // 서버에서 지정한 대기 시간 (옵션)
+        var serverWaitTime = data.media_wait_time || null;
 
         if (messageText.startsWith("MEDIA_URL:")) {
             sources = messageText.substring(10).split("|||");
         } else if (messageText.startsWith("IMAGE_BASE64:")) {
             sources = messageText.substring(13).split("|||");
         } else {
-            return false; // 미디어 메시지 아님
+            return false;
         }
 
         if (!channelId && roomName) {
@@ -529,19 +578,20 @@ var MediaHandler = (function() {
         }
 
         if (channelId) {
-            Log.i("[MEDIA] 미디어 전송 시작: " + sources.length + "개");
-            send(channelId, sources);
+            Log.i("[MEDIA] 미디어 전송 시작: " + sources.length + "개" + 
+                  (serverWaitTime ? " (서버 지정 대기시간: " + serverWaitTime + "ms)" : ""));
+            send(channelId, sources, serverWaitTime);
         } else {
             Log.e("[MEDIA] 전송 실패 - channelId 없음: " + roomName);
         }
-        return true; // 미디어 메시지 처리 완료
+        return true;
     }
 
     return { handleMediaResponse: handleMediaResponse };
 })();
 
 // =============================================================================
-// 5. 봇 핵심 로직 모듈 (BotCore) - 장기 실행 안정성 강화
+// 6. 봇 핵심 로직 모듈 (BotCore) - 강화된 핸드셰이크
 // =============================================================================
 var BotCore = (function() {
     var bot = BotManager.getCurrentBot();
@@ -550,7 +600,7 @@ var BotCore = (function() {
     var outputStream = null;
     var receiveThread = null;
     var reconnectTimeout = null;
-    var cleanupTimeout = null;      // 🔴 주기적 정리 타이머
+    var cleanupTimeout = null;
     var isConnected = false;
     var isReconnecting = false;
     var reconnectAttempts = 0;
@@ -565,7 +615,6 @@ var BotCore = (function() {
         return sorted;
     }
 
-    // 🔴 개선된 스레드 안전 종료
     function _safeCloseThread(thread, timeoutMs) {
         if (!thread || !thread.isAlive()) return true;
         
@@ -579,14 +628,12 @@ var BotCore = (function() {
         }
     }
 
-    // 🔴 개선된 소켓 종료
     function _closeSocket() {
         isConnected = false;
         if (BOT_CONFIG.LOGGING.CONNECTION_EVENTS) {
             Log.i("[CORE] 소켓 연결 종료 시작");
         }
         try {
-            // 1. 스레드 안전 종료
             if (receiveThread) {
                 var closed = _safeCloseThread(receiveThread, BOT_CONFIG.THREAD_JOIN_TIMEOUT);
                 if (!closed) {
@@ -595,13 +642,11 @@ var BotCore = (function() {
                 receiveThread = null;
             }
             
-            // 2. 스트림 종료
             if (outputStream) { 
                 outputStream.close(); 
                 outputStream = null; 
             }
             
-            // 3. 소켓 종료
             if (socket && !socket.isClosed()) { 
                 socket.close(); 
                 socket = null; 
@@ -615,13 +660,11 @@ var BotCore = (function() {
         }
     }
 
-    // 🔴 무한 재연결로 변경
     function _scheduleReconnect() {
         if (isReconnecting || reconnectTimeout) return;
         isReconnecting = true;
         reconnectAttempts++;
         
-        // 🔴 MAX_RECONNECT_ATTEMPTS가 -1이면 무한 재연결
         if (BOT_CONFIG.MAX_RECONNECT_ATTEMPTS > 0 && reconnectAttempts > BOT_CONFIG.MAX_RECONNECT_ATTEMPTS) {
             Log.e("[CORE] 최대 재연결 시도 횟수 초과. 중단.");
             isReconnecting = false; 
@@ -643,13 +686,11 @@ var BotCore = (function() {
         }, delay);
     }
 
-    // TTL 기능: 만료된 메시지 정리 (메시지 처리 시점에서만 실행)
     function _cleanupExpiredMessages() {
         var now = Date.now();
         var initialLength = messageQueue.length;
         var expiredCount = 0;
         
-        // 만료되지 않은 메시지만 유지
         messageQueue = messageQueue.filter(function(queueItem) {
             if (now - queueItem.timestamp > BOT_CONFIG.MESSAGE_TTL) {
                 expiredCount++;
@@ -665,7 +706,6 @@ var BotCore = (function() {
 
     function _sendMessageInternal(packet) {
         if (!isConnected) {
-            // TTL 기능: 타임스탬프 추가
             var queueItem = {
                 packet: packet,
                 timestamp: Date.now()
@@ -681,7 +721,6 @@ var BotCore = (function() {
             outputStream.write(jsonStr);
             outputStream.flush();
             
-            // 중요 메시지 전송 로깅
             if (BOT_CONFIG.LOGGING.MESSAGE_TRANSFER) {
                 if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL) {
                     Log.i("[SEND] " + packet.event + " 메시지 전송 완료 - 전체내용: " + jsonStr);
@@ -694,7 +733,6 @@ var BotCore = (function() {
             return true;
         } catch (e) {
             Log.e("[SEND] 메시지 전송 실패: " + e);
-            // TTL 기능: 실패한 메시지도 타임스탬프와 함께 큐에 추가
             var queueItem = {
                 packet: packet,
                 timestamp: Date.now()
@@ -709,33 +747,28 @@ var BotCore = (function() {
         if (isProcessingQueue || !isConnected || messageQueue.length === 0) return;
         isProcessingQueue = true;
         
-        // TTL 기능: 큐 처리 전 만료된 메시지 정리
         _cleanupExpiredMessages();
         
-        // 🔴 극단적 상황 대비 큐 크기 체크
         if (BOT_CONFIG.MAX_QUEUE_SIZE > 0 && messageQueue.length > BOT_CONFIG.MAX_QUEUE_SIZE) {
             var removed = messageQueue.splice(0, messageQueue.length - BOT_CONFIG.MAX_QUEUE_SIZE);
             Log.w("[CLEANUP] 극단적 큐 크기 제한으로 " + removed.length + "개 메시지 제거");
         }
         
         var processedCount = 0;
-        var maxProcessPerCycle = 10; // 한 번에 최대 10개 처리
+        var maxProcessPerCycle = 10;
         
         while (messageQueue.length > 0 && isConnected && processedCount < maxProcessPerCycle) {
             var queueItem = messageQueue.shift();
             var now = Date.now();
             
-            // TTL 체크: 만료된 메시지는 폐기
             if (now - queueItem.timestamp > BOT_CONFIG.MESSAGE_TTL) {
                 Log.w("[TTL] 만료된 메시지 폐기: " + queueItem.packet.event + " (나이: " + (now - queueItem.timestamp) + "ms)");
                 continue;
             }
             
-            // 유효한 메시지 전송
             if (_sendMessageInternal(queueItem.packet)) {
                 processedCount++;
             } else {
-                // 전송 실패 시 다시 큐에 추가 (타임스탬프 유지)
                 messageQueue.unshift(queueItem);
                 break;
             }
@@ -754,7 +787,6 @@ var BotCore = (function() {
             var event = packet.event, data = packet.data;
             if (!data) { Log.e("[RESPONSE] 데이터 없음"); return; }
             
-            // 중요 메시지 수신 로깅
             if (BOT_CONFIG.LOGGING.MESSAGE_TRANSFER) {
                 if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL) {
                     Log.i("[RECV] " + event + " 메시지 수신 - 전체내용: " + rawMsg);
@@ -765,35 +797,42 @@ var BotCore = (function() {
                 }
             }
 
-            if (event === 'messageResponse') {
-                if (MediaHandler.handleMediaResponse(data)) {
-                    return; // 미디어 핸들러가 처리했으면 종료
+            if (event === 'handshakeComplete') {
+                // 핸드셰이크 완료 응답 처리
+                Log.i("[HANDSHAKE] 서버로부터 핸드셰이크 응답 수신: " + (data.success ? "성공" : "실패"));
+                if (data.success) {
+                    Log.i("[HANDSHAKE] 승인 상태: " + (data.approved ? "승인됨" : "대기중") + " - " + data.message);
+                    Log.i("[HANDSHAKE] 서버 버전: " + data.server_version);
+                } else {
+                    Log.e("[HANDSHAKE] 핸드셰이크 실패");
+                    _closeSocket();
+                    _scheduleReconnect();
                 }
-                // 일반 텍스트 메시지
+            } else if (event === 'messageResponse') {
+                if (MediaHandler.handleMediaResponse(data)) {
+                    return;
+                }
                 bot.send(data.room, data.text);
             } else if (event === 'ping') {
-                // 🔴 ping 응답 (모니터링 데이터 포함 여부에 따라 단일 응답)
                 var pingData = {
                     bot_name: data.bot_name,
                     server_timestamp: data.server_timestamp
                 };
                 
-                // 모니터링 데이터 수집 및 ping 응답에 포함
                 if (BOT_CONFIG.MONITORING_ENABLED) {
                     try {
-                        // 안전한 메모리 정보 수집
                         var runtime = java.lang.Runtime.getRuntime();
                         var totalMemory = 0, freeMemory = 0, maxMemory = 0;
                         
                         try {
-                            totalMemory = runtime.totalMemory() / 1024 / 1024;  // MB
-                            freeMemory = runtime.freeMemory() / 1024 / 1024;    // MB
-                            maxMemory = runtime.maxMemory() / 1024 / 1024;      // MB
+                            totalMemory = runtime.totalMemory() / 1024 / 1024;
+                            freeMemory = runtime.freeMemory() / 1024 / 1024;
+                            maxMemory = runtime.maxMemory() / 1024 / 1024;
                         } catch (memErr) {
                             Log.w("[PING] 메모리 정보 수집 실패: " + memErr);
                         }
                         
-                        var usedMemory = totalMemory - freeMemory;              // MB
+                        var usedMemory = totalMemory - freeMemory;
                         var memoryPercent = maxMemory > 0 ? (usedMemory / maxMemory) * 100 : 0;
                         
                         var monitoringData = {
@@ -804,16 +843,13 @@ var BotCore = (function() {
                             active_rooms: Object.keys(currentRooms).length || 0
                         };
                         
-                        // 모니터링 데이터를 ping 응답에 포함
                         pingData.monitoring = monitoringData;
                         
                     } catch (e) {
                         Log.e("[PING] 모니터링 데이터 수집 실패: " + e);
-                        // 모니터링 실패해도 기본 ping 응답은 전송
                     }
                 }
                 
-                // 단일 ping 응답 전송
                 if (BOT_CONFIG.LOGGING.PING_EVENTS) {
                     if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL && pingData.monitoring) {
                         Log.i("[PING] ping 응답 전송 (모니터링 데이터 포함) - 전체내용: " + JSON.stringify(pingData));
@@ -825,23 +861,20 @@ var BotCore = (function() {
                 }
                 sendMessage('ping', pingData);
                 
-                return; // ping 처리 완료
+                return;
             }
         } catch (e) { Log.e("[RESPONSE] 응답 처리 실패: " + e); }
     }
 
-    // 🔴 개선된 스레드 생성 (중복 방지)
     function _startReceiveThread() {
-        // 기존 스레드가 있으면 안전하게 종료
         if (receiveThread) {
             if (receiveThread.isAlive()) {
                 Log.w("[THREAD] 기존 스레드가 살아있음, 안전 종료 시도");
-                _safeCloseThread(receiveThread, 3000); // 3초 대기
+                _safeCloseThread(receiveThread, 3000);
             }
             receiveThread = null;
         }
         
-        // 새 스레드 생성
         receiveThread = new java.lang.Thread(function() {
             var inputStream = null;
             try {
@@ -867,6 +900,7 @@ var BotCore = (function() {
         receiveThread.start();
     }
 
+    // 🔴 강화된 핸드셰이크 시스템
     function _connectToSingleServer(serverInfo) {
         try {
             Log.i("[CONNECT] 연결 시도: " + serverInfo.name + " (우선순위: " + serverInfo.priority + ")");
@@ -875,11 +909,22 @@ var BotCore = (function() {
             socket.connect(address, 5000);
             socket.setSoTimeout(0);
             outputStream = new java.io.BufferedWriter(new java.io.OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
-            Auth.setSocket(socket); // 인증 모듈에 소켓 참조 전달
-            var handshake = { botName: BOT_CONFIG.BOT_NAME, version: BOT_CONFIG.VERSION, deviceID: Auth.getAndroidId() };
+            
+            // 🔴 DeviceInfo와 Auth 모듈에 소켓 참조 전달
+            DeviceInfo.setSocket(socket);
+            Auth.setSocket(socket);
+            
+            // 🔴 강화된 핸드셰이크 메시지 생성
+            var handshake = DeviceInfo.createHandshakeData();
+            
+            if (BOT_CONFIG.LOGGING.CONNECTION_EVENTS) {
+                Log.i("[HANDSHAKE] 전송: " + JSON.stringify(handshake));
+            }
+            
             outputStream.write(JSON.stringify(handshake) + "\n");
             outputStream.flush();
             isConnected = true; reconnectAttempts = 0;
+            
             if (BOT_CONFIG.LOGGING.CONNECTION_EVENTS) {
                 Log.i("[CONNECT] 연결 성공: " + serverInfo.name);
             }
@@ -902,16 +947,14 @@ var BotCore = (function() {
             if (_connectToSingleServer(serverInfo)) return true;
             currentServerIndex = (currentServerIndex + 1) % sortedServers.length;
             
-            // 한 바퀴 돌았으면 중단
             if (currentServerIndex === originalIndex) break;
         }
         
         Log.e("[CONNECT] 모든 서버 연결 실패. 재시도 예약.");
-        _scheduleReconnect(); // 모든 서버 실패 시 다시 스케줄링
+        _scheduleReconnect();
         return false;
     }
 
-    // 🔴 방 정보 업데이트 (lastActivity 추가)
     function onMessage(msg) {
         if (msg.channelId) {
             var channelIdStr = msg.channelId.toString();
@@ -923,7 +966,6 @@ var BotCore = (function() {
         var sanitizedContent = Utils.sanitizeText(msg.content);
         if (!sanitizedContent) return;
         
-        // 중요 메시지 처리 로깅
         if (BOT_CONFIG.LOGGING.CORE_MESSAGES) {
             if (BOT_CONFIG.LOGGING.MESSAGE_CONTENT_DETAIL) {
                 Log.i("[MSG] 메시지 처리: " + msg.room + " / " + msg.author.name + " - 전체내용: " + sanitizedContent);
@@ -938,7 +980,7 @@ var BotCore = (function() {
             room: msg.room, text: sanitizedContent, sender: Utils.sanitizeText(msg.author.name), isGroupChat: msg.isGroupChat,
             channelId: msg.channelId ? msg.channelId.toString() : null, logId: msg.logId ? msg.logId.toString() : null,
             userHash: msg.author.hash, isMention: !!msg.isMention, timestamp: Utils.formatTimestamp(new Date()),
-            botName: BOT_CONFIG.BOT_NAME, clientType: "MessengerBotR"
+            botName: BOT_CONFIG.BOT_NAME, clientType: BOT_CONFIG.CLIENT_TYPE
         });
     }
 
@@ -963,21 +1005,18 @@ var BotCore = (function() {
     }
 
     function sendAnalyzeMessage(messageData) {
-        // 방 정보 업데이트
         if (messageData.channelId) {
             updateRoomInfo(messageData.channelId, messageData.room);
         }
         sendMessage('analyze', messageData);
     }
 
-    // 🔴 주기적 정리 작업
     function _performPeriodicCleanup() {
         var now = Date.now();
         var dayMs = 24 * 60 * 60 * 1000;
         
         Log.i("[CLEANUP] 주기적 정리 작업 시작");
         
-        // 1. 장기 비활성 방 정리 (30일 기준)
         var inactiveCutoff = now - (BOT_CONFIG.ROOM_INACTIVE_DAYS * dayMs);
         var removedRooms = 0;
         for (var channelId in currentRooms) {
@@ -990,10 +1029,8 @@ var BotCore = (function() {
             Log.i("[CLEANUP] " + removedRooms + "개 비활성 방 정리됨 (" + BOT_CONFIG.ROOM_INACTIVE_DAYS + "일+ 기준)");
         }
         
-        // 2. 오래된 임시 파일 정리 (7일 기준)
         _cleanupOldTempFiles(BOT_CONFIG.TEMP_FILE_MAX_AGE_DAYS);
         
-        // 3. 극단적 상황 대비 큐 크기 체크
         if (BOT_CONFIG.MAX_QUEUE_SIZE > 0 && messageQueue.length > BOT_CONFIG.MAX_QUEUE_SIZE) {
             var removed = messageQueue.splice(0, messageQueue.length - BOT_CONFIG.MAX_QUEUE_SIZE);
             Log.w("[CLEANUP] 극단적 큐 크기 제한으로 " + removed.length + "개 메시지 제거");
@@ -1002,7 +1039,6 @@ var BotCore = (function() {
         Log.i("[CLEANUP] 주기적 정리 작업 완료");
     }
 
-    // 🔴 오래된 임시 파일 정리
     function _cleanupOldTempFiles(maxAgeDays) {
         try {
             var mediaDir = new BOT_CONFIG.PACKAGES.File(BOT_CONFIG.MEDIA_TEMP_DIR);
@@ -1026,10 +1062,7 @@ var BotCore = (function() {
         }
     }
 
-
-    // 🔴 정기 작업 스케줄링
     function _schedulePeriodicTasks() {
-        // 주기적 정리 작업 (24시간마다)
         cleanupTimeout = setInterval(function() {
             _performPeriodicCleanup();
         }, BOT_CONFIG.CLEANUP_INTERVAL);
@@ -1040,7 +1073,6 @@ var BotCore = (function() {
     function cleanup() {
         Log.i("[CORE] 정리 시작");
         
-        // 타이머 정리
         if (reconnectTimeout) {
             clearTimeout(reconnectTimeout);
             reconnectTimeout = null;
@@ -1050,7 +1082,6 @@ var BotCore = (function() {
             cleanupTimeout = null;
         }
         
-        // 소켓 정리
         _closeSocket();
         
         Log.i("[CORE] 정리 완료");
@@ -1064,10 +1095,8 @@ var BotCore = (function() {
             cleanup();
         });
         
-        // 🔴 정기 작업 스케줄링
         _schedulePeriodicTasks();
         
-        // 지연된 서버 연결 시작 (컴파일 지연 방지)
         setTimeout(function() {
             Log.i("[CORE] 지연된 서버 연결 시작");
             _attemptConnectionToAllServers();
@@ -1078,6 +1107,7 @@ var BotCore = (function() {
         Log.i("[CORE] 봇 시작 (버전: " + BOT_CONFIG.VERSION + ", TTL: " + BOT_CONFIG.MESSAGE_TTL + "ms)");
         Log.i("[CORE] 우선순위 기반 서버 순서: " + _getSortedServers().map(function(s) { return s.name + "(P" + s.priority + ")"; }).join(", "));
         Log.i("[CORE] 재연결 설정: " + (BOT_CONFIG.MAX_RECONNECT_ATTEMPTS === -1 ? "무한" : BOT_CONFIG.MAX_RECONNECT_ATTEMPTS + "회"));
+        Log.i("[CORE] 강화된 핸드셰이크 시스템 활성화");
         initializeEventListeners();
     }
 
@@ -1092,11 +1122,11 @@ var BotCore = (function() {
 })();
 
 // =============================================================================
-// 6. 메인 모듈 (MainModule) - 컴파일 지연 방지
+// 7. 메인 모듈 (MainModule)
 // =============================================================================
 var MainModule = (function() {
     function initializeEventListeners() {
-        Log.i("[MAIN] initializeEventListeners 호출 - 컴파일 지연 방지 적용");
+        Log.i("[MAIN] initializeEventListeners 호출 - 강화된 인증 시스템 적용");
         BotCore.initializeEventListeners();
     }
 
@@ -1106,7 +1136,7 @@ var MainModule = (function() {
 })();
 
 // =============================================================================
-// 7. MessengerBotR 표준 이벤트 핸들러
+// 8. MessengerBotR 표준 이벤트 핸들러
 // =============================================================================
 
 var bot = BotManager.getCurrentBot();
@@ -1123,7 +1153,6 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName,
     try {
         var channelId = imageDB && imageDB.getLastUid ? imageDB.getLastUid() : null;
         
-        // 서버로 메시지 전송
         var messageData = {
             room: room,
             text: Utils.sanitizeText(msg),
@@ -1140,14 +1169,11 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName,
         
         BotCore.sendAnalyzeMessage(messageData);
         
-        // 미디어 메시지 처리
         if (msg.startsWith("MEDIA_") && msg.includes("|||")) {
             var parts = msg.split("|||");
             if (parts.length >= 2) {
-                var mediaType = parts[0]; // MEDIA_URL, MEDIA_BASE64 등
-                
+                var mediaType = parts[0];
                 Log.i("[MEDIA_RECEIVED] " + room + ": " + mediaType);
-                // 미디어 처리 로직은 서버에서 담당
             }
         }
         
@@ -1163,7 +1189,6 @@ function onCreate(savedInstanceState, activity) {
 function onResume(activity) {
     setTimeout(function() {
         Log.i("[SYSTEM] 연결 초기화 시작");
-        // BotCore는 이미 MainModule.initializeEventListeners()에서 시작됨
     }, BOT_CONFIG.INITIALIZATION_DELAY);
 }
 
@@ -1177,7 +1202,6 @@ function onStop(activity) {
 
 function onRestart(activity) {
     Log.i("[SYSTEM] 재시작");
-    // 재시작 시 연결 재시도는 BotCore의 재연결 로직이 담당
 }
 
 function onDestroy(activity) {
@@ -1190,65 +1214,12 @@ function onBackPressed(activity) {
 }
 
 // =============================================================================
-// 봇 실행 - 컴파일 지연 방지 패턴 적용
+// 봇 실행
 // =============================================================================
 Log.i("[SYSTEM] MessengerBotR Bridge v" + BOT_CONFIG.VERSION + " 로드 완료");
 Log.i("[CONFIG] 봇 이름: " + BOT_CONFIG.BOT_NAME);
+Log.i("[CONFIG] 클라이언트 타입: " + BOT_CONFIG.CLIENT_TYPE);
 Log.i("[CONFIG] 서버 수: " + BOT_CONFIG.SERVER_LIST.length);
-Log.i("[CONFIG] 미디어 디렉토리: " + BOT_CONFIG.MEDIA_TEMP_DIR);
-Log.i("[CONFIG] 장기 실행 최적화: 무한재연결=" + (BOT_CONFIG.MAX_RECONNECT_ATTEMPTS === -1) + 
-      ", 정리주기=" + (BOT_CONFIG.CLEANUP_INTERVAL/3600000) + "시간" +
-      ", 방보관=" + BOT_CONFIG.ROOM_INACTIVE_DAYS + "일");
+Log.i("[CONFIG] 강화된 핸드셰이크: clientType, botName, version, deviceID, deviceIP, deviceInfo");
 
-// 📋 FILE_SEND_TIMING 설정 예시 및 사용법
-/*
-🔧 대기시간 설정 최적화 가이드:
-
-1. 📱 일반적인 환경 (기본값):
-   FILE_SEND_TIMING: {
-       BASE_WAIT_TIME: 1500,
-       SIZE_BASED_WAIT_PER_MB: 2000,
-       COUNT_BASED_WAIT_PER_FILE: 500,
-       SINGLE_FILE: { MIN_WAIT: 4000, MAX_WAIT: 6000 },
-       MULTI_FILE: { MIN_WAIT: 3000, MAX_WAIT: 15000 }
-   }
-
-2. 🐌 느린 기기/네트워크 환경:
-   FILE_SEND_TIMING: {
-       BASE_WAIT_TIME: 2500,           // 기본 대기 증가
-       SIZE_BASED_WAIT_PER_MB: 3000,   // 용량당 대기 증가
-       COUNT_BASED_WAIT_PER_FILE: 800,  // 파일 개수당 대기 증가
-       SINGLE_FILE: { MIN_WAIT: 6000, MAX_WAIT: 10000 },
-       MULTI_FILE: { MIN_WAIT: 5000, MAX_WAIT: 25000 }
-   }
-
-3. 🚀 빠른 기기/네트워크 환경:
-   FILE_SEND_TIMING: {
-       BASE_WAIT_TIME: 1000,           // 기본 대기 감소
-       SIZE_BASED_WAIT_PER_MB: 1500,   // 용량당 대기 감소
-       COUNT_BASED_WAIT_PER_FILE: 300,  // 파일 개수당 대기 감소
-       SINGLE_FILE: { MIN_WAIT: 3000, MAX_WAIT: 5000 },
-       MULTI_FILE: { MIN_WAIT: 2000, MAX_WAIT: 12000 }
-   }
-
-4. 🖼️ 대용량 이미지 전송 최적화:
-   FILE_SEND_TIMING: {
-       BASE_WAIT_TIME: 2000,
-       SIZE_BASED_WAIT_PER_MB: 2500,   // 용량당 대기 증가
-       COUNT_BASED_WAIT_PER_FILE: 400,
-       SINGLE_FILE: { MIN_WAIT: 5000, MAX_WAIT: 12000 },  // 최대 대기 증가
-       MULTI_FILE: { MIN_WAIT: 4000, MAX_WAIT: 20000 }    // 최대 대기 증가
-   }
-
-📊 계산 공식:
-- 단일 파일: BASE_WAIT_TIME + (파일크기MB × SIZE_BASED_WAIT_PER_MB)
-- 멀티 파일: BASE_WAIT_TIME + (총파일크기MB × SIZE_BASED_WAIT_PER_MB) + ((파일개수-1) × COUNT_BASED_WAIT_PER_FILE)
-- 최종 대기시간: Math.min(Math.max(계산값, MIN_WAIT), MAX_WAIT)
-
-🔍 예시:
-- 2MB 단일 파일: 1500 + (2 × 2000) = 5500ms (4초~6초 범위 내)
-- 3MB + 1MB + 2MB (3개 파일): 1500 + (6 × 2000) + (2 × 500) = 14500ms (3초~15초 범위 내)
-*/
-
-// 컴파일 지연 방지를 위한 MainModule.initializeEventListeners() 호출
 MainModule.initializeEventListeners();
