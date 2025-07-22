@@ -449,11 +449,12 @@ async def send_ping_event_to_client(context):
     channel_id = context.get('channel_id')
     user_hash = context.get('user_hash')
     
-    # client_key로 writer 가져오기
-    client_key = context.get('client_key')
-    writer = None
-    if client_key and client_key in g.clients:
-        writer = g.clients[client_key]
+    # context에서 writer를 직접 받거나, client_key로 가져오기
+    writer = context.get('writer')
+    if not writer:
+        client_key = context.get('client_key')
+        if client_key and client_key in g.clients:
+            writer = g.clients[client_key]
 
     if not writer or not room:
         logger.warning(f"[PING_EVENT] 필수 정보 누락 → writer: {bool(writer)}, room: {room}, bot_name: {bot_name}")

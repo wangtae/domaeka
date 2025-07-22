@@ -24,7 +24,6 @@ import signal
 import os
 from core.logger import logger
 from core.server import start_server
-from core.ping_scheduler_v2 import ping_scheduler
 from database.connection import init_db_pool
 from database.db_utils import create_tables, get_server_process_config, update_server_process_status, list_server_processes
 import core.globals as g
@@ -41,9 +40,6 @@ async def shutdown():
         
         # 종료 이벤트 설정
         g.shutdown_event.set()
-        
-        # ping 스케줄러 중지
-        await ping_scheduler.stop()
         
         # 스케줄러 서비스 중지
         from services.scheduler_service import scheduler_service
@@ -353,9 +349,6 @@ async def main():
             g.process_monitor = ProcessSelfMonitor(g.process_name, g.db_pool)
             await g.process_monitor.start()
             logger.info(f"[STARTUP] 프로세스 모니터링 시작: {g.process_name}")
-        
-        # ping 스케줄러 시작
-        await ping_scheduler.start()
         
         # 시스템 모니터링은 비활성화 (외부 도구 사용 권장)
         # from database.system_monitor import system_monitor_task

@@ -67,13 +67,30 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
                 
                 # ping 응답 시간 계산 (현재 시간 - 서버가 ping 보낸 시간)
                 import time
+                from datetime import datetime
+                import pytz
+                
                 current_time_ms = int(time.time() * 1000)
                 if server_timestamp:
+                    # server_timestamp가 문자열인 경우 처리
+                    if isinstance(server_timestamp, str):
+                        try:
+                            # "YYYY-MM-DD HH:MM:SS.fff" 형식 파싱
+                            dt = datetime.strptime(server_timestamp, "%Y-%m-%d %H:%M:%S.%f")
+                            dt = pytz.timezone('Asia/Seoul').localize(dt)
+                            server_timestamp = int(dt.timestamp() * 1000)
+                        except Exception as e:
+                            logger.error(f"[PING_MONITOR] server_timestamp 파싱 실패: {server_timestamp}, 오류: {e}")
+                            server_timestamp = None
                     # server_timestamp가 초 단위인 경우 밀리초로 변환
-                    if server_timestamp < 1000000000:
-                        server_timestamp = server_timestamp * 1000
-                    ping_time_ms = current_time_ms - server_timestamp
-                    logger.debug(f"[PING_MONITOR] RTT 계산: 현재시간={current_time_ms}, 서버출발시간={server_timestamp}, RTT={ping_time_ms}ms")
+                    elif isinstance(server_timestamp, (int, float)) and server_timestamp < 1000000000:
+                        server_timestamp = int(server_timestamp * 1000)
+                    
+                    if server_timestamp:
+                        ping_time_ms = current_time_ms - server_timestamp
+                        logger.debug(f"[PING_MONITOR] RTT 계산: 현재시간={current_time_ms}, 서버출발시간={server_timestamp}, RTT={ping_time_ms}ms")
+                    else:
+                        ping_time_ms = 0
                 else:
                     ping_time_ms = ping_data.get('ping_time_ms', 0)
                     logger.warning(f"[PING_MONITOR] server_timestamp 없음, ping_time_ms 사용: {ping_time_ms}")

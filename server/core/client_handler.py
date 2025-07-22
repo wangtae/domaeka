@@ -4,13 +4,78 @@
 import asyncio
 import json
 import base64
+import random
 from typing import Dict, Any
 from core.logger import logger
 from core.message_processor import process_message
 from core.client_status import client_status_manager
-from core.ping_scheduler_v2 import ping_scheduler
 from core.timeout_handler import TimeoutRetryHandler, ConnectionHealthChecker
 import core.globals as g
+
+# 클라이언트별 ping 태스크 관리
+client_ping_tasks: Dict[tuple, asyncio.Task] = {}  # {(bot_name, device_id): asyncio.Task}
+
+
+async def client_ping_task(bot_name: str, device_id: str, writer):
+    """
+    클라이언트별 독립 ping 태스크
+    """
+    logger.info(f"[PING_TASK] ping 태스크 시작 → {bot_name}@{device_id}")
+    
+    try:
+        from core.response_utils import send_ping_event_to_client
+        from datetime import datetime
+        import pytz
+    except ImportError as e:
+        logger.error(f"[PING_TASK] import 오류 → {bot_name}@{device_id}: {e}")
+        return
+    
+    # 초기 지연 (0-5초 랜덤) - 동시 시작 방지
+    initial_delay = random.uniform(0, 5)
+    await asyncio.sleep(initial_delay)
+    logger.debug(f"[PING_TASK] 초기 지연 {initial_delay:.1f}초 후 시작 → {bot_name}@{device_id}")
+    
+    try:
+        while not g.shutdown_event.is_set():
+            try:
+                # writer가 여전히 유효한지 확인
+                if writer.is_closing():
+                    logger.info(f"[PING_TASK] 연결이 닫혀있어 ping 태스크 종료 → {bot_name}@{device_id}")
+                    break
+                    
+                # ping 전송을 위한 context 생성
+                context = {
+                    'bot_name': bot_name,
+                    'channel_id': 'ping',
+                    'room': 'PING',
+                    'user_hash': 'system',
+                    'writer': writer,  # 특정 writer를 명시적으로 전달
+                    'server_timestamp': datetime.now(pytz.timezone('Asia/Seoul')).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+                }
+                
+                try:
+                    success = await send_ping_event_to_client(context)
+                    if success:
+                        logger.debug(f"[PING_TASK] ping 전송 성공 → {bot_name}@{device_id}")
+                    else:
+                        logger.warning(f"[PING_TASK] ping 전송 실패 → {bot_name}@{device_id}")
+                except Exception as e:
+                    logger.error(f"[PING_TASK] ping 전송 중 오류 → {bot_name}@{device_id}: {e}")
+                    
+                # 지정된 간격만큼 대기
+                await asyncio.sleep(g.PING_INTERVAL_SECONDS)
+                
+            except Exception as e:
+                logger.error(f"[PING_TASK] ping 루프 내부 오류 → {bot_name}@{device_id}: {e}")
+                await asyncio.sleep(5)  # 오류 시 재시도 전 대기
+                    
+    except asyncio.CancelledError:
+        logger.info(f"[PING_TASK] ping 태스크 취소됨 → {bot_name}@{device_id}")
+        raise
+    except Exception as e:
+        logger.error(f"[PING_TASK] ping 태스크 오류 → {bot_name}@{device_id}: {e}")
+    finally:
+        logger.info(f"[PING_TASK] ping 태스크 종료 → {bot_name}@{device_id}")
 
 
 async def read_limited_line(reader: asyncio.StreamReader, max_size: int = None):
@@ -225,9 +290,11 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                             g.client_approval_status[client_key] = is_approved
                             logger.info(f"[CLIENT] 클라이언트 등록: {client_key} from {client_addr} (메시지 크기 제한: {max_message_size/1024/1024:.1f}MB, 승인: {is_approved})")
                             
-                            # 새로운 ping 스케줄러에 클라이언트 추가
-                            await ping_scheduler.add_client(bot_name, device_id, writer)
-                            logger.info(f"[CLIENT] Ping 스케줄러 등록: {client_key}")
+                            # 클라이언트별 ping 태스크 시작
+                            ping_task_key = (bot_name, device_id)
+                            ping_task = asyncio.create_task(client_ping_task(bot_name, device_id, writer))
+                            client_ping_tasks[ping_task_key] = ping_task
+                            logger.info(f"[PING_TASK] 클라이언트 ping 태스크 시작됨 → {client_key}")
                         else:
                             logger.error(f"[HANDSHAKE] 핸드셰이크 실패: {client_addr}")
                             writer.close()
@@ -384,10 +451,19 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     except Exception as e:
         logger.error(f"[CLIENT] 연결 오류: {client_addr} -> {e}")
     finally:
-        # ping 스케줄러에서 클라이언트 제거
+        # ping 태스크 정리
         if bot_name and device_id:
-            await ping_scheduler.remove_client(bot_name, device_id)
-            logger.debug(f"[CLIENT] Ping 스케줄러에서 제거: ({bot_name}, {device_id})")
+            ping_task_key = (bot_name, device_id)
+            if ping_task_key in client_ping_tasks:
+                ping_task = client_ping_tasks[ping_task_key]
+                if not ping_task.done():
+                    ping_task.cancel()
+                    try:
+                        await ping_task
+                    except asyncio.CancelledError:
+                        pass
+                del client_ping_tasks[ping_task_key]
+                logger.info(f"[PING_TASK] ping 태스크 정리 완료 → {bot_name}@{device_id}")
         
         # 클라이언트 정리
         if client_addr in g.clients_by_addr:
