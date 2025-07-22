@@ -49,6 +49,11 @@ async def shutdown():
         from services.scheduler_service import scheduler_service
         await scheduler_service.stop()
         
+        # 프로세스 모니터 중지
+        if hasattr(g, 'process_monitor') and g.process_monitor:
+            await g.process_monitor.stop()
+            logger.info("[SHUTDOWN] 프로세스 모니터 중지 완료")
+        
         # 모든 클라이언트 연결 종료
         for addr, writer in list(g.clients.items()):
             try:
@@ -345,10 +350,17 @@ async def main():
         # ping 스케줄러 시작
         await ping_scheduler.start()
         
-        # 시스템 모니터링 시작
-        from database.system_monitor import system_monitor_task
-        asyncio.create_task(system_monitor_task(interval=g.SYSTEM_MONITOR_INTERVAL))
-        logger.info(f"[STARTUP] 시스템 모니터링 태스크 시작 완료 (주기: {g.SYSTEM_MONITOR_INTERVAL}초)")
+        # 프로세스 자체 모니터링 시작
+        if g.process_name:
+            from core.process_self_monitor import ProcessSelfMonitor
+            g.process_monitor = ProcessSelfMonitor(g.process_name, g.db_pool)
+            await g.process_monitor.start()
+            logger.info(f"[STARTUP] 프로세스 모니터링 시작: {g.process_name}")
+        
+        # 시스템 모니터링은 비활성화 (외부 도구 사용 권장)
+        # from database.system_monitor import system_monitor_task
+        # asyncio.create_task(system_monitor_task(interval=g.SYSTEM_MONITOR_INTERVAL))
+        # logger.info(f"[STARTUP] 시스템 모니터링 태스크 시작 완료 (주기: {g.SYSTEM_MONITOR_INTERVAL}초)")
         
         # 메모리 관리자 시작
         from core.memory_manager import memory_manager

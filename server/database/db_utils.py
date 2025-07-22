@@ -310,7 +310,7 @@ async def get_server_process_config(process_name: str) -> Dict[str, Any]:
         async with g.db_pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 sql = """
-                SELECT process_id, server_id, process_name, process_type, 
+                SELECT id, server_id, process_name, 
                        port, type, status, created_at, updated_at
                 FROM kb_server_processes 
                 WHERE process_name = %s
@@ -324,15 +324,14 @@ async def get_server_process_config(process_name: str) -> Dict[str, Any]:
                 
                 # 결과를 딕셔너리로 변환
                 config = {
-                    'process_id': result[0],
+                    'id': result[0],
                     'server_id': result[1],
                     'process_name': result[2],
-                    'process_type': result[3],
-                    'port': result[4],
-                    'type': result[5],
-                    'status': result[6],
-                    'created_at': result[7],
-                    'updated_at': result[8]
+                    'port': result[3],
+                    'type': result[4],
+                    'status': result[5],
+                    'created_at': result[6],
+                    'updated_at': result[7]
                 }
                 
                 logger.info(f"[DB] 서버 프로세스 설정 조회: {process_name} (포트: {config['port']}, 타입: {config['type']})")

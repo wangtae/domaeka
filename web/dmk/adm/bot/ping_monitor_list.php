@@ -9,7 +9,7 @@ include_once('./_common.php');
 
 auth_check('180400', 'r');
 
-$g5['title'] = '봇 상태 모니터링';
+$g5['title'] = '시스템 상태 모니터링';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
 // 검색 조건
@@ -106,7 +106,7 @@ $stats = sql_fetch($active_bots_sql);
 </form>
 
 <div class="local_desc01 local_desc">
-    <p>카카오톡 봇의 실시간 상태를 모니터링합니다. ping 응답, 메모리 사용량, 메시지 큐 상태 등을 확인할 수 있습니다.</p>
+    <p>카카오톡 봇과 서버 프로세스의 실시간 상태를 통합 모니터링합니다. 봇의 메모리 사용량과 서버의 CPU/메모리 사용량을 함께 확인할 수 있습니다.</p>
 </div>
 
 <div class="tbl_head01 tbl_wrap">
@@ -117,9 +117,11 @@ $stats = sql_fetch($active_bots_sql);
         <th scope="col">봇명</th>
         <th scope="col">디바이스 ID</th>
         <th scope="col">클라이언트 IP</th>
-        <th scope="col">메모리 사용량</th>
+        <th scope="col">봇 메모리</th>
         <th scope="col">메시지 큐</th>
         <th scope="col">활성 채팅방</th>
+        <th scope="col">서버 프로세스</th>
+        <th scope="col">서버 CPU/메모리</th>
         <th scope="col">RTT</th>
         <th scope="col">수신 시간</th>
     </tr>
@@ -201,13 +203,29 @@ $stats = sql_fetch($active_bots_sql);
         <td class="td_num <?php echo $memory_class?>"><?php echo $memory_text?></td>
         <td class="td_num"><?php echo $row['message_queue_size'] ?? '-'?></td>
         <td class="td_num"><?php echo $row['active_rooms'] ?? '-'?></td>
+        <td class="td_left"><?php echo $row['process_name'] ?: '-'?></td>
+        <td class="td_num">
+            <?php 
+            if($row['server_cpu_usage'] !== null || $row['server_memory_usage'] !== null) {
+                $cpu_class = '';
+                if($row['server_cpu_usage'] > 80) $cpu_class = 'fc_dc3545';
+                elseif($row['server_cpu_usage'] > 60) $cpu_class = 'fc_ffc107';
+                else $cpu_class = 'fc_28a745';
+                
+                echo '<span class="'.$cpu_class.'">'.round($row['server_cpu_usage'], 1).'%</span> / ';
+                echo round($row['server_memory_usage'], 0).'MB';
+            } else {
+                echo '-';
+            }
+            ?>
+        </td>
         <td class="td_num <?php echo $rtt_class?>"><?php echo $rtt_text?></td>
         <td class="td_datetime"><?php echo substr($row['created_at'], 5, 11)?></td>
     </tr>
     <?php
     }
     if($total_count == 0) {
-        echo '<tr><td colspan="8" class="empty_table">검색된 모니터링 데이터가 없습니다.</td></tr>';
+        echo '<tr><td colspan="10" class="empty_table">검색된 모니터링 데이터가 없습니다.</td></tr>';
     }
     ?>
     </tbody>

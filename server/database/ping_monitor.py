@@ -23,6 +23,9 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
             - monitoring.memory_percent: 메모리 사용률 (%)
             - monitoring.message_queue_size: 메시지 큐 크기
             - monitoring.active_rooms: 활성 채팅방 수
+            - process_name: 서버 프로세스명 (추가)
+            - server_cpu_usage: 서버 CPU 사용률 (추가)
+            - server_memory_usage: 서버 메모리 사용량 (추가)
             
     Returns:
         bool: 저장 성공 여부
@@ -51,8 +54,8 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
                 INSERT INTO kb_ping_monitor 
                 (bot_name, device_id, client_ip, ping_time_ms, client_timestamp, server_timestamp,
                  total_memory, memory_usage, memory_percent, message_queue_size, active_rooms,
-                 created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 process_name, server_cpu_usage, server_memory_usage, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 # 기본값 설정
@@ -96,9 +99,15 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
                 else:
                     server_datetime = None
                 
+                # 서버 프로세스 정보 추출
+                process_name = ping_data.get('process_name', g.process_name if hasattr(g, 'process_name') else None)
+                server_cpu_usage = ping_data.get('server_cpu_usage', 0.0)
+                server_memory_usage = ping_data.get('server_memory_usage', 0.0)
+                
                 await cursor.execute(insert_sql, (
                     bot_name, device_id, client_ip, ping_time_ms, client_datetime, server_datetime,
                     total_memory, memory_usage, memory_percent, message_queue_size, active_rooms,
+                    process_name, server_cpu_usage, server_memory_usage,
                     datetime.now()
                 ))
                 

@@ -14,7 +14,8 @@ from core.client_status import client_status_manager
 from services.echo_service import handle_echo_command
 from services.client_info_service import handle_client_info_command
 from services.image_multi_service import handle_imgext_command
-from database.db_utils import save_chat_to_db, save_ping_to_db
+from database.db_utils import save_chat_to_db
+from database.ping_monitor import save_ping_result
 from core.ping_scheduler import ping_manager
 import core.globals as g
 
@@ -252,7 +253,15 @@ async def handle_ping_event(received_message: Dict[str, Any]):
         logger.info(f"[PING] ping 응답 수신 - 저장만 수행: {client_addr}")
         # ping 모니터링 정보를 데이터베이스에 저장
         if g.db_pool:
-            await save_ping_to_db(received_message)
+            # 서버 프로세스 모니터 정보 추가
+            if hasattr(g, 'process_monitor') and g.process_monitor:
+                process_stats = g.process_monitor.get_current_stats()
+                data.update(process_stats)
+                # heartbeat 업데이트
+                await g.process_monitor.update_heartbeat()
+            
+            # ping_monitor 모듈의 save_ping_result 사용
+            await save_ping_result(data)
             logger.info(f"[PING] 모니터링 정보 DB 저장 완료 - {auth_data.get('botName', '')}")
         return  # 추가 응답 없이 종료
     
