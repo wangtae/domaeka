@@ -1,0 +1,171 @@
+version: '3.8'
+
+services:
+  domaeka-web:
+    image: nginx-php8
+    container_name: domaeka-web
+    networks:
+      - docker-network
+    ports:
+      - "8089:80"
+    volumes:
+      - ./domaeka.live/web:/var/www/html
+      - ./conf/nginx:/etc/nginx
+      - ./conf/php:/usr/local/etc/php
+      - ./logs/nginx:/var/log/nginx
+      - ./logs/php:/var/log/php
+      - ./supervisor:/etc/supervisor
+    restart: always
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+  domaeka-dev-web:
+    image: nginx-php8
+    container_name: domaeka-dev-web
+    networks:
+      - docker-network
+    ports:
+      - "8090:80"
+    volumes:
+      - ./domaeka.test/web:/var/www/html
+      - ./conf/nginx:/etc/nginx
+      - ./conf/php:/usr/local/etc/php
+      - ./logs/nginx_dev:/var/log/nginx
+      - ./logs/php_dev:/var/log/php
+      - ./supervisor:/etc/supervisor
+    restart: always
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+  domaeka-mariadb:
+    image: mariadb:10.3.7
+    container_name: domaeka-mariadb
+    mem_limit: 1g
+    memswap_limit: 1g
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-jtmariadbroot$@}
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./conf/mysql:/etc/mysql/conf.d
+      - ./initdb:/docker-entrypoint-initdb.d
+      - /etc/localtime:/etc/localtime:ro
+      - ./logs/mysql:/var/log/mysql
+    networks:
+      - docker-network
+
+  # Python 서버들
+  domaeka-server-test-01:
+    build:
+      context: ./domaeka.live
+      dockerfile: Dockerfile.python-server
+    image: domaeka-python-server:latest
+    container_name: domaeka-server-test-01
+    networks:
+      - docker-network
+    ports:
+      - "${BOT_TEST_PORT_01:-1491}:1491"
+      - "9101:9001"  # Supervisor 웹 UI
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/test-01:/var/log/supervisor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVER_NAME=domaeka-test-01
+      - SERVER_PORT=1491
+      - MODE=test
+    restart: unless-stopped
+
+  domaeka-server-test-02:
+    image: domaeka-python-server:latest
+    container_name: domaeka-server-test-02
+    networks:
+      - docker-network
+    ports:
+      - "${BOT_TEST_PORT_02:-1492}:1492"
+      - "9102:9001"  # Supervisor 웹 UI
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/test-02:/var/log/supervisor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVER_NAME=domaeka-test-02
+      - SERVER_PORT=1492
+      - MODE=test
+    restart: unless-stopped
+
+  domaeka-server-test-03:
+    image: domaeka-python-server:latest
+    container_name: domaeka-server-test-03
+    networks:
+      - docker-network
+    ports:
+      - "${BOT_TEST_PORT_03:-1493}:1493"
+      - "9103:9001"  # Supervisor 웹 UI
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/test-03:/var/log/supervisor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVER_NAME=domaeka-test-03
+      - SERVER_PORT=1493
+      - MODE=test
+    restart: unless-stopped
+
+  domaeka-server-live-01:
+    image: domaeka-python-server:latest
+    container_name: domaeka-server-live-01
+    networks:
+      - docker-network
+    ports:
+      - "${BOT_LIVE_PORT_01:-1496}:1496"
+      - "9111:9001"  # Supervisor 웹 UI
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/live-01:/var/log/supervisor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVER_NAME=domaeka-live-01
+      - SERVER_PORT=1496
+      - MODE=production
+    restart: unless-stopped
+
+  domaeka-server-live-02:
+    image: domaeka-python-server:latest
+    container_name: domaeka-server-live-02
+    networks:
+      - docker-network
+    ports:
+      - "${BOT_LIVE_PORT_02:-1497}:1497"
+      - "9112:9001"  # Supervisor 웹 UI
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/live-02:/var/log/supervisor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVER_NAME=domaeka-live-02
+      - SERVER_PORT=1497
+      - MODE=production
+    restart: unless-stopped
+
+  domaeka-server-live-03:
+    image: domaeka-python-server:latest
+    container_name: domaeka-server-live-03
+    networks:
+      - docker-network
+    ports:
+      - "${BOT_LIVE_PORT_03:-1498}:1498"
+      - "9113:9001"  # Supervisor 웹 UI
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/live-03:/var/log/supervisor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVER_NAME=domaeka-live-03
+      - SERVER_PORT=1498
+      - MODE=production
+    restart: unless-stopped
+
+networks:
+  docker-network:
+    external: true

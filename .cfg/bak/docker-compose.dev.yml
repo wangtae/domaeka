@@ -1,0 +1,236 @@
+version: '3.8'
+
+services:
+  domaeka-web:
+    image: nginx-php8
+    container_name: domaeka-web
+    networks:
+      - docker-network
+    ports:
+      - "8089:80"
+    volumes:
+      - ./domaeka.live/web:/var/www/html
+      - ./conf/nginx:/etc/nginx
+      - ./conf/php:/usr/local/etc/php
+      - ./logs/nginx:/var/log/nginx
+      - ./logs/php:/var/log/php
+      - ./supervisor:/etc/supervisor
+    restart: always
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+  domaeka-dev-web:
+    image: nginx-php8
+    container_name: domaeka-dev-web
+    networks:
+      - docker-network
+    ports:
+      - "8090:80"
+    volumes:
+      - ./domaeka.test/web:/var/www/html
+      - ./conf/nginx:/etc/nginx
+      - ./conf/php:/usr/local/etc/php
+      - ./logs/nginx_dev:/var/log/nginx
+      - ./logs/php_dev:/var/log/php
+      - ./supervisor:/etc/supervisor
+    restart: always
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+  domaeka-mariadb:
+    image: mariadb:10.3.7
+    container_name: domaeka-mariadb
+    mem_limit: 1g
+    memswap_limit: 1g
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: jtmariadbroot$@
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./conf/mysql:/etc/mysql/conf.d
+      - ./initdb:/docker-entrypoint-initdb.d
+      - /etc/localtime:/etc/localtime:ro
+      - ./logs/mysql:/var/log/mysql
+    networks:
+      - docker-network
+
+  # Python 서버들 - TEST 환경
+  domaeka-server-test-01:
+    image: python:3.9-slim
+    container_name: domaeka-server-test-01
+    networks:
+      - docker-network
+    ports:
+      - "${BOT_TEST_PORT_01:-1481}:1481"
+    volumes:
+      # 소스 코드 마운트 (개발 시 실시간 반영)
+      - ./domaeka.live/server:/app
+      - ./logs/server/test-01:/app/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=domaeka-mariadb
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=jtmariadbroot$@
+      - SERVER_NAME=domaeka-test-01
+      - SERVER_PORT=1481
+      - MODE=test
+    command: >
+      bash -c "
+        if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi &&
+        python main.py --name=domaeka-test-01
+      "
+    depends_on:
+      - domaeka-mariadb
+    restart: unless-stopped
+
+  domaeka-server-test-02:
+    image: python:3.9-slim
+    container_name: domaeka-server-test-02
+    networks:
+      - docker-network
+    ports:
+      - "1482:1482"
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/test-02:/app/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=domaeka-mariadb
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=jtmariadbroot$@
+      - SERVER_NAME=domaeka-test-02
+      - SERVER_PORT=1482
+      - MODE=test
+    command: >
+      bash -c "
+        if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi &&
+        python main.py --name=domaeka-test-02
+      "
+    depends_on:
+      - domaeka-mariadb
+    restart: unless-stopped
+
+  domaeka-server-test-03:
+    image: python:3.9-slim
+    container_name: domaeka-server-test-03
+    networks:
+      - docker-network
+    ports:
+      - "1483:1483"
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/test-03:/app/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=domaeka-mariadb
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=jtmariadbroot$@
+      - SERVER_NAME=domaeka-test-03
+      - SERVER_PORT=1483
+      - MODE=test
+    command: >
+      bash -c "
+        if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi &&
+        python main.py --name=domaeka-test-03
+      "
+    depends_on:
+      - domaeka-mariadb
+    restart: unless-stopped
+
+  # Python 서버들 - LIVE 환경
+  domaeka-server-live-01:
+    image: python:3.9-slim
+    container_name: domaeka-server-live-01
+    networks:
+      - docker-network
+    ports:
+      - "1491:1491"
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/live-01:/app/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=domaeka-mariadb
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=jtmariadbroot$@
+      - SERVER_NAME=domaeka-live-01
+      - SERVER_PORT=1491
+      - MODE=production
+    command: >
+      bash -c "
+        if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi &&
+        python main.py --name=domaeka-live-01
+      "
+    depends_on:
+      - domaeka-mariadb
+    restart: unless-stopped
+
+  domaeka-server-live-02:
+    image: python:3.9-slim
+    container_name: domaeka-server-live-02
+    networks:
+      - docker-network
+    ports:
+      - "1492:1492"
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/live-02:/app/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=domaeka-mariadb
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=jtmariadbroot$@
+      - SERVER_NAME=domaeka-live-02
+      - SERVER_PORT=1492
+      - MODE=production
+    command: >
+      bash -c "
+        if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi &&
+        python main.py --name=domaeka-live-02
+      "
+    depends_on:
+      - domaeka-mariadb
+    restart: unless-stopped
+
+  domaeka-server-live-03:
+    image: python:3.9-slim
+    container_name: domaeka-server-live-03
+    networks:
+      - docker-network
+    ports:
+      - "1493:1493"
+    volumes:
+      - ./domaeka.live/server:/app
+      - ./logs/server/live-03:/app/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=domaeka-mariadb
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=jtmariadbroot$@
+      - SERVER_NAME=domaeka-live-03
+      - SERVER_PORT=1493
+      - MODE=production
+    command: >
+      bash -c "
+        if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi &&
+        python main.py --name=domaeka-live-03
+      "
+    depends_on:
+      - domaeka-mariadb
+    restart: unless-stopped
+
+networks:
+  docker-network:
+    external: true

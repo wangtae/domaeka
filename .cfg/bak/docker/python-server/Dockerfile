@@ -1,0 +1,30 @@
+FROM python:3.9-slim
+
+# 필수 패키지 설치
+RUN apt-get update && apt-get install -y \
+    supervisor \
+    curl \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# 작업 디렉토리 설정
+WORKDIR /app
+
+# Python 의존성 파일 복사 (캐시 활용)
+COPY requirements.txt* ./
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+
+# supervisor 설정 디렉토리 생성
+RUN mkdir -p /var/log/supervisor /etc/supervisor/conf.d
+
+# supervisor 기본 설정
+COPY supervisord.conf /etc/supervisor/supervisord.conf
+
+# 소스 코드는 볼륨 마운트로 처리 (개발 환경)
+# COPY . . (운영 환경에서는 이 줄 주석 해제)
+
+# 포트 노출 (문서화 목적)
+EXPOSE 1490-1499
+
+# supervisor 실행
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
