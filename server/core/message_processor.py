@@ -257,8 +257,11 @@ async def handle_ping_event(received_message: Dict[str, Any]):
             if hasattr(g, 'process_monitor') and g.process_monitor:
                 process_stats = g.process_monitor.get_current_stats()
                 data.update(process_stats)
+                logger.info(f"[PING] 프로세스 모니터 정보 추가: {process_stats}")
                 # heartbeat 업데이트
                 await g.process_monitor.update_heartbeat()
+            else:
+                logger.warning(f"[PING] 프로세스 모니터 없음 - hasattr: {hasattr(g, 'process_monitor')}, value: {getattr(g, 'process_monitor', None)}")
             
             # ping_monitor 모듈의 save_ping_result 사용
             await save_ping_result(data)

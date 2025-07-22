@@ -30,10 +30,10 @@ async def client_ping_task(bot_name: str, device_id: str, writer):
         logger.error(f"[PING_TASK] import 오류 → {bot_name}@{device_id}: {e}")
         return
     
-    # 초기 지연 (0-5초 랜덤) - 동시 시작 방지
-    initial_delay = random.uniform(0, 5)
+    # 초기 지연 (1-59초 랜덤) - 서버 재시작 시 ping 부하 분산
+    initial_delay = random.uniform(1, 59)
     await asyncio.sleep(initial_delay)
-    logger.debug(f"[PING_TASK] 초기 지연 {initial_delay:.1f}초 후 시작 → {bot_name}@{device_id}")
+    logger.info(f"[PING_TASK] 초기 지연 {initial_delay:.1f}초 후 시작 → {bot_name}@{device_id}")
     
     try:
         while not g.shutdown_event.is_set():
@@ -434,6 +434,17 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     # bot_name과 device_id 정보 추가
                     ping_data['bot_name'] = bot_name
                     ping_data['device_id'] = device_id
+                    
+                    # 서버 프로세스 모니터링 정보 추가
+                    if hasattr(g, 'process_monitor') and g.process_monitor:
+                        monitor_stats = g.process_monitor.get_current_stats()
+                        ping_data['process_name'] = monitor_stats.get('process_name')
+                        ping_data['server_cpu_usage'] = monitor_stats.get('server_cpu_usage', 0.0)
+                        ping_data['server_cpu_max'] = monitor_stats.get('server_cpu_max', 0.0)
+                        ping_data['server_memory_usage'] = monitor_stats.get('server_memory_usage', 0.0)
+                        ping_data['server_memory_max'] = monitor_stats.get('server_memory_max', 0.0)
+                        logger.debug(f"[PING] 서버 모니터링 정보 추가 - CPU: {ping_data['server_cpu_usage']}%, MEM: {ping_data['server_memory_usage']}MB")
+                    
                     await save_ping_result(ping_data)
                     continue  # ping 패킷은 일반 메시지 처리로 넘기지 않음
                 

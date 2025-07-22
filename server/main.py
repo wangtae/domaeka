@@ -345,10 +345,27 @@ async def main():
         
         # 프로세스 자체 모니터링 시작 (ping 스케줄러보다 먼저 시작)
         if g.process_name:
-            from core.process_self_monitor import ProcessSelfMonitor
-            g.process_monitor = ProcessSelfMonitor(g.process_name, g.db_pool)
-            await g.process_monitor.start()
-            logger.info(f"[STARTUP] 프로세스 모니터링 시작: {g.process_name}")
+            try:
+                logger.info(f"[STARTUP] 프로세스 모니터 import 시작...")
+                from core.process_self_monitor import ProcessSelfMonitor
+                logger.info(f"[STARTUP] ProcessSelfMonitor 클래스 import 성공")
+                
+                logger.info(f"[STARTUP] ProcessSelfMonitor 인스턴스 생성 중...")
+                g.process_monitor = ProcessSelfMonitor(g.process_name, g.db_pool)
+                logger.info(f"[STARTUP] ProcessSelfMonitor 인스턴스 생성 완료")
+                
+                logger.info(f"[STARTUP] process_monitor.start() 호출 중...")
+                await g.process_monitor.start()
+                logger.info(f"[STARTUP] 프로세스 모니터링 시작: {g.process_name}")
+                
+                # 초기 상태 확인
+                initial_stats = g.process_monitor.get_current_stats()
+                logger.info(f"[STARTUP] 프로세스 모니터 초기 상태: {initial_stats}")
+            except Exception as e:
+                logger.error(f"[STARTUP] 프로세스 모니터 시작 실패: {e}", exc_info=True)
+                g.process_monitor = None
+        else:
+            logger.warning(f"[STARTUP] 프로세스 모니터링 비활성화 - g.process_name: {g.process_name}")
         
         # 시스템 모니터링은 비활성화 (외부 도구 사용 권장)
         # from database.system_monitor import system_monitor_task
