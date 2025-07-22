@@ -9,7 +9,7 @@ include_once('./_common.php');
 
 auth_check('180400', 'r');
 
-$g5['title'] = '시스템 상태 모니터링';
+$g5['title'] = '시스템 상태 로그';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
 // 검색 조건
@@ -109,9 +109,37 @@ $stats = sql_fetch($active_bots_sql);
     <p>카카오톡 봇과 서버 프로세스의 실시간 상태를 통합 모니터링합니다. 봇의 메모리 사용량과 서버의 CPU/메모리 사용량을 함께 확인할 수 있습니다.</p>
 </div>
 
+<style>
+.ping_monitor_table th,
+.ping_monitor_table td {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+.ping_monitor_table th:nth-child(1),
+.ping_monitor_table td:nth-child(1) { width: 8%; }
+.ping_monitor_table th:nth-child(2),
+.ping_monitor_table td:nth-child(2) { width: 12%; }
+.ping_monitor_table th:nth-child(3),
+.ping_monitor_table td:nth-child(3) { width: 10%; }
+.ping_monitor_table th:nth-child(4),
+.ping_monitor_table td:nth-child(4) { width: 10%; }
+.ping_monitor_table th:nth-child(5),
+.ping_monitor_table td:nth-child(5) { width: 8%; }
+.ping_monitor_table th:nth-child(6),
+.ping_monitor_table td:nth-child(6) { width: 8%; }
+.ping_monitor_table th:nth-child(7),
+.ping_monitor_table td:nth-child(7) { width: 12%; }
+.ping_monitor_table th:nth-child(8),
+.ping_monitor_table td:nth-child(8) { width: 12%; }
+.ping_monitor_table th:nth-child(9),
+.ping_monitor_table td:nth-child(9) { width: 8%; }
+.ping_monitor_table th:nth-child(10),
+.ping_monitor_table td:nth-child(10) { width: 12%; }
+</style>
+
 <div class="tbl_head01 tbl_wrap">
-    <table>
-    <caption><?php echo $g5['title']; ?> 목록</caption>
+    <table class="ping_monitor_table">
+    <caption><?php echo $g5['title']; ?></caption>
     <thead>
     <tr>
         <th scope="col">봇명</th>
@@ -121,7 +149,7 @@ $stats = sql_fetch($active_bots_sql);
         <th scope="col">메시지 큐</th>
         <th scope="col">활성 채팅방</th>
         <th scope="col">서버 프로세스</th>
-        <th scope="col">서버 CPU/메모리</th>
+        <th scope="col">프로세스 CPU/메모리</th>
         <th scope="col">RTT</th>
         <th scope="col">수신 시간</th>
     </tr>
@@ -156,13 +184,13 @@ $stats = sql_fetch($active_bots_sql);
             }
         }
         
-        // RTT 상태
-        $rtt_text = $row['rtt_ms'] ? $row['rtt_ms'].'ms' : '-';
+        // RTT 상태 (ping_time_ms 컬럼 사용)
+        $rtt_text = $row['ping_time_ms'] ? $row['ping_time_ms'].'ms' : '-';
         $rtt_class = '';
-        if($row['rtt_ms']) {
-            if($row['rtt_ms'] > 1000) {
+        if($row['ping_time_ms']) {
+            if($row['ping_time_ms'] > 1000) {
                 $rtt_class = 'fc_dc3545';
-            } elseif($row['rtt_ms'] > 500) {
+            } elseif($row['ping_time_ms'] > 500) {
                 $rtt_class = 'fc_ffc107';
             } else {
                 $rtt_class = 'fc_28a745';
@@ -197,30 +225,50 @@ $stats = sql_fetch($active_bots_sql);
         }
     ?>
     <tr class="<?php echo $bg; ?>">
-        <td class="td_left"><?php echo get_text($row['bot_name'])?><?php echo $client_status?></td>
-        <td class="td_monospace"><?php echo $masked_device_id?></td>
+        <td><?php echo get_text($row['bot_name'])?><?php echo $client_status?></td>
+        <td><?php echo $masked_device_id?></td>
         <td><?php echo $row['client_ip']?></td>
-        <td class="td_num <?php echo $memory_class?>"><?php echo $memory_text?></td>
-        <td class="td_num"><?php echo $row['message_queue_size'] ?? '-'?></td>
-        <td class="td_num"><?php echo $row['active_rooms'] ?? '-'?></td>
-        <td class="td_left"><?php echo $row['process_name'] ?: '-'?></td>
-        <td class="td_num">
+        <td class="<?php echo $memory_class?>"><?php echo $memory_text?></td>
+        <td><?php echo $row['message_queue_size'] ?? '-'?></td>
+        <td><?php echo $row['active_rooms'] ?? '-'?></td>
+        <td><?php echo $row['process_name'] ?: '-'?></td>
+        <td>
             <?php 
             if($row['server_cpu_usage'] !== null || $row['server_memory_usage'] !== null) {
-                $cpu_class = '';
-                if($row['server_cpu_usage'] > 80) $cpu_class = 'fc_dc3545';
-                elseif($row['server_cpu_usage'] > 60) $cpu_class = 'fc_ffc107';
-                else $cpu_class = 'fc_28a745';
+                // CPU 평균값 색상
+                $cpu_avg_class = '';
+                if($row['server_cpu_usage'] > 80) $cpu_avg_class = 'fc_dc3545';
+                elseif($row['server_cpu_usage'] > 60) $cpu_avg_class = 'fc_ffc107';
+                else $cpu_avg_class = 'fc_28a745';
                 
-                echo '<span class="'.$cpu_class.'">'.round($row['server_cpu_usage'], 1).'%</span> / ';
+                // CPU 최대값 색상
+                $cpu_max_class = '';
+                if(isset($row['server_cpu_max'])) {
+                    if($row['server_cpu_max'] > 80) $cpu_max_class = 'fc_dc3545';
+                    elseif($row['server_cpu_max'] > 60) $cpu_max_class = 'fc_ffc107';
+                    else $cpu_max_class = 'fc_28a745';
+                }
+                
+                // CPU 표시 (평균/최대)
+                echo '<span class="'.$cpu_avg_class.'">'.round($row['server_cpu_usage'], 1).'%</span>';
+                if(isset($row['server_cpu_max']) && $row['server_cpu_max'] > 0) {
+                    echo ' <small class="'.$cpu_max_class.'">(최대 '.round($row['server_cpu_max'], 1).'%)</small>';
+                }
+                
+                echo '<br>';
+                
+                // 메모리 표시 (평균/최대)
                 echo round($row['server_memory_usage'], 0).'MB';
+                if(isset($row['server_memory_max']) && $row['server_memory_max'] > 0) {
+                    echo ' <small>(최대 '.round($row['server_memory_max'], 0).'MB)</small>';
+                }
             } else {
                 echo '-';
             }
             ?>
         </td>
-        <td class="td_num <?php echo $rtt_class?>"><?php echo $rtt_text?></td>
-        <td class="td_datetime"><?php echo substr($row['created_at'], 5, 11)?></td>
+        <td class="<?php echo $rtt_class?>"><?php echo $rtt_text?></td>
+        <td><?php echo substr($row['created_at'], 5, 14)?></td>
     </tr>
     <?php
     }

@@ -265,32 +265,8 @@ async def handle_ping_event(received_message: Dict[str, Any]):
             logger.info(f"[PING] 모니터링 정보 DB 저장 완료 - {auth_data.get('botName', '')}")
         return  # 추가 응답 없이 종료
     
-    # 새로운 ping 요청인 경우에만 응답 전송
-    response = {
-        "event": "ping",
-        "data": {
-            "bot_name": data.get("bot_name", ""),
-            "channel_id": data.get("channel_id", ""),
-            "room": data.get("room", ""),
-            "user_hash": data.get("user_hash", ""),
-            "server_timestamp": int(time.time() * 1000),  # 현재 서버 시간
-            "client_status": client_status,
-            "monitoring": monitoring_info,
-            "auth": auth_data,
-            "is_manual": data.get("is_manual", False),
-            "server_info": {
-                "total_clients": len(g.clients),
-                "timestamp": int(time.time() * 1000)
-            }
-        }
-    }
-    
-    # client_key로 writer 가져오기
-    if client_key and client_key in g.clients:
-        writer = g.clients[client_key]
-        await send_json_response(writer, response)
-        logger.info(f"[PING] 새로운 ping - 응답 전송 완료: {client_addr}")
-    else:
-        logger.warning(f"[PING] writer를 찾을 수 없음: {client_key}")
+    # 클라이언트 발신 ping은 무시 (서버만 ping을 발신하도록 제한)
+    logger.warning(f"[PING] 클라이언트 발신 ping 감지 - 무시함: {client_addr}")
+    logger.warning(f"[PING] 클라이언트 데이터: bot_name={data.get('bot_name')}, has_server_timestamp={bool(data.get('server_timestamp'))}")
 
 

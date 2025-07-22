@@ -47,6 +47,10 @@ ROOM_CONCURRENCY = 3  # 방별 동시 처리 제한 (기본값)
 # 시스템 모니터링 설정
 SYSTEM_MONITOR_INTERVAL = 300  # 시스템 모니터링 주기 (초), 기본값: 5분
 
+# 프로세스 자체 모니터링 설정
+PROCESS_MONITOR_INTERVAL = 3  # 프로세스 CPU/메모리 측정 주기 (초)
+PROCESS_MONITOR_SAMPLES = 10  # ping 전송 전까지 보관할 샘플 수 (30초/3초)
+
 # 메시지 크기 제한
 MAX_MESSAGE_SIZE = 1024 * 1024  # 1MB - 원시 TCP 데이터 최대 크기
 MAX_KAKAOTALK_MESSAGE_LENGTH = 65000  # 카카오톡 최대 글자수

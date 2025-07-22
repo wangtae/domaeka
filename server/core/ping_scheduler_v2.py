@@ -187,6 +187,7 @@ class ClientPingScheduler:
         
         current_time = int(time.time() * 1000)  # 밀리초
         
+        # 기본 ping 데이터
         ping_data = {
             "event": "ping",
             "data": {
@@ -203,6 +204,14 @@ class ClientPingScheduler:
                 }
             }
         }
+        
+        # 서버 프로세스 모니터 정보 추가
+        if hasattr(g, 'process_monitor') and g.process_monitor:
+            process_stats = g.process_monitor.get_current_stats()
+            ping_data["data"].update(process_stats)
+            logger.info(f"[PING_SCHEDULER] 프로세스 모니터 정보 추가: {process_stats}")
+        else:
+            logger.warning(f"[PING_SCHEDULER] 프로세스 모니터 없음 - g.process_monitor: {getattr(g, 'process_monitor', None)}")
         
         try:
             # v3.3.0: send_json_response가 자동으로 v3.3.0 필드들을 추가함

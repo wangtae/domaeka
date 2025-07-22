@@ -347,15 +347,15 @@ async def main():
             await create_tables()
             logger.info("[STARTUP] 데이터베이스 연결 및 테이블 확인 완료")
         
-        # ping 스케줄러 시작
-        await ping_scheduler.start()
-        
-        # 프로세스 자체 모니터링 시작
+        # 프로세스 자체 모니터링 시작 (ping 스케줄러보다 먼저 시작)
         if g.process_name:
             from core.process_self_monitor import ProcessSelfMonitor
             g.process_monitor = ProcessSelfMonitor(g.process_name, g.db_pool)
             await g.process_monitor.start()
             logger.info(f"[STARTUP] 프로세스 모니터링 시작: {g.process_name}")
+        
+        # ping 스케줄러 시작
+        await ping_scheduler.start()
         
         # 시스템 모니터링은 비활성화 (외부 도구 사용 권장)
         # from database.system_monitor import system_monitor_task

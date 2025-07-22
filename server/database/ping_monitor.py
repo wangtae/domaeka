@@ -54,8 +54,8 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
                 INSERT INTO kb_ping_monitor 
                 (bot_name, device_id, client_ip, ping_time_ms, client_timestamp, server_timestamp,
                  total_memory, memory_usage, memory_percent, message_queue_size, active_rooms,
-                 process_name, server_cpu_usage, server_memory_usage, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 process_name, server_cpu_usage, server_cpu_max, server_memory_usage, server_memory_max, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 # 기본값 설정
@@ -73,8 +73,10 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
                     if server_timestamp < 1000000000:
                         server_timestamp = server_timestamp * 1000
                     ping_time_ms = current_time_ms - server_timestamp
+                    logger.debug(f"[PING_MONITOR] RTT 계산: 현재시간={current_time_ms}, 서버출발시간={server_timestamp}, RTT={ping_time_ms}ms")
                 else:
                     ping_time_ms = ping_data.get('ping_time_ms', 0)
+                    logger.warning(f"[PING_MONITOR] server_timestamp 없음, ping_time_ms 사용: {ping_time_ms}")
                 
                 # monitoring 데이터 추출
                 monitoring = ping_data.get('monitoring', {})
@@ -99,15 +101,17 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
                 else:
                     server_datetime = None
                 
-                # 서버 프로세스 정보 추출
+                # 서버 프로세스 정보 추출 (평균값과 최대값)
                 process_name = ping_data.get('process_name', g.process_name if hasattr(g, 'process_name') else None)
                 server_cpu_usage = ping_data.get('server_cpu_usage', 0.0)
+                server_cpu_max = ping_data.get('server_cpu_max', 0.0)
                 server_memory_usage = ping_data.get('server_memory_usage', 0.0)
+                server_memory_max = ping_data.get('server_memory_max', 0.0)
                 
                 await cursor.execute(insert_sql, (
                     bot_name, device_id, client_ip, ping_time_ms, client_datetime, server_datetime,
                     total_memory, memory_usage, memory_percent, message_queue_size, active_rooms,
-                    process_name, server_cpu_usage, server_memory_usage,
+                    process_name, server_cpu_usage, server_cpu_max, server_memory_usage, server_memory_max,
                     datetime.now()
                 ))
                 
@@ -115,6 +119,9 @@ async def save_ping_result(ping_data: Dict[str, Any]) -> bool:
                 ping_config = g.LOG_CONFIG.get('ping', {})
                 if ping_config.get('enabled', True) and ping_config.get('detailed', False):
                     logger.debug(f"[PING_MONITOR] ping 결과 저장 완료: {bot_name}@{device_id} - {ping_time_ms}ms")
+                
+                # 디버깅용 로그 추가
+                logger.info(f"[PING_MONITOR] 저장 데이터 - RTT: {ping_time_ms}ms, CPU: {server_cpu_usage}%/{server_cpu_max}%, MEM: {server_memory_usage}MB/{server_memory_max}MB")
                 return True
                 
     except Exception as e:
