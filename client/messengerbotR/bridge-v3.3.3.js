@@ -22,7 +22,7 @@
  * • 'Code has no side effects' 경고는 정상 동작 (무시 가능)
  * • 🔴 메신저봇R 앱 자체가 불안정한 요소가 많아 알 수 없는 문제를 발생할 수 있습니다.
  * 
- * @version 3.3.3
+ * @version 3.3.2
  * @author kkobot.com
  * @improvements 
  *   - v3.3.0: JSON + Raw 데이터 구조, 99.9% 파싱 부하 감소, Base64 인코딩 보안
@@ -35,10 +35,10 @@
 // =============================================================================
 var BOT_CONFIG = {
     // 기본 정보
-    VERSION: '3.3.3',
+    VERSION: '3.3.2',
     BOT_NAME: 'LOA.i',
     CLIENT_TYPE: 'MessengerBotR',
-    PROTOCOL_VERSION: '3.3.3',  // 새 프로토콜 버전
+    PROTOCOL_VERSION: '3.3.2',  // 새 프로토콜 버전
 
     // 서버 및 인증 정보
     SECRET_KEY: "8vQw!@#4kLz9^&*1pXyZ2$%6sDq7!@#8vQw!@#4kLz9^&*1pXyZ2$%6sDq7!@#8",

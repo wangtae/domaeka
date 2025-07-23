@@ -41,11 +41,18 @@ async def process_message_with_limit(message: Dict[str, Any]):
     Returns:
         bool: 처리 성공 여부
     """
+    event = message.get('event', '')
     bot_name = message.get('bot_name')
     data = message.get('data', {})
     channel_id = data.get('channel_id') or data.get('channelId', '')
     sender = data.get('sender')
     text = data.get('text')
+    
+    # ping/pong 이벤트는 세마포어 없이 처리 (시스템 이벤트)
+    if event in ['ping', 'pong']:
+        logger.debug(f"[SEMAPHORE] {event} 이벤트는 세마포어 없이 처리")
+        await process_message(message)
+        return True
     
     if not channel_id or channel_id == 'None':
         logger.error(f"[SEMAPHORE] channel_id 누락: {message}")

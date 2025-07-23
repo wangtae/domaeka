@@ -106,10 +106,15 @@ async def process_message(received_message: dict):
             # await ping_manager.check_and_send_ping()
             
         elif event == 'ping':
-            # ping 이벤트 처리
+            # ping 이벤트 처리 (서버 -> 클라이언트 방향의 초기 ping)
             ping_message = received_message.copy()
             ping_message['client_addr'] = str(received_message.get('client_addr', ''))
             await handle_ping_event(ping_message)
+        elif event == 'pong':
+            # pong 이벤트 처리 (클라이언트 -> 서버 방향의 응답)
+            pong_message = received_message.copy()
+            pong_message['client_addr'] = str(received_message.get('client_addr', ''))
+            await handle_pong_event(pong_message)
         else:
             logger.warning(f"[MSG] 알 수 없는 이벤트: {event}")
             
@@ -197,7 +202,7 @@ async def handle_analyze_event(context: Dict[str, Any]):
 
 async def handle_ping_event(received_message: Dict[str, Any]):
     """
-    ping 이벤트 처리
+    ping 이벤트 처리 (클라이언트가 서버로 보내는 ping - 일반적으로 발생하지 않음)
     
     Args:
         received_message: 클라이언트로부터 받은 ping 메시지
@@ -206,14 +211,30 @@ async def handle_ping_event(received_message: Dict[str, Any]):
     client_key = received_message.get('client_key')
     client_addr = received_message.get('client_addr')
     
-    logger.info(f"[PING] 핑 수신 - 클라이언트: {client_addr}")
+    # 클라이언트 발신 ping은 무시 (서버만 ping을 발신하도록 제한)
+    logger.warning(f"[PING] 클라이언트 발신 ping 감지 - 무시함: {client_addr}")
+    logger.warning(f"[PING] 클라이언트 데이터: bot_name={data.get('bot_name')}, has_server_timestamp={bool(data.get('server_timestamp'))}")
+
+
+async def handle_pong_event(received_message: Dict[str, Any]):
+    """
+    pong 이벤트 처리 (서버가 보낸 ping에 대한 클라이언트의 응답)
     
-    # ping 데이터 상세 로깅
+    Args:
+        received_message: 클라이언트로부터 받은 pong 메시지
+    """
+    data = received_message.get('data', {})
+    client_key = received_message.get('client_key')
+    client_addr = received_message.get('client_addr')
+    
+    logger.info(f"[PONG] 퐁 수신 - 클라이언트: {client_addr}")
+    
+    # pong 데이터 상세 로깅
     bot_name = data.get('bot_name', '')
     monitoring = data.get('monitoring', {})
-    logger.info(f"[PING] 데이터: bot={bot_name}, monitoring={bool(monitoring)}")
+    logger.info(f"[PONG] 데이터: bot={bot_name}, monitoring={bool(monitoring)}")
     if monitoring:
-        logger.info(f"[PING] 모니터링: memory={monitoring.get('memory_usage', 0):.1f}MB/"
+        logger.info(f"[PONG] 모니터링: memory={monitoring.get('memory_usage', 0):.1f}MB/"
                    f"{monitoring.get('total_memory', 0):.1f}MB ({monitoring.get('memory_percent', 0):.1f}%), "
                    f"queue={monitoring.get('message_queue_size', 0)}, rooms={monitoring.get('active_rooms', 0)}")
     
@@ -221,9 +242,6 @@ async def handle_ping_event(received_message: Dict[str, Any]):
     client_status = data.get("client_status", {})
     monitoring_info = data.get("monitoring", {})
     auth_data = data.get("auth", {})
-    
-    # server_timestamp 존재 여부로 ping 응답인지 확인
-    is_ping_response = "server_timestamp" in data
     
     # 클라이언트 정보 업데이트
     if client_addr:
@@ -237,39 +255,33 @@ async def handle_ping_event(received_message: Dict[str, Any]):
         # 모니터링 정보 업데이트
         if monitoring_info:
             client_status_manager.update_monitoring_info(client_addr, monitoring_info)
-            logger.info(f"[PING] 모니터링 정보 업데이트: uptime={monitoring_info.get('uptime')}, "
+            logger.info(f"[PONG] 모니터링 정보 업데이트: uptime={monitoring_info.get('uptime')}, "
                        f"messages={monitoring_info.get('messageCount')}")
         
         # 인증 정보 검증 및 업데이트
         if auth_data:
             is_valid, error_msg, client_info = validate_client_auth(auth_data)
             if not is_valid:
-                logger.warning(f"[PING] 인증 실패: {error_msg}")
+                logger.warning(f"[PONG] 인증 실패: {error_msg}")
             else:
                 client_status_manager.update_auth_info(client_addr, auth_data)
     
-    # ping 응답인 경우 추가 응답하지 않고 데이터베이스에만 저장
-    if is_ping_response:
-        logger.info(f"[PING] ping 응답 수신 - 저장만 수행: {client_addr}")
-        # ping 모니터링 정보를 데이터베이스에 저장
-        if g.db_pool:
-            # 서버 프로세스 모니터 정보 추가
-            if hasattr(g, 'process_monitor') and g.process_monitor:
-                process_stats = g.process_monitor.get_current_stats()
-                data.update(process_stats)
-                logger.info(f"[PING] 프로세스 모니터 정보 추가: {process_stats}")
-                # heartbeat 업데이트
-                await g.process_monitor.update_heartbeat()
-            else:
-                logger.warning(f"[PING] 프로세스 모니터 없음 - hasattr: {hasattr(g, 'process_monitor')}, value: {getattr(g, 'process_monitor', None)}")
-            
-            # ping_monitor 모듈의 save_ping_result 사용
-            await save_ping_result(data)
-            logger.info(f"[PING] 모니터링 정보 DB 저장 완료 - {auth_data.get('botName', '')}")
-        return  # 추가 응답 없이 종료
-    
-    # 클라이언트 발신 ping은 무시 (서버만 ping을 발신하도록 제한)
-    logger.warning(f"[PING] 클라이언트 발신 ping 감지 - 무시함: {client_addr}")
-    logger.warning(f"[PING] 클라이언트 데이터: bot_name={data.get('bot_name')}, has_server_timestamp={bool(data.get('server_timestamp'))}")
+    # pong 응답은 추가 응답하지 않고 데이터베이스에만 저장
+    logger.info(f"[PONG] pong 응답 수신 - 저장만 수행: {client_addr}")
+    # ping 모니터링 정보를 데이터베이스에 저장
+    if g.db_pool:
+        # 서버 프로세스 모니터 정보 추가
+        if hasattr(g, 'process_monitor') and g.process_monitor:
+            process_stats = g.process_monitor.get_current_stats()
+            data.update(process_stats)
+            logger.info(f"[PONG] 프로세스 모니터 정보 추가: {process_stats}")
+            # heartbeat 업데이트
+            await g.process_monitor.update_heartbeat()
+        else:
+            logger.warning(f"[PONG] 프로세스 모니터 없음 - hasattr: {hasattr(g, 'process_monitor')}, value: {getattr(g, 'process_monitor', None)}")
+        
+        # ping_monitor 모듈의 save_ping_result 사용
+        await save_ping_result(data)
+        logger.info(f"[PONG] 모니터링 정보 DB 저장 완료 - {auth_data.get('botName', '')}")
 
 

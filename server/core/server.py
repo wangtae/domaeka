@@ -39,13 +39,35 @@ async def start_server(port: int):
             limit=g.MAX_MESSAGE_SIZE  # StreamReader 버퍼 크기 제한
         )
 
-        # TCP_NODELAY 활성화
+        # TCP 소켓 최적화 설정
         for sock in server.sockets:
             try:
+                # TCP_NODELAY 활성화 - Nagle 알고리즘 비활성화로 지연 최소화
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 logger.info(f"[SOCKET CONFIG] TCP_NODELAY 활성화 완료 → {sock.getsockname()}")
+                
+                # TCP KeepAlive 활성화 - NAT 타임아웃 방지
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                logger.info(f"[SOCKET CONFIG] SO_KEEPALIVE 활성화 완료 → {sock.getsockname()}")
+                
+                # 플랫폼별 KeepAlive 세부 설정
+                import platform
+                if platform.system() == "Linux":
+                    # TCP_KEEPIDLE: 30초 후 첫 keepalive 프로브 전송
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 30)
+                    # TCP_KEEPINTVL: keepalive 프로브 간격 10초
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 10)
+                    # TCP_KEEPCNT: 9회 실패 시 연결 종료
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 9)
+                    logger.info(f"[SOCKET CONFIG] Linux KeepAlive 세부 설정 완료 (idle=30s, interval=10s, count=9)")
+                
+                # 소켓 버퍼 크기 증가 (64KB)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
+                logger.info(f"[SOCKET CONFIG] 소켓 버퍼 크기 설정 완료 (64KB)")
+                
             except Exception as e:
-                logger.warning(f"[SOCKET CONFIG] TCP_NODELAY 설정 실패 → {e}")
+                logger.warning(f"[SOCKET CONFIG] 소켓 옵션 설정 실패 → {e}")
 
         addr = server.sockets[0].getsockname()
         logger.info(f"[SERVER STARTED] TCP 서버 실행 중 → {addr}")

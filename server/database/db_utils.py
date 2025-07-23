@@ -397,8 +397,8 @@ async def list_server_processes():
         async with g.db_pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 sql = """
-                SELECT process_id, server_id, process_name, process_type, 
-                       port, type, status, pid, last_heartbeat, 
+                SELECT id, server_id, process_name, type, 
+                       port, status, pid, last_heartbeat, 
                        cpu_usage, memory_usage, created_at, updated_at
                 FROM kb_server_processes 
                 ORDER BY process_name
@@ -411,19 +411,18 @@ async def list_server_processes():
                 processes = []
                 for row in results:
                     process = {
-                        'process_id': row[0],
+                        'id': row[0],
                         'server_id': row[1],
                         'process_name': row[2],
-                        'process_type': row[3],
+                        'type': row[3],
                         'port': row[4],
-                        'type': row[5],
-                        'status': row[6],
-                        'pid': row[7],
-                        'last_heartbeat': row[8],
-                        'cpu_usage': row[9],
-                        'memory_usage': row[10],
-                        'created_at': row[11],
-                        'updated_at': row[12]
+                        'status': row[5],
+                        'pid': row[6],
+                        'last_heartbeat': row[7],
+                        'cpu_usage': row[8],
+                        'memory_usage': row[9],
+                        'created_at': row[10],
+                        'updated_at': row[11]
                     }
                     processes.append(process)
                 

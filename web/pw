@@ -1,0 +1,9 @@
+#!/bin/bash
+# Playwright 실행 래퍼 스크립트
+# WSL 환경 변수를 자동으로 설정합니다
+
+export LIBGL_ALWAYS_SOFTWARE=1
+export PLAYWRIGHT_CHROMIUM_ARGS="--no-sandbox --disable-gpu --disable-software-rasterizer"
+
+# 모든 인자를 그대로 playwright에 전달
+npx playwright "$@"

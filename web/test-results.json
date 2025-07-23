@@ -1,0 +1,376 @@
+{
+  "config": {
+    "configFile": "/home/wangt/projects/client/domaeka/domaeka.dev/web/playwright.config.ts",
+    "rootDir": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 3
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "chrome",
+        "name": "chrome",
+        "testDir": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.54.1",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "headquarters-admin.spec.ts",
+      "file": "headquarters-admin.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "본사 최고관리자 테스트",
+          "file": "headquarters-admin.spec.ts",
+          "line": 40,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "1. 총판 관리 테스트",
+              "file": "headquarters-admin.spec.ts",
+              "line": 56,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "1.1 총판 목록 조회",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 11956,
+                          "error": {
+                            "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n",
+                            "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n\n    at /home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts:47:16",
+                            "location": {
+                              "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                              "column": 16,
+                              "line": 47
+                            },
+                            "snippet": "  45 |     \n  46 |     // 로그인\n> 47 |     await page.fill('#login_id', ADMIN_ID);\n     |                ^\n  48 |     await page.fill('#login_pw', ADMIN_PW);\n  49 |     await page.click('button[type=\"submit\"]');\n  50 |     "
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                                "column": 16,
+                                "line": 47
+                              },
+                              "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n\n\n  45 |     \n  46 |     // 로그인\n> 47 |     await page.fill('#login_id', ADMIN_ID);\n     |                ^\n  48 |     await page.fill('#login_pw', ADMIN_PW);\n  49 |     await page.click('button[type=\"submit\"]');\n  50 |     \n    at /home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts:47:16"
+                            }
+                          ],
+                          "stdout": [
+                            {
+                              "text": "테스트 완료. 수동으로 데이터를 정리하거나 cleanup 스크립트를 실행하세요.\n"
+                            }
+                          ],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-07-23T06:44:59.548Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-chromium/video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-chromium/error-context.md"
+                            },
+                            {
+                              "name": "trace",
+                              "contentType": "application/zip",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-chromium/trace.zip"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                            "column": 16,
+                            "line": 47
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "bb468a8e7b3afea68fa1-26a5287df1367819603b",
+                  "file": "headquarters-admin.spec.ts",
+                  "line": 57,
+                  "column": 9
+                },
+                {
+                  "title": "1.1 총판 목록 조회",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chrome",
+                      "projectName": "chrome",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 11795,
+                          "error": {
+                            "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n",
+                            "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n\n    at /home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts:47:16",
+                            "location": {
+                              "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                              "column": 16,
+                              "line": 47
+                            },
+                            "snippet": "  45 |     \n  46 |     // 로그인\n> 47 |     await page.fill('#login_id', ADMIN_ID);\n     |                ^\n  48 |     await page.fill('#login_pw', ADMIN_PW);\n  49 |     await page.click('button[type=\"submit\"]');\n  50 |     "
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                                "column": 16,
+                                "line": 47
+                              },
+                              "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n\n\n  45 |     \n  46 |     // 로그인\n> 47 |     await page.fill('#login_id', ADMIN_ID);\n     |                ^\n  48 |     await page.fill('#login_pw', ADMIN_PW);\n  49 |     await page.click('button[type=\"submit\"]');\n  50 |     \n    at /home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts:47:16"
+                            }
+                          ],
+                          "stdout": [
+                            {
+                              "text": "테스트 완료. 수동으로 데이터를 정리하거나 cleanup 스크립트를 실행하세요.\n"
+                            }
+                          ],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-07-23T06:44:59.548Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-chrome/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-chrome/video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-chrome/error-context.md"
+                            },
+                            {
+                              "name": "trace",
+                              "contentType": "application/zip",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-chrome/trace.zip"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                            "column": 16,
+                            "line": 47
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "bb468a8e7b3afea68fa1-a2e8fde439f698dd6e24",
+                  "file": "headquarters-admin.spec.ts",
+                  "line": 57,
+                  "column": 9
+                },
+                {
+                  "title": "1.1 총판 목록 조회",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "firefox",
+                      "projectName": "firefox",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 12556,
+                          "error": {
+                            "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n",
+                            "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n\n    at /home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts:47:16",
+                            "location": {
+                              "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                              "column": 16,
+                              "line": 47
+                            },
+                            "snippet": "  45 |     \n  46 |     // 로그인\n> 47 |     await page.fill('#login_id', ADMIN_ID);\n     |                ^\n  48 |     await page.fill('#login_pw', ADMIN_PW);\n  49 |     await page.click('button[type=\"submit\"]');\n  50 |     "
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                                "column": 16,
+                                "line": 47
+                              },
+                              "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#login_id')\u001b[22m\n\n\n  45 |     \n  46 |     // 로그인\n> 47 |     await page.fill('#login_id', ADMIN_ID);\n     |                ^\n  48 |     await page.fill('#login_pw', ADMIN_PW);\n  49 |     await page.click('button[type=\"submit\"]');\n  50 |     \n    at /home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts:47:16"
+                            }
+                          ],
+                          "stdout": [
+                            {
+                              "text": "테스트 완료. 수동으로 데이터를 정리하거나 cleanup 스크립트를 실행하세요.\n"
+                            }
+                          ],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-07-23T06:44:59.558Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-firefox/test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-firefox/error-context.md"
+                            },
+                            {
+                              "name": "trace",
+                              "contentType": "application/zip",
+                              "path": "/home/wangt/projects/client/domaeka/domaeka.dev/web/test-results/headquarters-admin-본사-최고관리자-테스트-1-총판-관리-테스트-1-1-총판-목록-조회-firefox/trace.zip"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/wangt/projects/client/domaeka/domaeka.dev/web/tests/headquarters-admin.spec.ts",
+                            "column": 16,
+                            "line": 47
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "bb468a8e7b3afea68fa1-9e68f9ddaea6e320940c",
+                  "file": "headquarters-admin.spec.ts",
+                  "line": 57,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-07-23T06:44:58.881Z",
+    "duration": 14635.789,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 3,
+    "flaky": 0
+  }
+}

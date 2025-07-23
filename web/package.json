@@ -1,9 +1,32 @@
 {
+  "name": "domaeka-web-tests",
+  "version": "1.0.0",
+  "description": "도매까 웹 관리페이지 자동화 테스트",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:headquarters": "playwright test headquarters-admin.spec.ts",
+    "test:headquarters:headed": "playwright test headquarters-admin.spec.ts --headed",
+    "test:headquarters:wsl": "LIBGL_ALWAYS_SOFTWARE=1 PLAYWRIGHT_CHROMIUM_ARGS='--no-sandbox --disable-gpu --disable-software-rasterizer' playwright test headquarters-admin.spec.ts --headed",
+    "test:headquarters:firefox": "playwright test headquarters-admin.spec.ts --project=firefox --headed",
+    "test:headquarters:chrome": "playwright test headquarters-admin.spec.ts --project=chrome --headed",
+    "test:headquarters:trace": "playwright test headquarters-admin.spec.ts --trace on",
+    "test:no-cleanup": "SKIP_CLEANUP=true playwright test",
+    "test:cleanup": "node tests/scripts/cleanup-test-data.js",
+    "test:cleanup:dry": "node tests/scripts/cleanup-test-data.js --dry-run",
+    "test:full": "npm run test:no-cleanup && npm run test:cleanup",
+    "test:report": "playwright show-report",
+    "test:codegen": "playwright codegen http://domaeka.local/adm"
+  },
   "dependencies": {
     "@playwright/mcp": "^0.0.29",
     "playwright": "^1.53.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.1"
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^20.0.0",
+    "dotenv": "^16.0.0"
   }
 }

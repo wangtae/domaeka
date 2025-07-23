@@ -226,6 +226,9 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         reader: 스트림 리더
         writer: 스트림 라이터
     """
+    import time
+    connection_start_time = time.time()  # 연결 시작 시간 기록
+    
     client_addr = writer.get_extra_info('peername')
     
     # 전체 연결 수 제한 적용
@@ -322,9 +325,9 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 logger.warning(f"[CLIENT] 연결 상태 불량: {client_addr}")
                 break
             
-            # 클라이언트로부터 메시지 수신 (30초 타임아웃)
+            # 클라이언트로부터 메시지 수신 (10분 타임아웃 - ping 주기 30초를 고려한 충분한 시간)
             try:
-                async with asyncio.timeout(30):
+                async with asyncio.timeout(600):
                     try:
                         client_max_size = g.client_max_message_sizes.get(client_key, g.MAX_MESSAGE_SIZE) if client_key else g.MAX_MESSAGE_SIZE
                         data = await read_limited_line(reader, client_max_size)
@@ -346,7 +349,22 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 continue
                 
             if not data:
-                logger.warning(f"[CLIENT] 클라이언트 연결 종료: {client_addr}")
+                # EOF 발생 시 상세 정보 로깅
+                import time
+                current_time = time.time()
+                connection_duration = current_time - connection_start_time if 'connection_start_time' in locals() else 0
+                
+                # 마지막 ping 시간 확인
+                last_ping_info = ""
+                if client_addr:
+                    client_info = client_status_manager.get_client_info(client_addr)
+                    if client_info and 'last_ping_time' in client_info:
+                        last_ping_ago = current_time - client_info['last_ping_time']
+                        last_ping_info = f", 마지막 ping: {last_ping_ago:.1f}초 전"
+                
+                logger.warning(f"[CLIENT] 클라이언트 연결 종료 (EOF): {client_addr}, "
+                             f"봇: {bot_name}@{device_id}, "
+                             f"연결 지속시간: {connection_duration:.1f}초{last_ping_info}")
                 break
             
             # 메시지 파싱 및 처리
@@ -462,6 +480,11 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     except Exception as e:
         logger.error(f"[CLIENT] 연결 오류: {client_addr} -> {e}")
     finally:
+        # 연결 종료 시 상세 정보 로깅
+        import time
+        current_time = time.time()
+        connection_duration = current_time - connection_start_time
+        
         # ping 태스크 정리
         if bot_name and device_id:
             ping_task_key = (bot_name, device_id)
@@ -494,7 +517,10 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         
         # 연결 수 제한 세마포어 해제
         g.connection_semaphore.release()
-        logger.info(f"[CLIENT] 클라이언트 연결 해제: {client_addr} (활성 연결: {g.MAX_CONCURRENT_CONNECTIONS - g.connection_semaphore._value - 1}/{g.MAX_CONCURRENT_CONNECTIONS})")
+        logger.info(f"[CLIENT] 클라이언트 연결 해제: {client_addr}, "
+                   f"봇: {bot_name}@{device_id}, "
+                   f"연결 지속시간: {connection_duration:.1f}초, "
+                   f"활성 연결: {g.MAX_CONCURRENT_CONNECTIONS - g.connection_semaphore._value - 1}/{g.MAX_CONCURRENT_CONNECTIONS}")
 
 
 async def handle_handshake(message: str, client_addr, writer):
