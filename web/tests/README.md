@@ -1,104 +1,126 @@
-# Playwright 테스트 가이드
+# 도매까 프랜차이즈 관리 시스템 테스트
 
-## WSL 환경에서 브라우저 투명 문제 해결
+이 디렉토리는 도매까 프랜차이즈 관리 시스템의 계층별 권한 및 메뉴 기능을 테스트하는 Playwright 테스트를 포함합니다.
 
-WSL 환경에서 Playwright를 실행할 때 브라우저가 투명하게 표시되는 문제가 발생할 수 있습니다.
+## 테스트 구조
 
-### 해결 방법
+### 메뉴별 테스트 파일
 
-#### 방법 1: `pw` 래퍼 스크립트 사용 (권장)
+- **`distributor-admin.spec.ts`** - 총판 관리 메뉴 테스트
+- **`agency-admin.spec.ts`** - 대리점 관리 메뉴 테스트  
+- **`branch-admin.spec.ts`** - 지점 관리 메뉴 테스트
+
+### 공통 유틸리티 (utils/)
+
+- **`test-config.ts`** - 테스트 설정 및 상수 정의
+- **`test-helpers.ts`** - 공통 테스트 유틸리티 함수
+- **`data-cleanup.ts`** - 테스트 데이터 정리 유틸리티
+
+## 테스트 원칙
+
+### 계층별 권한 검증
+
+각 테스트 파일은 다음 순서로 계층별 권한을 검증합니다:
+
+1. **본사 관리자** - 모든 권한 (목록/등록/수정/삭제)
+2. **상위 계층 관리자** - 하위 계층 관리 권한
+3. **해당 계층 관리자** - 자신의 정보 조회/수정 권한
+4. **하위 계층 관리자** - 접근 거부 확인
+
+### 테스트 실패 시 중단
+
+각 테스트는 이전 테스트가 실패하면 전체 테스트를 중지하도록 설계되었습니다.
+특히 등록 테스트가 실패하면 수정/삭제 테스트가 의미없으므로 중단됩니다.
+
+### 데이터 관리
+
+- **기존 데이터**: 테스트 전부터 존재하는 계정들 (삭제하지 않음)
+- **임시 데이터**: 테스트 중 생성되는 데이터 (테스트 후 자동 삭제)
+
+## 테스트 실행 방법
+
+### 개별 메뉴 테스트 실행
+
 ```bash
-# npx playwright 대신 ./pw 사용
-./pw test headquarters-admin.spec.ts --headed --grep "1.1 총판 목록 조회"
+# 총판 관리 메뉴 테스트
+npx playwright test distributor-admin.spec.ts --headed
 
-# 모든 playwright 명령어에 사용 가능
-./pw test --headed
-./pw show-report
-./pw codegen http://domaeka.local/adm
+# 대리점 관리 메뉴 테스트
+npx playwright test agency-admin.spec.ts --headed
+
+# 지점 관리 메뉴 테스트
+npx playwright test branch-admin.spec.ts --headed
 ```
 
-#### 방법 2: run-test.sh 스크립트 사용
+### 전체 테스트 실행 (순차)
+
 ```bash
-./run-test.sh
+# 모든 메뉴 테스트 순차 실행
+npx playwright test distributor-admin.spec.ts agency-admin.spec.ts branch-admin.spec.ts --headed --workers=1
 ```
 
-#### 방법 3: 환경 변수 직접 설정
+### 테스트 옵션
+
 ```bash
-export LIBGL_ALWAYS_SOFTWARE=1
-export PLAYWRIGHT_CHROMIUM_ARGS="--no-sandbox --disable-gpu --disable-software-rasterizer"
-npx playwright test --headed
+# 헤드리스 모드 (빠른 실행)
+npx playwright test distributor-admin.spec.ts
+
+# 특정 테스트만 실행
+npx playwright test distributor-admin.spec.ts -g "본사 관리자"
+
+# 데이터 정리 건너뛰기
+SKIP_CLEANUP=true npx playwright test distributor-admin.spec.ts
 ```
 
-#### 방법 4: npm 스크립트 사용
-```bash
-# WSL 전용 스크립트
-npm run test:headquarters:wsl
+## 주요 기능
 
-# Firefox 사용 (더 안정적)
-npm run test:headquarters:firefox
+### 계층별 권한 체계적 검증
+- 본사 → 총판 → 대리점 → 지점 순서로 권한 검증
+- 각 계층은 자신의 정보와 하위 계층만 관리 가능
+- 상위 계층 접근 시 권한 거부 메시지 확인
+
+### 자동 데이터 관리
+- 테스트 시작 전 환경 초기화
+- 테스트 중 임시 데이터 생성
+- 테스트 완료 후 자동 정리 (역순 삭제)
+
+### 실패 시 중단 메커니즘  
+- 이전 테스트 실패 시 후속 테스트 중단
+- 의존성 있는 테스트 순서 보장
+- 명확한 실패 원인 제공
+
+## 사전 요구사항
+
+### 기본 테스트 계정 준비
+
+다음 계정들이 시스템에 미리 생성되어 있어야 합니다:
+
+- **test_distributor** (기존 총판)
+- **test_agency** (기존 대리점) 
+- **test_branch** (기존 지점)
+- **admin** (본사 최고관리자)
+
+### 환경 설정
+
+```bash
+BASE_URL=http://domaeka.local
+SKIP_CLEANUP=false
 ```
 
-## 테스트 실행 명령어
+## 생성된 파일 목록
 
-### 기본 테스트 실행
-```bash
-# 헤드리스 모드 (백그라운드)
-npm run test:headquarters
+### 테스트 파일
+- `/web/tests/distributor-admin.spec.ts`
+- `/web/tests/agency-admin.spec.ts`
+- `/web/tests/branch-admin.spec.ts`
 
-# 헤드풀 모드 (브라우저 표시) - WSL에서는 ./pw 사용 권장
-./pw test headquarters-admin.spec.ts --headed
-```
+### 유틸리티 파일
+- `/web/tests/utils/test-config.ts`
+- `/web/tests/utils/test-helpers.ts`
+- `/web/tests/utils/data-cleanup.ts`
 
-### 특정 테스트만 실행
-```bash
-# grep으로 특정 테스트 선택
-./pw test headquarters-admin.spec.ts --headed --grep "1.1 총판 목록 조회"
+### 문서
+- `/web/tests/README.md` (이 파일)
 
-# 디버그 모드
-./pw test --debug
-```
-
-### 테스트 결과 확인
-```bash
-# HTML 리포트 보기
-./pw show-report
-
-# 트레이스 확인
-npm run test:headquarters:trace
-./pw show-trace trace.zip
-```
-
-### 테스트 데이터 정리
-```bash
-# 시뮬레이션 (실제 삭제 안함)
-npm run test:cleanup:dry
-
-# 실제 정리
-npm run test:cleanup
-```
-
-## 개발 팁
-
-1. **WSL에서는 Firefox가 더 안정적**
-   ```bash
-   npm run test:headquarters:firefox
-   ```
-
-2. **코드 생성기 사용**
-   ```bash
-   ./pw codegen http://domaeka.local/adm
-   ```
-
-3. **UI 모드 사용**
-   ```bash
-   ./pw test --ui
-   ```
-
-4. **병렬 실행 제어**
-   ```bash
-   # 순차 실행
-   ./pw test --workers=1
-   
-   # 병렬 실행
-   ./pw test --workers=4
-   ```
+### 백업 파일
+- `/web/tests/backup-headquarters-admin.spec.ts` (기존 통합 테스트 백업)

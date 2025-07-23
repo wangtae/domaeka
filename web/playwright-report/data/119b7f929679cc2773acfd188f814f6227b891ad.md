@@ -1,0 +1,124 @@
+# Page snapshot
+
+```yaml
+- text: 최고관리자 최고관리자님 로그인 중
+- link "로그아웃":
+  - /url: http://domaeka.local/bbs/logout.php
+- link "본문 바로가기":
+  - /url: "#container"
+- banner:
+  - heading "도매까" [level=1]
+  - button "메뉴"
+  - link "도매까 관리자":
+    - /url: http://domaeka.local/adm/
+    - img "도매까 관리자"
+  - list:
+    - listitem:
+      - button " 본사 메뉴열기"
+  - navigation:
+    - heading "관리자 주메뉴" [level=2]
+    - list:
+      - listitem:
+        - button ""
+      - listitem:
+        - button ""
+      - listitem:
+        - button ""
+        - heading "프랜차이즈 관리" [level=3]
+        - list:
+          - listitem:
+            - link "총판관리 ":
+              - /url: http://domaeka.local/dmk/adm/distributor_admin/distributor_list.php
+          - listitem:
+            - link "대리점관리 ":
+              - /url: http://domaeka.local/dmk/adm/agency_admin/agency_list.php
+          - listitem:
+            - link "지점관리 ":
+              - /url: http://domaeka.local/dmk/adm/branch_admin/branch_list.php
+          - listitem:
+            - link "통계분석 ":
+              - /url: http://domaeka.local/dmk/adm/statistics/statistics_dashboard.php
+          - listitem:
+            - link "서브관리자관리 ":
+              - /url: http://domaeka.local/dmk/adm/admin_manager/admin_list.php
+          - listitem:
+            - link "서브관리자권한설정 ":
+              - /url: http://domaeka.local/dmk/adm/admin_manager/dmk_auth_list.php
+          - listitem:
+            - link "관리자엑션로그 ":
+              - /url: http://domaeka.local/dmk/adm/logs/action_log_list.php
+          - listitem:
+            - link "계층별메뉴권한설정 ":
+              - /url: http://domaeka.local/dmk/adm/admin_manager/menu_config.php
+      - listitem:
+        - button ""
+      - listitem:
+        - button ""
+      - listitem:
+        - button ""
+      - listitem:
+        - button ""
+      - listitem:
+        - button ""
+- heading "총판 등록/수정" [level=1]
+- table "총판 등록/수정":
+  - caption: 총판 등록/수정
+  - rowgroup:
+    - row "총판 ID":
+      - rowheader "총판 ID"
+      - cell:
+        - textbox "총판 ID"
+    - row "비밀번호":
+      - rowheader "비밀번호"
+      - cell:
+        - textbox "비밀번호"
+    - row "비밀번호 확인":
+      - rowheader "비밀번호 확인"
+      - cell:
+        - textbox "비밀번호 확인"
+    - row "총판명":
+      - rowheader "총판명"
+      - cell:
+        - textbox "총판명"
+    - row "회사명":
+      - rowheader "회사명"
+      - cell:
+        - textbox "회사명"
+    - row "휴대폰 번호":
+      - rowheader "휴대폰 번호"
+      - cell:
+        - textbox "휴대폰 번호"
+    - row "전화번호":
+      - rowheader "전화번호"
+      - cell:
+        - textbox "전화번호"
+    - row "이메일":
+      - rowheader "이메일"
+      - cell:
+        - textbox "이메일"
+    - row "주소 우편번호 주소 검색 기본주소 상세주소 참고항목":
+      - rowheader "주소"
+      - cell "우편번호 주소 검색 기본주소 상세주소 참고항목":
+        - text: 우편번호
+        - textbox "우편번호"
+        - button "주소 검색"
+        - textbox "기본주소"
+        - text: 기본주소
+        - textbox "상세주소"
+        - text: 상세주소
+        - textbox "참고항목"
+        - text: 참고항목
+    - row "총판 상태 활성":
+      - rowheader "총판 상태"
+      - cell "활성":
+        - combobox "총판 상태":
+          - option "활성" [selected]
+          - option "비활성"
+- link "목록":
+  - /url: ./distributor_list.php
+- button "총판 등록"
+- contentinfo:
+  - paragraph:
+    - text: Copyright © domaeka.local. All rights reserved. YoungCart Version 5.4.5.5.1
+    - button "TOP"
+```
