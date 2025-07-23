@@ -1,11 +1,56 @@
 # 테스트 실행 전략 및 가이드
 
 ## 개요
-Playwright 테스트의 효율적인 실행과 관리를 위한 전략을 정의합니다.
+도매까 시스템의 Playwright 테스트를 위한 종합적인 실행 전략과 가이드라인을 정의합니다. 이 문서는 단위 테스트 시나리오, 테스트 데이터 관리, 실행 모드, 병렬 처리 전략 등을 포함합니다.
 
-## 테스트 실행 모드
+## 1. 단위 테스트 시나리오
 
-### 1. 헤드풀 모드 (개발/디버깅용)
+### 1.1 테스트 원칙
+- 각 메뉴별로 독립적인 테스트 시나리오 문서를 작성하여 관리
+- 메뉴별로 본사-총판-대리점-지점 관리자로 각각 로그인하여 테스트 진행
+- 테스트 실패 시 전체를 중단하고 문제 해결 후 재진행
+- MySQL MCP를 활용하여 DB 테이블 구조와 데이터 참조
+- 서브 관리자 권한 체크는 메인 관리자 테스트 완료 후 진행
+
+### 1.2 기본 테스트 데이터
+
+#### 총판 (dmk_distributor)
+- `domaeka`: 실제 운영 중인 총판 (테스트 사용 금지)
+- `distributor`: 사전 생성된 테스트용 총판
+- `d_test_01`: 테스트 진행 중 생성할 총판 ID
+
+#### 대리점 (dmk_agency)
+- `domaeka1`: 실제 운영 중인 대리점 (테스트 사용 금지)
+- `agency001`: 사전 생성된 테스트용 대리점
+- `a_test_01`: 테스트 진행 중 생성할 대리점 ID
+
+#### 지점 (dmk_branch)
+- `domaeka11`: 실제 운영 중인 지점 (테스트 사용 금지)
+- `store001`: 사전 생성된 테스트용 지점
+- `b_test_01`: 테스트 진행 중 생성할 지점 ID
+
+### 1.3 테스트 데이터 입력 규칙
+
+#### 관리자 등록 시 필드 입력 형식
+- **비밀번호**: `!{아이디}$.`
+- **이름**: `{아이디}`
+- **회사명**: `{아이디}회사`
+- **닉네임**: `{아이디}`
+- **이메일**: `{아이디}@mail.com`
+
+#### 관리자 정보 수정
+- 회사명 수정만 테스트: `{아이디}회사` → `{아이디}수정`
+
+### 1.4 서브관리자 권한 테스트
+- 각 계층별 서브관리자는 테스트용으로 새로 생성
+- 권한별 테스트 순서:
+  1. 읽기 권한: 읽기 가능, 쓰기/삭제 불가능 확인
+  2. 쓰기 권한: 읽기/쓰기 가능, 삭제 불가능 확인
+  3. 삭제 권한: 모든 권한 가능 확인
+
+## 2. 테스트 실행 모드
+
+### 2.1 헤드풀 모드 (개발/디버깅용)
 브라우저 UI를 표시하여 테스트 진행 상황을 시각적으로 확인
 
 ```bash
@@ -22,7 +67,7 @@ npx playwright test headquarters.spec.ts --headed
 npx playwright test --headed --slow-mo=1000
 ```
 
-### 2. 헤드리스 모드 (CI/CD용)
+### 2.2 헤드리스 모드 (CI/CD용)
 백그라운드에서 빠르게 실행
 
 ```bash
@@ -36,7 +81,7 @@ npx playwright test --workers=4
 npx playwright test --workers=1
 ```
 
-### 3. 하이브리드 접근법
+### 2.3 하이브리드 접근법
 개발 단계별로 다른 모드 사용
 
 ```javascript
@@ -56,9 +101,9 @@ export default defineConfig({
 });
 ```
 
-## 테스트와 데이터 정리 분리
+## 3. 테스트와 데이터 정리 분리
 
-### 1. 테스트 실행 단계
+### 3.1 테스트 실행 단계
 ```bash
 # 1단계: 테스트만 실행 (데이터 정리 없음)
 npm run test:no-cleanup
@@ -70,7 +115,7 @@ npm run test:report
 npm run test:cleanup
 ```
 
-### 2. package.json 스크립트 설정
+### 3.2 package.json 스크립트 설정
 ```json
 {
   "scripts": {
@@ -85,7 +130,7 @@ npm run test:cleanup
 }
 ```
 
-### 3. 조건부 정리 구현
+### 3.3 조건부 정리 구현
 ```javascript
 // tests/helpers/cleanup.ts
 export async function conditionalCleanup(page: Page) {
@@ -103,7 +148,7 @@ test.afterAll(async ({ page }) => {
 });
 ```
 
-### 4. 독립적인 정리 스크립트
+### 3.4 독립적인 정리 스크립트
 ```javascript
 // scripts/cleanup-test-data.js
 const { chromium } = require('@playwright/test');
@@ -136,9 +181,9 @@ async function cleanupAllTestData() {
 cleanupAllTestData();
 ```
 
-## 병렬 테스트 전략
+## 4. 병렬 테스트 전략
 
-### 1. 병렬 실행 가능한 테스트 그룹
+### 4.1 병렬 실행 가능한 테스트 그룹
 
 #### 그룹 A: 독립적인 읽기 전용 테스트
 - 로그인 테스트
@@ -151,7 +196,7 @@ cleanupAllTestData();
 - 서로 다른 대리점의 서브관리자 테스트
 - 서로 다른 지점의 서브관리자 테스트
 
-### 2. 순차 실행 필요한 테스트 그룹
+### 4.2 순차 실행 필요한 테스트 그룹
 
 #### 그룹 X: 계층 구조 의존성이 있는 테스트
 ```
@@ -163,7 +208,7 @@ cleanupAllTestData();
 5. 데이터 정리 테스트
 ```
 
-### 3. 병렬 테스트 구성
+### 4.3 병렬 테스트 구성
 ```javascript
 // playwright.config.ts
 export default defineConfig({
@@ -191,7 +236,7 @@ export default defineConfig({
 });
 ```
 
-### 4. 테스트 격리를 위한 데이터 네이밍
+### 4.4 테스트 격리를 위한 데이터 네이밍
 ```javascript
 // 병렬 실행 시 충돌 방지를 위한 고유 ID 생성
 function generateTestId(prefix: string): string {
@@ -205,9 +250,9 @@ const distributorId = generateTestId('d_test'); // d_test_1703123456_abc
 const agencyId = generateTestId('a_test');     // a_test_1703123457_def
 ```
 
-## 테스트 실행 시나리오
+## 5. 테스트 실행 시나리오
 
-### 시나리오 1: 개발 중 (시각적 확인 필요)
+### 5.1 개발 중 (시각적 확인 필요)
 ```bash
 # 1. 헤드풀 모드로 단일 테스트 실행
 npx playwright test headquarters.spec.ts --headed --workers=1
@@ -219,7 +264,7 @@ npx playwright test headquarters.spec.ts --debug
 SKIP_CLEANUP=true npx playwright test headquarters.spec.ts --headed
 ```
 
-### 시나리오 2: 전체 테스트 실행
+### 5.2 전체 테스트 실행
 ```bash
 # 1. 헤드리스 모드로 전체 테스트
 npm run test
@@ -231,7 +276,7 @@ npx playwright test --last-failed
 npm run test:cleanup
 ```
 
-### 시나리오 3: CI/CD 파이프라인
+### 5.3 CI/CD 파이프라인
 ```yaml
 # .github/workflows/test.yml
 jobs:
@@ -253,9 +298,9 @@ jobs:
         run: npm run test:cleanup
 ```
 
-## 성능 최적화
+## 6. 성능 최적화
 
-### 1. 브라우저 컨텍스트 재사용
+### 6.1 브라우저 컨텍스트 재사용
 ```javascript
 // 같은 권한 테스트는 컨텍스트 공유
 test.describe('총판 관리자 테스트', () => {
@@ -278,7 +323,7 @@ test.describe('총판 관리자 테스트', () => {
 });
 ```
 
-### 2. 선택적 대기 전략
+### 6.2 선택적 대기 전략
 ```javascript
 // 느린 환경을 위한 대기 시간 조정
 const waitOptions = {
@@ -288,7 +333,7 @@ const waitOptions = {
 await page.waitForSelector('.distributor-list', waitOptions);
 ```
 
-### 3. 리소스 최적화
+### 6.3 리소스 최적화
 ```javascript
 // 이미지/폰트 로딩 차단으로 속도 향상
 await page.route('**/*.{png,jpg,jpeg,gif,webp,svg,woff,woff2}', 
@@ -296,9 +341,9 @@ await page.route('**/*.{png,jpg,jpeg,gif,webp,svg,woff,woff2}',
 );
 ```
 
-## 모니터링 및 리포팅
+## 7. 모니터링 및 리포팅
 
-### 1. 실시간 진행 상황
+### 7.1 실시간 진행 상황
 ```javascript
 // 커스텀 리포터로 진행 상황 표시
 class ProgressReporter {
@@ -313,7 +358,7 @@ class ProgressReporter {
 }
 ```
 
-### 2. 테스트 결과 대시보드
+### 7.2 테스트 결과 대시보드
 ```bash
 # HTML 리포트 생성 및 열기
 npx playwright show-report
@@ -322,19 +367,33 @@ npx playwright show-report
 npx playwright test --reporter=json > test-results.json
 ```
 
-## 문제 해결 가이드
+## 8. 문제 해결 가이드
 
-### 병렬 실행 시 충돌
+### 8.1 병렬 실행 시 충돌
 - 고유 ID 생성 함수 사용
 - 테스트 간 데이터 격리 확인
 - 필요시 순차 실행으로 전환
 
-### 헤드풀 모드 속도 문제
+### 8.2 헤드풀 모드 속도 문제
 - `slowMo` 값 조정
 - 특정 액션만 느리게 실행
 - 스크린샷/비디오 기록 최소화
 
-### 데이터 정리 실패
+### 8.3 데이터 정리 실패
 - 수동 정리 스크립트 실행
 - 데이터베이스 직접 접근
 - 정리 로그 확인 및 재시도
+
+## 9. 테스트 계획 문서 작성 가이드
+
+각 메뉴별 테스트 계획 문서는 다음 구조를 따라야 합니다:
+
+1. **메뉴 개요**: 테스트 대상 메뉴의 기능과 목적
+2. **테스트 범위**: 테스트할 기능의 상세 목록
+3. **계층별 테스트 시나리오**: 본사/총판/대리점/지점별 시나리오
+4. **권한 테스트 매트릭스**: 읽기/쓰기/삭제 권한별 예상 동작
+5. **테스트 데이터**: 필요한 사전 데이터 및 생성할 데이터
+6. **검증 항목**: 각 테스트에서 확인할 사항
+7. **예외 처리**: 오류 상황 및 엣지 케이스
+8. **의존성**: 다른 테스트와의 관계
+9. **정리 작업**: 테스트 후 필요한 데이터 정리
