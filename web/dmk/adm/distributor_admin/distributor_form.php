@@ -15,7 +15,7 @@ $mb_id = isset($_GET['mb_id']) ? sql_escape_string(trim($_GET['mb_id'])) : '';
 
 dmk_authenticate_form_access('distributor_form', $w, $mb_id);
 
-$g5['title'] = '총판 등록/수정 <i class="fa fa-star dmk-new-icon" title="NEW"></i>';
+$g5['title'] = '총판 '.($_GET['w']=='' ? '등록' : '수정').' <i class="fa fa-star dmk-new-icon" title="NEW"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
 add_javascript(G5_POSTCODE_JS, 0);    //다음 주소 js
@@ -157,7 +157,7 @@ if ($mb_id) {
 
 <div class="btn_fixed_top">
     <a href="./distributor_list.php" class="btn btn_02">목록</a>
-    <input type="submit" value="<?php echo $is_add ? '총판 등록' : '총판 정보 수정'; ?>" class="btn_submit btn" accesskey="s">
+    <input type="submit" value="<?php echo $is_add ? '등록' : '수정'; ?>" class="btn_submit btn" accesskey="s">
 </div>
 
 </form>

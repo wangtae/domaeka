@@ -343,7 +343,7 @@ while($row = sql_fetch_array($dt_result)) {
 
 <div class="btn_fixed_top">
     <a href="./agency_list.php?<?php echo $qstr ?>" class="btn btn_02">목록</a>
-    <input type="submit" value="확인" class="btn_submit btn" accesskey='s'>
+    <input type="submit" value="<?php echo $_GET['w']=='' ? '등록' : '수정'; ?>" class="btn_submit btn" accesskey='s'>
 </div>
 
 </form>
