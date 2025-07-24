@@ -230,7 +230,8 @@ function imageview(id, w, h)
                                 strpos($current_script_path, '/dmk/adm/agency_admin/') !== false ||
                                 strpos($current_script_path, '/dmk/adm/branch_admin/') !== false ||
                                 strpos($current_script_path, '/dmk/adm/statistics/') !== false ||
-                                strpos($current_script_path, '/dmk/adm/admin_manager/') !== false) {
+                                strpos($current_script_path, '/dmk/adm/admin_manager/') !== false ||
+                                strpos($current_script_path, '/dmk/adm/logs/') !== false) {
                                 $is_current_menu = true;
                             }
                             break;
