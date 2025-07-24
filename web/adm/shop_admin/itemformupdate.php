@@ -102,11 +102,47 @@ $dmk_dt_id = isset($_POST['dmk_dt_id']) ? clean_xss_tags($_POST['dmk_dt_id'], 1,
 $dmk_ag_id = isset($_POST['dmk_ag_id']) ? clean_xss_tags($_POST['dmk_ag_id'], 1, 1) : '';
 $dmk_br_id = isset($_POST['dmk_br_id']) ? clean_xss_tags($_POST['dmk_br_id'], 1, 1) : '';
 
+// 본사 관리자의 경우 상품 소유 계층 선택 필수 검증
+if ($dmk_auth['mb_type'] == DMK_MB_TYPE_SUPER_ADMIN) {
+    // 본사 관리자는 반드시 총판을 선택해야 함
+    if (empty($dmk_dt_id)) {
+        alert('상품 소유 계층을 선택해주세요. 상품이 총판에 속하는 경우 총판을 선택해야 하며, 상품이 대리점 또는 지점에 속하는 경우 해당 대리점 또는 지점을 선택해주어야 합니다.');
+    }
+    
+    // 총판 ID 유효성 검증
+    $dt_check_sql = "SELECT dt_id FROM dmk_distributor WHERE dt_id = '$dmk_dt_id'";
+    $dt_check_result = sql_fetch($dt_check_sql);
+    if (!$dt_check_result) {
+        alert('선택한 총판이 존재하지 않습니다. 올바른 총판을 선택해주세요.');
+    }
+    
+    // 대리점이 선택된 경우 유효성 검증
+    if (!empty($dmk_ag_id)) {
+        $ag_check_sql = "SELECT ag_id FROM dmk_agency WHERE ag_id = '$dmk_ag_id' AND ag_dt_id = '$dmk_dt_id'";
+        $ag_check_result = sql_fetch($ag_check_sql);
+        if (!$ag_check_result) {
+            alert('선택한 대리점이 존재하지 않거나 해당 총판에 속하지 않습니다.');
+        }
+    }
+    
+    // 지점이 선택된 경우 유효성 검증
+    if (!empty($dmk_br_id)) {
+        if (empty($dmk_ag_id)) {
+            alert('지점을 선택하려면 먼저 대리점을 선택해야 합니다.');
+        }
+        $br_check_sql = "SELECT br_id FROM dmk_branch WHERE br_id = '$dmk_br_id' AND br_ag_id = '$dmk_ag_id' AND br_dt_id = '$dmk_dt_id'";
+        $br_check_result = sql_fetch($br_check_sql);
+        if (!$br_check_result) {
+            alert('선택한 지점이 존재하지 않거나 해당 대리점에 속하지 않습니다.');
+        }
+    }
+}
+
 // DMK 계층 정보 자동 설정 - 관리자의 계층 정보를 기반으로 상위 계층 ID도 자동 설정
 if ($dmk_auth['mb_type'] == DMK_MB_TYPE_DISTRIBUTOR) {
     // 총판: 자신의 ID만 설정
     $dmk_dt_id = $dmk_auth['mb_id'];
-    $dmk_ag_id = $dmk_ag_id;
+    $dmk_ag_id = $dmk_ag_id;      
     $dmk_br_id = $dmk_br_id;
 } elseif ($dmk_auth['mb_type'] == DMK_MB_TYPE_AGENCY) {
     // 대리점: 총판 ID와 자신의 ID 설정

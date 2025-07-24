@@ -26,6 +26,26 @@ $filter_br_id = isset($_GET['sbr_id']) ? clean_xss_tags($_GET['sbr_id']) : '';
 $g5['title'] = '상품관리';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
+// 계층별 탭 처리 추가
+$tab = isset($_GET['tab']) ? clean_xss_tags($_GET['tab']) : 'branch';
+if (!in_array($tab, ['branch', 'agency', 'distributor'])) {
+    $tab = 'branch';
+}
+
+// 탭별 필터링 조건 추가
+$tab_where = "";
+switch($tab) {
+    case 'branch':
+        $tab_where = " AND a.dmk_br_id != '' ";
+        break;
+    case 'agency':  
+        $tab_where = " AND a.dmk_ag_id != '' AND a.dmk_br_id = '' ";
+        break;
+    case 'distributor':
+        $tab_where = " AND a.dmk_dt_id != '' AND a.dmk_ag_id = '' AND a.dmk_br_id = '' ";
+        break;
+}
+
 // 분류
 $ca_list  = '<option value="">선택</option>'.PHP_EOL;
 $sql = " select * from {$g5['g5_shop_category_table']} ";
@@ -95,12 +115,20 @@ if ($sfl == "")  $sfl = "it_name";
 $sql_common = " from {$g5['g5_shop_item_table']} a ,\n                     {$g5['g5_shop_category_table']} b\n               where a.ca_id = b.ca_id";
 $sql_common .= dmk_get_item_where_condition();
 $sql_common .= $sql_search;
+$sql_common .= $tab_where;
 
 // 테이블의 전체 레코드수만 얻음
 $sql = " select count(*) as cnt " . $sql_common;
 $row = sql_fetch($sql);
 $total_count = $row ? (int)$row['cnt'] : 0;
-//echo $sql;
+// 디버깅용: SQL 쿼리 출력
+if (isset($_GET['debug'])) {
+    echo "<div style='background:#f0f0f0;padding:10px;margin:10px;'>";
+    echo "<strong>현재 탭:</strong> $tab<br>";
+    echo "<strong>탭 WHERE 조건:</strong> " . htmlspecialchars($tab_where) . "<br>";
+    echo "<strong>전체 SQL:</strong> " . htmlspecialchars($sql) . "<br>";
+    echo "</div>";
+}
 $rows = $config['cf_page_rows'];
 $total_page  = ceil($total_count / $rows);  // 전체 페이지 계산
 if ($page < 1) { $page = 1; } // 페이지가 없으면 첫 페이지 (1 페이지)
@@ -122,26 +150,119 @@ $result = sql_query($sql);
 
 // URL 쿼리 스트링 생성 (계층 필터 포함) <i class="fa fa-link dmk-new-icon" title="NEW"></i>
 $qstr  = $qstr.'&amp;sca='.$sca.'&amp;page='.$page.'&amp;save_stx='.$stx;
+// 탭용 별도 쿼리 스트링 (tab 파라미터 제외)
+$qstr_for_tabs = $qstr;
 if ($filter_dt_id) {
     $qstr .= '&amp;sdt_id='.$filter_dt_id;
+    $qstr_for_tabs .= '&amp;sdt_id='.$filter_dt_id;
 }
 if ($filter_ag_id) {
     $qstr .= '&amp;sag_id='.$filter_ag_id;
+    $qstr_for_tabs .= '&amp;sag_id='.$filter_ag_id;
 }
 if ($filter_br_id) {
     $qstr .= '&amp;sbr_id='.$filter_br_id;
+    $qstr_for_tabs .= '&amp;sbr_id='.$filter_br_id;
 }
 
+// 현재 탭 정보를 포함한 전체 쿼리 스트링
+$qstr .= '&amp;tab='.$tab;
+
 $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목록</a>';
+
+// 계층별 상품 카운트 조회
+$branch_count = 0;
+$agency_count = 0; 
+$distributor_count = 0;
+
+$count_sql = "SELECT 
+    COUNT(CASE WHEN dmk_br_id != '' THEN 1 END) as branch_count,
+    COUNT(CASE WHEN dmk_ag_id != '' AND dmk_br_id = '' THEN 1 END) as agency_count,
+    COUNT(CASE WHEN dmk_dt_id != '' AND dmk_ag_id = '' AND dmk_br_id = '' THEN 1 END) as distributor_count
+    FROM {$g5['g5_shop_item_table']} a, {$g5['g5_shop_category_table']} b 
+    WHERE a.ca_id = b.ca_id ";
+$count_sql .= dmk_get_item_where_condition();
+$count_sql .= $sql_search;
+
+$count_result = sql_fetch($count_sql);
+if ($count_result) {
+    $branch_count = $count_result['branch_count'];
+    $agency_count = $count_result['agency_count'];
+    $distributor_count = $count_result['distributor_count'];
+}
 ?>
+
+<!-- 계층별 탭 메뉴 (봇 스케줄링 관리 페이지와 동일한 디자인) -->
+<style>
+.schedule-tabs {
+    display: flex;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #ddd;
+}
+.schedule-tab {
+    padding: 10px 20px;
+    margin-bottom: -2px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-bottom: 2px solid #ddd;
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+    margin-right: 5px;
+    cursor: pointer;
+}
+.schedule-tab:hover {
+    background: #e5e5e5;
+}
+.schedule-tab.active {
+    background: #fff;
+    border-bottom: 2px solid #fff;
+    color: #000;
+}
+.schedule-tab .count {
+    color: #666;
+    font-weight: normal;
+}
+.schedule-tab.active .count {
+    color: #000;
+    font-weight: bold;
+}
+</style>
+
+<div class="schedule-tabs">
+    <a href="?tab=branch&<?php echo $qstr_for_tabs; ?>" 
+       class="schedule-tab <?php echo $tab == 'branch' ? 'active' : ''; ?>">
+        지점 <span class="count">(<?php echo number_format($branch_count); ?>)</span>
+    </a>
+    <a href="?tab=agency&<?php echo $qstr_for_tabs; ?>" 
+       class="schedule-tab <?php echo $tab == 'agency' ? 'active' : ''; ?>">
+        대리점 <span class="count">(<?php echo number_format($agency_count); ?>)</span>
+    </a>
+    <a href="?tab=distributor&<?php echo $qstr_for_tabs; ?>" 
+       class="schedule-tab <?php echo $tab == 'distributor' ? 'active' : ''; ?>">
+        총판 <span class="count">(<?php echo number_format($distributor_count); ?>)</span>
+    </a>
+</div>
 
 <div class="local_ov01 local_ov">
     <?php echo $listall; ?>
-    <span class="btn_ov01"><span class="ov_txt">등록된 상품</span><span class="ov_num"> <?php echo $total_count; ?>건</span></span>
+    <span class="btn_ov01">
+        <span class="ov_txt">
+            <?php 
+            switch($tab) {
+                case 'branch': echo '지점 상품'; break;
+                case 'agency': echo '대리점 상품'; break; 
+                case 'distributor': echo '총판 상품'; break;
+            }
+            ?>
+        </span>
+        <span class="ov_num"> <?php echo $total_count; ?>건</span>
+    </span>
 </div>
 
 <form name="flist" class="local_sch01 local_sch">
 <input type="hidden" name="save_stx" value="<?php echo $stx; ?>">
+<input type="hidden" name="tab" value="<?php echo $tab; ?>">
 
     <!-- 도매까 계층 선택박스 (NEW) -->
     <?php
@@ -216,6 +337,7 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <input type="hidden" name="sdt_id" value="<?php echo $filter_dt_id; ?>">
 <input type="hidden" name="sag_id" value="<?php echo $filter_ag_id; ?>">
 <input type="hidden" name="sbr_id" value="<?php echo $filter_br_id; ?>">
+<input type="hidden" name="tab" value="<?php echo $tab; ?>">
 
 <div class="tbl_head01 tbl_wrap">
     <table>
@@ -226,22 +348,22 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
             <label for="chkall" class="sound_only">상품 전체</label>
             <input type="checkbox" name="chkall" value="1" id="chkall" onclick="check_all(this.form)">
         </th>
-        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_id', 'sca='.$sca); ?>상품코드</a></th>
+        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_id', 'sca='.$sca.'&tab='.$tab); ?>상품코드</a></th>
         <th scope="col" rowspan="2" id="th_img">이미지</th>
-        <th scope="col" rowspan="2" id="th_pc_title"><?php echo subject_sort_link('it_name', 'sca='.$sca); ?>상품명</a></th>
-        <th scope="col" id="th_amt"><?php echo subject_sort_link('it_price', 'sca='.$sca); ?>판매가격</a></th>
-        <th scope="col" id="th_camt"><?php echo subject_sort_link('it_cust_price', 'sca='.$sca); ?>시중가격</a></th>
+        <th scope="col" rowspan="2" id="th_pc_title"><?php echo subject_sort_link('it_name', 'sca='.$sca.'&tab='.$tab); ?>상품명</a></th>
+        <th scope="col" id="th_amt"><?php echo subject_sort_link('it_price', 'sca='.$sca.'&tab='.$tab); ?>판매가격</a></th>
+        <th scope="col" id="th_camt"><?php echo subject_sort_link('it_cust_price', 'sca='.$sca.'&tab='.$tab); ?>시중가격</a></th>
         <th scope="col" id="th_skin">PC스킨</th>
-        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_order', 'sca='.$sca); ?>순서</a></th>
-        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_use', 'sca='.$sca, 1); ?>판매</a></th>
-        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_soldout', 'sca='.$sca, 1); ?>품절</a></th>
-        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_hit', 'sca='.$sca, 1); ?>조회</a></th>
+        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_order', 'sca='.$sca.'&tab='.$tab); ?>순서</a></th>
+        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_use', 'sca='.$sca.'&tab='.$tab, 1); ?>판매</a></th>
+        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_soldout', 'sca='.$sca.'&tab='.$tab, 1); ?>품절</a></th>
+        <th scope="col" rowspan="2"><?php echo subject_sort_link('it_hit', 'sca='.$sca.'&tab='.$tab, 1); ?>조회</a></th>
         <th scope="col" rowspan="2">소속</th>
         <th scope="col" rowspan="2">관리</th>
     </tr>
     <tr>
-        <th scope="col" id="th_pt"><?php echo subject_sort_link('it_point', 'sca='.$sca); ?>포인트</a></th>
-        <th scope="col" id="th_qty"><?php echo subject_sort_link('it_stock_qty', 'sca='.$sca); ?>재고</a></th>
+        <th scope="col" id="th_pt"><?php echo subject_sort_link('it_point', 'sca='.$sca.'&tab='.$tab); ?>포인트</a></th>
+        <th scope="col" id="th_qty"><?php echo subject_sort_link('it_stock_qty', 'sca='.$sca.'&tab='.$tab); ?>재고</a></th>
         <th scope="col" id="th_mskin">모바일스킨</th>
     </tr>
     </thead>

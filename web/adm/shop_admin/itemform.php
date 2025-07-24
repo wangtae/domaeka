@@ -2368,6 +2368,20 @@ $(function() {
 
 function fitemformcheck(f)
 {
+    // 본사 관리자의 경우 상품 소유 계층 선택 필수 검증
+    <?php if ($dmk_auth['mb_type'] == DMK_MB_TYPE_SUPER_ADMIN) { ?>
+    var dmkDtId = f.dmk_dt_id ? f.dmk_dt_id.value : '';
+    if (!dmkDtId) {
+        alert("상품 소유 계층을 선택해주세요. 상품이 총판에 속하는 경우 총판을 선택해야 하며, 상품이 대리점 또는 지점에 속하는 경우 해당 대리점 또는 지점을 선택해주어야 합니다.");
+        // 총판 선택박스에 포커스
+        var dtSelect = document.querySelector('select[name="dmk_dt_id"]');
+        if (dtSelect) {
+            dtSelect.focus();
+        }
+        return false;
+    }
+    <?php } ?>
+
     if (!f.ca_id.value) {
         alert("기본분류를 선택하십시오.");
         f.ca_id.focus();
