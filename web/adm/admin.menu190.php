@@ -20,8 +20,8 @@ if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
         array('190400', '통계분석 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/statistics/statistics_dashboard.php', 'dmk_statistics'),
         array('190600', '서브관리자관리 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/admin_manager/admin_list.php', 'dmk_admin'),
         array('190700', '서브관리자권한설정 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/admin_manager/dmk_auth_list.php', 'dmk_auth'),
-        array('190900', '관리자엑션로그 <i class="fa fa-star" title="LOG"></i>', G5_URL . '/dmk/adm/logs/action_log_list.php', 'dmk_action_log'),
         array('190800', '계층별메뉴권한설정 <i class="fa fa-star" title="설정"></i>', G5_URL . '/dmk/adm/admin_manager/menu_config.php', 'dmk_menu_config'),
+        array('190900', '관리자엑션로그 <i class="fa fa-star" title="LOG"></i>', G5_URL . '/dmk/adm/logs/action_log_list.php', 'dmk_action_log'),
     );
 } else if ($user_type === 'distributor') {
     // 총판 관리자 - 총판관리 제외, 대리점/지점/통계 관리 가능
@@ -42,6 +42,7 @@ if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
         array('190400', '통계분석 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/statistics/statistics_dashboard.php', 'dmk_statistics'),
         array('190600', '서브관리자관리 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/admin_manager/admin_list.php', 'dmk_admin'),
         array('190700', '서브관리자권한설정 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/admin_manager/dmk_auth_list.php', 'dmk_auth'),
+        array('190900', '관리자엑션로그 <i class="fa fa-star" title="LOG"></i>', G5_URL . '/dmk/adm/logs/action_log_list.php', 'dmk_action_log'),
     );
 } else if ($user_type === 'branch') {
     // 지점 관리자 - 지점관리, 서브관리자관리만 가능
@@ -50,6 +51,7 @@ if ($user_type === 'super' || is_super_admin($member['mb_id'])) {
         array('190300', '지점관리 <i class="fa fa-star" title="NEW"></i> ', G5_URL . '/dmk/adm/branch_admin/branch_list.php', 'dmk_branch'),
         array('190600', '서브관리자관리 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/admin_manager/admin_list.php', 'dmk_admin'),
         array('190700', '서브관리자권한설정 <i class="fa fa-star" title="NEW"></i>', G5_URL . '/dmk/adm/admin_manager/dmk_auth_list.php', 'dmk_auth'),
+        array('190900', '관리자엑션로그 <i class="fa fa-star" title="LOG"></i>', G5_URL . '/dmk/adm/logs/action_log_list.php', 'dmk_action_log'),
     );
 } else {
     // 권한이 없는 사용자

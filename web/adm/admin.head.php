@@ -337,30 +337,39 @@ jQuery(function($){
     
     // 페이지 로드시 현재 URL 기반으로 올바른 메뉴 활성화
     $(document).ready(function() {
+        // PHP에서 전달된 메뉴 정보
+        var currentSubMenu = '<?php echo isset($sub_menu) ? $sub_menu : ""; ?>';
         var currentPath = window.location.pathname;
         var currentMenu = null;
         
-        // URL 기반으로 메뉴 감지
-        if (currentPath.indexOf('/dmk/adm/bot/') !== -1) {
-            currentMenu = '.menu-180'; // 봇 관리
-        } else if (currentPath.indexOf('/dmk/adm/distributor_admin/') !== -1 ||
-                   currentPath.indexOf('/dmk/adm/agency_admin/') !== -1 ||
-                   currentPath.indexOf('/dmk/adm/branch_admin/') !== -1 ||
-                   currentPath.indexOf('/dmk/adm/statistics/') !== -1 ||
-                   currentPath.indexOf('/dmk/adm/admin_manager/') !== -1) {
-            currentMenu = '.menu-190'; // 프랜차이즈 관리
-        } else if (currentPath.indexOf('member') !== -1) {
-            currentMenu = '.menu-200'; // 회원관리
-        } else if (currentPath.indexOf('board') !== -1 || currentPath.indexOf('bbs') !== -1) {
-            currentMenu = '.menu-300'; // 게시판관리
-        } else if (currentPath.indexOf('item') !== -1 || currentPath.indexOf('order') !== -1 || currentPath.indexOf('category') !== -1) {
-            currentMenu = '.menu-400'; // 상품/주문관리
-        } else if (currentPath.indexOf('sale') !== -1 || currentPath.indexOf('chart') !== -1 || currentPath.indexOf('stats') !== -1) {
-            currentMenu = '.menu-500'; // 매출/통계
-        } else if (currentPath.indexOf('sms') !== -1) {
-            currentMenu = '.menu-900'; // SMS관리
+        // 메뉴 코드를 기반으로 상위 메뉴 자동 감지
+        if (currentSubMenu) {
+            var menuGroup = currentSubMenu.substring(0, 3); // 예: "190900" -> "190"
+            currentMenu = '.menu-' + menuGroup;
         } else {
-            currentMenu = '.menu-100'; // 기본값: 환경설정
+            // sub_menu가 없는 경우 URL 기반으로 감지 (기존 로직 유지)
+            if (currentPath.indexOf('/dmk/adm/bot/') !== -1) {
+                currentMenu = '.menu-180'; // 봇 관리
+            } else if (currentPath.indexOf('/dmk/adm/distributor_admin/') !== -1 ||
+                       currentPath.indexOf('/dmk/adm/agency_admin/') !== -1 ||
+                       currentPath.indexOf('/dmk/adm/branch_admin/') !== -1 ||
+                       currentPath.indexOf('/dmk/adm/statistics/') !== -1 ||
+                       currentPath.indexOf('/dmk/adm/admin_manager/') !== -1 ||
+                       currentPath.indexOf('/dmk/adm/logs/') !== -1) {
+                currentMenu = '.menu-190'; // 프랜차이즈 관리
+            } else if (currentPath.indexOf('member') !== -1) {
+                currentMenu = '.menu-200'; // 회원관리
+            } else if (currentPath.indexOf('board') !== -1 || currentPath.indexOf('bbs') !== -1) {
+                currentMenu = '.menu-300'; // 게시판관리
+            } else if (currentPath.indexOf('item') !== -1 || currentPath.indexOf('order') !== -1 || currentPath.indexOf('category') !== -1 || currentPath.indexOf('inorder') !== -1) {
+                currentMenu = '.menu-400'; // 상품/주문관리
+            } else if (currentPath.indexOf('sale') !== -1 || currentPath.indexOf('chart') !== -1 || currentPath.indexOf('stats') !== -1 || currentPath.indexOf('wishlist') !== -1 || currentPath.indexOf('rank') !== -1 || currentPath.indexOf('print') !== -1) {
+                currentMenu = '.menu-500'; // 매출/통계
+            } else if (currentPath.indexOf('sms') !== -1) {
+                currentMenu = '.menu-900'; // SMS관리
+            } else {
+                currentMenu = '.menu-100'; // 기본값: 환경설정
+            }
         }
         
         // 모든 메뉴에서 on 클래스 제거
@@ -388,51 +397,77 @@ jQuery(function($){
             }
         }
         
-        // 서브 메뉴 활성화 (더 구체적인 URL 매칭)
-        activateSubmenu(currentPath);
+        // 서브 메뉴 활성화 (PHP에서 전달된 메뉴 코드 우선 사용)
+        activateSubmenu(currentPath, currentSubMenu);
     });
     
     // 서브 메뉴 활성화 함수
-    function activateSubmenu(currentPath) {
+    function activateSubmenu(currentPath, currentSubMenu) {
         // 모든 서브 메뉴에서 on 클래스 제거
         $('.gnb_oparea a').removeClass('on');
         
-        var submenuMap = {
-            // 봇 관리 서브 메뉴
-            '/bot/server_list.php': '180100',
-            '/bot/server_process_list.php': '180200', 
-            '/bot/bot_device_list.php': '180300',
-            '/bot/ping_monitor_list.php': '180400',
-            '/bot/room_list.php': '180500',
-            '/bot/schedule_list.php': '180600',
-            '/bot/chat_log_list.php': '180700',
-            
-            // 프랜차이즈 관리 서브 메뉴
-            '/distributor_admin/distributor_list.php': '190100',
-            '/agency_admin/agency_list.php': '190200',
-            '/branch_admin/branch_list.php': '190300',
-            '/statistics/statistics_dashboard.php': '190400',
-            '/admin_manager/admin_list.php': '190600',
-            '/admin_manager/dmk_auth_list.php': '190700',
-            '/logs/action_log_list.php': '190900',
-            '/admin_manager/menu_config.php': '190800'
-        };
-        
-        // 현재 경로에 해당하는 서브 메뉴 찾기
         var activeSubmenuId = null;
-        for (var path in submenuMap) {
-            if (currentPath.indexOf(path) !== -1) {
-                activeSubmenuId = submenuMap[path];
-                break;
+        
+        // PHP에서 전달된 메뉴 코드 우선 사용
+        if (currentSubMenu) {
+            activeSubmenuId = currentSubMenu;
+        } else {
+            // 폴백: URL 기반 매핑 (기존 하드코딩 유지)
+            var submenuMap = {
+                // 봇 관리 서브 메뉴
+                '/bot/server_list.php': '180100',
+                '/bot/server_process_list.php': '180200', 
+                '/bot/bot_device_list.php': '180300',
+                '/bot/ping_monitor_list.php': '180400',
+                '/bot/room_list.php': '180500',
+                '/bot/bot_schedule_list.php': '180600',
+                '/bot/bot_schedule_log_list.php': '180610',
+                '/bot/chat_log_list.php': '180700',
+                
+                // 프랜차이즈 관리 서브 메뉴
+                '/distributor_admin/distributor_list.php': '190100',
+                '/agency_admin/agency_list.php': '190200',
+                '/branch_admin/branch_list.php': '190300',
+                '/statistics/statistics_dashboard.php': '190400',
+                '/admin_manager/admin_list.php': '190600',
+                '/admin_manager/dmk_auth_list.php': '190700',
+                '/logs/action_log_list.php': '190900',
+                '/admin_manager/menu_config.php': '190800',
+                
+                // 쇼핑몰 관리 서브 메뉴
+                '/shop_admin/orderlist.php': '400400',
+                '/shop_admin/categorylist.php': '400200',
+                '/shop_admin/itemlist.php': '400300',
+                '/shop_admin/itemstocklist.php': '400620',
+                '/shop_admin/itemtypelist.php': '400610',
+                '/shop_admin/optionstocklist.php': '400500',
+                '/shop_admin/inorderlist.php': '400410',
+                
+                // 쇼핑몰현황/기타 서브 메뉴
+                '/shop_admin/sale1.php': '500110',
+                '/shop_admin/itemsellrank.php': '500100',
+                '/shop_admin/orderprint.php': '500120',
+                '/shop_admin/wishlist.php': '500140'
+            };
+            
+            // 현재 경로에 해당하는 서브 메뉴 찾기
+            for (var path in submenuMap) {
+                if (currentPath.indexOf(path) !== -1) {
+                    activeSubmenuId = submenuMap[path];
+                    break;
+                }
             }
         }
         
         // 해당하는 서브 메뉴에 on 클래스 추가
         if (activeSubmenuId) {
-            var submenuLink = $('.gnb_oparea a[href*="' + activeSubmenuId + '"], .gnb_oparea li[data-menu="' + activeSubmenuId + '"] a');
+            var submenuLink = $('.gnb_oparea li[data-menu="' + activeSubmenuId + '"] a');
+            
             if (submenuLink.length > 0) {
                 submenuLink.addClass('on');
-                console.log('Submenu activated: ' + activeSubmenuId + ' for path: ' + currentPath);
+                console.log('Submenu activated: ' + activeSubmenuId + ' (source: ' + (currentSubMenu ? 'PHP' : 'URL mapping') + ')');
+            } else {
+                console.log('No submenu found for ID: ' + activeSubmenuId);
             }
         }
     }

@@ -11,6 +11,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 주요 개발 명령어
 
+### 테스트 환경
+- **URL**: http://domaeka.local/adm
+- **최고관리자**: admin / !domaekaservice@.
+- **기반 시스템**: 영카트5 + 도매까 확장
+
 ### 테스트 실행
 ```bash
 # Playwright 테스트 실행
@@ -33,19 +38,7 @@ chmod +x perms.sh && ./perms.sh
 ```
 
 ### 데이터베이스 관리
-```bash
-# 도매까 테이블 생성
-mysql -u root -p domaeka < dmk/sql/001_create_dmk_tables.sql
-
-# 기존 테이블 수정
-mysql -u root -p domaeka < dmk/sql/002_alter_existing_tables.sql
-
-# 테스트 데이터 삽입
-mysql -u root -p domaeka < dmk/sql/005_insert_test_data.sql
-
-# 패스워드 표준화 (테스트 데이터 후 실행 필수)
-php dmk/sql/004_update_admin_passwords.php
-```
+mysql mcp 연동되어 있으므로 직접 확인 가능.
 
 ## 프로젝트 구조
 
@@ -170,6 +163,67 @@ chmod 777 data/item/
 - 로그 파일 관리: `data/log/`
 
 ## 문제 해결
+
+### 관리자 메뉴 활성화 문제 (✅ 2025-01-24 해결완료)
+
+#### 기존 문제점
+**증상**: 관리자 페이지에서 좌측 메뉴나 서브메뉴가 선택된 상태로 표시되지 않음
+
+**원인**: PHP와 JavaScript에서 메뉴 선택을 중복 처리하는 비효율적 구조
+- PHP 측: `$sub_menu` 변수로 메뉴 선택 상태 설정
+- JavaScript 측: 하드코딩된 URL 매핑으로 다시 메뉴 활성화
+- 새 페이지 추가 시 두 곳 모두 수동 업데이트 필요
+
+#### 해결방안: 메뉴 선택 자동화 시스템 구현
+
+**1. 자동화 원리**
+- PHP에서 설정한 `$sub_menu` 값을 JavaScript로 전달
+- 메뉴 코드 기반으로 상위 메뉴 자동 감지 (예: `190900` → `.menu-190`)
+- 하드코딩된 URL 매핑 제거하고 동적 처리로 변경
+
+**2. 구현 내용 (`web/adm/admin.head.php` 수정)**
+```javascript
+// PHP에서 전달된 메뉴 정보
+var currentSubMenu = '<?php echo isset($sub_menu) ? $sub_menu : ""; ?>';
+
+// 메뉴 코드를 기반으로 상위 메뉴 자동 감지
+if (currentSubMenu) {
+    var menuGroup = currentSubMenu.substring(0, 3); // 예: "190900" -> "190"
+    currentMenu = '.menu-' + menuGroup;
+}
+
+// 서브메뉴 자동 활성화
+function activateSubmenu(currentPath, currentSubMenu) {
+    if (currentSubMenu) {
+        activeSubmenuId = currentSubMenu; // PHP 값 우선 사용
+    } else {
+        // 폴백: URL 기반 매핑 (기존 하드코딩 유지)
+    }
+}
+```
+
+**3. 사용법 (완벽 자동화)**
+새로운 관리자 페이지에서는 단순히 다음 한 줄만 추가:
+```php
+$sub_menu = "190900"; // 원하는 메뉴 코드
+include_once './_common.php';
+```
+
+**4. 개선 효과**
+- ✅ **개발 효율성**: 메뉴 코드 하나만 설정하면 자동으로 메뉴 활성화
+- ✅ **유지보수성**: JavaScript 하드코딩 제거로 관리 포인트 단순화  
+- ✅ **확장성**: 새 페이지 추가 시 추가 설정 불필요
+- ✅ **일관성**: 모든 페이지에서 동일한 방식으로 메뉴 처리
+
+**5. 메뉴 그룹 매핑**
+- `.menu-100` (환경설정): 100xxx 메뉴 코드
+- `.menu-180` (봇 관리): 180xxx 메뉴 코드  
+- `.menu-190` (프랜차이즈 관리): 190xxx 메뉴 코드
+- `.menu-200` (회원관리): 200xxx 메뉴 코드
+- `.menu-300` (게시판관리): 300xxx 메뉴 코드
+- `.menu-400` (쇼핑몰관리): 400xxx 메뉴 코드
+- `.menu-500` (쇼핑몰현황): 500xxx 메뉴 코드
+- `.menu-900` (SMS관리): 900xxx 메뉴 코드
 
 ### 로그인 문제
 - 패스워드 형식 확인: 그누보드5 표준 (`sha256:12000:...`)
