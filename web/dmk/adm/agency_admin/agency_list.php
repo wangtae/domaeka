@@ -19,6 +19,10 @@ if ($is_admin != 'super') {
 $g5['title'] = '대리점 관리 <i class="fa fa-building-o dmk-updated-icon" title="개조"></i>';
 include_once (G5_ADMIN_PATH.'/admin.head.php');
 
+// 체인 선택박스 에셋 포함
+include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
+echo dmk_include_chain_select_assets();
+
 // SQL common 조인 수정: dmk_agency와 g5_member (대리점 관리자, 총판 관리자) 조인
 $sql_common = " FROM dmk_agency a
                 LEFT JOIN dmk_distributor d ON a.dt_id = d.dt_id
@@ -127,9 +131,6 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
     <!-- 도매까 계층 선택박스 (NEW) -->
     <?php
     if ($dmk_auth['is_super']) { // 본사 관리자만 총판 선택박스 표시
-        // 도매까 체인 선택박스 포함
-        include_once(G5_DMK_PATH.'/adm/lib/chain-select.lib.php');
-        
         echo dmk_render_chain_select([
             'page_type' => DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY,
             'auto_submit' => true,
@@ -152,6 +153,17 @@ $listall = '<a href="'.$_SERVER['SCRIPT_NAME'].'" class="ov_listall">전체목�
 <input type="text" name="stx" value="<?php echo $stx ?>" id="stx" class="frm_input" placeholder="대리점ID, 대리점명, 대표자명">
 <input type="submit" class="btn_submit" value="검색">
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var distributorSelect = document.getElementById('dt_id');
+    if (distributorSelect) {
+        distributorSelect.addEventListener('change', function() {
+            document.getElementById('fsearch').submit();
+        });
+    }
+});
+</script>
 
 <div class="btn_fixed_top">
     <?php
