@@ -292,13 +292,28 @@ if ($w == '') {
 } elseif ($w == 'u') {
     // 수정
     
-    // 기존 데이터 조회
+    // 기존 데이터 조회 (수정 전 데이터를 로그용으로 보관)
     $sql = " SELECT * FROM {$g5['member_table']} WHERE mb_id = '".sql_escape_string($mb_id)."' AND mb_level >= 4 ";
     $member = sql_fetch($sql);
     
     if (!$member) {
         alert('존재하지 않는 관리자입니다.');
     }
+    
+    // 로그용 기존 데이터 (비밀번호 제외)
+    $old_data = [
+        'mb_id' => $member['mb_id'],
+        'mb_name' => $member['mb_name'],
+        'mb_nick' => $member['mb_nick'],
+        'mb_email' => $member['mb_email'],
+        'mb_hp' => $member['mb_hp'],
+        'mb_memo' => $member['mb_memo'],
+        'dmk_mb_type' => $member['dmk_mb_type'],
+        'mb_level' => $member['mb_level'],
+        'dmk_dt_id' => $member['dmk_dt_id'],
+        'dmk_ag_id' => $member['dmk_ag_id'],
+        'dmk_br_id' => $member['dmk_br_id']
+    ];
     
     // 수정 모드에서는 기존 데이터 사용
     $dmk_mb_type = $member['dmk_mb_type'];
@@ -386,24 +401,23 @@ if ($w == '') {
     
     error_log("Successfully updated member: " . $mb_id);
     
-    // 관리자 액션 로깅
-    dmk_log_admin_action(
-        'update',
-        '서브관리자 수정: ' . $mb_id,
-        'g5_member',
-        json_encode([
-            'mb_id' => $mb_id,
-            'mb_name' => $mb_name,
-            'mb_nick' => $mb_nick,
-            'dmk_mb_type' => $dmk_mb_type,
-            'mb_level' => $mb_level,
-            'dmk_dt_id' => $dt_id,
-            'dmk_ag_id' => $ag_id,
-            'dmk_br_id' => $br_id
-        ]),
-        null,
-        '190600'
-    );
+    // 새로운 데이터 구성 (비밀번호 제외)
+    $new_data = [
+        'mb_id' => $mb_id,
+        'mb_name' => $mb_name,
+        'mb_nick' => $mb_nick,
+        'mb_email' => $mb_email,
+        'mb_hp' => $mb_hp,
+        'mb_memo' => $mb_memo,
+        'dmk_mb_type' => $dmk_mb_type,
+        'mb_level' => $mb_level,
+        'dmk_dt_id' => $dt_id,
+        'dmk_ag_id' => $ag_id,
+        'dmk_br_id' => $br_id
+    ];
+
+    // 관리자 액션 로그 (향상된 변경 내용 추적)
+    dmk_log_update_action('서브관리자 수정', 'ID: '.$mb_id, $new_data, $old_data, '190600', 'g5_member');
     
     // 수정 완료 후 목록으로 이동
     $redirect_url = './admin_list.php?sfl='.urlencode($sfl).'&stx='.urlencode($stx).'&sst='.urlencode($sst).'&sod='.urlencode($sod).'&page='.urlencode($page);

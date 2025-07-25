@@ -149,6 +149,18 @@ if ($w == '') { // 등록
     exit;
 
 } else if ($w == 'u') { // 수정
+    // 수정 전 기존 데이터 조회 (로그용)
+    $old_member_sql = " SELECT mb_id, mb_name, mb_nick, mb_hp, mb_tel, mb_email, 
+                               mb_zip1, mb_zip2, mb_addr1, mb_addr2, mb_addr3, mb_addr_jibeon
+                        FROM {$g5['member_table']} WHERE mb_id = '$ag_id' ";
+    $old_member_row = sql_fetch($old_member_sql);
+    
+    $old_agency_sql = " SELECT ag_id, ag_status FROM dmk_agency WHERE ag_id = '$ag_id' ";
+    $old_agency_row = sql_fetch($old_agency_sql);
+    
+    // 기존 데이터 병합
+    $old_data = array_merge($old_member_row ?: [], $old_agency_row ?: []);
+    
     if ($mb_password) {
         // 비밀번호 유효성 검증
         $password_validation = dmk_validate_password($ag_id, $mb_password, $mb_password_confirm);
@@ -185,8 +197,25 @@ if ($w == '') { // 등록
               WHERE ag_id = '$ag_id' ";
     sql_query($sql);
 
-    // 관리자 액션 로그
-    dmk_log_admin_action('edit', '대리점 정보 수정', '대리점ID: '.$ag_id, json_encode($_POST), null, 'agency_form', 'g5_member,dmk_agency');
+    // 새로운 데이터 구성 (비밀번호 제외)
+    $new_data = [
+        'mb_id' => $ag_id,
+        'mb_name' => $mb_name,
+        'mb_nick' => $mb_nick,
+        'mb_hp' => $mb_hp,
+        'mb_tel' => $mb_tel,
+        'mb_email' => $mb_email,
+        'mb_zip1' => $mb_zip1,
+        'mb_zip2' => $mb_zip2,
+        'mb_addr1' => $mb_addr1,
+        'mb_addr2' => $mb_addr2,
+        'mb_addr3' => $mb_addr3,
+        'mb_addr_jibeon' => $mb_addr_jibeon,
+        'ag_status' => $ag_status
+    ];
+
+    // 관리자 액션 로그 (향상된 변경 내용 추적)
+    dmk_log_update_action('대리점 정보 수정', '대리점ID: '.$ag_id, $new_data, $old_data, 'agency_form', 'g5_member,dmk_agency');
 
     goto_url('./agency_form.php?w=u&ag_id='.$ag_id);
     exit;
