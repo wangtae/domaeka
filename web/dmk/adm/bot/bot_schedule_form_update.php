@@ -8,6 +8,8 @@ include_once('./_common.php');
 
 // 썸네일 생성 라이브러리 포함
 include_once(G5_PATH.'/dmk/lib/thumbnail.lib.php');
+// 관리자 액션 로깅 라이브러리 포함
+include_once(G5_DMK_PATH . "/adm/lib/admin.log.lib.php");
 
 // PHP 업로드 설정 (가능한 경우)
 @ini_set('upload_max_filesize', '10M');
@@ -718,8 +720,21 @@ if ($w == '' || $w == 'a') {
     
     sql_query($sql);
     
-    // 로그 기록
-    // dmk_admin_log('스케줄링 발송 등록', "제목: $title, 톡방: $target_room_id");
+    // 관리자 액션 로그
+    dmk_log_admin_action(
+        'insert',
+        '봇 스케줄 등록: ' . $title,
+        'kb_schedule',
+        json_encode([
+            'title' => $title,
+            'target_bot_name' => $target_bot_name,
+            'target_room_id' => $target_room_id,
+            'schedule_type' => $schedule_type,
+            'status' => $status
+        ]),
+        null,
+        '180600'
+    );
     
     goto_url('./bot_schedule_list.php');
     
@@ -729,12 +744,34 @@ if ($w == '' || $w == 'a') {
         alert('스케줄 ID가 없습니다.');
     }
     
-    // 기존 스케줄 정보 확인
+    // 기존 스케줄 정보 확인 (수정 전 데이터를 로그용으로 보관)
     $sql = " SELECT * FROM kb_schedule WHERE id = '$id' ";
     $schedule = sql_fetch($sql);
     if (!$schedule['id']) {
         alert('등록된 스케줄이 아닙니다.');
     }
+    
+    // 로그용 기존 데이터 (민감한 정보 제외)
+    $old_data = [
+        'id' => $schedule['id'],
+        'title' => $schedule['title'],
+        'description' => $schedule['description'],
+        'message_type' => $schedule['message_type'],
+        'target_bot_name' => $schedule['target_bot_name'],
+        'target_device_id' => $schedule['target_device_id'],
+        'target_room_id' => $schedule['target_room_id'],
+        'schedule_type' => $schedule['schedule_type'],
+        'schedule_date' => $schedule['schedule_date'],
+        'schedule_time' => $schedule['schedule_time'],
+        'schedule_weekdays' => $schedule['schedule_weekdays'],
+        'valid_from' => $schedule['valid_from'],
+        'valid_until' => $schedule['valid_until'],
+        'status' => $schedule['status'],
+        'image_storage_mode' => $schedule['image_storage_mode'],
+        'send_interval_seconds' => $schedule['send_interval_seconds'],
+        'media_wait_time_1' => $schedule['media_wait_time_1'],
+        'media_wait_time_2' => $schedule['media_wait_time_2']
+    ];
     
     // 권한 체크
     if (!$user_info['is_super']) {
@@ -1071,8 +1108,30 @@ if ($w == '' || $w == 'a') {
         echo "<!-- DEBUG: UPDATE failed -->\n";
     }
     
-    // 로그 기록
-    // dmk_admin_log('스케줄링 발송 수정', "ID: $id, 제목: $title");
+    // 새로운 데이터 구성 (민감한 정보 제외)
+    $new_data = [
+        'id' => $id,
+        'title' => $title,
+        'description' => $description,
+        'message_type' => $message_type,
+        'target_bot_name' => $target_bot_name,
+        'target_device_id' => $target_device_id,
+        'target_room_id' => $target_room_id,
+        'schedule_type' => $schedule_type,
+        'schedule_date' => $schedule_date,
+        'schedule_time' => $schedule_time,
+        'schedule_weekdays' => $schedule_weekdays,
+        'valid_from' => $valid_from,
+        'valid_until' => $valid_until,
+        'status' => $status,
+        'image_storage_mode' => $image_storage_mode,
+        'send_interval_seconds' => $send_interval_seconds,
+        'media_wait_time_1' => $media_wait_time_1,
+        'media_wait_time_2' => $media_wait_time_2
+    ];
+
+    // 관리자 액션 로그 (향상된 변경 내용 추적)
+    dmk_log_update_action('봇 스케줄 수정', 'ID: '.$id.', 제목: '.$title, $new_data, $old_data, '180600', 'kb_schedule');
     
     goto_url('./bot_schedule_list.php');
 }

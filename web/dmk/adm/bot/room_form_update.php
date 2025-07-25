@@ -5,6 +5,7 @@
 
 $sub_menu = "180500";
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.log.lib.php');
 
 auth_check('180500', 'w');
 
@@ -34,6 +35,18 @@ $room = sql_fetch($sql);
 if (!$room['room_id']) {
     alert('등록된 채팅방이 아닙니다.');
 }
+
+// 로그용 기존 데이터
+$old_data = [
+    'room_id' => $room['room_id'],
+    'bot_name' => $room['bot_name'],
+    'device_id' => $room['device_id'],
+    'room_name' => $room['room_name'],
+    'status' => $room['status'],
+    'description' => $room['description'],
+    'owner_id' => $room['owner_id'],
+    'log_settings' => $room['log_settings']
+];
 
 // 입력값 검증
 if (!$_POST['status']) {
@@ -100,37 +113,29 @@ if (!$result) {
     alert('채팅방 정보 수정 중 오류가 발생했습니다.');
 }
 
-// 상태 변경 로그 기록
-if ($status_changed) {
-    $status_names = [
-        'pending' => '승인 대기',
-        'approved' => '승인됨', 
-        'denied' => '거부됨',
-        'revoked' => '취소됨',
-        'blocked' => '차단됨'
-    ];
-    
-    $old_status_name = $status_names[$old_status] ?? $old_status;
-    $new_status_name = $status_names[$status] ?? $status;
-    
-    // dmk_admin_log('채팅방 상태 변경', 
-    //     "방ID: {$room_id}, 방명: {$room['room_name']}, " .
-    //     "상태: {$old_status_name} → {$new_status_name}"
-    // );
-    
-    // 승인된 경우 추가 처리
-    if ($status == 'approved') {
-        // TODO: 필요시 승인 알림 등 추가 처리
-    }
-    
-    // 차단된 경우 추가 처리
-    if ($status == 'blocked') {
-        // TODO: 필요시 해당 채팅방 봇 기능 비활성화 등 추가 처리
-    }
-} else {
-    // dmk_admin_log('채팅방 정보 수정', 
-    //     "방ID: {$room_id}, 방명: {$room['room_name']}"
-    // );
+// 새로운 데이터 구성
+$new_data = [
+    'room_id' => $room_id,
+    'bot_name' => $room['bot_name'], // 변경되지 않는 데이터
+    'device_id' => $room['device_id'], // 변경되지 않는 데이터
+    'room_name' => $room['room_name'], // 변경되지 않는 데이터
+    'status' => $status,
+    'description' => $description,
+    'owner_id' => $owner_id,
+    'log_settings' => $log_settings_json
+];
+
+// 관리자 액션 로그 (향상된 변경 내용 추적)
+dmk_log_update_action('채팅방 수정', '방명: '.$room['room_name'].' (ID: '.$room_id.')', $new_data, $old_data, '180500', 'kb_rooms');
+
+// 승인된 경우 추가 처리
+if ($status == 'approved' && $old_status != 'approved') {
+    // TODO: 필요시 승인 알림 등 추가 처리
+}
+
+// 차단된 경우 추가 처리
+if ($status == 'blocked') {
+    // TODO: 필요시 해당 채팅방 봇 기능 비활성화 등 추가 처리
 }
 
 // 목록 페이지로 이동

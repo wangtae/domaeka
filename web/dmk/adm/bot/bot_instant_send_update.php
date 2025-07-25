@@ -1,5 +1,6 @@
 <?php
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.log.lib.php');
 
 auth_check($auth[$sub_menu], "w");
 
@@ -28,6 +29,21 @@ if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] == UPLOAD_ERR
 
 // 여기에 카카오봇 API 호출 로직 구현
 // 예: call_kakao_bot_api($target_branch_id, $message_content, $image_url, $send_type);
+
+// 관리자 액션 로그
+dmk_log_admin_action(
+    'send',
+    '봇 즉시 발송: ' . ($target_branch_id ? '지점ID: '.$target_branch_id : '전체'),
+    'kb_instant_send',
+    json_encode([
+        'target_branch_id' => $target_branch_id,
+        'send_type' => $send_type,
+        'has_image' => !empty($image_url),
+        'message_length' => strlen($message_content)
+    ]),
+    null,
+    '180500'
+);
 
 alert('메시지가 성공적으로 발송되었습니다.');
 goto_url('./bot_instant_send_form.php');

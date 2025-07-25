@@ -5,6 +5,7 @@
 
 $sub_menu = "180200";
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.log.lib.php');
 
 auth_check('180200', 'w');
 
@@ -79,8 +80,25 @@ if ($w == '' || $w == 'a') {
     
     sql_query($sql);
     
-    // 로그 기록
-    dmk_admin_log('서버 프로세스 등록', "프로세스명: $process_name, 서버ID: $server_id");
+    // 관리자 액션 로그
+    dmk_log_admin_action(
+        'insert',
+        '서버 프로세스 등록: ' . $process_name . ' (서버ID: ' . $server_id . ')',
+        'kb_server_processes',
+        json_encode([
+            'server_id' => $server_id,
+            'process_name' => $process_name,
+            'process_type' => $process_type,
+            'port' => $port,
+            'mode' => $mode,
+            'log_level' => $log_level,
+            'auto_restart' => $auto_restart,
+            'status' => $status,
+            'description' => $description
+        ]),
+        null,
+        '180200'
+    );
     
     goto_url('./server_process_list.php');
     
@@ -90,12 +108,26 @@ if ($w == '' || $w == 'a') {
         alert('프로세스 ID가 없습니다.');
     }
     
-    // 기존 프로세스 정보 확인
+    // 기존 프로세스 정보 확인 (수정 전 데이터를 로그용으로 보관)
     $sql = " SELECT * FROM kb_server_processes WHERE process_id = '$process_id' ";
     $pr = sql_fetch($sql);
     if (!$pr['process_id']) {
         alert('등록된 프로세스가 아닙니다.');
     }
+    
+    // 로그용 기존 데이터
+    $old_data = [
+        'process_id' => $pr['process_id'],
+        'server_id' => $pr['server_id'],
+        'process_name' => $pr['process_name'],
+        'process_type' => $pr['process_type'],
+        'port' => $pr['port'],
+        'mode' => $pr['mode'],
+        'log_level' => $pr['log_level'],
+        'auto_restart' => $pr['auto_restart'],
+        'status' => $pr['status'],
+        'description' => $pr['description']
+    ];
     
     $sql = " UPDATE kb_server_processes SET 
              server_id = '$server_id',
@@ -112,8 +144,22 @@ if ($w == '' || $w == 'a') {
     
     sql_query($sql);
     
-    // 로그 기록
-    dmk_admin_log('서버 프로세스 수정', "프로세스ID: $process_id, 프로세스명: $process_name");
+    // 새로운 데이터 구성
+    $new_data = [
+        'process_id' => $process_id,
+        'server_id' => $server_id,
+        'process_name' => $process_name,
+        'process_type' => $process_type,
+        'port' => $port,
+        'mode' => $mode,
+        'log_level' => $log_level,
+        'auto_restart' => $auto_restart,
+        'status' => $status,
+        'description' => $description
+    ];
+
+    // 관리자 액션 로그 (향상된 변경 내용 추적)
+    dmk_log_update_action('서버 프로세스 수정', '프로세스ID: '.$process_id.', 프로세스명: '.$process_name, $new_data, $old_data, '180200', 'kb_server_processes');
     
     goto_url('./server_process_list.php');
 }

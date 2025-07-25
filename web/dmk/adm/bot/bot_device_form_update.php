@@ -5,6 +5,7 @@
 
 $sub_menu = "180300";
 include_once('./_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.log.lib.php');
 
 auth_check('180300', 'w');
 
@@ -17,12 +18,23 @@ if (!$device_id) {
     alert('디바이스 ID가 없습니다.');
 }
 
-// 기존 디바이스 정보 확인
+// 기존 디바이스 정보 확인 (수정 전 데이터를 로그용으로 보관)
 $sql = " SELECT * FROM kb_bot_devices WHERE id = '$device_id' ";
 $device = sql_fetch($sql);
 if (!$device['id']) {
     alert('등록된 디바이스가 아닙니다.');
 }
+
+// 로그용 기존 데이터
+$old_data = [
+    'id' => $device['id'],
+    'bot_name' => $device['bot_name'],
+    'device_id' => $device['device_id'],
+    'status' => $device['status'],
+    'descryption' => $device['descryption'],
+    'image_resize_enabled' => $device['image_resize_enabled'],
+    'image_resize_width' => $device['image_resize_width']
+];
 
 // 입력값 검증
 if (!$_POST['status']) {
@@ -74,37 +86,28 @@ $check_sql = "SELECT image_resize_width, image_resize_enabled FROM kb_bot_device
 $check_result = sql_fetch($check_sql);
 error_log("After update - image_resize_width: " . $check_result['image_resize_width'] . ", image_resize_enabled: " . $check_result['image_resize_enabled']);
 
-// 상태 변경 로그 기록
-if ($status_changed) {
-    $status_names = [
-        'pending' => '승인 대기',
-        'approved' => '승인됨', 
-        'rejected' => '거부됨',
-        'suspended' => '일시정지',
-        'blocked' => '차단됨'
-    ];
-    
-    $old_status_name = $status_names[$old_status] ?? $old_status;
-    $new_status_name = $status_names[$status] ?? $status;
-    
-    // dmk_admin_log('봇 디바이스 상태 변경', 
-    //     "디바이스ID: {$device_id}, 봇명: {$device['bot_name']}, " .
-    //     "상태: {$old_status_name} → {$new_status_name}"
-    // );
-    
-    // 승인된 경우 추가 처리
-    if ($status == 'approved') {
-        // TODO: 필요시 승인 알림 등 추가 처리
-    }
-    
-    // 차단된 경우 추가 처리
-    if ($status == 'blocked') {
-        // TODO: 필요시 연결 강제 해제 등 추가 처리
-    }
-} else {
-    // dmk_admin_log('봇 디바이스 정보 수정', 
-    //     "디바이스ID: {$device_id}, 봇명: {$device['bot_name']}"
-    // );
+// 새로운 데이터 구성
+$new_data = [
+    'id' => $device_id,
+    'bot_name' => $device['bot_name'], // 변경되지 않는 데이터
+    'device_id' => $device['device_id'], // 변경되지 않는 데이터
+    'status' => $status,
+    'descryption' => $description,
+    'image_resize_enabled' => $image_resize_enabled,
+    'image_resize_width' => $image_resize_width
+];
+
+// 관리자 액션 로그 (향상된 변경 내용 추적)
+dmk_log_update_action('봇 디바이스 수정', '봇명: '.$device['bot_name'].' (ID: '.$device_id.')', $new_data, $old_data, '180300', 'kb_bot_devices');
+
+// 승인된 경우 추가 처리
+if ($status == 'approved' && $old_status != 'approved') {
+    // TODO: 필요시 승인 알림 등 추가 처리
+}
+
+// 차단된 경우 추가 처리
+if ($status == 'blocked') {
+    // TODO: 필요시 연결 강제 해제 등 추가 처리
 }
 
 goto_url('./bot_device_list.php');

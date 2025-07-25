@@ -2,6 +2,7 @@
 $sub_menu = "190700";
 require_once '../../../adm/_common.php';
 include_once(G5_DMK_PATH.'/adm/admin_manager/_common.php');
+include_once(G5_DMK_PATH.'/adm/lib/admin.log.lib.php');
 
 check_admin_token();
 
@@ -101,6 +102,17 @@ $sql = " SELECT COUNT(*) as cnt FROM {$g5['auth_table']}
 $row = sql_fetch($sql);
 
 if ($row['cnt']) {
+    // 기존 권한 조회 (수정 전 데이터를 로그용으로 보관)
+    $old_auth_sql = " SELECT au_auth FROM {$g5['auth_table']} 
+                      WHERE mb_id = '".sql_escape_string($mb_id)."' AND au_menu = '".sql_escape_string($au_menu)."' ";
+    $old_auth_row = sql_fetch($old_auth_sql);
+    
+    $old_data = [
+        'mb_id' => $mb_id,
+        'au_menu' => $au_menu,
+        'au_auth' => $old_auth_row['au_auth'] ?? ''
+    ];
+    
     // 기존 권한 업데이트
     $sql = " UPDATE {$g5['auth_table']} SET 
                 au_auth = '".sql_escape_string($au_auth)."' 
@@ -108,6 +120,16 @@ if ($row['cnt']) {
     error_log("DMK_AUTH_UPDATE: UPDATE SQL = " . $sql);
     $result = sql_query($sql);
     error_log("DMK_AUTH_UPDATE: UPDATE result = " . ($result ? 'success' : 'failed'));
+    
+    // 새로운 데이터 구성
+    $new_data = [
+        'mb_id' => $mb_id,
+        'au_menu' => $au_menu,
+        'au_auth' => $au_auth
+    ];
+
+    // 관리자 액션 로그 (향상된 변경 내용 추적)
+    dmk_log_update_action('관리자 권한 수정', '관리자ID: '.$mb_id.', 메뉴: '.$au_menu, $new_data, $old_data, '190700', 'g5_auth');
     
     alert('권한이 수정되었습니다.', './dmk_auth_list.php');
 } else {
@@ -119,6 +141,20 @@ if ($row['cnt']) {
     error_log("DMK_AUTH_UPDATE: INSERT SQL = " . $sql);
     $result = sql_query($sql);
     error_log("DMK_AUTH_UPDATE: INSERT result = " . ($result ? 'success' : 'failed'));
+    
+    // 관리자 액션 로그
+    dmk_log_admin_action(
+        'insert',
+        '관리자 권한 추가: ' . $mb_id . ' (메뉴: ' . $au_menu . ')',
+        'g5_auth',
+        json_encode([
+            'mb_id' => $mb_id,
+            'au_menu' => $au_menu,
+            'au_auth' => $au_auth
+        ]),
+        null,
+        '190700'
+    );
     
     alert('권한이 추가되었습니다.', './dmk_auth_list.php');
 }
