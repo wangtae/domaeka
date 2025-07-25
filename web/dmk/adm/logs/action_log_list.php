@@ -6,15 +6,17 @@ include_once './_common.php';
 
 // 도매까 권한 라이브러리 포함
 include_once(G5_PATH.'/dmk/adm/lib/admin.auth.lib.php');
+include_once(G5_PATH.'/dmk/adm/lib/chain-select.lib.php');
 
 // 메뉴 접근 권한 확인
 if (!dmk_can_access_menu($sub_menu)) {
     alert('접근 권한이 없습니다.');
 }
 
-// 최고관리자가 아니면 도매까 자체 권한 체크 사용
-if ($is_admin != 'super') {
-    // 도매까 권한 체크를 이미 위에서 했으므로 여기서는 통과
+// 관리자 액션 로그는 본사와 총판만 접근 가능
+$dmk_auth = dmk_get_admin_auth();
+if (!$dmk_auth || !in_array($dmk_auth['mb_type'], ['super', 'distributor'])) {
+    alert('관리자 액션 로그는 본사와 총판만 접근할 수 있습니다.');
 }
 
 $g5['title'] = '관리자 액션 로그 <i class="fa fa-list-alt dmk-updated-icon" title="새로추가"></i>';
@@ -26,13 +28,14 @@ $sql_common = " FROM dmk_action_logs l
 $sql_search = " WHERE 1=1 ";
 
 // 권한에 따른 데이터 필터링
-$dmk_auth = dmk_get_admin_auth();
+// $dmk_auth는 이미 위에서 정의됨
 
 // 검색 조건
 $action_type = isset($_GET['action_type']) ? sql_escape_string(trim($_GET['action_type'])) : '';
 $mb_id = isset($_GET['mb_id']) ? sql_escape_string(trim($_GET['mb_id'])) : '';
 $start_date = isset($_GET['start_date']) ? sql_escape_string(trim($_GET['start_date'])) : '';
 $end_date = isset($_GET['end_date']) ? sql_escape_string(trim($_GET['end_date'])) : '';
+$sdt_id = isset($_GET['sdt_id']) ? sql_escape_string(trim($_GET['sdt_id'])) : '';
 
 if ($action_type) {
     $sql_search .= " AND l.action_type = '".sql_escape_string($action_type)."' ";
@@ -48,6 +51,18 @@ if ($start_date) {
 
 if ($end_date) {
     $sql_search .= " AND DATE(l.log_datetime) <= '".sql_escape_string($end_date)."' ";
+}
+
+// 총판 필터링 - 총판 로그인시 자신의 데이터만 표시
+if ($dmk_auth['mb_type'] == 'distributor') {
+    // 총판은 자신의 액션만 볼 수 있음
+    $sql_search .= " AND l.mb_id = '".sql_escape_string($dmk_auth['mb_id'])."' ";
+} else if ($sdt_id) {
+    // 본사에서 특정 총판 선택시
+    $sql_search .= " AND l.mb_id IN (
+        SELECT mb_id FROM {$g5['member_table']} 
+        WHERE dmk_mb_type = 'distributor' AND dmk_distributor_id = '".sql_escape_string($sdt_id)."'
+    ) ";
 }
 
 if ($stx) {
@@ -105,6 +120,15 @@ $action_types = array(
             <option value="<?php echo $val ?>" <?php echo ($action_type == $val) ? 'selected' : '' ?>><?php echo $name ?></option>
             <?php } ?>
         </select>
+        
+        <?php 
+        // 본사만 총판 선택박스 표시
+        if ($dmk_auth['mb_type'] == 'super') {
+            echo dmk_chain_select_for_list([
+                'sdt_id' => $sdt_id
+            ], DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY);
+        }
+        ?>
         
         <input type="text" name="mb_id" value="<?php echo $mb_id ?>" placeholder="관리자ID" class="frm_input" style="width:120px;">
         
