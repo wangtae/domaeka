@@ -229,7 +229,11 @@ class DmkChainSelect {
         
         const agencySelect = document.getElementById(this.options.agencySelectId);
         if (!agencySelect) {
-            this.log('대리점 선택박스를 찾을 수 없음');
+            this.log('대리점 선택박스를 찾을 수 없음 - 콜백만 실행');
+            // 대리점 선택박스가 없어도 콜백은 실행 (총판만 표시하는 경우)
+            if (callback) {
+                callback();
+            }
             return;
         }
         

@@ -15,7 +15,8 @@ if (!dmk_can_access_menu($sub_menu)) {
 
 // 관리자 액션 로그는 본사와 총판만 접근 가능
 $dmk_auth = dmk_get_admin_auth();
-if (!$dmk_auth || !in_array($dmk_auth['mb_type'], ['super', 'distributor'])) {
+if (!$dmk_auth || (!$dmk_auth['is_super'] && $dmk_auth['mb_type'] != 1)) {
+    // is_super = true (본사) 또는 mb_type = 1 (총판)만 접근 가능
     alert('관리자 액션 로그는 본사와 총판만 접근할 수 있습니다.');
 }
 
@@ -54,14 +55,14 @@ if ($end_date) {
 }
 
 // 총판 필터링 - 총판 로그인시 자신의 데이터만 표시
-if ($dmk_auth['mb_type'] == 'distributor') {
+if ($dmk_auth['mb_type'] == 1) { // 총판 (mb_type = 1)
     // 총판은 자신의 액션만 볼 수 있음
     $sql_search .= " AND l.mb_id = '".sql_escape_string($dmk_auth['mb_id'])."' ";
 } else if ($sdt_id) {
     // 본사에서 특정 총판 선택시
     $sql_search .= " AND l.mb_id IN (
         SELECT mb_id FROM {$g5['member_table']} 
-        WHERE dmk_mb_type = 'distributor' AND dmk_distributor_id = '".sql_escape_string($sdt_id)."'
+        WHERE dmk_mb_type = 1 AND dmk_dt_id = '".sql_escape_string($sdt_id)."'
     ) ";
 }
 
@@ -115,20 +116,26 @@ $action_types = array(
 
 <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get">
     <div class="sch_last">
+    <?php 
+        // 본사만 총판 선택박스 표시
+        if ($dmk_auth['is_super']) {
+            echo dmk_chain_select_for_list([
+                'sdt_id' => $sdt_id
+            ], DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY, [
+                'auto_submit' => true,
+                'form_id' => 'fsearch'
+            ]);
+        }
+        ?>
+
+        
         <select name="action_type" class="frm_input">
             <?php foreach($action_types as $val => $name) { ?>
             <option value="<?php echo $val ?>" <?php echo ($action_type == $val) ? 'selected' : '' ?>><?php echo $name ?></option>
             <?php } ?>
         </select>
         
-        <?php 
-        // 본사만 총판 선택박스 표시
-        if ($dmk_auth['mb_type'] == 'super') {
-            echo dmk_chain_select_for_list([
-                'sdt_id' => $sdt_id
-            ], DMK_CHAIN_SELECT_DISTRIBUTOR_ONLY);
-        }
-        ?>
+        
         
         <input type="text" name="mb_id" value="<?php echo $mb_id ?>" placeholder="관리자ID" class="frm_input" style="width:120px;">
         
