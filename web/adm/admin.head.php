@@ -369,7 +369,7 @@ jQuery(function($){
                 currentMenu = '.menu-900'; // SMS관리
             } else {
                 currentMenu = '.menu-100'; // 기본값: 환경설정
-            }
+            } 
         }
         
         // 모든 메뉴에서 on 클래스 제거
